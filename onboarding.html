@@ -1041,7 +1041,7 @@
     } catch (e) {
       btn.textContent = "Submit →";
       btn.disabled = false;
-      alert("Something went wrong sending the form. Please try again or contact us directly.");
+      alert("Something went wrong: " + e.message + ". Please try again.");
     }
   }
 
