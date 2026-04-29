@@ -956,85 +956,93 @@
     }
   }
 
-  function submitForm() {
+  async function submitForm() {
     if (!validateSection(current)) return;
 
-    // Collect all data
+    const btn = document.getElementById("btnSubmit");
+    btn.textContent = "Sending...";
+    btn.disabled = true;
+
     const rules   = [...document.querySelectorAll('input[name="rules"]:checked')].map(i => i.value);
     const reports = [...document.querySelectorAll('input[name="reports"]:checked')].map(i => i.value);
-    const data = {
-      owner: {
-        firstName:      document.getElementById("first-name").value,
-        lastName:       document.getElementById("last-name").value,
-        email:          document.getElementById("email").value,
-        phone:          document.getElementById("phone").value,
-        contactPref:    document.querySelector('input[name="contact-pref"]:checked')?.value,
-        emergencyName:  document.getElementById("emergency-name").value,
-        emergencyPhone: document.getElementById("emergency-phone").value,
-      },
-      property: {
-        address:      document.getElementById("address").value,
-        type:         document.getElementById("prop-type").value,
-        bedrooms:     document.getElementById("bedrooms").value,
-        bathrooms:    document.getElementById("bathrooms").value,
-        sqft:         document.getElementById("sqft").value,
-        storageRoom:  document.querySelector('input[name="storage"]:checked')?.value,
-      },
-      airbnb: {
-        onAirbnb:   document.querySelector('input[name="on-airbnb"]:checked')?.value,
-        listingUrl: document.getElementById("airbnb-url").value,
-      },
-      availability: {
-        months: [...selectedMonths],
-      },
-      access: {
-        method:        document.querySelector('input[name="access-method"]:checked')?.value,
-        code:          document.getElementById("access-code").value,
-        parking:       document.getElementById("parking").value,
-        buildingEntry: document.getElementById("building-entry").value,
-      },
-      cleaning: {
-        cleanerType:   document.querySelector('input[name="cleaner-type"]:checked')?.value,
-        cleanerName:   document.getElementById("cleaner-name").value,
-        cleanerContact:document.getElementById("cleaner-contact").value,
-        checkoutTime:  document.getElementById("checkout-time").value,
-        checkinTime:   document.getElementById("checkin-time").value,
-        bufferTime:    document.getElementById("buffer-time").value,
-      },
-      linens: {
-        bedSets:        document.getElementById("bed-sets").value,
-        towelSets:      document.getElementById("towel-sets").value,
-        washerOnSite:   document.querySelector('input[name="washer"]:checked')?.value,
-        washerLocation: document.getElementById("washer-location").value,
-        linenStorage:   document.getElementById("linen-storage").value,
-      },
-      guestRules: {
-        rules:       rules,
-        quietStart:  document.getElementById("quiet-start").value,
-        quietEnd:    document.getElementById("quiet-end").value,
-        extraRules:  document.getElementById("extra-rules").value,
-      },
-      billing: {
-        responsible:   document.querySelector('input[name="billing"]:checked')?.value,
-        contactName:   document.getElementById("billing-name").value,
-        contactEmail:  document.getElementById("billing-email").value,
-      },
-      monthlyReports: {
-        items:        reports,
-        notes:        document.getElementById("report-notes").value,
-      },
-      additionalNotes: document.getElementById("additional-notes").value,
+
+    const payload = {
+      // Owner
+      "First Name":            document.getElementById("first-name").value,
+      "Last Name":             document.getElementById("last-name").value,
+      "Owner Email":           document.getElementById("email").value,
+      "Owner Phone":           document.getElementById("phone").value,
+      "Preferred Contact":     document.querySelector('input[name="contact-pref"]:checked')?.value,
+      "Emergency Contact Name":  document.getElementById("emergency-name").value,
+      "Emergency Contact Phone": document.getElementById("emergency-phone").value,
+      // Property
+      "Property Address":      document.getElementById("address").value,
+      "Property Type":         document.getElementById("prop-type").value,
+      "Bedrooms":              document.getElementById("bedrooms").value,
+      "Bathrooms":             document.getElementById("bathrooms").value,
+      "Square Footage":        document.getElementById("sqft").value,
+      "Storage Room":          document.querySelector('input[name="storage"]:checked')?.value,
+      // Airbnb
+      "On Airbnb":             document.querySelector('input[name="on-airbnb"]:checked')?.value,
+      "Airbnb Listing URL":    document.getElementById("airbnb-url").value,
+      // Availability
+      "Available Months":      [...selectedMonths].join(", "),
+      // Access
+      "Access Method":         document.querySelector('input[name="access-method"]:checked')?.value,
+      "Access Code/Instructions": document.getElementById("access-code").value,
+      "Parking Instructions":  document.getElementById("parking").value,
+      "Building Entry Notes":  document.getElementById("building-entry").value,
+      // Cleaning
+      "Cleaner Type":          document.querySelector('input[name="cleaner-type"]:checked')?.value,
+      "Own Cleaner Name":      document.getElementById("cleaner-name").value,
+      "Own Cleaner Contact":   document.getElementById("cleaner-contact").value,
+      "Checkout Time":         document.getElementById("checkout-time").value,
+      "Check-in Time":         document.getElementById("checkin-time").value,
+      "Buffer Time":           document.getElementById("buffer-time").value,
+      // Linens
+      "Bed Sets per Bedroom":  document.getElementById("bed-sets").value,
+      "Towel Sets per Bathroom": document.getElementById("towel-sets").value,
+      "Washer/Dryer On-site":  document.querySelector('input[name="washer"]:checked')?.value,
+      "Washer/Dryer Location": document.getElementById("washer-location").value,
+      "Linen Storage Location":document.getElementById("linen-storage").value,
+      // Guest Rules
+      "Guest Rules":           rules.join("; "),
+      "Quiet Hours Start":     document.getElementById("quiet-start").value,
+      "Quiet Hours End":       document.getElementById("quiet-end").value,
+      "Additional Guest Rules":document.getElementById("extra-rules").value,
+      // Billing
+      "Invoice Responsibility":document.querySelector('input[name="billing"]:checked')?.value,
+      "Billing Contact Name":  document.getElementById("billing-name").value,
+      "Billing Contact Email": document.getElementById("billing-email").value,
+      // Reports
+      "Monthly Report Items":  reports.join("; "),
+      "Report Notes":          document.getElementById("report-notes").value,
+      // Misc
+      "Additional Notes":      document.getElementById("additional-notes").value,
     };
 
-    console.log("Onboarding submission:", JSON.stringify(data, null, 2));
+    try {
+      const res = await fetch("https://formspree.io/f/chelcymae1@gmail.com", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    // Show success
-    document.querySelectorAll(".section").forEach(s => s.style.display = "none");
-    document.getElementById("success").style.display = "block";
-    document.getElementById("nav").style.display = "none";
-    fillEl.style.width = "100%";
-    document.querySelectorAll(".step-dot").forEach(d => d.className = "step-dot done");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+      if (res.ok) {
+        document.querySelectorAll(".section").forEach(s => s.style.display = "none");
+        document.getElementById("success").style.display = "block";
+        document.getElementById("nav").style.display = "none";
+        fillEl.style.width = "100%";
+        document.querySelectorAll(".step-dot").forEach(d => d.className = "step-dot done");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        throw new Error("Server error");
+      }
+    } catch (e) {
+      btn.textContent = "Submit →";
+      btn.disabled = false;
+      alert("Something went wrong sending the form. Please try again or contact us directly.");
+    }
   }
 
   updateProgress();
