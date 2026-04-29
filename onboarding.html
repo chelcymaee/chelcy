@@ -1028,6 +1028,7 @@
         body: JSON.stringify(payload),
       });
 
+      const json = await res.json();
       if (res.ok) {
         document.querySelectorAll(".section").forEach(s => s.style.display = "none");
         document.getElementById("success").style.display = "block";
@@ -1036,12 +1037,12 @@
         document.querySelectorAll(".step-dot").forEach(d => d.className = "step-dot done");
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
-        throw new Error("Server error");
+        throw new Error("Status " + res.status + ": " + (json.error || JSON.stringify(json)));
       }
     } catch (e) {
       btn.textContent = "Submit →";
       btn.disabled = false;
-      alert("Something went wrong: " + e.message + ". Please try again.");
+      alert("Something went wrong: " + e.message);
     }
   }
 
