@@ -31,7 +31,7 @@
       overflow-x: hidden;
     }
 
-    /* ── Nav dots ─────────────────────────────────────────────── */
+    /* Nav dots */
     #nav-dots {
       position: fixed;
       right: 20px;
@@ -53,7 +53,6 @@
     }
     .dot.active { background: var(--teal-light); transform: scale(1.4); }
 
-    /* ── Sections ─────────────────────────────────────────────── */
     section {
       min-height: 100vh;
       scroll-snap-align: start;
@@ -66,7 +65,6 @@
       overflow: hidden;
     }
 
-    /* ── Animated ocean bg ───────────────────────────────────── */
     .ocean-bg {
       position: absolute; inset: 0; z-index: 0;
       background: radial-gradient(ellipse at 20% 60%, #0E3F4F 0%, transparent 60%),
@@ -82,7 +80,7 @@
       to   { transform: translateX(3%) scaleY(1.1); }
     }
 
-    /* ── Hero ─────────────────────────────────────────────────── */
+    /* Hero */
     #hero { text-align: center; }
     #hero > * { position: relative; z-index: 1; }
 
@@ -110,7 +108,7 @@
       text-decoration: none; cursor: pointer; border: none;
       transition: background .25s, transform .2s;
     }
-    .hero-cta:hover { background: var(--teal-light); transform: translateY(-2px); }
+    .hero-cta:hover, .hero-cta:active { background: var(--teal-light); transform: translateY(-2px); }
     .scroll-hint {
       margin-top: 50px; font-size: 12px; letter-spacing: 2px;
       text-transform: uppercase; color: var(--grey);
@@ -123,7 +121,7 @@
       50%      { transform: translateY(6px); }
     }
 
-    /* ── About ─────────────────────────────────────────────────── */
+    /* About */
     #about { background: var(--navy-mid); }
     #about > * { position: relative; z-index: 1; }
 
@@ -155,7 +153,7 @@
     }
     .stat-desc { font-size: 12px; color: var(--grey); margin-top: 6px; }
 
-    /* ── Client sections ─────────────────────────────────────── */
+    /* Client sections */
     .client-section {
       background: var(--navy);
       align-items: flex-start;
@@ -182,8 +180,20 @@
     }
     .client-desc {
       font-size: 15px; color: var(--grey);
-      line-height: 1.7; max-width: 620px; margin-bottom: 28px;
+      line-height: 1.7; max-width: 620px; margin-bottom: 20px;
     }
+    .win-bar {
+      background: rgba(26,155,173,0.12);
+      border-left: 3px solid var(--teal);
+      border-radius: 0 12px 12px 0;
+      padding: 12px 18px;
+      margin-bottom: 28px;
+      max-width: 620px;
+      font-size: 14px;
+      color: var(--sand);
+      line-height: 1.6;
+    }
+    .win-bar strong { color: var(--teal-light); }
     .achievement-chips {
       display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 36px;
     }
@@ -194,7 +204,7 @@
       font-size: 13px; color: var(--sand);
     }
 
-    /* ── Reel row ─────────────────────────────────────────────── */
+    /* Reel row */
     .reel-label {
       font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
       color: var(--grey); margin-bottom: 14px;
@@ -222,30 +232,38 @@
     .reel-slot iframe {
       width: 100%; height: 100%; border: none; display: block;
     }
-    /* Placeholder state when no URL is set */
     .reel-placeholder {
       width: 100%; height: 100%;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 12px; padding: 16px; text-align: center;
+      gap: 10px; padding: 16px; text-align: center;
+      cursor: default;
     }
-    .reel-placeholder svg { opacity: .3; }
-    .reel-placeholder span {
+    .reel-placeholder svg { opacity: .25; }
+    .reel-placeholder .reel-cap {
       font-size: 11px; color: var(--grey); line-height: 1.5;
     }
+    .reel-placeholder .reel-hint {
+      font-size: 9px; color: var(--teal); opacity: .8;
+      background: rgba(26,155,173,0.1);
+      border: 1px solid rgba(26,155,173,0.25);
+      border-radius: 6px; padding: 4px 8px;
+      line-height: 1.4;
+    }
 
-    /* ── Closing / CTA ──────────────────────────────────────── */
+    /* Lapoint / CTA */
     #cta { text-align: center; background: var(--navy-mid); }
     #cta > * { position: relative; z-index: 1; }
     .cta-title {
       font-size: clamp(28px, 5vw, 52px);
       font-weight: 800; margin-bottom: 16px;
     }
-    .cta-sub {
-      font-size: 17px; color: var(--grey);
-      max-width: 500px; line-height: 1.7; margin-bottom: 40px;
+    .cta-body {
+      font-size: 16px; color: var(--grey);
+      max-width: 600px; line-height: 1.8; margin-bottom: 16px; text-align: left;
     }
-    .cta-links { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+    .cta-body strong { color: var(--sand); }
+    .cta-links { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 36px; }
     .btn-primary {
       display: inline-block;
       background: var(--teal); color: #fff;
@@ -253,7 +271,7 @@
       font-weight: 700; font-size: 15px;
       text-decoration: none; transition: background .25s, transform .2s;
     }
-    .btn-primary:hover { background: var(--teal-light); transform: translateY(-2px); }
+    .btn-primary:hover, .btn-primary:active { background: var(--teal-light); transform: translateY(-2px); }
     .btn-ghost {
       display: inline-block;
       border: 1.5px solid rgba(255,255,255,0.2); color: var(--white);
@@ -261,9 +279,8 @@
       font-weight: 600; font-size: 15px;
       text-decoration: none; transition: border-color .25s, transform .2s;
     }
-    .btn-ghost:hover { border-color: var(--teal-light); transform: translateY(-2px); }
+    .btn-ghost:hover, .btn-ghost:active { border-color: var(--teal-light); transform: translateY(-2px); }
 
-    /* ── Responsive tweaks ───────────────────────────────────── */
     @media (max-width: 600px) {
       section { padding: 48px 18px 48px; }
       .reel-slot { width: 155px; height: 275px; }
@@ -273,173 +290,186 @@
 </head>
 <body>
 
-<!-- ── Nav dots ─────────────────────────────────────────────────────────── -->
 <nav id="nav-dots" aria-label="Page navigation">
   <button class="dot active" data-target="hero"         title="Home"></button>
   <button class="dot"        data-target="about"        title="About"></button>
   <button class="dot"        data-target="triple-creek" title="Triple Creek Ranch"></button>
   <button class="dot"        data-target="ataraxis"     title="Ataraxis"></button>
   <button class="dot"        data-target="break-bad"    title="Break and Bad"></button>
-  <button class="dot"        data-target="cta"          title="Contact"></button>
+  <button class="dot"        data-target="cta"          title="Why Lapoint"></button>
 </nav>
 
-<!-- ════════════════════════════════════════════════════════════════════════ -->
-<!-- 1 · HERO                                                                -->
-<!-- ════════════════════════════════════════════════════════════════════════ -->
+
+<!-- 1. HERO -->
 <section id="hero">
   <div class="ocean-bg"></div>
   <svg class="wave" viewBox="0 0 1440 320" fill="white" xmlns="http://www.w3.org/2000/svg">
-    <path d="M0,192L60,186.7C120,181,240,171,360,181.3C480,192,600,224,720,229.3
-             C840,235,960,213,1080,202.7C1200,192,1320,192,1380,192L1440,192
-             L1440,320L0,320Z"/>
+    <path d="M0,192L60,186.7C120,181,240,171,360,181.3C480,192,600,224,720,229.3C840,235,960,213,1080,202.7C1200,192,1320,192,1380,192L1440,192L1440,320L0,320Z"/>
   </svg>
   <svg class="wave" style="bottom:-30px;opacity:.04;animation-delay:-4s" viewBox="0 0 1440 320" fill="white" xmlns="http://www.w3.org/2000/svg">
-    <path d="M0,256L80,240C160,224,320,192,480,192C640,192,800,224,960,229.3
-             C1120,235,1280,213,1360,202.7L1440,192L1440,320L0,320Z"/>
+    <path d="M0,256L80,240C160,224,320,192,480,192C640,192,800,224,960,229.3C1120,235,1280,213,1360,202.7L1440,192L1440,320L0,320Z"/>
   </svg>
 
   <p class="hero-eyebrow">Content Creator &amp; Social Media Manager</p>
   <h1 class="hero-name">Chelcy Maee</h1>
-  <p class="hero-title">Crafting content that moves people — across Montana, the Maldives &amp; beyond</p>
-  <button class="hero-cta" onclick="scrollTo('about')">See My Work ↓</button>
+  <p class="hero-title">Turning raw content into reels people actually watch — from Montana to the Maldives</p>
+  <button class="hero-cta" onclick="goTo('about')">See My Work ↓</button>
   <div class="scroll-hint">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
     Scroll to explore
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════════════════════ -->
-<!-- 2 · ABOUT                                                               -->
-<!-- ════════════════════════════════════════════════════════════════════════ -->
+
+<!-- 2. ABOUT -->
 <section id="about">
   <p class="section-label">About Me</p>
-  <h2 class="section-title">A creator who lives in the content.</h2>
+  <h2 class="section-title">I work remotely. I work with what I'm given. And it works.</h2>
   <p class="about-body">
-    I'm a social media manager and content creator working with luxury ranches, boutique
-    island hotels, and lifestyle brands. Whether I'm shooting a golden-hour reel on horseback
-    in Montana, editing overwater-bungalow footage in the Maldives, or capturing the rush of
-    a pack break for collectors in the US — I turn real moments into content people can't
-    stop watching.<br><br>
-    I'm passionate about adventure, travel, and storytelling that feels authentic. Lapoint's
-    mission — surf, community, travel — is exactly the kind of brand I was built to tell the
-    world about.
+    My whole setup is remote. Each brand I work with sends me their raw footage and content
+    and I take it from there — editing, building the strategy, writing the copy, scheduling,
+    and watching the numbers climb. No hand-holding, no on-site requirements. Just results.<br><br>
+    I've done it for a Forbes Five-Star ranch in the mountains of Montana, a boutique hotel
+    floating in the middle of the Indian Ocean, and a sports card company on the other side
+    of the world. Three completely different niches, three completely different audiences —
+    same process, same outcome. Pages that grow.
   </p>
   <div class="stat-grid">
     <div class="stat-card">
       <div class="stat-num">3</div>
-      <div class="stat-desc">Brands actively managed</div>
+      <div class="stat-desc">Active brands managed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">15k+</div>
+      <div class="stat-desc">Organic followers grown</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">100%</div>
+      <div class="stat-desc">Remote workflow</div>
     </div>
     <div class="stat-card">
       <div class="stat-num">3</div>
       <div class="stat-desc">Continents of content</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-num">5★</div>
-      <div class="stat-desc">Forbes-rated client</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num">∞</div>
-      <div class="stat-desc">Reels created</div>
-    </div>
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════════════════════ -->
-<!-- 3 · TRIPLE CREEK RANCH                                                  -->
-<!-- ════════════════════════════════════════════════════════════════════════ -->
+
+<!-- 3. TRIPLE CREEK RANCH -->
 <section id="triple-creek" class="client-section">
   <div class="ocean-bg" style="opacity:.5"></div>
   <div class="client-inner">
     <span class="client-tag">Luxury Ranch · Montana, USA</span>
     <h2 class="client-name">Triple Creek Ranch</h2>
-    <p class="client-loc">📍 Darby, Montana · Forbes Five-Star</p>
+    <p class="client-loc">📍 Darby, Montana · Forbes Five-Star Wilderness Resort</p>
     <p class="client-desc">
-      I manage all social media channels for one of America's most exclusive wilderness
-      retreats — bringing to life fly-fishing, horseback riding, and mountain dining through
-      scroll-stopping Reels and strategic content calendars.
+      One of the most exclusive ranches in America — and I run their socials entirely remotely.
+      They send me the raw content and I turn it into the kind of reels that make people
+      stop scrolling and start planning trips. Fly-fishing, horseback riding at golden hour,
+      mountain dinners under the stars. It basically posts itself once you know what you're doing.
     </p>
+    <div class="win-bar">
+      <strong>Grew their Instagram to 15k+ followers — completely organically.</strong>
+      No paid ads, no shortcuts. Just consistent, well-crafted content that kept the right
+      people coming back.
+    </div>
     <div class="achievement-chips">
-      <span class="chip">📈 Consistent follower growth</span>
-      <span class="chip">🎬 Short-form Reels &amp; TikTok</span>
-      <span class="chip">📊 Weekly analytics reporting</span>
-      <span class="chip">🗓️ Monthly content calendars</span>
+      <span class="chip">📈 15k+ organic IG followers</span>
+      <span class="chip">🎬 Reels &amp; TikTok content</span>
+      <span class="chip">📊 Analytics &amp; strategy</span>
+      <span class="chip">🗓️ Full content calendars</span>
       <span class="chip">🤝 Influencer coordination</span>
     </div>
-
     <p class="reel-label">Featured Reels — swipe to explore</p>
     <div class="reel-row" id="reels-tcr"></div>
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════════════════════ -->
-<!-- 4 · ATARAXIS                                                            -->
-<!-- ════════════════════════════════════════════════════════════════════════ -->
+
+<!-- 4. ATARAXIS -->
 <section id="ataraxis" class="client-section">
   <div class="ocean-bg" style="opacity:.5"></div>
   <div class="client-inner">
     <span class="client-tag">Boutique Hotel · Maldives</span>
     <h2 class="client-name">Ataraxis</h2>
-    <p class="client-loc">📍 Maldives · Luxury Island Resort</p>
+    <p class="client-loc">📍 Maldives · Luxury Island Hotel</p>
     <p class="client-desc">
-      Sole content creator for this stunning Maldivian hotel — I shoot, direct, and edit
-      every piece of content from scratch. Overwater sunsets, turquoise reefs, and bespoke
-      dining all transformed into aspirational short-form video and branded graphics.
+      A stunning little hotel in the Maldives with a story worth telling — and not nearly
+      enough people hearing it when I started. I handle everything for them: editing their
+      raw footage into reels, designing their graphics, writing their captions. The key was
+      just showing up consistently and staying on top of what was trending. That alone made
+      a serious difference.
     </p>
-    <div class="achievement-chips">
-      <span class="chip">🎥 Full video production</span>
-      <span class="chip">🎨 Graphic design &amp; branding</span>
-      <span class="chip">🌊 Underwater &amp; drone-style footage</span>
-      <span class="chip">📱 Instagram &amp; TikTok growth</span>
-      <span class="chip">✍️ Brand voice &amp; copywriting</span>
+    <div class="win-bar">
+      <strong>Views went up significantly just by posting regularly and staying trend-aware.</strong>
+      Sometimes the simplest strategy is the one that actually works — and this proved it.
     </div>
-
+    <div class="achievement-chips">
+      <span class="chip">📈 Major views growth</span>
+      <span class="chip">🎥 Full video production</span>
+      <span class="chip">🎨 Graphics &amp; branding</span>
+      <span class="chip">📱 Instagram &amp; TikTok</span>
+      <span class="chip">✍️ Copywriting &amp; captions</span>
+    </div>
     <p class="reel-label">Featured Reels — swipe to explore</p>
     <div class="reel-row" id="reels-ataraxis"></div>
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════════════════════ -->
-<!-- 5 · BREAK AND BAD                                                       -->
-<!-- ════════════════════════════════════════════════════════════════════════ -->
+
+<!-- 5. BREAK AND BAD -->
 <section id="break-bad" class="client-section">
   <div class="ocean-bg" style="opacity:.5"></div>
   <div class="client-inner">
     <span class="client-tag">Sports Cards · United States</span>
     <h2 class="client-name">Break and Bad</h2>
-    <p class="client-loc">📍 United States · Sports Card Company</span></p>
+    <p class="client-loc">📍 United States · Sports Card Company</p>
     <p class="client-desc">
-      High-energy content for a sports-card brand loved by collectors nationwide. I create
-      pack-break Reels, product reveals, and campaign content that drives real-time
-      engagement and community growth.
+      Sports card collectors are a passionate, fast-moving community and content needs to
+      match that energy. I jumped in, built out their content, and got things moving fast.
+      Pack breaks, product reveals, hype drops — the kind of stuff that gets people tagging
+      their friends and hitting that follow button.
     </p>
-    <div class="achievement-chips">
-      <span class="chip">🃏 Pack-break Reels</span>
-      <span class="chip">🔴 Live event content</span>
-      <span class="chip">🚀 Product launch campaigns</span>
-      <span class="chip">📣 Community building</span>
-      <span class="chip">🇺🇸 National audience reach</span>
+    <div class="win-bar">
+      <strong>1,000 new followers in the first two months.</strong>
+      Built from scratch, no existing audience to lean on. Just good content hitting the right people.
     </div>
-
+    <div class="achievement-chips">
+      <span class="chip">🚀 1k followers in 2 months</span>
+      <span class="chip">🃏 Pack-break Reels</span>
+      <span class="chip">🔴 Product launch content</span>
+      <span class="chip">📣 Community growth</span>
+      <span class="chip">🇺🇸 National audience</span>
+    </div>
     <p class="reel-label">Featured Reels — swipe to explore</p>
     <div class="reel-row" id="reels-bb"></div>
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════════════════════ -->
-<!-- 6 · CTA                                                                 -->
-<!-- ════════════════════════════════════════════════════════════════════════ -->
+
+<!-- 6. WHY LAPOINT -->
 <section id="cta">
   <div class="ocean-bg"></div>
   <svg class="wave" style="transform:rotate(180deg);top:0;bottom:auto;opacity:.06" viewBox="0 0 1440 320" fill="white" xmlns="http://www.w3.org/2000/svg">
-    <path d="M0,192L60,186.7C120,181,240,171,360,181.3C480,192,600,224,720,229.3
-             C840,235,960,213,1080,202.7C1200,192,1320,192,1380,192L1440,192
-             L1440,320L0,320Z"/>
+    <path d="M0,192L60,186.7C120,181,240,171,360,181.3C480,192,600,224,720,229.3C840,235,960,213,1080,202.7C1200,192,1320,192,1380,192L1440,192L1440,320L0,320Z"/>
   </svg>
-  <p class="section-label">Let's Ride the Wave Together</p>
-  <h2 class="cta-title">Ready for Lapoint.</h2>
-  <p class="cta-sub">
-    I'm a creator who thrives in new environments, loves the ocean, and turns
-    every moment into content your community will love.
+  <p class="section-label">Why Lapoint</p>
+  <h2 class="cta-title">Honestly? This is my kind of brand.</h2>
+  <p class="cta-body">
+    Everything I do is remote. Brands send me their raw content — footage, photos, clips —
+    and I handle the rest. That's exactly how I'd work with Lapoint, and it's the setup
+    where I do my best work. <strong>Creative freedom, clear direction, real results.</strong>
+  </p>
+  <p class="cta-body">
+    The niche is a perfect fit too. Surf culture, travel, the ocean, adventure — that's
+    the world I'm already living and breathing through my content. I genuinely get the
+    audience because I'm part of it.
+  </p>
+  <p class="cta-body">
+    Lapoint has something really special going on and I'd love to help take their socials
+    further. More reach, more engagement, more people discovering what it feels like to
+    pick up a surfboard for the first time or book that camp they've been dreaming about.
+    <strong>That's a page I want to help build.</strong>
   </p>
   <div class="cta-links">
     <a class="btn-primary" href="mailto:chelcymaee@email.com">Get in Touch</a>
@@ -447,17 +477,31 @@
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════════════════════ -->
-<!-- Scripts                                                                  -->
-<!-- ════════════════════════════════════════════════════════════════════════ -->
+
 <script>
-  // ── Reel data — replace embed URLs with your real TikTok / IG / YouTube embeds ──
-  // For TikTok: paste the full <blockquote> embed src OR the share URL.
-  // For YouTube Shorts: use https://www.youtube.com/embed/VIDEO_ID
-  // For Instagram Reels: Instagram blocks direct iframes; use a YouTube/TikTok mirror.
-  //
-  // FORMAT: { url: "EMBED_URL", caption: "Short caption" }
-  // Set url to "" to show the placeholder card instead.
+  /*
+   * HOW TO ADD YOUR REELS
+   * ─────────────────────────────────────────────────────────────────────────
+   * Find the reelData object below. For each reel, set the "url" field:
+   *
+   * TikTok:
+   *   1. Go to your TikTok video on desktop
+   *   2. Click Share → Embed
+   *   3. Copy just the URL from inside src="..." in the iframe code
+   *   4. Paste it as the url value below
+   *
+   * YouTube / YouTube Shorts:
+   *   Change: https://www.youtube.com/watch?v=ABC123
+   *   To:     https://www.youtube.com/embed/ABC123
+   *
+   * Instagram Reels:
+   *   Instagram blocks direct embeds. Best option: download your reel and
+   *   upload it to YouTube, then use the YouTube embed URL above.
+   *
+   * Example:
+   *   { url: "https://www.youtube.com/embed/dQw4w9WgXcQ", caption: "My reel" }
+   * ─────────────────────────────────────────────────────────────────────────
+   */
 
   const reelData = {
     "reels-tcr": [
@@ -486,18 +530,18 @@
         if (url) {
           const iframe = document.createElement("iframe");
           iframe.src = url;
-          iframe.allow = "autoplay; encrypted-media";
+          iframe.allow = "autoplay; encrypted-media; fullscreen";
           iframe.allowFullscreen = true;
           slot.appendChild(iframe);
         } else {
           slot.innerHTML = `
             <div class="reel-placeholder">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
-                   stroke="white" stroke-width="1.5">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
                 <rect x="2" y="2" width="20" height="20" rx="4"/>
                 <polygon points="10,8 16,12 10,16" fill="white"/>
               </svg>
-              <span>${caption}<br><br><em style="font-size:10px;opacity:.6">Reel coming soon</em></span>
+              <span class="reel-cap">${caption}</span>
+              <span class="reel-hint">Paste your embed URL<br>in reelData above</span>
             </div>`;
         }
         row.appendChild(slot);
@@ -505,17 +549,16 @@
     });
   }
 
-  // ── Smooth scroll helper ─────────────────────────────────────────────────
-  function scrollTo(id) {
+  // Named goTo() to avoid clashing with the browser's built-in window.scrollTo
+  function goTo(id) {
     document.getElementById(id).scrollIntoView({ behavior: "smooth" });
   }
 
-  // ── Nav dot highlighting ─────────────────────────────────────────────────
   const sections = ["hero","about","triple-creek","ataraxis","break-bad","cta"];
   const dots = document.querySelectorAll(".dot");
 
   dots.forEach((dot, i) => {
-    dot.addEventListener("click", () => scrollTo(sections[i]));
+    dot.addEventListener("click", () => goTo(sections[i]));
   });
 
   const observer = new IntersectionObserver(entries => {
