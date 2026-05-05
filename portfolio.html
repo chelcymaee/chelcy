@@ -125,6 +125,35 @@
     #about { background: var(--navy-mid); }
     #about > * { position: relative; z-index: 1; }
 
+    .about-layout {
+      display: flex; gap: 48px; align-items: flex-start;
+      width: 100%; max-width: 780px;
+    }
+    .about-photo {
+      flex: 0 0 auto;
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--teal);
+      display: block;
+    }
+    .about-photo-placeholder {
+      flex: 0 0 auto;
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      border: 2px dashed rgba(26,155,173,0.4);
+      background: var(--card-bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 6px; text-align: center; padding: 16px;
+    }
+    .about-photo-placeholder span { font-size: 10px; color: var(--teal); }
+    .about-text { flex: 1; }
+    @media (max-width: 600px) {
+      .about-layout { flex-direction: column; align-items: center; }
+      .about-text { text-align: center; }
+    }
+
     .section-label {
       font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
       color: var(--teal-light); margin-bottom: 12px;
@@ -325,16 +354,27 @@
 <section id="about">
   <p class="section-label">About Me</p>
   <h2 class="section-title">I work remotely. I work with what I'm given. And it works.</h2>
-  <p class="about-body">
-    My whole setup is remote. Each brand I work with sends me their raw footage and content
-    and I take it from there — editing, building the strategy, writing the copy, scheduling,
-    and watching the numbers climb. No hand-holding, no on-site requirements. Just results.<br><br>
-    I've done it for a Forbes Five-Star ranch in the mountains of Montana, a boutique hotel
-    floating in the middle of the Indian Ocean, and a sports card company on the other side
-    of the world. Three completely different niches, three completely different audiences —
-    same process, same outcome. Pages that grow.
-  </p>
-  <div class="stat-grid">
+  <div class="about-layout">
+    <!-- Replace the placeholder below with your actual photo:
+         <img class="about-photo" src="YOUR_PHOTO_URL" alt="Chelcy Maee" />  -->
+    <div class="about-photo-placeholder" id="photo-slot">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--teal);opacity:.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span>Photo<br>coming soon</span>
+    </div>
+    <div class="about-text">
+      <p class="about-body" style="margin-bottom:16px;">
+        23 years old, 5 years in the game — and every single one of those years spent
+        figuring out what actually makes content perform. My whole setup is remote. Each
+        brand sends me their raw footage and I take it from there: editing, strategy,
+        copy, scheduling, growth. No hand-holding needed. Just results.<br><br>
+        I've done it for a Forbes Five-Star ranch in Montana, a boutique hotel in the
+        middle of the Indian Ocean, and a sports card company across the world. Three
+        completely different niches, three completely different audiences — same process,
+        same outcome. Pages that grow.
+      </p>
+    </div>
+  </div>
+  <div class="stat-grid" style="margin-top:32px;">
     <div class="stat-card">
       <div class="stat-num">3</div>
       <div class="stat-desc">Active brands managed</div>
@@ -344,8 +384,8 @@
       <div class="stat-desc">Organic followers grown</div>
     </div>
     <div class="stat-card">
-      <div class="stat-num">100%</div>
-      <div class="stat-desc">Remote workflow</div>
+      <div class="stat-num">5 yrs</div>
+      <div class="stat-desc">Experience</div>
     </div>
     <div class="stat-card">
       <div class="stat-num">3</div>
@@ -353,6 +393,7 @@
     </div>
   </div>
 </section>
+
 
 
 <!-- 3. TRIPLE CREEK RANCH -->
@@ -472,9 +513,13 @@
     <strong>That's a page I want to help build.</strong>
   </p>
   <div class="cta-links">
-    <a class="btn-primary" href="mailto:chelcymaee@email.com">Get in Touch</a>
-    <a class="btn-ghost"   href="Chelcy_Maee_Resume.pdf" download>Download Resume PDF</a>
+    <a class="btn-primary" href="mailto:chelcymae1@gmail.com">Email Me</a>
+    <a class="btn-primary" href="https://wa.me/27685125797" target="_blank" rel="noopener" style="background:var(--teal-dark);">WhatsApp Me</a>
+    <a class="btn-ghost" href="Chelcy_Maee_Resume.pdf" download="Chelcy_Maee_Resume.pdf">Download Resume PDF</a>
   </div>
+  <p style="margin-top:20px;font-size:13px;color:var(--grey);">
+    📧 chelcymae1@gmail.com &nbsp;·&nbsp; 📱 +27 68 512 5797
+  </p>
 </section>
 
 
