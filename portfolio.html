@@ -482,57 +482,56 @@
   /*
    * HOW TO ADD YOUR REELS
    * ─────────────────────────────────────────────────────────────────────────
-   * Find the reelData object below. For each reel, set the "url" field:
+   * 1. Save your reels from Instagram to your phone/computer
+   *    (hold down on the reel → Save, or use snapinsta.app on desktop)
    *
-   * TikTok:
-   *   1. Go to your TikTok video on desktop
-   *   2. Click Share → Embed
-   *   3. Copy just the URL from inside src="..." in the iframe code
-   *   4. Paste it as the url value below
+   * 2. Rename the files to something simple, e.g.:
+   *      tcr-reel1.mp4   tcr-reel2.mp4   tcr-reel3.mp4
+   *      ataraxis-reel1.mp4  etc.
+   *      bb-reel1.mp4    etc.
    *
-   * YouTube / YouTube Shorts:
-   *   Change: https://www.youtube.com/watch?v=ABC123
-   *   To:     https://www.youtube.com/embed/ABC123
+   * 3. Add those files into the chelcy folder (same place as this file)
    *
-   * Instagram Reels:
-   *   Instagram blocks direct embeds. Best option: download your reel and
-   *   upload it to YouTube, then use the YouTube embed URL above.
+   * 4. Update the filenames below — just the filename, no path needed:
+   *      { file: "tcr-reel1.mp4", caption: "Golden hour on horseback" }
    *
-   * Example:
-   *   { url: "https://www.youtube.com/embed/dQw4w9WgXcQ", caption: "My reel" }
+   * Videos will autoplay silently as people scroll, just like Instagram.
    * ─────────────────────────────────────────────────────────────────────────
    */
 
   const reelData = {
     "reels-tcr": [
-      { url: "", caption: "Golden hour on horseback" },
-      { url: "", caption: "Fly-fishing the Bitterroot" },
-      { url: "", caption: "Mountain dining experience" },
+      { file: "", caption: "Golden hour on horseback" },
+      { file: "", caption: "Fly-fishing the Bitterroot" },
+      { file: "", caption: "Mountain dining experience" },
     ],
     "reels-ataraxis": [
-      { url: "", caption: "Overwater sunrise" },
-      { url: "", caption: "Reef snorkel adventure" },
-      { url: "", caption: "Sunset villa experience" },
+      { file: "", caption: "Overwater sunrise" },
+      { file: "", caption: "Reef snorkel adventure" },
+      { file: "", caption: "Sunset villa experience" },
     ],
     "reels-bb": [
-      { url: "", caption: "Epic pack break reveal" },
-      { url: "", caption: "Product launch drop" },
-      { url: "", caption: "Community card show" },
+      { file: "", caption: "Epic pack break reveal" },
+      { file: "", caption: "Product launch drop" },
+      { file: "", caption: "Community card show" },
     ],
   };
 
   function buildReels() {
     Object.entries(reelData).forEach(([id, reels]) => {
       const row = document.getElementById(id);
-      reels.forEach(({ url, caption }) => {
+      reels.forEach(({ file, caption }) => {
         const slot = document.createElement("div");
         slot.className = "reel-slot";
-        if (url) {
-          const iframe = document.createElement("iframe");
-          iframe.src = url;
-          iframe.allow = "autoplay; encrypted-media; fullscreen";
-          iframe.allowFullscreen = true;
-          slot.appendChild(iframe);
+        if (file) {
+          const vid = document.createElement("video");
+          vid.src = file;
+          vid.muted = true;
+          vid.loop = true;
+          vid.playsInline = true;
+          vid.setAttribute("playsinline", "");
+          vid.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;";
+          slot.appendChild(vid);
         } else {
           slot.innerHTML = `
             <div class="reel-placeholder">
@@ -541,12 +540,28 @@
                 <polygon points="10,8 16,12 10,16" fill="white"/>
               </svg>
               <span class="reel-cap">${caption}</span>
-              <span class="reel-hint">Paste your embed URL<br>in reelData above</span>
+              <span class="reel-hint">Add your .mp4 file<br>to the chelcy folder</span>
             </div>`;
         }
         row.appendChild(slot);
       });
     });
+  }
+
+  // Play videos when they scroll into view, pause when they leave
+  function setupVideoAutoplay() {
+    const vidObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const vid = entry.target;
+        if (entry.isIntersecting) {
+          vid.play().catch(() => {});
+        } else {
+          vid.pause();
+        }
+      });
+    }, { threshold: 0.3 });
+
+    document.querySelectorAll(".reel-slot video").forEach(v => vidObserver.observe(v));
   }
 
   // Named goTo() to avoid clashing with the browser's built-in window.scrollTo
@@ -576,6 +591,7 @@
   });
 
   buildReels();
+  setupVideoAutoplay();
 </script>
 </body>
 </html>
