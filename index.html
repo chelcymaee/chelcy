@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chelcy Maee · Content Creator & Social Media Manager</title>
+  <style>
+    :root {
+      --teal:       #1A9BAD;
+      --teal-light: #2BC4DA;
+      --teal-dark:  #0E6B79;
+      --navy:       #06141B;
+      --navy-mid:   #0D2030;
+      --sand:       #F5F0E8;
+      --white:      #FFFFFF;
+      --grey:       #8A9BAA;
+      --card-bg:    rgba(255,255,255,0.05);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-snap-type: y mandatory;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      overflow-x: hidden;
+    }
+
+    /* ── Nav dots ─────────────────────────────────────────────── */
+    #nav-dots {
+      position: fixed;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      cursor: pointer;
+      transition: all .3s;
+      border: none;
+      padding: 0;
+    }
+    .dot.active { background: var(--teal-light); transform: scale(1.4); }
+
+    /* ── Sections ─────────────────────────────────────────────── */
+    section {
+      min-height: 100vh;
+      scroll-snap-align: start;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── Animated ocean bg ───────────────────────────────────── */
+    .ocean-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background: radial-gradient(ellipse at 20% 60%, #0E3F4F 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 30%, #0A2A3A 0%, transparent 60%),
+                  linear-gradient(180deg, #06141B 0%, #0D2030 100%);
+    }
+    .wave {
+      position: absolute; bottom: 0; left: -10%; width: 120%;
+      opacity: 0.07; animation: waveMove 8s ease-in-out infinite alternate;
+    }
+    @keyframes waveMove {
+      from { transform: translateX(0) scaleY(1); }
+      to   { transform: translateX(3%) scaleY(1.1); }
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────── */
+    #hero { text-align: center; }
+    #hero > * { position: relative; z-index: 1; }
+
+    .hero-eyebrow {
+      font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--teal-light); margin-bottom: 20px;
+    }
+    .hero-name {
+      font-size: clamp(42px, 8vw, 80px);
+      font-weight: 800; line-height: 1.05;
+      background: linear-gradient(135deg, #fff 30%, var(--teal-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+    .hero-title {
+      font-size: clamp(16px, 3vw, 22px);
+      color: var(--grey); margin-bottom: 40px; font-weight: 400;
+    }
+    .hero-cta {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--teal); color: #fff;
+      padding: 14px 32px; border-radius: 50px;
+      font-weight: 600; font-size: 15px;
+      text-decoration: none; cursor: pointer; border: none;
+      transition: background .25s, transform .2s;
+    }
+    .hero-cta:hover { background: var(--teal-light); transform: translateY(-2px); }
+    .scroll-hint {
+      margin-top: 50px; font-size: 12px; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--grey);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      animation: bounce 2s ease-in-out infinite;
+    }
+    .scroll-hint svg { opacity: .5; }
+    @keyframes bounce {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(6px); }
+    }
+
+    /* ── About ─────────────────────────────────────────────────── */
+    #about { background: var(--navy-mid); }
+    #about > * { position: relative; z-index: 1; }
+
+    .section-label {
+      font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+      color: var(--teal-light); margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(28px, 5vw, 48px); font-weight: 800;
+      line-height: 1.15; margin-bottom: 24px; max-width: 700px;
+    }
+    .about-body {
+      font-size: clamp(15px, 2.5vw, 18px); color: var(--grey);
+      line-height: 1.8; max-width: 680px; margin-bottom: 48px;
+    }
+    .stat-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px; width: 100%; max-width: 680px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 20px;
+      text-align: center; backdrop-filter: blur(10px);
+    }
+    .stat-num {
+      font-size: 32px; font-weight: 800;
+      color: var(--teal-light); line-height: 1;
+    }
+    .stat-desc { font-size: 12px; color: var(--grey); margin-top: 6px; }
+
+    /* ── Client sections ─────────────────────────────────────── */
+    .client-section {
+      background: var(--navy);
+      align-items: flex-start;
+      text-align: left;
+    }
+    .client-inner {
+      width: 100%; max-width: 900px;
+      position: relative; z-index: 1;
+    }
+    .client-tag {
+      display: inline-block;
+      background: rgba(26, 155, 173, 0.15);
+      border: 1px solid rgba(26,155,173,0.4);
+      color: var(--teal-light);
+      font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+      padding: 5px 14px; border-radius: 50px; margin-bottom: 16px;
+    }
+    .client-name {
+      font-size: clamp(26px, 5vw, 44px);
+      font-weight: 800; line-height: 1.1; margin-bottom: 6px;
+    }
+    .client-loc {
+      font-size: 14px; color: var(--grey); margin-bottom: 20px;
+    }
+    .client-desc {
+      font-size: 15px; color: var(--grey);
+      line-height: 1.7; max-width: 620px; margin-bottom: 28px;
+    }
+    .achievement-chips {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 36px;
+    }
+    .chip {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50px; padding: 7px 16px;
+      font-size: 13px; color: var(--sand);
+    }
+
+    /* ── Reel row ─────────────────────────────────────────────── */
+    .reel-label {
+      font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--grey); margin-bottom: 14px;
+    }
+    .reel-row {
+      display: flex; gap: 16px;
+      overflow-x: auto; padding-bottom: 12px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .reel-row::-webkit-scrollbar { height: 4px; }
+    .reel-row::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 2px; }
+    .reel-row::-webkit-scrollbar-thumb { background: var(--teal-dark); border-radius: 2px; }
+
+    .reel-slot {
+      flex: 0 0 auto;
+      width: 180px; height: 320px;
+      border-radius: 16px;
+      scroll-snap-align: start;
+      overflow: hidden;
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.08);
+      position: relative;
+    }
+    .reel-slot iframe {
+      width: 100%; height: 100%; border: none; display: block;
+    }
+    /* Placeholder state when no URL is set */
+    .reel-placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; padding: 16px; text-align: center;
+    }
+    .reel-placeholder svg { opacity: .3; }
+    .reel-placeholder span {
+      font-size: 11px; color: var(--grey); line-height: 1.5;
+    }
+
+    /* ── Closing / CTA ──────────────────────────────────────── */
+    #cta { text-align: center; background: var(--navy-mid); }
+    #cta > * { position: relative; z-index: 1; }
+    .cta-title {
+      font-size: clamp(28px, 5vw, 52px);
+      font-weight: 800; margin-bottom: 16px;
+    }
+    .cta-sub {
+      font-size: 17px; color: var(--grey);
+      max-width: 500px; line-height: 1.7; margin-bottom: 40px;
+    }
+    .cta-links { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+    .btn-primary {
+      display: inline-block;
+      background: var(--teal); color: #fff;
+      padding: 15px 36px; border-radius: 50px;
+      font-weight: 700; font-size: 15px;
+      text-decoration: none; transition: background .25s, transform .2s;
+    }
+    .btn-primary:hover { background: var(--teal-light); transform: translateY(-2px); }
+    .btn-ghost {
+      display: inline-block;
+      border: 1.5px solid rgba(255,255,255,0.2); color: var(--white);
+      padding: 15px 36px; border-radius: 50px;
+      font-weight: 600; font-size: 15px;
+      text-decoration: none; transition: border-color .25s, transform .2s;
+    }
+    .btn-ghost:hover { border-color: var(--teal-light); transform: translateY(-2px); }
+
+    /* ── Responsive tweaks ───────────────────────────────────── */
+    @media (max-width: 600px) {
+      section { padding: 48px 18px 48px; }
+      .reel-slot { width: 155px; height: 275px; }
+      #nav-dots { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav dots ─────────────────────────────────────────────────────────── -->
+<nav id="nav-dots" aria-label="Page navigation">
+  <button class="dot active" data-target="hero"         title="Home"></button>
+  <button class="dot"        data-target="about"        title="About"></button>
+  <button class="dot"        data-target="triple-creek" title="Triple Creek Ranch"></button>
+  <button class="dot"        data-target="ataraxis"     title="Ataraxis"></button>
+  <button class="dot"        data-target="break-bad"    title="Break and Bad"></button>
+  <button class="dot"        data-target="cta"          title="Contact"></button>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 1 · HERO                                                                -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section id="hero">
+  <div class="ocean-bg"></div>
+  <svg class="wave" viewBox="0 0 1440 320" fill="white" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,192L60,186.7C120,181,240,171,360,181.3C480,192,600,224,720,229.3
+             C840,235,960,213,1080,202.7C1200,192,1320,192,1380,192L1440,192
+             L1440,320L0,320Z"/>
+  </svg>
+  <svg class="wave" style="bottom:-30px;opacity:.04;animation-delay:-4s" viewBox="0 0 1440 320" fill="white" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,256L80,240C160,224,320,192,480,192C640,192,800,224,960,229.3
+             C1120,235,1280,213,1360,202.7L1440,192L1440,320L0,320Z"/>
+  </svg>
+
+  <p class="hero-eyebrow">Content Creator &amp; Social Media Manager</p>
+  <h1 class="hero-name">Chelcy Maee</h1>
+  <p class="hero-title">Crafting content that moves people — across Montana, the Maldives &amp; beyond</p>
+  <button class="hero-cta" onclick="scrollTo('about')">See My Work ↓</button>
+  <div class="scroll-hint">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    Scroll to explore
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 2 · ABOUT                                                               -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section id="about">
+  <p class="section-label">About Me</p>
+  <h2 class="section-title">A creator who lives in the content.</h2>
+  <p class="about-body">
+    I'm a social media manager and content creator working with luxury ranches, boutique
+    island hotels, and lifestyle brands. Whether I'm shooting a golden-hour reel on horseback
+    in Montana, editing overwater-bungalow footage in the Maldives, or capturing the rush of
+    a pack break for collectors in the US — I turn real moments into content people can't
+    stop watching.<br><br>
+    I'm passionate about adventure, travel, and storytelling that feels authentic. Lapoint's
+    mission — surf, community, travel — is exactly the kind of brand I was built to tell the
+    world about.
+  </p>
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-num">3</div>
+      <div class="stat-desc">Brands actively managed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">3</div>
+      <div class="stat-desc">Continents of content</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">5★</div>
+      <div class="stat-desc">Forbes-rated client</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">∞</div>
+      <div class="stat-desc">Reels created</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 3 · TRIPLE CREEK RANCH                                                  -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section id="triple-creek" class="client-section">
+  <div class="ocean-bg" style="opacity:.5"></div>
+  <div class="client-inner">
+    <span class="client-tag">Luxury Ranch · Montana, USA</span>
+    <h2 class="client-name">Triple Creek Ranch</h2>
+    <p class="client-loc">📍 Darby, Montana · Forbes Five-Star</p>
+    <p class="client-desc">
+      I manage all social media channels for one of America's most exclusive wilderness
+      retreats — bringing to life fly-fishing, horseback riding, and mountain dining through
+      scroll-stopping Reels and strategic content calendars.
+    </p>
+    <div class="achievement-chips">
+      <span class="chip">📈 Consistent follower growth</span>
+      <span class="chip">🎬 Short-form Reels &amp; TikTok</span>
+      <span class="chip">📊 Weekly analytics reporting</span>
+      <span class="chip">🗓️ Monthly content calendars</span>
+      <span class="chip">🤝 Influencer coordination</span>
+    </div>
+
+    <p class="reel-label">Featured Reels — swipe to explore</p>
+    <div class="reel-row" id="reels-tcr"></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 4 · ATARAXIS                                                            -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section id="ataraxis" class="client-section">
+  <div class="ocean-bg" style="opacity:.5"></div>
+  <div class="client-inner">
+    <span class="client-tag">Boutique Hotel · Maldives</span>
+    <h2 class="client-name">Ataraxis</h2>
+    <p class="client-loc">📍 Maldives · Luxury Island Resort</p>
+    <p class="client-desc">
+      Sole content creator for this stunning Maldivian hotel — I shoot, direct, and edit
+      every piece of content from scratch. Overwater sunsets, turquoise reefs, and bespoke
+      dining all transformed into aspirational short-form video and branded graphics.
+    </p>
+    <div class="achievement-chips">
+      <span class="chip">🎥 Full video production</span>
+      <span class="chip">🎨 Graphic design &amp; branding</span>
+      <span class="chip">🌊 Underwater &amp; drone-style footage</span>
+      <span class="chip">📱 Instagram &amp; TikTok growth</span>
+      <span class="chip">✍️ Brand voice &amp; copywriting</span>
+    </div>
+
+    <p class="reel-label">Featured Reels — swipe to explore</p>
+    <div class="reel-row" id="reels-ataraxis"></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 5 · BREAK AND BAD                                                       -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section id="break-bad" class="client-section">
+  <div class="ocean-bg" style="opacity:.5"></div>
+  <div class="client-inner">
+    <span class="client-tag">Sports Cards · United States</span>
+    <h2 class="client-name">Break and Bad</h2>
+    <p class="client-loc">📍 United States · Sports Card Company</span></p>
+    <p class="client-desc">
+      High-energy content for a sports-card brand loved by collectors nationwide. I create
+      pack-break Reels, product reveals, and campaign content that drives real-time
+      engagement and community growth.
+    </p>
+    <div class="achievement-chips">
+      <span class="chip">🃏 Pack-break Reels</span>
+      <span class="chip">🔴 Live event content</span>
+      <span class="chip">🚀 Product launch campaigns</span>
+      <span class="chip">📣 Community building</span>
+      <span class="chip">🇺🇸 National audience reach</span>
+    </div>
+
+    <p class="reel-label">Featured Reels — swipe to explore</p>
+    <div class="reel-row" id="reels-bb"></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 6 · CTA                                                                 -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section id="cta">
+  <div class="ocean-bg"></div>
+  <svg class="wave" style="transform:rotate(180deg);top:0;bottom:auto;opacity:.06" viewBox="0 0 1440 320" fill="white" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,192L60,186.7C120,181,240,171,360,181.3C480,192,600,224,720,229.3
+             C840,235,960,213,1080,202.7C1200,192,1320,192,1380,192L1440,192
+             L1440,320L0,320Z"/>
+  </svg>
+  <p class="section-label">Let's Ride the Wave Together</p>
+  <h2 class="cta-title">Ready for Lapoint.</h2>
+  <p class="cta-sub">
+    I'm a creator who thrives in new environments, loves the ocean, and turns
+    every moment into content your community will love.
+  </p>
+  <div class="cta-links">
+    <a class="btn-primary" href="mailto:chelcymaee@email.com">Get in Touch</a>
+    <a class="btn-ghost"   href="Chelcy_Maee_Resume.pdf" download>Download Resume PDF</a>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- Scripts                                                                  -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<script>
+  // ── Reel data — replace embed URLs with your real TikTok / IG / YouTube embeds ──
+  // For TikTok: paste the full <blockquote> embed src OR the share URL.
+  // For YouTube Shorts: use https://www.youtube.com/embed/VIDEO_ID
+  // For Instagram Reels: Instagram blocks direct iframes; use a YouTube/TikTok mirror.
+  //
+  // FORMAT: { url: "EMBED_URL", caption: "Short caption" }
+  // Set url to "" to show the placeholder card instead.
+
+  const reelData = {
+    "reels-tcr": [
+      { url: "", caption: "Golden hour on horseback" },
+      { url: "", caption: "Fly-fishing the Bitterroot" },
+      { url: "", caption: "Mountain dining experience" },
+    ],
+    "reels-ataraxis": [
+      { url: "", caption: "Overwater sunrise" },
+      { url: "", caption: "Reef snorkel adventure" },
+      { url: "", caption: "Sunset villa experience" },
+    ],
+    "reels-bb": [
+      { url: "", caption: "Epic pack break reveal" },
+      { url: "", caption: "Product launch drop" },
+      { url: "", caption: "Community card show" },
+    ],
+  };
+
+  function buildReels() {
+    Object.entries(reelData).forEach(([id, reels]) => {
+      const row = document.getElementById(id);
+      reels.forEach(({ url, caption }) => {
+        const slot = document.createElement("div");
+        slot.className = "reel-slot";
+        if (url) {
+          const iframe = document.createElement("iframe");
+          iframe.src = url;
+          iframe.allow = "autoplay; encrypted-media";
+          iframe.allowFullscreen = true;
+          slot.appendChild(iframe);
+        } else {
+          slot.innerHTML = `
+            <div class="reel-placeholder">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+                   stroke="white" stroke-width="1.5">
+                <rect x="2" y="2" width="20" height="20" rx="4"/>
+                <polygon points="10,8 16,12 10,16" fill="white"/>
+              </svg>
+              <span>${caption}<br><br><em style="font-size:10px;opacity:.6">Reel coming soon</em></span>
+            </div>`;
+        }
+        row.appendChild(slot);
+      });
+    });
+  }
+
+  // ── Smooth scroll helper ─────────────────────────────────────────────────
+  function scrollTo(id) {
+    document.getElementById(id).scrollIntoView({ behavior: "smooth" });
+  }
+
+  // ── Nav dot highlighting ─────────────────────────────────────────────────
+  const sections = ["hero","about","triple-creek","ataraxis","break-bad","cta"];
+  const dots = document.querySelectorAll(".dot");
+
+  dots.forEach((dot, i) => {
+    dot.addEventListener("click", () => scrollTo(sections[i]));
+  });
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const idx = sections.indexOf(entry.target.id);
+        dots.forEach((d, i) => d.classList.toggle("active", i === idx));
+      }
+    });
+  }, { threshold: 0.5 });
+
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+
+  buildReels();
+</script>
+</body>
+</html>
