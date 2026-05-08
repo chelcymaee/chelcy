@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chelcy Maee · Content Creator & Social Media Manager</title>
+  <style>
+    :root {
+      --teal:       #A0845C;
+      --teal-light: #C4A882;
+      --teal-dark:  #7A6244;
+      --navy:       #1A1714;
+      --navy-mid:   #231F1B;
+      --sand:       #F5F0E8;
+      --white:      #FFFFFF;
+      --grey:       #9A9089;
+      --card-bg:    rgba(255,255,255,0.05);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-snap-type: y mandatory;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      overflow-x: hidden;
+    }
+
+    /* Nav dots */
+    #nav-dots {
+      position: fixed;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      cursor: pointer;
+      transition: all .3s;
+      border: none;
+      padding: 0;
+    }
+    .dot.active { background: var(--teal-light); transform: scale(1.4); }
+
+    section {
+      min-height: 100vh;
+      scroll-snap-align: start;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ocean-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background: radial-gradient(ellipse at 20% 60%, #2E2520 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 30%, #1E1A16 0%, transparent 60%),
+                  linear-gradient(180deg, #1A1714 0%, #231F1B 100%);
+    }
+    .wave {
+      position: absolute; bottom: 0; left: -10%; width: 120%;
+      opacity: 0.07; animation: waveMove 8s ease-in-out infinite alternate;
+    }
+    @keyframes waveMove {
+      from { transform: translateX(0) scaleY(1); }
+      to   { transform: translateX(3%) scaleY(1.1); }
+    }
+
+    /* Hero */
+    #hero { text-align: center; }
+    #hero > * { position: relative; z-index: 1; }
+
+    .hero-eyebrow {
+      font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--teal-light); margin-bottom: 20px;
+    }
+    .hero-name {
+      font-size: clamp(42px, 8vw, 80px);
+      font-weight: 800; line-height: 1.05;
+      background: linear-gradient(135deg, #fff 30%, var(--teal-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+    .hero-title {
+      font-size: clamp(16px, 3vw, 22px);
+      color: var(--grey); margin-bottom: 40px; font-weight: 400;
+    }
+    .hero-cta {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--teal); color: #fff;
+      padding: 14px 32px; border-radius: 50px;
+      font-weight: 600; font-size: 15px;
+      text-decoration: none; cursor: pointer; border: none;
+      transition: background .25s, transform .2s;
+    }
+    .hero-cta:hover, .hero-cta:active { background: var(--teal-light); transform: translateY(-2px); }
+    .scroll-hint {
+      margin-top: 50px; font-size: 12px; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--grey);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      animation: bounce 2s ease-in-out infinite;
+    }
+    .scroll-hint svg { opacity: .5; }
+    @keyframes bounce {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(6px); }
+    }
+
+    /* About */
+    #about { background: var(--navy-mid); }
+    #about > * { position: relative; z-index: 1; }
+
+    .about-layout {
+      display: flex; gap: 48px; align-items: flex-start;
+      width: 100%; max-width: 780px;
+    }
+    .about-photo {
+      flex: 0 0 auto;
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--teal);
+      display: block;
+    }
+    .about-photo-placeholder {
+      flex: 0 0 auto;
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      border: 2px dashed rgba(26,155,173,0.4);
+      background: var(--card-bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 6px; text-align: center; padding: 16px;
+    }
+    .about-photo-placeholder span { font-size: 10px; color: var(--teal); }
+    .about-text { flex: 1; }
+    @media (max-width: 600px) {
+      .about-layout { flex-direction: column; align-items: center; }
+      .about-text { text-align: center; }
+    }
+
+    .section-label {
+      font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+      color: var(--teal-light); margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(28px, 5vw, 48px); font-weight: 800;
+      line-height: 1.15; margin-bottom: 24px; max-width: 700px;
+    }
+    .about-body {
+      font-size: clamp(15px, 2.5vw, 18px); color: var(--grey);
+      line-height: 1.8; max-width: 680px; margin-bottom: 48px;
+    }
+    .stat-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px; width: 100%; max-width: 680px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 20px;
+      text-align: center; backdrop-filter: blur(10px);
+    }
+    .stat-num {
+      font-size: 32px; font-weight: 800;
+      color: var(--teal-light); line-height: 1;
+    }
+    .stat-desc { font-size: 12px; color: var(--grey); margin-top: 6px; }
+
+    /* Client sections */
+    .client-section {
+      background: var(--navy);
+      align-items: flex-start;
+      text-align: left;
+    }
+    .client-inner {
+      width: 100%; max-width: 900px;
+      position: relative; z-index: 1;
+    }
+    .client-tag {
+      display: inline-block;
+      background: rgba(26, 155, 173, 0.15);
+      border: 1px solid rgba(26,155,173,0.4);
+      color: var(--teal-light);
+      font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+      padding: 5px 14px; border-radius: 50px; margin-bottom: 16px;
+    }
+    .client-name {
+      font-size: clamp(26px, 5vw, 44px);
+      font-weight: 800; line-height: 1.1; margin-bottom: 6px;
+    }
+    .client-loc {
+      font-size: 14px; color: var(--grey); margin-bottom: 20px;
+    }
+    .client-desc {
+      font-size: 15px; color: var(--grey);
+      line-height: 1.7; max-width: 620px; margin-bottom: 20px;
+    }
+    .win-bar {
+      background: rgba(26,155,173,0.12);
+      border-left: 3px solid var(--teal);
+      border-radius: 0 12px 12px 0;
+      padding: 12px 18px;
+      margin-bottom: 28px;
+      max-width: 620px;
+      font-size: 14px;
+      color: var(--sand);
+      line-height: 1.6;
+    }
+    .win-bar strong { color: var(--teal-light); }
+    .achievement-chips {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 36px;
+    }
+    .chip {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50px; padding: 7px 16px;
+      font-size: 13px; color: var(--sand);
+    }
+    .ig-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: var(--white); font-size: 13px; font-weight: 600;
+      text-decoration: none; margin-bottom: 22px;
+      padding: 8px 16px; border-radius: 50px;
+      transition: background .2s, border-color .2s;
+    }
+    .ig-link:hover, .ig-link:active {
+      background: rgba(26,155,173,0.2);
+      border-color: var(--teal-light);
+    }
+
+    /* Reel row */
+    .reel-label {
+      font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--grey); margin-bottom: 14px;
+    }
+    .reel-row {
+      display: flex; gap: 16px;
+      overflow-x: auto; padding-bottom: 12px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .reel-row::-webkit-scrollbar { height: 4px; }
+    .reel-row::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 2px; }
+    .reel-row::-webkit-scrollbar-thumb { background: var(--teal-dark); border-radius: 2px; }
+
+    .reel-slot {
+      flex: 0 0 auto;
+      width: 180px; height: 320px;
+      border-radius: 16px;
+      scroll-snap-align: start;
+      overflow: hidden;
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.08);
+      position: relative;
+    }
+    .reel-slot iframe {
+      width: 100%; height: 100%; border: none; display: block;
+    }
+    .reel-placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; padding: 16px; text-align: center;
+      cursor: default;
+    }
+    .reel-placeholder svg { opacity: .25; }
+    .reel-placeholder .reel-cap {
+      font-size: 11px; color: var(--grey); line-height: 1.5;
+    }
+    .reel-placeholder .reel-hint {
+      font-size: 9px; color: var(--teal); opacity: .8;
+      background: rgba(26,155,173,0.1);
+      border: 1px solid rgba(26,155,173,0.25);
+      border-radius: 6px; padding: 4px 8px;
+      line-height: 1.4;
+    }
+
+    /* Lapoint / CTA */
+    #cta { text-align: center; background: var(--navy-mid); }
+    #cta > * { position: relative; z-index: 1; }
+    .cta-title {
+      font-size: clamp(28px, 5vw, 52px);
+      font-weight: 800; margin-bottom: 16px;
+    }
+    .cta-body {
+      font-size: 16px; color: var(--grey);
+      max-width: 600px; line-height: 1.8; margin-bottom: 16px; text-align: left;
+    }
+    .cta-body strong { color: var(--sand); }
+    .cta-links { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 36px; }
+    .btn-primary {
+      display: inline-block;
+      background: var(--teal); color: #fff;
+      padding: 15px 36px; border-radius: 50px;
+      font-weight: 700; font-size: 15px;
+      text-decoration: none; transition: background .25s, transform .2s;
+    }
+    .btn-primary:hover, .btn-primary:active { background: var(--teal-light); transform: translateY(-2px); }
+    .btn-ghost {
+      display: inline-block;
+      border: 1.5px solid rgba(255,255,255,0.2); color: var(--white);
+      padding: 15px 36px; border-radius: 50px;
+      font-weight: 600; font-size: 15px;
+      text-decoration: none; transition: border-color .25s, transform .2s;
+    }
+    .btn-ghost:hover, .btn-ghost:active { border-color: var(--teal-light); transform: translateY(-2px); }
+
+    @media (max-width: 600px) {
+      section { padding: 48px 18px 48px; }
+      .reel-slot { width: 155px; height: 275px; }
+      #nav-dots { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav id="nav-dots" aria-label="Page navigation">
+  <button class="dot active" data-target="hero"         title="Home"></button>
+  <button class="dot"        data-target="about"        title="About"></button>
+  <button class="dot"        data-target="triple-creek" title="Triple Creek Ranch"></button>
+  <button class="dot"        data-target="ataraxis"     title="Ataraxis"></button>
+  <button class="dot"        data-target="break-bad"    title="Break and Bad"></button>
+  <button class="dot"        data-target="cta"          title="Why Nickless"></button>
+</nav>
+
+
+<!-- 1. HERO -->
+<section id="hero">
+  <div class="ocean-bg"></div>
+  <svg class="wave" viewBox="0 0 1440 320" fill="white" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,192L60,186.7C120,181,240,171,360,181.3C480,192,600,224,720,229.3C840,235,960,213,1080,202.7C1200,192,1320,192,1380,192L1440,192L1440,320L0,320Z"/>
+  </svg>
+  <svg class="wave" style="bottom:-30px;opacity:.04;animation-delay:-4s" viewBox="0 0 1440 320" fill="white" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,256L80,240C160,224,320,192,480,192C640,192,800,224,960,229.3C1120,235,1280,213,1360,202.7L1440,192L1440,320L0,320Z"/>
+  </svg>
+
+  <p class="hero-eyebrow">Content Creator &amp; Social Media Manager</p>
+  <h1 class="hero-name">Chelcy Maee</h1>
+  <p class="hero-title">5 years of turning raw content into results — for brands across three continents</p>
+  <button class="hero-cta" onclick="goTo('about')">See My Work ↓</button>
+  <div class="scroll-hint">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    Scroll to explore
+  </div>
+</section>
+
+
+<!-- 2. ABOUT -->
+<section id="about">
+  <p class="section-label">About Me</p>
+  <h2 class="section-title">I work remotely. I work with what I'm given. And it works.</h2>
+  <div class="about-layout">
+    <img class="about-photo" src="https://lh3.googleusercontent.com/d/1LviGm47y49STqmLq0Um3bPwtSHC45Xoh" alt="Chelcy Maee" onerror="this.src='https://drive.google.com/thumbnail?id=1LviGm47y49STqmLq0Um3bPwtSHC45Xoh&sz=w400'" />
+    <div class="about-text">
+      <p class="about-body" style="margin-bottom:16px;">
+        23 years old, 5 years in the game — and every single one of those years spent
+        figuring out what actually makes content perform. My whole setup is remote. Each
+        brand sends me their raw footage and I take it from there: editing, strategy,
+        copy, scheduling, growth. No hand-holding needed. Just results.<br><br>
+        I've done it for a Forbes Five-Star ranch in Montana, a boutique hotel in the
+        middle of the Indian Ocean, and a sports card company across the world. Three
+        completely different niches, three completely different audiences — same process,
+        same outcome. Pages that grow.
+      </p>
+    </div>
+  </div>
+  <div class="stat-grid" style="margin-top:32px;">
+    <div class="stat-card">
+      <div class="stat-num">3</div>
+      <div class="stat-desc">Active brands managed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">15k+</div>
+      <div class="stat-desc">Organic followers grown</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">5 yrs</div>
+      <div class="stat-desc">Experience</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">3</div>
+      <div class="stat-desc">Continents of content</div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- 3. TRIPLE CREEK RANCH -->
+<section id="triple-creek" class="client-section">
+  <div class="ocean-bg" style="opacity:.5"></div>
+  <div class="client-inner">
+    <span class="client-tag">Luxury Ranch · Montana, USA</span>
+    <h2 class="client-name">Triple Creek Ranch</h2>
+    <p class="client-loc">📍 Darby, Montana · Forbes Five-Star Wilderness Resort</p>
+    <a class="ig-link" href="https://www.instagram.com/triplecreekranch/" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+      @triplecreekranch
+    </a>
+    <p class="client-desc">
+      One of the most exclusive ranches in America — and I run their socials entirely remotely.
+      They send me the raw content and I turn it into the kind of reels that make people
+      stop scrolling and start planning trips. Fly-fishing, horseback riding at golden hour,
+      mountain dinners under the stars. It basically posts itself once you know what you're doing.
+    </p>
+    <div class="win-bar">
+      <strong>Grew their Instagram to 15k+ followers — completely organically.</strong>
+      One rodeo reel hit 200k views across Instagram and TikTok. A John Dutton-inspired reel
+      took their TikTok from 100 followers to over 1,700 with zero paid promotion.
+    </div>
+    <div class="achievement-chips">
+      <span class="chip">📈 15k+ organic IG followers</span>
+      <span class="chip">🔥 200k views on one reel</span>
+      <span class="chip">🚀 100 → 1,700 TikTok followers</span>
+      <span class="chip">🎬 Reels &amp; TikTok content</span>
+      <span class="chip">🗓️ Full content calendars</span>
+    </div>
+    <p class="reel-label">Featured Reels — swipe to explore</p>
+    <div class="reel-row" id="reels-tcr"></div>
+  </div>
+</section>
+
+
+<!-- 4. ATARAXIS -->
+<section id="ataraxis" class="client-section">
+  <div class="ocean-bg" style="opacity:.5"></div>
+  <div class="client-inner">
+    <span class="client-tag">Boutique Hotel · Maldives</span>
+    <h2 class="client-name">Ataraxis</h2>
+    <p class="client-loc">📍 Maldives · Luxury Island Hotel</p>
+    <a class="ig-link" href="https://www.instagram.com/ataraxisgrandandspa/" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+      @ataraxisgrandandspa
+    </a>
+    <p class="client-desc">
+      A stunning little hotel in the Maldives with a story worth telling — and not nearly
+      enough people hearing it when I started. I handle everything for them: editing their
+      raw footage into reels, designing their graphics, writing their captions. The key was
+      just showing up consistently and staying on top of what was trending. That alone made
+      a serious difference.
+    </p>
+    <div class="win-bar">
+      <strong>Views went up significantly just by posting regularly and staying trend-aware.</strong>
+      Sometimes the simplest strategy is the one that actually works — and this proved it.
+    </div>
+    <div class="achievement-chips">
+      <span class="chip">📈 Major views growth</span>
+      <span class="chip">🎥 Full video production</span>
+      <span class="chip">🎨 Graphics &amp; branding</span>
+      <span class="chip">📱 Instagram &amp; TikTok</span>
+      <span class="chip">✍️ Copywriting &amp; captions</span>
+    </div>
+    <p class="reel-label">Featured Reels — swipe to explore</p>
+    <div class="reel-row" id="reels-ataraxis"></div>
+  </div>
+</section>
+
+
+<!-- 5. BREAK AND BAD -->
+<section id="break-bad" class="client-section">
+  <div class="ocean-bg" style="opacity:.5"></div>
+  <div class="client-inner">
+    <span class="client-tag">Sports Cards · United States</span>
+    <h2 class="client-name">Break and Bad</h2>
+    <p class="client-loc">📍 United States · Sports Card Company</p>
+    <a class="ig-link" href="https://www.instagram.com/break.n.bad/" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+      @break.n.bad
+    </a>
+    <p class="client-desc">
+      Sports card collectors are a passionate, fast-moving community and content needs to
+      match that energy. I jumped in, built out their content, and got things moving fast.
+      Pack breaks, product reveals, hype drops — the kind of stuff that gets people tagging
+      their friends and hitting that follow button.
+    </p>
+    <div class="win-bar">
+      <strong>1,000 new followers in the first two months.</strong>
+      Built from scratch, no existing audience to lean on. Just good content hitting the right people.
+    </div>
+    <div class="achievement-chips">
+      <span class="chip">🚀 1k followers in 2 months</span>
+      <span class="chip">🃏 Pack-break Reels</span>
+      <span class="chip">🔴 Product launch content</span>
+      <span class="chip">📣 Community growth</span>
+      <span class="chip">🇺🇸 National audience</span>
+    </div>
+    <p class="reel-label">Featured Reels — swipe to explore</p>
+    <div class="reel-row" id="reels-bb"></div>
+  </div>
+</section>
+
+
+<!-- 6. WHY LAPOINT -->
+<section id="cta">
+  <div class="ocean-bg"></div>
+  <svg class="wave" style="transform:rotate(180deg);top:0;bottom:auto;opacity:.06" viewBox="0 0 1440 320" fill="white" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,192L60,186.7C120,181,240,171,360,181.3C480,192,600,224,720,229.3C840,235,960,213,1080,202.7C1200,192,1320,192,1380,192L1440,192L1440,320L0,320Z"/>
+  </svg>
+  <p class="section-label">Why Nickless &amp; Co</p>
+  <h2 class="cta-title">This is exactly the kind of work I do best.</h2>
+  <p class="cta-body">
+    My entire workflow is remote. Clients send me their raw content — footage, photos, clips —
+    and I take it from there. Editing, strategy, copy, scheduling, growth. No micromanaging
+    needed. <strong>Just clear creative direction and consistent results.</strong>
+  </p>
+  <p class="cta-body">
+    I've been doing this across luxury hospitality, lifestyle, and sports brands for 5 years —
+    growing pages organically, creating content that actually performs, and building communities
+    that stick around. That experience translates directly into what Nickless &amp; Co does for
+    their clients.
+  </p>
+  <p class="cta-body">
+    I'm not looking for a brief to follow. I'm looking to genuinely contribute — bringing
+    ideas, energy, and a track record of results to every brand I touch.
+    <strong>I'd love to be part of what you're building.</strong>
+  </p>
+  <div class="cta-links">
+    <a class="btn-primary" href="mailto:chelcymae1@gmail.com">Email Me</a>
+    <a class="btn-primary" href="https://wa.me/27685125797" target="_blank" rel="noopener" style="background:var(--teal-dark);">WhatsApp Me</a>
+    <a class="btn-ghost" href="Chelcy_Maee_Resume.pdf" download="Chelcy_Maee_Resume.pdf">Download Resume PDF</a>
+  </div>
+  <p style="margin-top:20px;font-size:13px;color:var(--grey);">
+    📧 chelcymae1@gmail.com &nbsp;·&nbsp; 📱 +27 68 512 5797
+  </p>
+</section>
+
+
+<script>
+  /*
+   * HOW TO ADD YOUR REELS
+   * ─────────────────────────────────────────────────────────────────────────
+   * 1. Save your reels from Instagram to your phone/computer
+   *    (hold down on the reel → Save, or use snapinsta.app on desktop)
+   *
+   * 2. Rename the files to something simple, e.g.:
+   *      tcr-reel1.mp4   tcr-reel2.mp4   tcr-reel3.mp4
+   *      ataraxis-reel1.mp4  etc.
+   *      bb-reel1.mp4    etc.
+   *
+   * 3. Add those files into the chelcy folder (same place as this file)
+   *
+   * 4. Update the filenames below — just the filename, no path needed:
+   *      { file: "tcr-reel1.mp4", caption: "Golden hour on horseback" }
+   *
+   * Videos will autoplay silently as people scroll, just like Instagram.
+   * ─────────────────────────────────────────────────────────────────────────
+   */
+
+  const reelData = {
+    "reels-tcr": [
+      { file: "https://drive.google.com/file/d/1WVm643dblAerCJywv3tNrRdmFrUVO-pT/view?usp=drive_link", caption: "Triple Creek Ranch" },
+      { file: "https://drive.google.com/file/d/1GtiLLCowl9HuyutVMgbJ_A_E0aslQgrp/view?usp=drive_link", caption: "Rodeo reel · 200k+ views" },
+      { file: "https://drive.google.com/file/d/1GP5b_KZf3zya694djEiPxhcesUCE9vaC/view?usp=drive_link", caption: "Day to night culinary reel" },
+      { file: "https://drive.google.com/file/d/1-hmledPrrFdErRkI4TdX2Ezt23YB9Bfe/view?usp=drive_link", caption: "John Dutton reel · 100 → 1,700 TikTok followers" },
+    ],
+    "reels-ataraxis": [
+      { file: "https://drive.google.com/file/d/14m423N3g_CQ5Ozho2kEundFJFW9-7S7j/view?usp=drive_link", caption: "Ataraxis" },
+      { file: "https://drive.google.com/file/d/1_VEFBBM7Gm-SlX8h4_6tT2fKrZe9lWuH/view?usp=drive_link", caption: "Ataraxis" },
+      { file: "https://drive.google.com/file/d/1jm8L-vAww0V0RwAjp9sMvKMLoovzZ6hl/view?usp=drive_link", caption: "Ataraxis" },
+    ],
+    "reels-bb": [
+      { file: "https://drive.google.com/file/d/197ofrrYvl3I1B0sWnn5ysxA9qvhCCBEK/view?usp=drive_link", caption: "Break and Bad" },
+      { file: "https://drive.google.com/file/d/1EDrnlwfwLF-AovltIQUbO0hPIjTtWKSV/view?usp=drive_link", caption: "Break and Bad" },
+      { file: "https://drive.google.com/file/d/1j22Fea3RYnYyDtzrsng5utPWSwk5KLik/view?usp=drive_link", caption: "Break and Bad" },
+    ],
+  };
+
+  function drivePreviewUrl(url) {
+    // Accepts any of these and returns the embeddable preview URL:
+    //   https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+    //   https://drive.google.com/open?id=FILE_ID
+    //   https://drive.google.com/uc?id=FILE_ID
+    const matchPath = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    const matchQuery = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    const id = (matchPath && matchPath[1]) || (matchQuery && matchQuery[1]);
+    return id ? `https://drive.google.com/file/d/${id}/preview` : url;
+  }
+
+  function buildReels() {
+    Object.entries(reelData).forEach(([id, reels]) => {
+      const row = document.getElementById(id);
+      reels.forEach(({ file, caption }) => {
+        const slot = document.createElement("div");
+        slot.className = "reel-slot";
+        if (file) {
+          const isDrive = file.includes("drive.google.com");
+          if (isDrive) {
+            // Google Drive: use their preview iframe (only way to get inline playback)
+            const iframe = document.createElement("iframe");
+            iframe.src = drivePreviewUrl(file);
+            iframe.allow = "autoplay";
+            iframe.setAttribute("allowfullscreen", "");
+            iframe.style.cssText = "width:100%;height:100%;border:none;display:block;";
+            slot.appendChild(iframe);
+          } else {
+            // Local .mp4 file: native video with scroll-triggered autoplay
+            const vid = document.createElement("video");
+            vid.src = file;
+            vid.muted = true;
+            vid.loop = true;
+            vid.playsInline = true;
+            vid.setAttribute("playsinline", "");
+            vid.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;";
+            slot.appendChild(vid);
+          }
+        } else {
+          slot.innerHTML = `
+            <div class="reel-placeholder">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+                <rect x="2" y="2" width="20" height="20" rx="4"/>
+                <polygon points="10,8 16,12 10,16" fill="white"/>
+              </svg>
+              <span class="reel-cap">${caption}</span>
+              <span class="reel-hint">Paste your Google Drive<br>share link as the file value</span>
+            </div>`;
+        }
+        row.appendChild(slot);
+      });
+    });
+  }
+
+  // Play videos when they scroll into view, pause when they leave
+  function setupVideoAutoplay() {
+    const vidObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const vid = entry.target;
+        if (entry.isIntersecting) {
+          vid.play().catch(() => {});
+        } else {
+          vid.pause();
+        }
+      });
+    }, { threshold: 0.3 });
+
+    document.querySelectorAll(".reel-slot video").forEach(v => vidObserver.observe(v));
+  }
+
+  // Named goTo() to avoid clashing with the browser's built-in window.scrollTo
+  function goTo(id) {
+    document.getElementById(id).scrollIntoView({ behavior: "smooth" });
+  }
+
+  const sections = ["hero","about","triple-creek","ataraxis","break-bad","cta"];
+  const dots = document.querySelectorAll(".dot");
+
+  dots.forEach((dot, i) => {
+    dot.addEventListener("click", () => goTo(sections[i]));
+  });
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const idx = sections.indexOf(entry.target.id);
+        dots.forEach((d, i) => d.classList.toggle("active", i === idx));
+      }
+    });
+  }, { threshold: 0.5 });
+
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+
+  buildReels();
+  setupVideoAutoplay();
+</script>
+</body>
+</html>
