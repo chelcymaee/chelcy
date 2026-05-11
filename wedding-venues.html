@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dream Wedding Venues · Cape Town & The Winelands</title>
+  <style>
+    :root {
+      --cream: #FAF6F0;
+      --blush: #E8C4B8;
+      --rose: #C4796A;
+      --gold: #B8964E;
+      --gold-light: #D4AF6A;
+      --emerald: #2D5016;
+      --emerald-light: #4A7A28;
+      --charcoal: #2C2C2C;
+      --white: #FFFFFF;
+      --grey: #8A8A8A;
+      --whatsapp: #25D366;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      background: var(--cream);
+      color: var(--charcoal);
+      overflow-x: hidden;
+    }
+
+    /* ── HERO ─────────────────────────────────── */
+    .hero {
+      position: relative;
+      height: 100vh;
+      min-height: 600px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.2) 40%, rgba(0,0,0,0.6) 100%),
+        url('https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1800&q=85') center/cover no-repeat;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      padding: 0 20px;
+    }
+
+    .hero-eyebrow {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--gold-light);
+      margin-bottom: 18px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.6rem, 6vw, 5rem);
+      color: var(--white);
+      line-height: 1.1;
+      font-weight: 400;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.4);
+      margin-bottom: 20px;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      color: var(--gold-light);
+    }
+
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      color: rgba(255,255,255,0.88);
+      max-width: 540px;
+      margin: 0 auto 36px;
+      line-height: 1.7;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .scroll-hint {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.6);
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-family: sans-serif;
+      animation: bounce 2s infinite;
+    }
+
+    .scroll-hint svg { width: 20px; height: 20px; }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(8px); }
+    }
+
+    /* ── FILTER BAR ───────────────────────────── */
+    .filter-bar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(250,246,240,0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(184,150,78,0.2);
+      padding: 14px 20px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .filter-btn {
+      padding: 8px 22px;
+      border-radius: 50px;
+      border: 1.5px solid var(--gold);
+      background: transparent;
+      color: var(--gold);
+      font-size: 0.78rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      transition: all 0.25s;
+    }
+
+    .filter-btn:hover,
+    .filter-btn.active {
+      background: var(--gold);
+      color: var(--white);
+    }
+
+    /* ── SECTION TITLE ────────────────────────── */
+    .section-header {
+      text-align: center;
+      padding: 60px 20px 10px;
+    }
+
+    .section-header .eyebrow {
+      font-family: sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+
+    .section-header h2 {
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 400;
+      color: var(--charcoal);
+      margin-bottom: 14px;
+    }
+
+    .section-header .divider {
+      width: 60px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--blush), var(--gold));
+      margin: 0 auto;
+    }
+
+    /* ── VENUE GRID ───────────────────────────── */
+    .venues-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 36px;
+      max-width: 1300px;
+      margin: 50px auto 80px;
+      padding: 0 24px;
+    }
+
+    /* ── VENUE CARD ───────────────────────────── */
+    .venue-card {
+      background: var(--white);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.08);
+      transition: transform 0.3s, box-shadow 0.3s;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .venue-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 50px rgba(0,0,0,0.14);
+    }
+
+    .venue-card.hidden { display: none; }
+
+    .card-image-wrap {
+      position: relative;
+      height: 260px;
+      overflow: hidden;
+    }
+
+    .card-image-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s;
+    }
+
+    .venue-card:hover .card-image-wrap img {
+      transform: scale(1.06);
+    }
+
+    .region-badge {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(255,255,255,0.92);
+      color: var(--emerald);
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 50px;
+      font-family: sans-serif;
+      font-weight: 600;
+    }
+
+    .price-badge {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: var(--gold);
+      color: var(--white);
+      font-size: 0.65rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 50px;
+      font-family: sans-serif;
+      font-weight: 600;
+    }
+
+    .card-body {
+      padding: 26px 26px 0;
+      flex: 1;
+    }
+
+    .card-body h3 {
+      font-size: 1.35rem;
+      font-weight: 400;
+      color: var(--charcoal);
+      margin-bottom: 4px;
+    }
+
+    .card-location {
+      font-family: sans-serif;
+      font-size: 0.75rem;
+      color: var(--grey);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .card-location svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+    .card-desc {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      color: #555;
+      margin-bottom: 18px;
+    }
+
+    .card-capacity {
+      font-family: sans-serif;
+      font-size: 0.75rem;
+      color: var(--emerald);
+      background: rgba(45,80,22,0.08);
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 50px;
+      margin-bottom: 16px;
+    }
+
+    .contact-person {
+      font-family: sans-serif;
+      font-size: 0.8rem;
+      color: var(--charcoal);
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      background: var(--cream);
+      border-radius: 10px;
+      border-left: 3px solid var(--gold);
+    }
+
+    .contact-person strong { display: block; margin-bottom: 2px; color: var(--charcoal); }
+    .contact-person span { color: var(--grey); font-size: 0.73rem; }
+
+    /* ── CONTACT BUTTONS ──────────────────────── */
+    .card-actions {
+      padding: 0 26px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-decoration: none;
+      transition: all 0.22s;
+      cursor: pointer;
+      border: none;
+      white-space: nowrap;
+    }
+
+    .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .btn-whatsapp {
+      background: var(--whatsapp);
+      color: var(--white);
+    }
+    .btn-whatsapp:hover { background: #1ebe5a; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37,211,102,0.35); }
+
+    .btn-email {
+      background: var(--gold);
+      color: var(--white);
+    }
+    .btn-email:hover { background: var(--gold-light); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(184,150,78,0.35); }
+
+    .btn-phone {
+      background: var(--rose);
+      color: var(--white);
+    }
+    .btn-phone:hover { background: #d08070; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(196,121,106,0.35); }
+
+    .btn-website {
+      background: transparent;
+      color: var(--emerald);
+      border: 1.5px solid var(--emerald);
+    }
+    .btn-website:hover { background: var(--emerald); color: var(--white); transform: translateY(-2px); }
+
+    /* ── FOOTER ───────────────────────────────── */
+    footer {
+      background: var(--charcoal);
+      color: rgba(255,255,255,0.6);
+      text-align: center;
+      padding: 36px 20px;
+      font-family: sans-serif;
+      font-size: 0.8rem;
+      line-height: 1.8;
+    }
+
+    footer a { color: var(--gold-light); text-decoration: none; }
+
+    /* ── RESPONSIVE ───────────────────────────── */
+    @media (max-width: 500px) {
+      .venues-grid { grid-template-columns: 1fr; gap: 24px; padding: 0 16px; }
+      .btn-row { grid-template-columns: 1fr; }
+      .card-image-wrap { height: 220px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">South Africa's Finest</p>
+    <h1>Your Perfect<br><em>Wedding Venue</em><br>Awaits</h1>
+    <p>Discover the most breathtaking wedding venues across Cape Town and the Winelands — from mountain-framed estates to oceanside retreats.</p>
+  </div>
+  <div class="scroll-hint">
+    <span>Explore</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+</section>
+
+<!-- FILTER BAR -->
+<nav class="filter-bar">
+  <button class="filter-btn active" data-filter="all">All Venues</button>
+  <button class="filter-btn" data-filter="cape-town">Cape Town</button>
+  <button class="filter-btn" data-filter="stellenbosch">Stellenbosch</button>
+  <button class="filter-btn" data-filter="franschhoek">Franschhoek</button>
+  <button class="filter-btn" data-filter="paarl">Paarl</button>
+  <button class="filter-btn" data-filter="somerset-west">Somerset West</button>
+</nav>
+
+<div class="section-header">
+  <p class="eyebrow">Handpicked Venues</p>
+  <h2>Cape Town &amp; The Winelands</h2>
+  <div class="divider"></div>
+</div>
+
+<!-- VENUES GRID -->
+<div class="venues-grid" id="venues-grid">
+
+  <!-- 1. Babylonstoren -->
+  <div class="venue-card" data-region="franschhoek">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1559825481-12a05cc00344?w=800&q=80" alt="Babylonstoren" loading="lazy" />
+      <span class="region-badge">Franschhoek</span>
+      <span class="price-badge">Luxury</span>
+    </div>
+    <div class="card-body">
+      <h3>Babylonstoren</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Simondium Road, Franschhoek
+      </div>
+      <p class="card-desc">One of the most photographed farms in South Africa — a 200-year-old Cape Dutch estate surrounded by lush gardens, mountain views, and world-class hospitality. An utterly magical wedding setting.</p>
+      <span class="card-capacity">Up to 120 guests</span>
+      <div class="contact-person">
+        <strong>Weddings & Events Team</strong>
+        <span>Wedding Coordinator on request</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27218633852" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:info@babylonstoren.com">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27218633852">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 863 3852
+        </a>
+        <a class="btn btn-website" href="https://www.babylonstoren.com" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Boschendal -->
+  <div class="venue-card" data-region="franschhoek">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1504215680853-026ed2a45def?w=800&q=80" alt="Boschendal Wine Estate" loading="lazy" />
+      <span class="region-badge">Franschhoek</span>
+      <span class="price-badge">Luxury</span>
+    </div>
+    <div class="card-body">
+      <h3>Boschendal Wine Estate</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Groot Drakenstein, Franschhoek Valley
+      </div>
+      <p class="card-desc">A legendary 330-year-old wine estate set against the Drakenstein Mountains. The manor house, barrel cellar and vineyard lawns create an incomparable backdrop for your special day.</p>
+      <span class="card-capacity">Up to 200 guests</span>
+      <div class="contact-person">
+        <strong>Events & Weddings Team</strong>
+        <span>events@boschendal.com</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27218704210" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:events@boschendal.com">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27218704210">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 870 4210
+        </a>
+        <a class="btn btn-website" href="https://www.boschendal.com" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Delaire Graff Estate -->
+  <div class="venue-card" data-region="stellenbosch">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1510076857177-7470076d4098?w=800&q=80" alt="Delaire Graff Estate" loading="lazy" />
+      <span class="region-badge">Stellenbosch</span>
+      <span class="price-badge">Ultra Luxury</span>
+    </div>
+    <div class="card-body">
+      <h3>Delaire Graff Estate</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Helshoogte Pass, Stellenbosch
+      </div>
+      <p class="card-desc">Perched on the Helshoogte Pass with panoramic views of the Stellenbosch Valley, this world-class estate blends fine art, fine wine and breathtaking scenery for an unforgettable celebration.</p>
+      <span class="card-capacity">Up to 160 guests</span>
+      <div class="contact-person">
+        <strong>Weddings & Events Team</strong>
+        <span>weddings@delaire.co.za</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27218858160" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:weddings@delaire.co.za">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27218858160">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 885 8160
+        </a>
+        <a class="btn btn-website" href="https://www.delaire.co.za" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Grande Provence -->
+  <div class="venue-card" data-region="franschhoek">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800&q=80" alt="Grande Provence" loading="lazy" />
+      <span class="region-badge">Franschhoek</span>
+      <span class="price-badge">Luxury</span>
+    </div>
+    <div class="card-body">
+      <h3>Grande Provence Heritage Wine Estate</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Main Road, Franschhoek
+      </div>
+      <p class="card-desc">An intimate and romantic Cape Dutch manor at the heart of Franschhoek village. The beautiful oak-lined grounds, gallery and private cottages make it an exceptionally romantic venue.</p>
+      <span class="card-capacity">Up to 100 guests</span>
+      <div class="contact-person">
+        <strong>Wedding Coordinator</strong>
+        <span>weddings@grandeprovence.co.za</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27218768600" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:weddings@grandeprovence.co.za">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27218768600">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 876 8600
+        </a>
+        <a class="btn btn-website" href="https://www.grandeprovence.co.za" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Lanzerac Wine Estate -->
+  <div class="venue-card" data-region="stellenbosch">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80" alt="Lanzerac Wine Estate" loading="lazy" />
+      <span class="region-badge">Stellenbosch</span>
+      <span class="price-badge">Premium</span>
+    </div>
+    <div class="card-body">
+      <h3>Lanzerac Wine Estate</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Jonkershoek Valley, Stellenbosch
+      </div>
+      <p class="card-desc">A 300-year-old wine estate and 5-star hotel tucked into the Jonkershoek Valley. With its historic Cape Dutch architecture, sprawling gardens and mountain backdrop, Lanzerac is pure romance.</p>
+      <span class="card-capacity">Up to 180 guests</span>
+      <div class="contact-person">
+        <strong>Events & Weddings Team</strong>
+        <span>weddings@lanzerac.co.za</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27218871132" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:weddings@lanzerac.co.za">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27218871132">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 887 1132
+        </a>
+        <a class="btn btn-website" href="https://www.lanzerac.co.za" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Cavalli Estate -->
+  <div class="venue-card" data-region="somerset-west">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1535168384730-dba8f31e82d0?w=800&q=80" alt="Cavalli Estate" loading="lazy" />
+      <span class="region-badge">Somerset West</span>
+      <span class="price-badge">Luxury</span>
+    </div>
+    <div class="card-body">
+      <h3>Cavalli Estate</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Vlottenburg Road, Somerset West
+      </div>
+      <p class="card-desc">A strikingly modern wine estate home to thoroughbred horses, sculptural architecture and sweeping vineyard views. Cavalli offers an unparalleled blend of contemporary luxury and natural beauty.</p>
+      <span class="card-capacity">Up to 250 guests</span>
+      <div class="contact-person">
+        <strong>Weddings & Events Team</strong>
+        <span>functions@cavalliestate.com</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27218581345" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:functions@cavalliestate.com">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27218581345">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 858 1345
+        </a>
+        <a class="btn btn-website" href="https://www.cavalliestate.com" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Waterkloof Wine Estate -->
+  <div class="venue-card" data-region="somerset-west">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80" alt="Waterkloof Wine Estate" loading="lazy" />
+      <span class="region-badge">Somerset West</span>
+      <span class="price-badge">Premium</span>
+    </div>
+    <div class="card-body">
+      <h3>Waterkloof Wine Estate</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Sir Lowry's Pass Village Road, Somerset West
+      </div>
+      <p class="card-desc">Dramatically positioned on a hillside overlooking False Bay, Waterkloof's glass-and-steel gravity-flow cellar and sweeping ocean views create a truly awe-inspiring venue with both soul and spectacle.</p>
+      <span class="card-capacity">Up to 150 guests</span>
+      <div class="contact-person">
+        <strong>Events Coordinator</strong>
+        <span>restaurant@waterkloofwines.co.za</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27218581491" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:restaurant@waterkloofwines.co.za">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27218581491">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 858 1491
+        </a>
+        <a class="btn btn-website" href="https://www.waterkloofwines.co.za" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Twelve Apostles Hotel -->
+  <div class="venue-card" data-region="cape-town">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=800&q=80" alt="Twelve Apostles Hotel" loading="lazy" />
+      <span class="region-badge">Cape Town</span>
+      <span class="price-badge">Ultra Luxury</span>
+    </div>
+    <div class="card-body">
+      <h3>The Twelve Apostles Hotel &amp; Spa</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Victoria Road, Camps Bay, Cape Town
+      </div>
+      <p class="card-desc">Nestled between the Twelve Apostles mountain range and the Atlantic Ocean, this iconic 5-star hotel offers movie-set glamour with sweeping sea views, lush fynbos gardens and world-renowned hospitality.</p>
+      <span class="card-capacity">Up to 120 guests</span>
+      <div class="contact-person">
+        <strong>Wedding Sales Team</strong>
+        <span>reservations@12apostles.co.za</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27214379000" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:reservations@12apostles.co.za">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27214379000">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 437 9000
+        </a>
+        <a class="btn btn-website" href="https://www.12apostleshotel.com" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Grande Roche Hotel -->
+  <div class="venue-card" data-region="paarl">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80" alt="Grande Roche Hotel" loading="lazy" />
+      <span class="region-badge">Paarl</span>
+      <span class="price-badge">Luxury</span>
+    </div>
+    <div class="card-body">
+      <h3>Grande Roche Hotel</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Plantasie Street, Paarl
+      </div>
+      <p class="card-desc">A timeless 5-star manor set among vineyards on the slopes of Paarl Mountain. The estate's manicured gardens, Cape Dutch architecture and romantic wine cellar create an heirloom wedding experience.</p>
+      <span class="card-capacity">Up to 130 guests</span>
+      <div class="contact-person">
+        <strong>Events & Weddings Team</strong>
+        <span>reservations@granderoche.com</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27218632727" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:reservations@granderoche.com">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27218632727">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 863 2727
+        </a>
+        <a class="btn btn-website" href="https://www.granderoche.com" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. One&Only Cape Town -->
+  <div class="venue-card" data-region="cape-town">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80" alt="One&Only Cape Town" loading="lazy" />
+      <span class="region-badge">Cape Town</span>
+      <span class="price-badge">Ultra Luxury</span>
+    </div>
+    <div class="card-body">
+      <h3>One&amp;Only Cape Town</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        V&A Waterfront, Cape Town
+      </div>
+      <p class="card-desc">Set on its own private island in the V&A Waterfront Marina with Table Mountain as a backdrop. Unmatched city glamour, Nobu restaurant dining and bespoke event spaces for the ultimate urban wedding.</p>
+      <span class="card-capacity">Up to 300 guests</span>
+      <div class="contact-person">
+        <strong>Events & Catering Team</strong>
+        <span>capetown.events@oneandonlyresorts.com</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27214315888" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:capetown.events@oneandonlyresorts.com">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27214315888">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 431 5888
+        </a>
+        <a class="btn btn-website" href="https://www.oneandonlyresorts.com/cape-town" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11. Lourensford Wine Estate -->
+  <div class="venue-card" data-region="somerset-west">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1561731216-c3a4d99437d5?w=800&q=80" alt="Lourensford Wine Estate" loading="lazy" />
+      <span class="region-badge">Somerset West</span>
+      <span class="price-badge">Premium</span>
+    </div>
+    <div class="card-body">
+      <h3>Lourensford Wine Estate</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Lourensford Road, Somerset West
+      </div>
+      <p class="card-desc">One of the largest wine farms in the Cape Winelands with multiple stunning event venues set among 4,000 hectares of fynbos, forest and vineyards at the foot of the Hottentots Holland Mountains.</p>
+      <span class="card-capacity">Up to 500 guests</span>
+      <div class="contact-person">
+        <strong>Events & Weddings Team</strong>
+        <span>events@lourensford.co.za</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27218472333" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:events@lourensford.co.za">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27218472333">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 847 2333
+        </a>
+        <a class="btn btn-website" href="https://www.lourensford.co.za" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12. Rickety Bridge Winery -->
+  <div class="venue-card" data-region="franschhoek">
+    <div class="card-image-wrap">
+      <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80" alt="Rickety Bridge Winery" loading="lazy" />
+      <span class="region-badge">Franschhoek</span>
+      <span class="price-badge">Premium</span>
+    </div>
+    <div class="card-body">
+      <h3>Rickety Bridge Winery</h3>
+      <div class="card-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Franschhoek Valley, Franschhoek
+      </div>
+      <p class="card-desc">A charming 18th-century wine estate in the heart of the Franschhoek Valley, with a beautifully restored manor house, cascading mountain streams, elegant cottages and award-winning wines.</p>
+      <span class="card-capacity">Up to 120 guests</span>
+      <div class="contact-person">
+        <strong>Events Coordinator</strong>
+        <span>events@ricketybridgewinery.com</span>
+      </div>
+    </div>
+    <div class="card-actions">
+      <div class="btn-row">
+        <a class="btn btn-whatsapp" href="https://wa.me/27218762129" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></svg>
+          WhatsApp
+        </a>
+        <a class="btn btn-email" href="mailto:events@ricketybridgewinery.com">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email
+        </a>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-phone" href="tel:+27218762129">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          +27 21 876 2129
+        </a>
+        <a class="btn btn-website" href="https://www.ricketybridgewinery.com" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Website
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /venues-grid -->
+
+<footer>
+  <p>Curated with love for couples dreaming of a Cape Town &amp; Winelands wedding.</p>
+  <p style="margin-top:8px;">Please verify all contact details directly with venues — details may change. &nbsp;|&nbsp; <a href="portfolio.html">Back to Portfolio</a></p>
+</footer>
+
+<script>
+  // Filter functionality
+  const filterBtns = document.querySelectorAll('.filter-btn');
+  const cards = document.querySelectorAll('.venue-card');
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const filter = btn.dataset.filter;
+      cards.forEach(card => {
+        if (filter === 'all' || card.dataset.region === filter) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
