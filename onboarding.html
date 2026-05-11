@@ -1,1 +1,982 @@
-$(cat /root/.claude/projects/-home-user-chelcy/5f3d76d6-891c-42fa-beb2-0a0a7a4b3ccb/tool-results/bvjll92i3.txt)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>White Glove Home Management — Property Onboarding</title>
+  <meta property="og:title" content="White Glove Home Management — Property Onboarding" />
+  <meta property="og:description" content="Onboard your Airbnb property with White Glove Home Management. Fill out our simple form to get started." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://chelcymaee.github.io/chelcy/onboarding.html" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f4f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 80px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #111;
+    }
+
+    header p {
+      margin-top: 6px;
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    .progress-wrap {
+      width: 100%;
+      max-width: 680px;
+      margin-bottom: 28px;
+    }
+
+    .progress-steps {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      margin-bottom: 8px;
+    }
+
+    .progress-steps::before {
+      content: "";
+      position: absolute;
+      top: 14px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #e0ddd6;
+      z-index: 0;
+    }
+
+    .progress-fill {
+      position: absolute;
+      top: 14px;
+      left: 0;
+      height: 2px;
+      background: #2d6a4f;
+      z-index: 1;
+      transition: width 0.4s ease;
+    }
+
+    .step-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #e0ddd6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #888;
+      position: relative;
+      z-index: 2;
+      transition: background 0.3s, color 0.3s;
+      flex-shrink: 0;
+    }
+
+    .step-dot.active { background: #2d6a4f; color: #fff; }
+    .step-dot.done   { background: #2d6a4f; color: #fff; }
+
+    .progress-label {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #888;
+    }
+
+    .progress-label span { font-weight: 600; color: #2d6a4f; }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.07);
+      padding: 36px 40px;
+      width: 100%;
+      max-width: 680px;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 4px;
+    }
+
+    .section-subtitle {
+      font-size: 0.88rem;
+      color: #777;
+      margin-bottom: 28px;
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 6px;
+    }
+
+    .field label .required { color: #c0392b; margin-left: 2px; }
+    .field label .hint     { font-weight: 400; color: #999; font-size: 0.8rem; }
+
+    .field input[type="text"],
+    .field input[type="email"],
+    .field input[type="tel"],
+    .field input[type="url"],
+    .field input[type="number"],
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.93rem;
+      color: #111;
+      background: #fafafa;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: #2d6a4f;
+      background: #fff;
+    }
+
+    .field textarea { resize: vertical; min-height: 90px; }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 520px) {
+      .card { padding: 24px 20px; }
+      .field-row { grid-template-columns: 1fr; }
+    }
+
+    .radio-group, .check-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .radio-group.inline, .check-group.inline {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .radio-item, .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .radio-item input, .check-item input {
+      margin-top: 2px;
+      accent-color: #2d6a4f;
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+    }
+
+    .radio-item span, .check-item span {
+      font-size: 0.9rem;
+      color: #333;
+      line-height: 1.4;
+    }
+
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    @media (max-width: 420px) {
+      .month-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .month-btn {
+      border: 1.5px solid #ddd;
+      background: #fafafa;
+      border-radius: 8px;
+      padding: 10px 6px;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .month-btn.selected {
+      background: #2d6a4f;
+      border-color: #2d6a4f;
+      color: #fff;
+    }
+
+    .conditional {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      background: #f8f7f3;
+      border-radius: 10px;
+      border-left: 3px solid #2d6a4f;
+    }
+
+    .conditional.show { display: block; }
+
+    .info-box {
+      background: #eaf3ef;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 0.85rem;
+      color: #2d6a4f;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .info-box strong { font-weight: 700; }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #eee;
+    }
+
+    .btn {
+      padding: 11px 28px;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-back {
+      background: #f0ede6;
+      color: #555;
+    }
+
+    .btn-back:hover { background: #e5e0d8; }
+
+    .btn-next {
+      background: #2d6a4f;
+      color: #fff;
+      margin-left: auto;
+    }
+
+    .btn-next:hover { background: #245c43; }
+
+    .btn-submit {
+      background: #2d6a4f;
+      color: #fff;
+      margin-left: auto;
+    }
+
+    .btn-submit:hover { background: #245c43; }
+
+    .error-msg {
+      color: #c0392b;
+      font-size: 0.78rem;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .field.invalid input,
+    .field.invalid select,
+    .field.invalid textarea {
+      border-color: #c0392b;
+    }
+
+    .field.invalid .error-msg { display: block; }
+
+    #success {
+      display: none;
+      text-align: center;
+      padding: 20px 0 10px;
+    }
+
+    #success .checkmark {
+      width: 64px;
+      height: 64px;
+      background: #2d6a4f;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 2rem;
+      color: #fff;
+    }
+
+    #success h2 { font-size: 1.4rem; margin-bottom: 10px; }
+    #success p  { color: #666; font-size: 0.92rem; line-height: 1.6; }
+
+    .divider { height: 1px; background: #eee; margin: 20px 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>White Glove Home Management</h1>
+  <p>Property Onboarding Form</p>
+</header>
+
+<div class="progress-wrap">
+  <div class="progress-steps" id="progressSteps"></div>
+  <div class="progress-label">Step <span id="stepLabel">1</span> of <span id="totalLabel">10</span></div>
+</div>
+
+<div class="card">
+
+  <div class="section active" id="sec-1">
+    <div class="section-title">Owner Information</div>
+    <div class="section-subtitle">Tell us about yourself so we can get in touch.</div>
+    <div class="field-row">
+      <div class="field" id="f-first-name">
+        <label>First Name <span class="required">*</span></label>
+        <input type="text" id="first-name" placeholder="John" />
+        <div class="error-msg">Please enter your first name.</div>
+      </div>
+      <div class="field" id="f-last-name">
+        <label>Last Name <span class="required">*</span></label>
+        <input type="text" id="last-name" placeholder="Smith" />
+        <div class="error-msg">Please enter your last name.</div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field" id="f-email">
+        <label>Email Address <span class="required">*</span></label>
+        <input type="email" id="email" placeholder="john@email.com" />
+        <div class="error-msg">Please enter a valid email address.</div>
+      </div>
+      <div class="field" id="f-phone">
+        <label>Phone Number <span class="required">*</span></label>
+        <input type="tel" id="phone" placeholder="+1 (555) 000-0000" />
+        <div class="error-msg">Please enter your phone number.</div>
+      </div>
+    </div>
+    <div class="field" id="f-contact-pref">
+      <label>Preferred Contact Method <span class="required">*</span></label>
+      <div class="radio-group inline">
+        <label class="radio-item"><input type="radio" name="contact-pref" value="Phone" /><span>Phone</span></label>
+        <label class="radio-item"><input type="radio" name="contact-pref" value="Email" /><span>Email</span></label>
+        <label class="radio-item"><input type="radio" name="contact-pref" value="Text/SMS" /><span>Text / SMS</span></label>
+        <label class="radio-item"><input type="radio" name="contact-pref" value="WhatsApp" /><span>WhatsApp</span></label>
+      </div>
+      <div class="error-msg">Please select a preferred contact method.</div>
+    </div>
+    <div class="divider"></div>
+    <div class="field-row">
+      <div class="field" id="f-emergency-name">
+        <label>Emergency Contact Name <span class="required">*</span></label>
+        <input type="text" id="emergency-name" placeholder="Full name" />
+        <div class="error-msg">Please enter an emergency contact name.</div>
+      </div>
+      <div class="field" id="f-emergency-phone">
+        <label>Emergency Contact Phone <span class="required">*</span></label>
+        <input type="tel" id="emergency-phone" placeholder="+1 (555) 000-0000" />
+        <div class="error-msg">Please enter an emergency contact phone.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-2">
+    <div class="section-title">Property Details</div>
+    <div class="section-subtitle">Tell us about the property we'll be servicing.</div>
+    <div class="field" id="f-address">
+      <label>Property Address <span class="required">*</span></label>
+      <input type="text" id="address" placeholder="123 Main St, City, State, ZIP" />
+      <div class="error-msg">Please enter the property address.</div>
+    </div>
+    <div class="field" id="f-prop-type">
+      <label>Property Type <span class="required">*</span></label>
+      <select id="prop-type">
+        <option value="">Select type...</option>
+        <option>House</option>
+        <option>Condo</option>
+        <option>Apartment</option>
+        <option>Townhouse</option>
+        <option>Cottage / Cabin</option>
+        <option>Other</option>
+      </select>
+      <div class="error-msg">Please select a property type.</div>
+    </div>
+    <div class="field-row">
+      <div class="field" id="f-bedrooms">
+        <label>Bedrooms <span class="required">*</span></label>
+        <input type="number" id="bedrooms" min="0" max="20" placeholder="e.g. 3" />
+        <div class="error-msg">Please enter number of bedrooms.</div>
+      </div>
+      <div class="field" id="f-bathrooms">
+        <label>Bathrooms <span class="required">*</span></label>
+        <input type="number" id="bathrooms" min="0" max="20" step="0.5" placeholder="e.g. 2" />
+        <div class="error-msg">Please enter number of bathrooms.</div>
+      </div>
+    </div>
+    <div class="field" id="f-sqft">
+      <label>Approximate Square Footage <span class="hint">(optional)</span></label>
+      <input type="number" id="sqft" min="0" placeholder="e.g. 1400" />
+    </div>
+    <div class="field" id="f-storage">
+      <label>Is there a storage room on the property? <span class="required">*</span></label>
+      <div class="radio-group inline">
+        <label class="radio-item"><input type="radio" name="storage" value="Yes" /><span>Yes</span></label>
+        <label class="radio-item"><input type="radio" name="storage" value="No" /><span>No</span></label>
+      </div>
+      <div class="error-msg">Please select an option.</div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-3">
+    <div class="section-title">Airbnb Listing</div>
+    <div class="section-subtitle">Let us know if your property is already on Airbnb.</div>
+    <div class="field" id="f-on-airbnb">
+      <label>Is your property currently listed on Airbnb? <span class="required">*</span></label>
+      <div class="radio-group inline">
+        <label class="radio-item"><input type="radio" name="on-airbnb" value="Yes" onchange="toggleAirbnb(this)" /><span>Yes</span></label>
+        <label class="radio-item"><input type="radio" name="on-airbnb" value="No"  onchange="toggleAirbnb(this)" /><span>No</span></label>
+      </div>
+      <div class="error-msg">Please select an option.</div>
+    </div>
+    <div class="conditional" id="cond-airbnb">
+      <div class="info-box">
+        <strong>Co-host request:</strong> In order to manage your listing, calendar, and turnovers seamlessly, please add us as a co-host on your Airbnb account.<br /><br />
+        To do this: log into Airbnb → go to your listing → <em>Co-hosts</em> → <em>Invite a co-host</em> → enter our email below.
+        We recommend granting <strong>full access</strong> so we can coordinate check-ins, cleanings, and guest communication on your behalf.
+      </div>
+      <div class="field" id="f-airbnb-url">
+        <label>Airbnb Listing URL <span class="required">*</span></label>
+        <input type="url" id="airbnb-url" placeholder="https://www.airbnb.com/rooms/..." />
+        <div class="error-msg">Please enter your Airbnb listing URL.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-4">
+    <div class="section-title">Availability</div>
+    <div class="section-subtitle">Which months of the year do you plan to list your property on Airbnb?</div>
+    <div class="field" id="f-months">
+      <label>Select all that apply <span class="required">*</span></label>
+      <div class="month-grid" id="monthGrid">
+        <div class="month-btn" data-month="January">Jan</div>
+        <div class="month-btn" data-month="February">Feb</div>
+        <div class="month-btn" data-month="March">Mar</div>
+        <div class="month-btn" data-month="April">Apr</div>
+        <div class="month-btn" data-month="May">May</div>
+        <div class="month-btn" data-month="June">Jun</div>
+        <div class="month-btn" data-month="July">Jul</div>
+        <div class="month-btn" data-month="August">Aug</div>
+        <div class="month-btn" data-month="September">Sep</div>
+        <div class="month-btn" data-month="October">Oct</div>
+        <div class="month-btn" data-month="November">Nov</div>
+        <div class="month-btn" data-month="December">Dec</div>
+      </div>
+      <div class="error-msg" id="months-error" style="display:none;">Please select at least one month.</div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-5">
+    <div class="section-title">Access &amp; Entry</div>
+    <div class="section-subtitle">How will our team access your property for cleaning?</div>
+    <div class="field" id="f-access-method">
+      <label>Access Method <span class="required">*</span></label>
+      <div class="radio-group">
+        <label class="radio-item"><input type="radio" name="access-method" value="Lockbox" onchange="toggleAccess(this)" /><span>Lockbox</span></label>
+        <label class="radio-item"><input type="radio" name="access-method" value="Keypad / Smart Lock" onchange="toggleAccess(this)" /><span>Keypad / Smart Lock</span></label>
+        <label class="radio-item"><input type="radio" name="access-method" value="Physical Key" onchange="toggleAccess(this)" /><span>Physical Key (we'll arrange handoff)</span></label>
+        <label class="radio-item"><input type="radio" name="access-method" value="Other" onchange="toggleAccess(this)" /><span>Other</span></label>
+      </div>
+      <div class="error-msg">Please select an access method.</div>
+    </div>
+    <div class="conditional" id="cond-access-code">
+      <div class="field">
+        <label>Access Code / Instructions</label>
+        <input type="text" id="access-code" placeholder="e.g. Lockbox on front gate, code: 1234" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Parking Instructions <span class="hint">(optional)</span></label>
+      <input type="text" id="parking" placeholder="e.g. Street parking on Maple Ave, or driveway is available" />
+    </div>
+    <div class="field">
+      <label>Building Entry Notes <span class="hint">(optional — for condos/apartments)</span></label>
+      <input type="text" id="building-entry" placeholder="e.g. Buzz unit 4B, elevator to 3rd floor, turn left" />
+    </div>
+  </div>
+
+  <div class="section" id="sec-6">
+    <div class="section-title">Cleaning Preferences</div>
+    <div class="section-subtitle">Let us know how you'd like cleaning to be handled.</div>
+    <div class="field" id="f-cleaner-type">
+      <label>Who will be handling the cleaning? <span class="required">*</span></label>
+      <div class="radio-group">
+        <label class="radio-item">
+          <input type="radio" name="cleaner-type" value="White Glove Cleaners" onchange="toggleCleaner(this)" />
+          <span>Use White Glove Home Management's professionally trained cleaners<br /><em style="font-size:0.82rem;color:#888;">We assign 1–2 dedicated cleaners to your property so they become familiar with your home and how everything works — no different cleaner each time.</em></span>
+        </label>
+        <label class="radio-item" style="margin-top:4px;">
+          <input type="radio" name="cleaner-type" value="Own Cleaner" onchange="toggleCleaner(this)" />
+          <span>I have my own cleaner</span>
+        </label>
+      </div>
+      <div class="error-msg">Please select an option.</div>
+    </div>
+    <div class="conditional" id="cond-own-cleaner">
+      <div class="field-row">
+        <div class="field">
+          <label>Cleaner's Name</label>
+          <input type="text" id="cleaner-name" placeholder="Full name" />
+        </div>
+        <div class="field">
+          <label>Cleaner's Contact</label>
+          <input type="text" id="cleaner-contact" placeholder="Phone or email" />
+        </div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="field-row">
+      <div class="field" id="f-checkout-time">
+        <label>Standard Guest Checkout Time <span class="required">*</span></label>
+        <input type="text" id="checkout-time" placeholder="e.g. 11:00 AM" />
+        <div class="error-msg">Please enter checkout time.</div>
+      </div>
+      <div class="field" id="f-checkin-time">
+        <label>Standard Guest Check-in Time <span class="required">*</span></label>
+        <input type="text" id="checkin-time" placeholder="e.g. 3:00 PM" />
+        <div class="error-msg">Please enter check-in time.</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Buffer Time Needed Between Guests <span class="hint">(optional)</span></label>
+      <input type="text" id="buffer-time" placeholder="e.g. 2 hours, or same-day turnaround" />
+    </div>
+  </div>
+
+  <div class="section" id="sec-7">
+    <div class="section-title">Linens &amp; Laundry</div>
+    <div class="section-subtitle">Help us understand your linen setup for turnovers.</div>
+    <div class="field-row">
+      <div class="field" id="f-bed-sets">
+        <label>Bed Sets per Bedroom <span class="required">*</span></label>
+        <input type="number" id="bed-sets" min="1" max="10" placeholder="e.g. 2" />
+        <div class="error-msg">Please enter number of bed sets.</div>
+      </div>
+      <div class="field" id="f-towel-sets">
+        <label>Towel Sets per Bathroom <span class="required">*</span></label>
+        <input type="number" id="towel-sets" min="1" max="20" placeholder="e.g. 4" />
+        <div class="error-msg">Please enter number of towel sets.</div>
+      </div>
+    </div>
+    <div class="field" id="f-washer">
+      <label>Is there a washer/dryer on-site? <span class="required">*</span></label>
+      <div class="radio-group inline">
+        <label class="radio-item"><input type="radio" name="washer" value="Yes" onchange="toggleWasher(this)" /><span>Yes</span></label>
+        <label class="radio-item"><input type="radio" name="washer" value="No"  onchange="toggleWasher(this)" /><span>No</span></label>
+      </div>
+      <div class="error-msg">Please select an option.</div>
+    </div>
+    <div class="conditional" id="cond-washer">
+      <div class="field">
+        <label>Where is the washer/dryer located?</label>
+        <input type="text" id="washer-location" placeholder="e.g. Laundry closet on 2nd floor hallway" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Where are linens stored? <span class="hint">(optional)</span></label>
+      <input type="text" id="linen-storage" placeholder="e.g. Hall closet next to master bedroom" />
+    </div>
+  </div>
+
+  <div class="section" id="sec-8">
+    <div class="section-title">Guest Rules &amp; Regulations</div>
+    <div class="section-subtitle">What rules should we be aware of when vetting and accommodating guests?</div>
+    <div class="field">
+      <label>Select all rules that apply to your property</label>
+      <div class="check-group" style="gap:12px;">
+        <label class="check-item"><input type="checkbox" name="rules" value="No parties or events allowed" /><span>No parties or events allowed</span></label>
+        <label class="check-item"><input type="checkbox" name="rules" value="Only guests listed in the booking are allowed on the property" /><span>Only guests listed in the booking are allowed on the property</span></label>
+        <label class="check-item"><input type="checkbox" name="rules" value="No smoking anywhere on the property" /><span>No smoking anywhere on the property</span></label>
+        <label class="check-item"><input type="checkbox" name="rules" value="No pets allowed" /><span>No pets allowed</span></label>
+        <label class="check-item"><input type="checkbox" name="rules" value="Pets allowed" /><span>Pets allowed</span></label>
+        <label class="check-item"><input type="checkbox" name="rules" value="Quiet hours enforced" onchange="toggleQuietHours(this)" /><span>Quiet hours enforced</span></label>
+        <label class="check-item"><input type="checkbox" name="rules" value="No unauthorized visitors" /><span>No unauthorized visitors</span></label>
+        <label class="check-item"><input type="checkbox" name="rules" value="Respect neighbours and common areas" /><span>Respect neighbours and common areas</span></label>
+      </div>
+    </div>
+    <div class="conditional" id="cond-quiet-hours">
+      <div class="field-row">
+        <div class="field">
+          <label>Quiet Hours Start</label>
+          <input type="text" id="quiet-start" placeholder="e.g. 10:00 PM" />
+        </div>
+        <div class="field">
+          <label>Quiet Hours End</label>
+          <input type="text" id="quiet-end" placeholder="e.g. 8:00 AM" />
+        </div>
+      </div>
+    </div>
+    <div class="field" style="margin-top:16px;">
+      <label>Any additional rules or notes for guests? <span class="hint">(optional)</span></label>
+      <textarea id="extra-rules" placeholder="e.g. No shoes inside, please recycle, trash bins are at the side of the house..."></textarea>
+    </div>
+  </div>
+
+  <div class="section" id="sec-9">
+    <div class="section-title">Billing &amp; Invoices</div>
+    <div class="section-subtitle">Who will be responsible for settling the monthly invoices?</div>
+    <div class="field" id="f-billing-responsible">
+      <label>Invoice responsibility <span class="required">*</span></label>
+      <div class="radio-group">
+        <label class="radio-item"><input type="radio" name="billing" value="Owner" onchange="toggleBilling(this)" /><span>I will handle invoices myself</span></label>
+        <label class="radio-item"><input type="radio" name="billing" value="Other" onchange="toggleBilling(this)" /><span>Someone else will handle invoices</span></label>
+      </div>
+      <div class="error-msg">Please select an option.</div>
+    </div>
+    <div class="conditional" id="cond-billing">
+      <div class="field-row">
+        <div class="field" id="f-billing-name">
+          <label>Billing Contact Name <span class="required">*</span></label>
+          <input type="text" id="billing-name" placeholder="Full name" />
+          <div class="error-msg">Please enter the billing contact name.</div>
+        </div>
+        <div class="field" id="f-billing-email">
+          <label>Billing Contact Email <span class="required">*</span></label>
+          <input type="email" id="billing-email" placeholder="billing@email.com" />
+          <div class="error-msg">Please enter a valid billing email.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-10">
+    <div class="section-title">Monthly Reports</div>
+    <div class="section-subtitle">What would you like included in your monthly property report?</div>
+    <div class="field">
+      <label>Select everything you'd like to see</label>
+      <div class="check-group" style="gap:12px;">
+        <label class="check-item"><input type="checkbox" name="reports" value="Cleaning log (dates, times, cleaners)" /><span>Cleaning log (dates, times, cleaners)</span></label>
+        <label class="check-item"><input type="checkbox" name="reports" value="Income summary" /><span>Income summary</span></label>
+        <label class="check-item"><input type="checkbox" name="reports" value="Occupancy rate" /><span>Occupancy rate</span></label>
+        <label class="check-item"><input type="checkbox" name="reports" value="Guest review summary" /><span>Guest review summary</span></label>
+        <label class="check-item"><input type="checkbox" name="reports" value="Maintenance issues flagged" /><span>Maintenance issues flagged</span></label>
+        <label class="check-item"><input type="checkbox" name="reports" value="Invoices &amp; expenses breakdown" /><span>Invoices &amp; expenses breakdown</span></label>
+        <label class="check-item"><input type="checkbox" name="reports" value="Number of bookings &amp; cancellations" /><span>Number of bookings &amp; cancellations</span></label>
+        <label class="check-item"><input type="checkbox" name="reports" value="Average nightly rate" /><span>Average nightly rate</span></label>
+      </div>
+    </div>
+    <div class="field" style="margin-top:16px;">
+      <label>Anything else you'd like us to track? <span class="hint">(optional)</span></label>
+      <textarea id="report-notes" placeholder="Let us know any custom metrics or notes you'd like included..."></textarea>
+    </div>
+    <div class="divider"></div>
+    <div class="field">
+      <label>Additional Notes <span class="hint">(optional)</span></label>
+      <textarea id="additional-notes" placeholder="Anything else we should know about your property, fragile items, areas to avoid, special instructions..."></textarea>
+    </div>
+  </div>
+
+  <div id="success">
+    <div class="checkmark">✓</div>
+    <h2>You're all set!</h2>
+    <p>Thanks for completing the onboarding form.<br />Our team will review your details and reach out within 1–2 business days to confirm your setup and schedule our first in person meeting.</p>
+  </div>
+
+  <div class="nav" id="nav">
+    <button class="btn btn-back" id="btnBack" onclick="prevStep()" style="display:none;">← Back</button>
+    <button class="btn btn-next" id="btnNext" onclick="nextStep()">Continue →</button>
+    <button class="btn btn-submit" id="btnSubmit" onclick="submitForm()" style="display:none;">Submit →</button>
+  </div>
+
+</div>
+
+<script>
+  const TOTAL = 10;
+  let current = 1;
+  const selectedMonths = new Set();
+
+  const stepsEl = document.getElementById("progressSteps");
+  const fillEl  = document.createElement("div");
+  fillEl.className = "progress-fill";
+  stepsEl.appendChild(fillEl);
+
+  for (let i = 1; i <= TOTAL; i++) {
+    const dot = document.createElement("div");
+    dot.className = "step-dot";
+    dot.id = "dot-" + i;
+    dot.textContent = i;
+    stepsEl.appendChild(dot);
+  }
+
+  document.getElementById("totalLabel").textContent = TOTAL;
+
+  function updateProgress() {
+    document.getElementById("stepLabel").textContent = current;
+    const pct = ((current - 1) / (TOTAL - 1)) * 100;
+    fillEl.style.width = pct + "%";
+    for (let i = 1; i <= TOTAL; i++) {
+      const dot = document.getElementById("dot-" + i);
+      dot.className = "step-dot" + (i < current ? " done" : i === current ? " active" : "");
+    }
+    document.getElementById("btnBack").style.display   = current > 1 ? "inline-block" : "none";
+    document.getElementById("btnNext").style.display   = current < TOTAL ? "inline-block" : "none";
+    document.getElementById("btnSubmit").style.display = current === TOTAL ? "inline-block" : "none";
+  }
+
+  function showSection(n) {
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    document.getElementById("sec-" + n).classList.add("active");
+  }
+
+  function toggleAirbnb(el) {
+    document.getElementById("cond-airbnb").classList.toggle("show", el.value === "Yes");
+  }
+
+  function toggleAccess(el) {
+    const show = el.value === "Lockbox" || el.value === "Keypad / Smart Lock" || el.value === "Other";
+    document.getElementById("cond-access-code").classList.toggle("show", show);
+  }
+
+  function toggleCleaner(el) {
+    document.getElementById("cond-own-cleaner").classList.toggle("show", el.value === "Own Cleaner");
+  }
+
+  function toggleWasher(el) {
+    document.getElementById("cond-washer").classList.toggle("show", el.value === "Yes");
+  }
+
+  function toggleQuietHours(el) {
+    document.getElementById("cond-quiet-hours").classList.toggle("show", el.checked);
+  }
+
+  function toggleBilling(el) {
+    document.getElementById("cond-billing").classList.toggle("show", el.value === "Other");
+  }
+
+  document.querySelectorAll(".month-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const m = btn.dataset.month;
+      if (selectedMonths.has(m)) {
+        selectedMonths.delete(m);
+        btn.classList.remove("selected");
+      } else {
+        selectedMonths.add(m);
+        btn.classList.add("selected");
+      }
+    });
+  });
+
+  function validateSection(n) {
+    let valid = true;
+
+    const req = (fieldId, inputId, testFn) => {
+      const field = document.getElementById(fieldId);
+      if (!field) return;
+      const inp = document.getElementById(inputId);
+      const ok = inp ? testFn(inp.value.trim()) : false;
+      field.classList.toggle("invalid", !ok);
+      if (!ok) valid = false;
+    };
+
+    const reqRadio = (fieldId, name) => {
+      const field = document.getElementById(fieldId);
+      if (!field) return;
+      const checked = document.querySelector(`input[name="${name}"]:checked`);
+      field.classList.toggle("invalid", !checked);
+      if (!checked) valid = false;
+    };
+
+    if (n === 1) {
+      req("f-first-name",     "first-name",     v => v.length > 0);
+      req("f-last-name",      "last-name",       v => v.length > 0);
+      req("f-email",          "email",           v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v));
+      req("f-phone",          "phone",           v => v.length > 0);
+      reqRadio("f-contact-pref", "contact-pref");
+      req("f-emergency-name",  "emergency-name",  v => v.length > 0);
+      req("f-emergency-phone", "emergency-phone", v => v.length > 0);
+    }
+
+    if (n === 2) {
+      req("f-address",   "address",   v => v.length > 0);
+      req("f-prop-type", "prop-type", v => v.length > 0);
+      req("f-bedrooms",  "bedrooms",  v => v.length > 0 && Number(v) >= 0);
+      req("f-bathrooms", "bathrooms", v => v.length > 0 && Number(v) >= 0);
+      reqRadio("f-storage", "storage");
+    }
+
+    if (n === 3) {
+      reqRadio("f-on-airbnb", "on-airbnb");
+      const airbnbVal = document.querySelector('input[name="on-airbnb"]:checked');
+      if (airbnbVal && airbnbVal.value === "Yes") {
+        req("f-airbnb-url", "airbnb-url", v => v.length > 0);
+      }
+    }
+
+    if (n === 4) {
+      const ok = selectedMonths.size > 0;
+      document.getElementById("months-error").style.display = ok ? "none" : "block";
+      if (!ok) valid = false;
+    }
+
+    if (n === 5) {
+      reqRadio("f-access-method", "access-method");
+    }
+
+    if (n === 6) {
+      reqRadio("f-cleaner-type", "cleaner-type");
+      req("f-checkout-time", "checkout-time", v => v.length > 0);
+      req("f-checkin-time",  "checkin-time",  v => v.length > 0);
+    }
+
+    if (n === 7) {
+      req("f-bed-sets",   "bed-sets",   v => v.length > 0 && Number(v) >= 1);
+      req("f-towel-sets", "towel-sets", v => v.length > 0 && Number(v) >= 1);
+      reqRadio("f-washer", "washer");
+    }
+
+    if (n === 9) {
+      reqRadio("f-billing-responsible", "billing");
+      const billingVal = document.querySelector('input[name="billing"]:checked');
+      if (billingVal && billingVal.value === "Other") {
+        req("f-billing-name",  "billing-name",  v => v.length > 0);
+        req("f-billing-email", "billing-email", v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v));
+      }
+    }
+
+    return valid;
+  }
+
+  function nextStep() {
+    if (!validateSection(current)) return;
+    if (current < TOTAL) {
+      current++;
+      showSection(current);
+      updateProgress();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function prevStep() {
+    if (current > 1) {
+      current--;
+      showSection(current);
+      updateProgress();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  async function submitForm() {
+    if (!validateSection(current)) return;
+
+    const btn = document.getElementById("btnSubmit");
+    btn.textContent = "Sending...";
+    btn.disabled = true;
+
+    const rules   = [...document.querySelectorAll('input[name="rules"]:checked')].map(i => i.value);
+    const reports = [...document.querySelectorAll('input[name="reports"]:checked')].map(i => i.value);
+
+    const payload = {
+      "First Name":            document.getElementById("first-name").value,
+      "Last Name":             document.getElementById("last-name").value,
+      "Owner Email":           document.getElementById("email").value,
+      "Owner Phone":           document.getElementById("phone").value,
+      "Preferred Contact":     document.querySelector('input[name="contact-pref"]:checked')?.value,
+      "Emergency Contact Name":  document.getElementById("emergency-name").value,
+      "Emergency Contact Phone": document.getElementById("emergency-phone").value,
+      "Property Address":      document.getElementById("address").value,
+      "Property Type":         document.getElementById("prop-type").value,
+      "Bedrooms":              document.getElementById("bedrooms").value,
+      "Bathrooms":             document.getElementById("bathrooms").value,
+      "Square Footage":        document.getElementById("sqft").value,
+      "Storage Room":          document.querySelector('input[name="storage"]:checked')?.value,
+      "On Airbnb":             document.querySelector('input[name="on-airbnb"]:checked')?.value,
+      "Airbnb Listing URL":    document.getElementById("airbnb-url").value,
+      "Available Months":      [...selectedMonths].join(", "),
+      "Access Method":         document.querySelector('input[name="access-method"]:checked')?.value,
+      "Access Code/Instructions": document.getElementById("access-code").value,
+      "Parking Instructions":  document.getElementById("parking").value,
+      "Building Entry Notes":  document.getElementById("building-entry").value,
+      "Cleaner Type":          document.querySelector('input[name="cleaner-type"]:checked')?.value,
+      "Own Cleaner Name":      document.getElementById("cleaner-name").value,
+      "Own Cleaner Contact":   document.getElementById("cleaner-contact").value,
+      "Checkout Time":         document.getElementById("checkout-time").value,
+      "Check-in Time":         document.getElementById("checkin-time").value,
+      "Buffer Time":           document.getElementById("buffer-time").value,
+      "Bed Sets per Bedroom":  document.getElementById("bed-sets").value,
+      "Towel Sets per Bathroom": document.getElementById("towel-sets").value,
+      "Washer/Dryer On-site":  document.querySelector('input[name="washer"]:checked')?.value,
+      "Washer/Dryer Location": document.getElementById("washer-location").value,
+      "Linen Storage Location":document.getElementById("linen-storage").value,
+      "Guest Rules":           rules.join("; "),
+      "Quiet Hours Start":     document.getElementById("quiet-start").value,
+      "Quiet Hours End":       document.getElementById("quiet-end").value,
+      "Additional Guest Rules":document.getElementById("extra-rules").value,
+      "Invoice Responsibility":document.querySelector('input[name="billing"]:checked')?.value,
+      "Billing Contact Name":  document.getElementById("billing-name").value,
+      "Billing Contact Email": document.getElementById("billing-email").value,
+      "Monthly Report Items":  reports.join("; "),
+      "Report Notes":          document.getElementById("report-notes").value,
+      "Additional Notes":      document.getElementById("additional-notes").value,
+    };
+
+    try {
+      const res = await fetch("https://formspree.io/f/maqarkde", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (res.ok) {
+        document.querySelectorAll(".section").forEach(s => s.style.display = "none");
+        document.getElementById("success").style.display = "block";
+        document.getElementById("nav").style.display = "none";
+        fillEl.style.width = "100%";
+        document.querySelectorAll(".step-dot").forEach(d => d.className = "step-dot done");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        throw new Error("Status " + res.status + ": " + (json.error || JSON.stringify(json)));
+      }
+    } catch (e) {
+      btn.textContent = "Submit →";
+      btn.disabled = false;
+      alert("Something went wrong: " + e.message);
+    }
+  }
+
+  updateProgress();
+</script>
+</body>
+</html>
