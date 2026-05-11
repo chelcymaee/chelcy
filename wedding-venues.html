@@ -8,7 +8,7 @@
     :root {
       --cream:#FAF6F0; --blush:#E8C4B8; --rose:#C4796A; --gold:#B8964E;
       --gold-light:#D4AF6A; --emerald:#2D5016; --charcoal:#2C2C2C;
-      --white:#FFFFFF; --grey:#8A8A8A; --wa:#25D366;
+      --white:#FFFFFF; --grey:#8A8A8A;
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html{scroll-behavior:smooth}
@@ -66,14 +66,29 @@
     .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 14px;border-radius:10px;font-size:.78rem;font-family:sans-serif;font-weight:600;letter-spacing:.5px;text-decoration:none;transition:all .22s;cursor:pointer;border:none;white-space:nowrap}
     .btn svg{width:16px;height:16px;flex-shrink:0}
-    .btn-wa{background:var(--wa);color:var(--white)}
-    .btn-wa:hover{background:#1ebe5a;transform:translateY(-2px);box-shadow:0 6px 20px rgba(37,211,102,.35)}
     .btn-email{background:var(--gold);color:var(--white)}
     .btn-email:hover{background:var(--gold-light);transform:translateY(-2px);box-shadow:0 6px 20px rgba(184,150,78,.35)}
     .btn-phone{background:var(--rose);color:var(--white)}
     .btn-phone:hover{background:#d08070;transform:translateY(-2px);box-shadow:0 6px 20px rgba(196,121,106,.35)}
-    .btn-web{background:transparent;color:var(--emerald);border:1.5px solid var(--emerald)}
+    .btn-web{background:transparent;color:var(--emerald);border:1.5px solid var(--emerald);width:100%}
     .btn-web:hover{background:var(--emerald);color:var(--white);transform:translateY(-2px)}
+
+    /* EMAIL MODAL */
+    #email-modal{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+    #email-modal.open{opacity:1;pointer-events:all}
+    .email-modal-box{background:var(--white);border-radius:20px;padding:32px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);transform:translateY(20px);transition:transform .25s}
+    #email-modal.open .email-modal-box{transform:translateY(0)}
+    .modal-eyebrow{font-family:sans-serif;font-size:.68rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+    .modal-name{font-size:1.15rem;font-weight:400;margin-bottom:20px}
+    .modal-addr-row{background:var(--cream);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid rgba(184,150,78,.2)}
+    .modal-addr{font-family:sans-serif;font-size:.88rem;color:var(--charcoal);word-break:break-all;flex:1}
+    .copy-btn{flex-shrink:0;padding:6px 14px;border-radius:8px;background:var(--gold);color:var(--white);border:none;font-family:sans-serif;font-size:.75rem;font-weight:600;cursor:pointer;transition:background .2s;white-space:nowrap}
+    .copy-btn:hover{background:var(--gold-light)}
+    .copy-btn.copied{background:var(--emerald)}
+    .modal-open-mail{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;background:var(--gold);color:var(--white);font-family:sans-serif;font-size:.85rem;font-weight:600;text-decoration:none;margin-bottom:10px;transition:background .2s}
+    .modal-open-mail:hover{background:var(--gold-light)}
+    .modal-close{width:100%;padding:11px;border-radius:12px;background:transparent;border:1.5px solid rgba(0,0,0,.12);font-family:sans-serif;font-size:.82rem;color:var(--grey);cursor:pointer;transition:all .2s}
+    .modal-close:hover{border-color:var(--charcoal);color:var(--charcoal)}
 
     /* FOOTER */
     footer{background:var(--charcoal);color:rgba(255,255,255,.6);text-align:center;padding:36px 20px;font-family:sans-serif;font-size:.8rem;line-height:1.8}
@@ -153,6 +168,23 @@
   <p style="margin-top:8px">Please verify all contact details directly with each venue before your visit. &nbsp;|&nbsp; <a href="portfolio.html">Back to Portfolio</a></p>
 </footer>
 
+<!-- EMAIL MODAL -->
+<div id="email-modal" role="dialog" aria-modal="true" aria-label="Email venue">
+  <div class="email-modal-box">
+    <p class="modal-eyebrow">Email this venue</p>
+    <h3 class="modal-name" id="modal-venue-name"></h3>
+    <div class="modal-addr-row">
+      <span class="modal-addr" id="modal-email-addr"></span>
+      <button class="copy-btn" id="copy-btn" onclick="copyEmail()">Copy</button>
+    </div>
+    <a class="modal-open-mail" id="modal-mailto" href="#">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      Open in Mail App
+    </a>
+    <button class="modal-close" onclick="closeEmailModal()">Close</button>
+  </div>
+</div>
+
 <!-- CHATBOT -->
 <button id="chat-fab" aria-label="Open chat">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
@@ -182,7 +214,6 @@
   <symbol id="ico-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.81 19.79 19.79 0 01.07 2.18 2 2 0 012.06 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></symbol>
   <symbol id="ico-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></symbol>
   <symbol id="ico-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
-  <symbol id="ico-wa" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12.004c0 1.794.468 3.476 1.28 4.943L2 22l5.235-1.261A9.964 9.964 0 0012.004 22C17.53 22 22 17.523 22 11.996 22 6.477 17.53 2 12.004 2z"/></symbol>
 </svg>
 
 <script>
@@ -323,9 +354,6 @@ const VENUES = [
 ];
 
 // ── RENDER CARDS ────────────────────────────────────────────────────────────
-function waMsg(name) {
-  return encodeURIComponent(`Hi! I'm interested in ${name} as a wedding venue. Could you please share details about availability and packages? Thank you!`);
-}
 function emailHref(email, name) {
   const subj = encodeURIComponent(`Wedding Venue Enquiry – ${name}`);
   const body = encodeURIComponent(`Hi,\n\nI am interested in ${name} as a potential wedding venue and would love to arrange a viewing.\n\nCould you please share information about:\n• Availability\n• Packages and pricing\n• Guest capacity\n\nThank you!`);
@@ -356,24 +384,47 @@ VENUES.forEach(v => {
     </div>
     <div class="card-actions">
       <div class="btn-row">
-        <a class="btn btn-wa" href="https://wa.me/${v.wa}?text=${waMsg(v.name)}" target="_blank" rel="noopener">
-          ${svgUse('ico-wa')} WhatsApp
-        </a>
-        <a class="btn btn-email" href="${emailHref(v.email, v.name)}">
+        <button class="btn btn-email" onclick="openEmailModal('${v.email.replace(/'/g,"\\'")}','${v.name.replace(/'/g,"\\'").replace(/&amp;/g,'&')}','${emailHref(v.email,v.name).replace(/'/g,"\\'")}')">
           ${svgUse('ico-mail')} Email
-        </a>
-      </div>
-      <div class="btn-row">
+        </button>
         <a class="btn btn-phone" href="tel:${v.phone.replace(/\s/g,'')}">
           ${svgUse('ico-phone')} ${v.phone}
         </a>
-        <a class="btn btn-web" href="${v.website}" target="_blank" rel="noopener">
-          ${svgUse('ico-globe')} Website
-        </a>
       </div>
+      <a class="btn btn-web" href="${v.website}" target="_blank" rel="noopener">
+        ${svgUse('ico-globe')} Visit Website
+      </a>
     </div>`;
   grid.appendChild(card);
 });
+
+// ── EMAIL MODAL ─────────────────────────────────────────────────────────────
+const emailModal = document.getElementById('email-modal');
+
+function openEmailModal(email, name, href) {
+  document.getElementById('modal-venue-name').textContent = name;
+  document.getElementById('modal-email-addr').textContent = email;
+  document.getElementById('modal-mailto').href = href;
+  document.getElementById('copy-btn').textContent = 'Copy';
+  document.getElementById('copy-btn').classList.remove('copied');
+  emailModal.classList.add('open');
+}
+
+function closeEmailModal(e) {
+  if (!e || e.target === emailModal) emailModal.classList.remove('open');
+}
+
+function copyEmail() {
+  const addr = document.getElementById('modal-email-addr').textContent;
+  navigator.clipboard.writeText(addr).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+emailModal.addEventListener('click', closeEmailModal);
 
 // ── FILTER ──────────────────────────────────────────────────────────────────
 document.querySelectorAll('.filter-btn').forEach(btn => {
