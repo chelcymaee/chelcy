@@ -127,7 +127,46 @@
     .chat-send:hover{background:var(--gold-light)}
     .chat-send svg{width:16px;height:16px;color:var(--white)}
 
-    @media(max-width:500px){.venues-grid{grid-template-columns:1fr;gap:24px;padding:0 16px}.btn-row{grid-template-columns:1fr}.card-img-wrap{height:220px}#chat-window{width:calc(100vw - 20px);right:10px;bottom:90px}}
+    /* DINING PANEL */
+    .dining-toggle{width:100%;padding:10px 26px;background:none;border:none;border-top:1px solid rgba(0,0,0,.06);color:var(--gold);font-family:sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:between;gap:6px;letter-spacing:.5px;transition:background .2s}
+    .dining-toggle:hover{background:rgba(184,150,78,.05)}
+    .dining-toggle .arrow{margin-left:auto;transition:transform .25s;font-size:10px}
+    .dining-panel{display:none;padding:0 26px 20px;background:rgba(250,246,240,.6)}
+    .dining-panel.open{display:block}
+    .dining-row{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.05);font-family:sans-serif;font-size:.8rem}
+    .dining-row:last-child{border-bottom:none}
+    .dining-label{color:var(--gold);font-weight:700;min-width:68px;flex-shrink:0}
+    .dining-detail{color:#555;line-height:1.5}
+
+    /* SHORTLIST */
+    .shortlist-section{max-width:1300px;margin:0 auto 80px;padding:0 24px}
+    .shortlist-header{text-align:center;padding:20px 0 30px}
+    .shortlist-header h2{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:400;margin-bottom:10px}
+    .shortlist-header p{font-family:sans-serif;font-size:.88rem;color:var(--grey)}
+    .shortlist-empty{text-align:center;padding:40px;font-family:sans-serif;font-size:.9rem;color:var(--grey);background:var(--white);border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+    .shortlist-cards{display:flex;flex-direction:column;gap:16px}
+    .sl-card{background:var(--white);border-radius:16px;padding:20px 22px;box-shadow:0 2px 16px rgba(0,0,0,.07);display:flex;flex-direction:column;gap:10px}
+    .sl-card-top{display:flex;align-items:center;gap:14px}
+    .sl-thumb{width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0}
+    .sl-info{flex:1}
+    .sl-info strong{display:block;font-size:1rem;font-weight:400;margin-bottom:2px}
+    .sl-info span{font-family:sans-serif;font-size:.75rem;color:var(--grey)}
+    .sl-remove{background:none;border:none;cursor:pointer;color:var(--grey);font-size:18px;padding:4px;flex-shrink:0;transition:color .2s}
+    .sl-remove:hover{color:var(--rose)}
+    .sl-contacted-row{display:flex;align-items:center;gap:10px;font-family:sans-serif;font-size:.8rem}
+    .sl-contacted-row label{color:var(--charcoal);cursor:pointer;display:flex;align-items:center;gap:6px}
+    .sl-contacted-row input[type=checkbox]{accent-color:var(--emerald);width:16px;height:16px;cursor:pointer}
+    .sl-contacted-badge{display:none;background:rgba(45,80,22,.1);color:var(--emerald);font-size:.7rem;padding:3px 10px;border-radius:50px;font-weight:600}
+    .sl-notes{width:100%;border:1.5px solid rgba(184,150,78,.25);border-radius:10px;padding:10px 14px;font-family:sans-serif;font-size:.83rem;resize:vertical;min-height:70px;outline:none;background:var(--cream);color:var(--charcoal);transition:border-color .2s}
+    .sl-notes:focus{border-color:var(--gold)}
+    .sl-notes::placeholder{color:var(--grey)}
+
+    /* SHORTLIST TOGGLE BUTTON ON CARD */
+    .btn-shortlist{background:transparent;color:var(--grey);border:1.5px solid rgba(0,0,0,.1);font-size:.73rem;padding:8px 12px;gap:5px;width:100%;margin-top:6px;border-radius:10px}
+    .btn-shortlist:hover{border-color:var(--gold);color:var(--gold)}
+    .btn-shortlist.in-list{background:rgba(184,150,78,.08);color:var(--gold);border-color:var(--gold)}
+
+    @media(max-width:500px){.venues-grid{grid-template-columns:1fr;gap:24px;padding:0 16px}.btn-row{grid-template-columns:1fr}.card-img-wrap{height:220px}#chat-window{width:calc(100vw - 20px);right:10px;bottom:90px}.shortlist-section{padding:0 16px}}
   </style>
 </head>
 <body>
@@ -162,6 +201,18 @@
 </div>
 
 <div class="venues-grid" id="venues-grid"></div>
+
+<!-- MY SHORTLIST SECTION -->
+<div class="shortlist-section" id="shortlist-section">
+  <div class="shortlist-header">
+    <div class="divider" style="margin-bottom:24px"></div>
+    <p class="eyebrow" style="font-family:sans-serif;font-size:.7rem;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:10px">My Wedding Research</p>
+    <h2>My Shortlist &amp; Notes</h2>
+    <p>Save venues you love, mark which ones you've contacted, and jot down your own notes.</p>
+  </div>
+  <div class="shortlist-empty" id="shortlist-empty">Tap the <strong style="color:var(--gold)">Save to Shortlist</strong> button on any venue card to add it here.</div>
+  <div class="shortlist-cards" id="shortlist-cards"></div>
+</div>
 
 <footer>
   <p>Prepared for <strong style="color:var(--gold-light)">Regan</strong> &nbsp;·&nbsp; Mountain Oasis by Chelcy</p>
@@ -222,133 +273,277 @@ const VENUES = [
   {
     name:'Babylonstoren', region:'Franschhoek', regionKey:'franschhoek',
     location:'Simondium Road, Franschhoek', capacity:120, tier:'Luxury',
-    phone:'+27 21 863 3852', wa:'27218633852', email:'info@babylonstoren.com',
+    phone:'+27 21 863 3852', email:'info@babylonstoren.com',
     website:'https://www.babylonstoren.com', websiteLabel:'babylonstoren.com',
     img:'https://images.unsplash.com/photo-1559825481-12a05cc00344?w=800&q=80',
     contactRole:'Weddings & Events Team',
     desc:'One of the most photographed farms in South Africa — a 200-year-old Cape Dutch estate surrounded by lush gardens, mountain views and world-class hospitality.',
-    features:['cape dutch','gardens','mountain views','historic','intimate'],
+    accom:'Yes — 16 beautiful farm suites and cottages on the estate. Perfect for the bridal party and close family to stay on-site.',
+    catering:'Farm-to-table dining using produce straight from their world-famous garden. Menus are bespoke and designed seasonally — expect fresh breads, garden salads, slow-roasted meats and decadent desserts. Estate wine pairings are exceptional. They can cater intimate sit-down dinners or elegant cocktail-style receptions.',
+    outdoor:'Yes — outdoor ceremonies are one of Babylonstoren\'s highlights. Vineyard lawns, rose gardens and the orchard are all magical settings. Indoor backup available for wet weather.',
+    distance:'About 75 km from Cape Town city — roughly 1 hour\'s drive via the N1.',
+    photoNote:'The gardens, Cape Dutch whitewashed walls, vineyard rows and mountain backdrop make every shot extraordinary. Golden hour here is unreal.',
+    style:'Romantic, whimsical, garden-fairy-tale. Historic charm meets lush natural beauty.',
+    dining:[
+      {title:'Style', detail:'Farm-to-table, seasonal, locally sourced'},
+      {title:'Options', detail:'Plated sit-down dinner, cocktail & canapé reception, long-table garden feast'},
+      {title:'Diet', detail:'Vegetarian, vegan and dietary requirements accommodated on request'},
+      {title:'Wine', detail:'Award-winning Babylonstoren estate wines — pairing menu available'},
+      {title:'Extras', detail:'Private cellar dinner, garden breakfast for bridal party, picnic hampers'}
+    ],
     keywords:['babylonstoren','babylon']
   },
   {
     name:'Boschendal Wine Estate', region:'Franschhoek', regionKey:'franschhoek',
     location:'Groot Drakenstein, Franschhoek Valley', capacity:200, tier:'Luxury',
-    phone:'+27 21 870 4210', wa:'27218704210', email:'events@boschendal.com',
+    phone:'+27 21 870 4210', email:'events@boschendal.com',
     website:'https://www.boschendal.com', websiteLabel:'boschendal.com',
     img:'https://images.unsplash.com/photo-1504215680853-026ed2a45def?w=800&q=80',
     contactRole:'Events & Weddings Team',
     desc:'A legendary 330-year-old wine estate set against the Drakenstein Mountains. The manor house, barrel cellar and vineyard lawns create an incomparable backdrop.',
-    features:['cape dutch','mountain views','historic','vineyards','large'],
+    accom:'Yes — farmstead cottages and manor suites on the estate. Multiple accommodation options for different budgets and group sizes.',
+    catering:'Boschendal is famous for its Long Table lunches. Wedding packages include bespoke sit-down dinners, cocktail receptions and feasting-style options. Their chefs work with seasonal farm produce and the estate\'s heritage recipes. Outstanding bread, charcuterie, roasts and Cape-inspired desserts.',
+    outdoor:'Yes — the vineyard lawn, oak avenue and manor house gardens are superb outdoor ceremony settings. Wet-weather marquee and indoor options available.',
+    distance:'About 75 km from Cape Town city — roughly 1 hour via the N1 or R45.',
+    photoNote:'The iconic oak avenue, white-gabled manor and rows of vines are world-famous backdrops. Truly timeless photography.',
+    style:'Grand, historic, farm-estate elegance. Classic Cape Winelands at its finest.',
+    dining:[
+      {title:'Style', detail:'Contemporary farm cuisine with Cape heritage influences'},
+      {title:'Options', detail:'Long-table feast, plated sit-down dinner, cocktail & canapé reception, buffet'},
+      {title:'Diet', detail:'Full dietary requirements catered for including halal, vegetarian and vegan'},
+      {title:'Wine', detail:'Extensive Boschendal estate wine list — cellar tastings and pairing available'},
+      {title:'Extras', detail:'Bespoke menu design with head chef, cheese & charcuterie boards, wine cellar dinner'}
+    ],
     keywords:['boschendal','boschendale']
   },
   {
     name:'Delaire Graff Estate', region:'Stellenbosch', regionKey:'stellenbosch',
     location:'Helshoogte Pass, Stellenbosch', capacity:160, tier:'Ultra Luxury',
-    phone:'+27 21 885 8160', wa:'27218858160', email:'weddings@delaire.co.za',
+    phone:'+27 21 885 8160', email:'weddings@delaire.co.za',
     website:'https://www.delaire.co.za', websiteLabel:'delaire.co.za',
     img:'https://images.unsplash.com/photo-1510076857177-7470076d4098?w=800&q=80',
     contactRole:'Weddings & Events Team',
     desc:'Perched on the Helshoogte Pass with panoramic valley views, this world-class estate blends fine art, fine wine and breathtaking scenery for an unforgettable celebration.',
-    features:['panoramic views','mountain views','art','modern','vineyards'],
+    accom:'Yes — 5 exclusive luxury lodges on the estate, plus 2 owner lodges. Ultra-private, with personal butler service.',
+    catering:'Two acclaimed restaurants: the Delaire Graff Restaurant (fine dining) and Indochine (pan-Asian fusion). Wedding menus are custom-designed with the executive chef — multi-course tasting menus, cocktail receptions and gala dinners. The wine pairing from their boutique cellar is extraordinary.',
+    outdoor:'Yes — terraces and lawn areas with sweeping valley views. The outdoor ceremony setting with the Stellenbosch Valley below is breathtaking. Indoor venue available as backup.',
+    distance:'About 45 km from Cape Town — roughly 40–45 minutes via the N2 to Stellenbosch.',
+    photoNote:'The hilltop panorama of the Stellenbosch Valley, vineyards and mountains is one of the most dramatic wedding photography settings in South Africa.',
+    style:'Ultra-sophisticated, art-house luxury. Fine art meets fine wine — the pinnacle of Stellenbosch elegance.',
+    dining:[
+      {title:'Style', detail:'Fine dining & pan-Asian fusion (Indochine restaurant on-site)'},
+      {title:'Options', detail:'Multi-course tasting menu, gala dinner, cocktail reception, champagne breakfast'},
+      {title:'Diet', detail:'Full dietary accommodations — speak to their chef team when enquiring'},
+      {title:'Wine', detail:'Boutique Delaire Graff estate wines — sommelier-led pairing menus'},
+      {title:'Extras', detail:'Private cellar dinner, art gallery evening reception, butler service for bridal suite'}
+    ],
     keywords:['delaire','graff','delaire graff']
   },
   {
     name:'Grande Provence Heritage Wine Estate', region:'Franschhoek', regionKey:'franschhoek',
     location:'Main Road, Franschhoek', capacity:100, tier:'Luxury',
-    phone:'+27 21 876 8600', wa:'27218768600', email:'weddings@grandeprovence.co.za',
+    phone:'+27 21 876 8600', email:'weddings@grandeprovence.co.za',
     website:'https://www.grandeprovence.co.za', websiteLabel:'grandeprovence.co.za',
     img:'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800&q=80',
     contactRole:'Wedding Coordinator',
     desc:'An intimate and romantic Cape Dutch manor at the heart of Franschhoek village. Oak-lined grounds, an art gallery and private cottages make this an exceptionally romantic venue.',
-    features:['cape dutch','intimate','romantic','gardens','historic'],
+    accom:'Yes — private cottages and owner\'s rooms on the estate. Intimate and exclusive. Walking distance to the village for guests in nearby guesthouses.',
+    catering:'The restaurant at Grande Provence is celebrated in Franschhoek. Bespoke wedding menus focus on seasonal, locally sourced ingredients. Elegant plated dinners, cocktail-style receptions and intimate garden feasts — all with outstanding estate wine pairing.',
+    outdoor:'Yes — the oak-shaded manor grounds and rose gardens are beautiful for outdoor ceremonies. Intimate and lush. Indoor options available in the manor house.',
+    distance:'About 75 km from Cape Town — roughly 1 hour. Right in Franschhoek village, walking distance to restaurants and accommodation.',
+    photoNote:'Golden oak light, French-style rose gardens, Cape Dutch whitewash and vineyard backdrop — every corner is a perfect frame.',
+    style:'Intimate, romantic, French-provincial elegance. Perfect for smaller, deeply personal weddings.',
+    dining:[
+      {title:'Style', detail:'Contemporary fine dining with French and Cape influences'},
+      {title:'Options', detail:'Plated dinner, cocktail reception, garden feast, intimate long-table lunch'},
+      {title:'Diet', detail:'Vegetarian, vegan and all dietary needs accommodated with advance notice'},
+      {title:'Wine', detail:'Grande Provence estate wines — wine pairing menus available'},
+      {title:'Extras', detail:'Art gallery evening, private wine tasting for bridal party, cheese course add-ons'}
+    ],
     keywords:['grande provence','grandeprovence','provence']
   },
   {
     name:'Lanzerac Wine Estate', region:'Stellenbosch', regionKey:'stellenbosch',
     location:'Jonkershoek Valley, Stellenbosch', capacity:180, tier:'Premium',
-    phone:'+27 21 887 1132', wa:'27218871132', email:'weddings@lanzerac.co.za',
+    phone:'+27 21 887 1132', email:'weddings@lanzerac.co.za',
     website:'https://www.lanzerac.co.za', websiteLabel:'lanzerac.co.za',
     img:'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
     contactRole:'Events & Weddings Team',
     desc:'A 300-year-old wine estate and 5-star hotel tucked into the Jonkershoek Valley. Historic Cape Dutch architecture, sprawling gardens and a mountain backdrop — pure romance.',
-    features:['cape dutch','mountain views','5-star hotel','historic','gardens'],
+    accom:'Yes — full 5-star hotel with 54 rooms and suites on the estate. From classic rooms to grand suites, your whole wedding party can stay on-site.',
+    catering:'The Lanzerac Restaurant is a full 5-star dining experience. Wedding packages offer multiple menu styles — plated dinners, cocktail receptions, buffets and bespoke tasting menus. Known for exceptional Cape cuisine and outstanding estate wine service.',
+    outdoor:'Yes — the estate gardens, vineyard terraces and mountain-view lawns are perfect for outdoor ceremonies. The setting against the Jonkershoek mountains is spectacular. Indoor ballroom available.',
+    distance:'About 45 km from Cape Town — roughly 40–45 minutes via the N2.',
+    photoNote:'300-year-old estate gardens, vine-covered walls, mountain backdrop and a 5-star hotel make for incredibly rich, varied photography settings.',
+    style:'Grand, historic, timeless. Classic Cape Winelands 5-star romance — never goes out of fashion.',
+    dining:[
+      {title:'Style', detail:'5-star Cape cuisine with contemporary influences'},
+      {title:'Options', detail:'Plated sit-down dinner, cocktail & canapé reception, buffet, bespoke tasting menu'},
+      {title:'Diet', detail:'Full dietary requirements catered for — discuss with their team when booking'},
+      {title:'Wine', detail:'Extensive Lanzerac estate wine list with optional sommelier-guided pairing'},
+      {title:'Extras', detail:'Private cellar dinner, wine tasting for bridal party, next-morning champagne breakfast'}
+    ],
     keywords:['lanzerac']
   },
   {
     name:'Cavalli Estate', region:'Somerset West', regionKey:'somerset-west',
     location:'Vlottenburg Road, Somerset West', capacity:250, tier:'Luxury',
-    phone:'+27 21 858 1345', wa:'27218581345', email:'functions@cavalliestate.com',
+    phone:'+27 21 858 1345', email:'functions@cavalliestate.com',
     website:'https://www.cavalliestate.com', websiteLabel:'cavalliestate.com',
     img:'https://images.unsplash.com/photo-1535168384730-dba8f31e82d0?w=800&q=80',
     contactRole:'Weddings & Events Team',
     desc:'A strikingly modern wine estate home to thoroughbred horses, sculptural architecture and sweeping vineyard views — an unparalleled blend of contemporary luxury and natural beauty.',
-    features:['modern','contemporary','large','vineyards','horses'],
+    accom:'No on-site hotel, but several excellent guesthouses and hotels are within 10 minutes in Somerset West and the Helderberg area.',
+    catering:'The Cavalli Restaurant is one of the finest in Somerset West. Wedding packages offer tailored menus designed with their chef — from elegant plated dinners to cocktail-style receptions. Sophisticated, modern cuisine paired with their estate wines.',
+    outdoor:'Yes — the estate offers outdoor ceremony options on vineyard-view terraces and lawns. The contemporary architecture makes an incredible backdrop. Indoor function venues available.',
+    distance:'About 45 km from Cape Town — roughly 40 minutes via the N2. One of the most accessible wine estate venues.',
+    photoNote:'Thoroughbred horses, striking modern sculpture, rolling vineyards and contemporary architecture create unique, show-stopping photography unlike any other venue.',
+    style:'Bold, modern, contemporary luxury. Dramatic and unique — great for couples who want something different.',
+    dining:[
+      {title:'Style', detail:'Modern fine dining with international influences'},
+      {title:'Options', detail:'Plated dinner, cocktail & canapé reception, bespoke banquet menu'},
+      {title:'Diet', detail:'Vegetarian, vegan, halal and all dietary requirements accommodated'},
+      {title:'Wine', detail:'Cavalli estate wines — wine pairing available with wedding packages'},
+      {title:'Extras', detail:'Horse experience for guests, cocktail hour on vineyard terrace, private chef table'}
+    ],
     keywords:['cavalli','cavali']
   },
   {
     name:'Waterkloof Wine Estate', region:'Somerset West', regionKey:'somerset-west',
     location:"Sir Lowry's Pass Village Road, Somerset West", capacity:150, tier:'Premium',
-    phone:'+27 21 858 1491', wa:'27218581491', email:'restaurant@waterkloofwines.co.za',
+    phone:'+27 21 858 1491', email:'restaurant@waterkloofwines.co.za',
     website:'https://www.waterkloofwines.co.za', websiteLabel:'waterkloofwines.co.za',
     img:'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80',
     contactRole:'Events Coordinator',
-    desc:'Dramatically positioned on a hillside overlooking False Bay, Waterkloof\'s glass-and-steel cellar and sweeping ocean views create an awe-inspiring venue with both soul and spectacle.',
-    features:['ocean views','sea views','modern','panoramic','false bay'],
+    desc:"Dramatically positioned on a hillside overlooking False Bay, Waterkloof's glass-and-steel cellar and sweeping ocean views create an awe-inspiring venue with both soul and spectacle.",
+    accom:'No on-site accommodation. Somerset West and the Helderberg area have excellent guesthouses and hotels nearby.',
+    catering:'The Waterkloof Restaurant is renowned for its biodynamic and sustainable cuisine — one of the most forward-thinking kitchens in the Winelands. Wedding menus are bespoke and creative, always pairing beautifully with their acclaimed biodynamic wines.',
+    outdoor:'Yes — the sweeping terrace overlooks False Bay and is one of the most dramatic outdoor ceremony settings in South Africa. Glass-enclosed indoor venue available as backup.',
+    distance:'About 45 km from Cape Town — roughly 40 minutes via the N2.',
+    photoNote:'The glass-and-steel architecture perched on the hillside with False Bay in the background is unlike anywhere else — jaw-dropping photography, especially at sunset.',
+    style:'Dramatic, modern, architectural. Perfect for couples who love bold design and ocean views.',
+    dining:[
+      {title:'Style', detail:'Biodynamic, sustainable, farm-to-fork fine dining'},
+      {title:'Options', detail:'Plated dinner, cocktail reception, tasting menu with wine pairing'},
+      {title:'Diet', detail:'Vegetarian and vegan menus available — biodynamic ethos means fresh, natural ingredients'},
+      {title:'Wine', detail:'Award-winning Waterkloof biodynamic wines — guided pairing a highlight'},
+      {title:'Extras', detail:'Sunset cocktail hour on the ocean-view terrace, private winemaker dinner'}
+    ],
     keywords:['waterkloof']
   },
   {
     name:'The Twelve Apostles Hotel & Spa', region:'Cape Town', regionKey:'cape-town',
     location:'Victoria Road, Camps Bay, Cape Town', capacity:120, tier:'Ultra Luxury',
-    phone:'+27 21 437 9000', wa:'27214379000', email:'reservations@12apostles.co.za',
+    phone:'+27 21 437 9000', email:'reservations@12apostles.co.za',
     website:'https://www.12apostleshotel.com', websiteLabel:'12apostleshotel.com',
     img:'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=800&q=80',
     contactRole:'Wedding Sales Team',
     desc:'Nestled between the Twelve Apostles mountain range and the Atlantic Ocean, this iconic 5-star hotel offers movie-set glamour with sea views, fynbos gardens and world-renowned hospitality.',
-    features:['ocean views','mountain views','5-star hotel','sea views','atlantic ocean','camps bay'],
+    accom:'Yes — full 5-star hotel with 70 ocean-facing rooms and suites. Every room has a mountain or ocean view. Ideal for destination weddings.',
+    catering:'The Azure Restaurant is award-winning. Wedding packages include fine dining sit-down dinners, cocktail receptions and dedicated event catering by their acclaimed kitchen team. Ocean views while you dine are unforgettable.',
+    outdoor:'Yes — fynbos gardens and mountain-view terraces for outdoor ceremonies, with the Atlantic as backdrop. Indoor function rooms for wet weather.',
+    distance:'Right in Cape Town — about 15 minutes from the city centre along the Atlantic Seaboard.',
+    photoNote:'The combination of mountain, Atlantic Ocean and fynbos creates truly cinematic wedding photography. Sunset here is world-famous.',
+    style:'Iconic 5-star glamour. Hollywood-level drama with fynbos charm — timeless and breathtaking.',
+    dining:[
+      {title:'Style', detail:'5-star contemporary cuisine with international influences (Azure Restaurant)'},
+      {title:'Options', detail:'Plated dinner, cocktail & canapé reception, seated banquet, bespoke tasting menu'},
+      {title:'Diet', detail:'Full dietary requirements accommodated — halal, kosher by arrangement, vegan, gluten-free'},
+      {title:'Wine', detail:'Extensive Winelands wine list plus full bar service with bespoke cocktail options'},
+      {title:'Extras', detail:'Helicopter arrival, spa day for bridal party, champagne on the terrace at sunset'}
+    ],
     keywords:['twelve apostles','12 apostles','twelve apostle','apostles']
   },
   {
     name:'Grande Roche Hotel', region:'Paarl', regionKey:'paarl',
     location:'Plantasie Street, Paarl', capacity:130, tier:'Luxury',
-    phone:'+27 21 863 2727', wa:'27218632727', email:'reservations@granderoche.com',
+    phone:'+27 21 863 2727', email:'reservations@granderoche.com',
     website:'https://www.granderoche.com', websiteLabel:'granderoche.com',
     img:'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80',
     contactRole:'Events & Weddings Team',
     desc:'A timeless 5-star manor set among vineyards on the slopes of Paarl Mountain. Manicured gardens, Cape Dutch architecture and a romantic wine cellar create an heirloom wedding experience.',
-    features:['cape dutch','vineyards','5-star hotel','mountain','gardens'],
+    accom:'Yes — 34 luxury suites spread across the estate. A true destination wedding hotel — your guests sleep, celebrate and wake up in the same magical place.',
+    catering:"Bosman's Restaurant at Grande Roche is one of the Cape's great restaurants. Wedding packages offer bespoke menus — from elegant plated dinners to cocktail receptions in the wine cellar. Outstanding Cape cuisine with exceptional wine service.",
+    outdoor:'Yes — manicured gardens on the mountain slope are beautiful for outdoor ceremonies. Wisteria-covered walkways, rose beds and vineyard views. Indoor venue for wet weather.',
+    distance:'About 60 km from Cape Town — roughly 50 minutes via the N1.',
+    photoNote:"The rose gardens, historic Cape Dutch buildings, vine-covered walls and Paarl Mountain backdrop make for deeply romantic, timeless photography.",
+    style:'Old-world grandeur, timeless manor elegance. Feels like a private estate in Provence — secluded and romantic.',
+    dining:[
+      {title:'Style', detail:"Fine dining Cape cuisine (Bosman's Restaurant — one of SA's top rated)"},
+      {title:'Options', detail:'Plated dinner, cocktail reception, wine cellar dinner, garden feast'},
+      {title:'Diet', detail:'All dietary requirements accommodated with advance notice'},
+      {title:'Wine', detail:'Exceptional Cape wine list — private wine cellar available for exclusive dinner'},
+      {title:'Extras', detail:'Wine cellar candlelit dinner, rose garden cocktail hour, estate wine tasting'}
+    ],
     keywords:['grande roche','granderoche']
   },
   {
     name:'One&Only Cape Town', region:'Cape Town', regionKey:'cape-town',
     location:'V&A Waterfront, Cape Town', capacity:300, tier:'Ultra Luxury',
-    phone:'+27 21 431 5888', wa:'27214315888', email:'capetown.events@oneandonlyresorts.com',
+    phone:'+27 21 431 5888', email:'capetown.events@oneandonlyresorts.com',
     website:'https://www.oneandonlyresorts.com/cape-town', websiteLabel:'oneandonlyresorts.com',
     img:'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80',
     contactRole:'Events & Catering Team',
-    desc:'Set on its own private island in the V&A Waterfront Marina with Table Mountain as a backdrop. Unmatched city glamour, Nobu dining and bespoke event spaces for the ultimate urban wedding.',
-    features:['waterfront','table mountain','city','large','marina','urban'],
+    desc:"Set on its own private island in the V&A Waterfront Marina with Table Mountain as a backdrop. Unmatched city glamour, Nobu dining and bespoke event spaces for the ultimate urban wedding.",
+    accom:'Yes — 131 rooms and suites including a private island suite. Full 5-star hotel with every luxury imaginable.',
+    catering:'Nobu Cape Town is right on the estate — Japanese fusion by the legendary Nobu Matsuhisa. Wedding packages can include Nobu menus or their dedicated Events Kitchen for more traditional styles. The most glamorous catering option on this list.',
+    outdoor:'Yes — marina-side terraces, rooftop spaces and garden areas with Table Mountain views. Stunning outdoor ceremony options in the heart of Cape Town.',
+    distance:'Right in the V&A Waterfront — 5 minutes from Cape Town city centre.',
+    photoNote:'Private island setting with Table Mountain, the Marina and the city skyline as your backdrop. Unmatched urban wedding photography.',
+    style:'Ultimate urban luxury. International glamour, world-class service, iconic Cape Town setting.',
+    dining:[
+      {title:'Style', detail:'Nobu Japanese fusion + bespoke event menus (international fine dining)'},
+      {title:'Options', detail:'Nobu tasting menu, plated gala dinner, cocktail reception, champagne brunch'},
+      {title:'Diet', detail:'Comprehensive dietary accommodations — full kosher, halal, vegan, gluten-free available'},
+      {title:'Wine', detail:'World-class international and Cape wine list — full sommelier service'},
+      {title:'Extras', detail:'Nobu sushi station, sake pairing, private island cocktail hour, helicopter transfers'}
+    ],
     keywords:['one and only','one&only','oneandonly','one only']
   },
   {
     name:'Lourensford Wine Estate', region:'Somerset West', regionKey:'somerset-west',
     location:'Lourensford Road, Somerset West', capacity:500, tier:'Premium',
-    phone:'+27 21 847 2333', wa:'27218472333', email:'events@lourensford.co.za',
+    phone:'+27 21 847 2333', email:'events@lourensford.co.za',
     website:'https://www.lourensford.co.za', websiteLabel:'lourensford.co.za',
     img:'https://images.unsplash.com/photo-1561731216-c3a4d99437d5?w=800&q=80',
     contactRole:'Events & Weddings Team',
     desc:'One of the largest wine farms in the Cape Winelands with multiple event venues set among 4,000 hectares of fynbos, forest and vineyards at the foot of the Hottentots Holland Mountains.',
-    features:['large','mountain views','vineyards','fynbos','forest','biggest'],
+    accom:'No on-site hotel, but Somerset West has excellent nearby accommodation options and the estate can recommend partners.',
+    catering:'The Millhouse Kitchen on the estate is popular and relaxed. Wedding catering is flexible — from informal feasts to elegant banquets. Ideal for large groups who want great food without the ultra-premium price tag. Estate wine service available.',
+    outdoor:'Yes — multiple outdoor ceremony options across 4,000 hectares. Forest clearings, vineyard terraces, fynbos meadows. Huge variety of outdoor settings.',
+    distance:'About 45 km from Cape Town — roughly 40 minutes via the N2.',
+    photoNote:'4,000 hectares of diverse landscape — vineyards, fynbos, forest and mountain give endless photography variety. Great for adventurous couples.',
+    style:'Natural, sprawling, big-hearted. Best for large celebrations with a relaxed, joyful feel.',
+    dining:[
+      {title:'Style', detail:'Relaxed farm dining to elegant banquet — flexible to your brief'},
+      {title:'Options', detail:'Plated dinner, buffet feast, cocktail reception, outdoor braai, spit-roast'},
+      {title:'Diet', detail:'All dietary requirements accommodated — great for diverse large guest lists'},
+      {title:'Wine', detail:'Lourensford estate wines — excellent value wine packages for large groups'},
+      {title:'Extras', detail:'Forest picnic for the bridal party, wine tasting experience, beer garden option'}
+    ],
     keywords:['lourensford']
   },
   {
     name:'Rickety Bridge Winery', region:'Franschhoek', regionKey:'franschhoek',
     location:'Franschhoek Valley, Franschhoek', capacity:120, tier:'Premium',
-    phone:'+27 21 876 2129', wa:'27218762129', email:'events@ricketybridgewinery.com',
+    phone:'+27 21 876 2129', email:'events@ricketybridgewinery.com',
     website:'https://www.ricketybridgewinery.com', websiteLabel:'ricketybridgewinery.com',
     img:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
     contactRole:'Events Coordinator',
     desc:'A charming 18th-century wine estate in the heart of the Franschhoek Valley, with a restored manor house, mountain streams, elegant cottages and award-winning wines.',
-    features:['historic','intimate','manor','cottages','streams','romantic'],
+    accom:'Yes — restored manor house and garden cottages on the estate. A lovely, intimate option for the bridal party to stay together.',
+    catering:'Bespoke wedding menus focused on farm-fresh, seasonal Franschhoek ingredients. The kitchen is known for quality and care — think slow-roasted lamb, fresh garden salads and outstanding desserts. Paired with their acclaimed estate wines for a truly memorable meal.',
+    outdoor:'Yes — the garden, mountain stream banks and vineyard lawns are dreamy for outdoor ceremonies. One of the most romantic outdoor settings in Franschhoek. Indoor manor house available.',
+    distance:'About 75 km from Cape Town — roughly 1 hour, right in the Franschhoek Valley.',
+    photoNote:"Mountain streams, rose gardens, vineyard rows, the restored manor house and the Franschhoek Valley backdrop make for deeply romantic, storybook photography.",
+    style:'Charming, romantic, storybook cottage. Feels like stepping into a fairy tale — warm, intimate and beautiful.',
+    dining:[
+      {title:'Style', detail:'Farm-fresh, seasonal Cape cuisine with French Franschhoek influences'},
+      {title:'Options', detail:'Plated dinner, cocktail & canapé reception, garden long-table feast'},
+      {title:'Diet', detail:'Vegetarian and dietary requirements accommodated with advance notice'},
+      {title:'Wine', detail:'Rickety Bridge award-winning estate wines — wine pairing menus available'},
+      {title:'Extras', detail:'Cellar tour & tasting, stream-side cocktail hour, cottage breakfast for bridal party'}
+    ],
     keywords:['rickety bridge','rickety','ricketybridge']
   }
 ];
@@ -362,7 +557,7 @@ function emailHref(email, name) {
 const svgUse = id => `<svg><use href="#${id}"/></svg>`;
 
 const grid = document.getElementById('venues-grid');
-VENUES.forEach(v => {
+VENUES.forEach((v, i) => {
   const card = document.createElement('div');
   card.className = 'venue-card';
   card.dataset.region = v.regionKey;
@@ -382,6 +577,12 @@ VENUES.forEach(v => {
         <span>${v.email}</span>
       </div>
     </div>
+    <button class="dining-toggle" onclick="toggleDining(this)" aria-expanded="false">
+      🍽 Dining &amp; Catering Details <span class="arrow">▼</span>
+    </button>
+    <div class="dining-panel">
+      ${v.dining.map(d=>`<div class="dining-row"><span class="dining-label">${d.title}</span><span class="dining-detail">${d.detail}</span></div>`).join('')}
+    </div>
     <div class="card-actions">
       <div class="btn-row">
         <button class="btn btn-email" onclick="openEmailModal('${v.email.replace(/'/g,"\\'")}','${v.name.replace(/'/g,"\\'").replace(/&amp;/g,'&')}','${emailHref(v.email,v.name).replace(/'/g,"\\'")}')">
@@ -394,6 +595,9 @@ VENUES.forEach(v => {
       <a class="btn btn-web" href="${v.website}" target="_blank" rel="noopener">
         ${svgUse('ico-globe')} Visit Website
       </a>
+      <button class="btn btn-shortlist" id="sl-btn-${i}" onclick="toggleShortlist(${i})">
+        ♡ Save to Shortlist
+      </button>
     </div>`;
   grid.appendChild(card);
 });
@@ -437,6 +641,76 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
     });
   });
 });
+
+// ── DINING TOGGLE ────────────────────────────────────────────────────────────
+function toggleDining(btn) {
+  const panel = btn.nextElementSibling;
+  const open = panel.classList.toggle('open');
+  btn.querySelector('.arrow').textContent = open ? '▲' : '▼';
+  btn.setAttribute('aria-expanded', open);
+}
+
+// ── SHORTLIST ────────────────────────────────────────────────────────────────
+let shortlist = JSON.parse(localStorage.getItem('regan_shortlist') || '{}');
+
+function saveShortlist() { localStorage.setItem('regan_shortlist', JSON.stringify(shortlist)); }
+
+function toggleShortlist(idx) {
+  if (shortlist[idx]) { delete shortlist[idx]; } else { shortlist[idx] = { contacted: false, notes: '' }; }
+  saveShortlist();
+  refreshShortlistButtons();
+  renderShortlist();
+}
+
+function refreshShortlistButtons() {
+  VENUES.forEach((v, i) => {
+    const btn = document.getElementById(`sl-btn-${i}`);
+    if (!btn) return;
+    if (shortlist[i]) { btn.textContent = '♥ Saved to Shortlist'; btn.classList.add('in-list'); }
+    else { btn.textContent = '♡ Save to Shortlist'; btn.classList.remove('in-list'); }
+  });
+}
+
+function renderShortlist() {
+  const container = document.getElementById('shortlist-cards');
+  const empty = document.getElementById('shortlist-empty');
+  const keys = Object.keys(shortlist);
+  if (!keys.length) { container.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  container.innerHTML = keys.map(idx => {
+    const v = VENUES[idx];
+    const data = shortlist[idx];
+    return `<div class="sl-card" id="slc-${idx}">
+      <div class="sl-card-top">
+        <img class="sl-thumb" src="${v.img}" alt="${v.name}"/>
+        <div class="sl-info">
+          <strong>${v.name}</strong>
+          <span>${v.region} · Up to ${v.capacity} guests · ${v.tier}</span>
+        </div>
+        <button class="sl-remove" onclick="toggleShortlist(${idx})" title="Remove">✕</button>
+      </div>
+      <div class="sl-contacted-row">
+        <label>
+          <input type="checkbox" ${data.contacted?'checked':''} onchange="setContacted(${idx},this.checked)"/>
+          I've contacted this venue
+        </label>
+        ${data.contacted?'<span class="sl-contacted-badge" style="display:inline-block">✓ Contacted</span>':'<span class="sl-contacted-badge" id="badge-'+idx+'">✓ Contacted</span>'}
+      </div>
+      <textarea class="sl-notes" placeholder="Add your notes — first impressions, pricing discussed, viewing date, anything you want to remember…" oninput="setNotes(${idx},this.value)">${data.notes||''}</textarea>
+    </div>`;
+  }).join('');
+}
+
+function setContacted(idx, val) {
+  if (shortlist[idx]) { shortlist[idx].contacted = val; saveShortlist(); renderShortlist(); }
+}
+function setNotes(idx, val) {
+  if (shortlist[idx]) { shortlist[idx].notes = val; saveShortlist(); }
+}
+
+// Init shortlist on load
+refreshShortlistButtons();
+renderShortlist();
 
 // ── CHATBOT ─────────────────────────────────────────────────────────────────
 const fab = document.getElementById('chat-fab');
@@ -489,99 +763,205 @@ function respond(text) {
 function getResponse(raw) {
   const q = raw.toLowerCase().trim();
 
-  if (/^(hi|hello|hey|howzit|hola|good morning|good afternoon|good evening)\b/.test(q))
-    return "Hello! I'm your Wedding Venue Concierge 💍 I know everything about all 12 venues. Ask me about capacity, location, contact details, features — or just type a venue name!";
+  // ── Greetings ──
+  if (/^(hi|hello|hey|howzit|hola|sup|good morning|good afternoon|good evening)\b/.test(q))
+    return "Hello Regan! 💍 I'm your personal venue concierge. Ask me absolutely anything — capacity, distance, accommodation, food, photos, style, seasons, specific venue info — I'm here to help you find your perfect wedding venue!";
 
-  if (q === 'help' || q === '?' || /what can you|how can you/.test(q))
-    return "I can help you with:\n• Info about any of the 12 venues\n• **Venues by region** (Cape Town, Stellenbosch, Franschhoek, Paarl, Somerset West)\n• **Venues by guest capacity**\n• **Contact details** (phone, email, WhatsApp)\n• Special features like ocean views, Cape Dutch architecture, modern or intimate settings\n\nJust ask!";
+  // ── Farewells ──
+  if (/\b(bye|goodbye|see you|ciao|cheers|ttyl)\b/.test(q))
+    return "Goodbye! Best of luck finding your dream venue — wishing you the most beautiful wedding day. 🥂";
 
-  if (/all venue|list all|show all|every venue/.test(q))
-    return `All **12 venues** featured:\n${VENUES.map(v=>`• **${v.name}** (${v.region})`).join('\n')}`;
+  // ── Thanks ──
+  if (/\b(thank|thanks|thx|ty|cheers|great|perfect|awesome|wonderful|love it|amazing|helpful)\b/.test(q))
+    return "You're so welcome! Come back anytime — I'm here whenever you have more questions. Wishing you a magical wedding day! 💍";
 
-  // Specific venue match
+  // ── Help ──
+  if (/^(\?|help)$|what can you (do|help|answer)|how (do|can) you (work|help)/.test(q))
+    return "I can answer almost anything about these 12 venues! Try asking me:\n\n• \"Which venue is most romantic?\"\n• \"Do any venues have accommodation?\"\n• \"How far is Franschhoek from Cape Town?\"\n• \"What's the best season to get married?\"\n• \"Which venues are good for photos?\"\n• \"Tell me about Babylonstoren\"\n• \"What's the difference between Boschendal and Babylonstoren?\"\n• \"Which venue fits 200 guests?\"\n• \"What food do they serve?\"\n\nJust type anything — I'll do my best!";
+
+  // ── List all ──
+  if (/all venue|list all|show all|every venue|how many venue/.test(q))
+    return `All **12 venues** featured:\n${VENUES.map(v=>`• **${v.name}** — ${v.region} (${v.tier})`).join('\n')}`;
+
+  // ── Specific venue match — check first ──
   for (const v of VENUES) {
     if (v.keywords.some(k => q.includes(k))) {
-      if (/phone|call|number|tel/.test(q))
-        return `📞 **${v.name}** phone: **${v.phone}**\nTap the pink phone button on their card to call directly!`;
-      if (/email|mail/.test(q))
-        return `📧 Email **${v.name}** at **${v.email}**\nTap the gold Email button — it opens your mail app with a pre-written enquiry ready to send!`;
-      if (/whatsapp|whats app|wa /.test(q))
-        return `💬 WhatsApp **${v.name}** on **${v.phone}**\nTap the green WhatsApp button — it opens with a pre-written message ready to go!`;
-      if (/capacity|guest|people|how many|fit|hold/.test(q))
+      if (/phone|call|number|ring|telephone/.test(q))
+        return `📞 **${v.name}** — ${v.phone}\nTap the phone button on their card to call directly!`;
+      if (/email|mail|contact|reach|get in touch|enquire|enquiry/.test(q))
+        return `📧 **${v.name}** — ${v.email}\nTap the Email button on their card — a popup will show the address with a Copy button and an Open in Mail App link!`;
+      if (/capacity|guest|people|how many|fit|hold|accommodate|seats|tables/.test(q))
         return `**${v.name}** can accommodate up to **${v.capacity} guests**.`;
-      if (/where|location|address|area/.test(q))
-        return `📍 **${v.name}** is located at ${v.location}.`;
-      if (/website|site|web|link/.test(q))
-        return `🌐 Visit **${v.name}** at **${v.websiteLabel}** — tap the Website button on their card!`;
-      if (/contact|book|enquire|enquiry|viewing|visit|tour/.test(q))
-        return `To contact **${v.name}**:\n📞 ${v.phone}\n📧 ${v.email}\n\nUse the buttons on their card to call, WhatsApp or email them directly with a pre-written enquiry!`;
-      if (/price|cost|tier|budget|afford|expensive/.test(q))
-        return `**${v.name}** is classified as **${v.tier}**. For exact pricing, contact them directly using the buttons on their card.`;
-      return `**${v.name}** (${v.region})\n\n${v.desc}\n\n📍 ${v.location}\n👥 Up to ${v.capacity} guests · ${v.tier}\n📞 ${v.phone}\n📧 ${v.email}`;
+      if (/where|location|address|situated|find|directions|gps/.test(q))
+        return `📍 **${v.name}** is at ${v.location}.`;
+      if (/website|site|web|link|online|url/.test(q))
+        return `🌐 **${v.name}**: **${v.websiteLabel}** — tap the Visit Website button on their card!`;
+      if (/price|cost|tier|budget|afford|expensive|rate|package|fee/.test(q))
+        return `**${v.name}** is classified as **${v.tier}**. They don't publish exact pricing publicly — tap the Email or Phone button on their card to request a quote.`;
+      if (/book|viewing|visit|tour|see|arrange|appointment|schedule/.test(q))
+        return `To book a viewing at **${v.name}**:\n📞 Call: ${v.phone}\n📧 Email: ${v.email}\n\nUse the buttons on their card — the Email button opens with a pre-written viewing request already typed up!`;
+      if (/stay|overnight|accommodation|room|hotel|suite|sleep|bridal suite|lodge/.test(q))
+        return `**${v.name}** — accommodation info:\n${v.accom}\n\nContact them directly to check availability around your wedding date.`;
+      if (/food|eat|catering|menu|chef|restaurant|dinner|lunch|meal|cuisine|cater/.test(q))
+        return `**${v.name}** — food & catering:\n${v.catering}`;
+      if (/outdoor|outside|garden|open air|alfresco|lawn|terrace|ceremony outside/.test(q))
+        return `**${v.name}** — outdoor options:\n${v.outdoor}`;
+      if (/far|distance|drive|long|travel|get there|directions|km|hour|close|near/.test(q))
+        return `**${v.name}** (${v.region}) — ${v.distance}`;
+      if (/wine|tasting|cellar|vineyard|harvest|winery/.test(q))
+        return `**${v.name}** is a working wine estate — you can expect beautiful vineyards as a backdrop, wine tasting experiences, and exceptional estate wines served at your wedding. Contact them about wine pairing packages!`;
+      if (/photo|photograph|picture|backdrop|scenic|instagram|beautiful|view|camera|shoot/.test(q))
+        return `**${v.name}** is stunning for photos! ${v.photoNote}`;
+      if (/style|vibe|feel|aesthetic|theme|romantic|rustic|elegant|modern|classic/.test(q))
+        return `**${v.name}** style: ${v.style}`;
+      // General info fallback
+      return `**${v.name}** (${v.region})\n\n${v.desc}\n\n📍 ${v.location}\n👥 Up to ${v.capacity} guests · ${v.tier}\n📞 ${v.phone}\n📧 ${v.email}\n\nAsk me anything more specific about this venue!`;
     }
   }
 
-  // Region queries
-  const regionMap = {
-    'franschhoek': 'franschhoek',
-    'stellenbosch': 'stellenbosch',
-    'cape town': 'cape-town', 'capetown': 'cape-town',
-    'paarl': 'paarl',
-    'somerset west': 'somerset-west', 'somerset': 'somerset-west'
-  };
+  // ── Region queries ──
+  const regionMap = {'franschhoek':'franschhoek','stellenbosch':'stellenbosch','cape town':'cape-town','capetown':'cape-town','paarl':'paarl','somerset west':'somerset-west','somerset':'somerset-west'};
   for (const [word, key] of Object.entries(regionMap)) {
     if (q.includes(word)) {
       const list = VENUES.filter(v => v.regionKey === key);
-      return `Venues in **${list[0].region}**:\n${list.map(v=>`• **${v.name}** — up to ${v.capacity} guests`).join('\n')}`;
+      return `Venues in **${list[0].region}**:\n${list.map(v=>`• **${v.name}** — up to ${v.capacity} guests (${v.tier})`).join('\n')}\n\nAsk me about any of these for more details!`;
     }
   }
 
-  // Capacity queries
-  const gm = q.match(/(\d+)\s*(guests?|people|persons?|pax)/);
-  if (gm) {
+  // ── Guest count with number ──
+  const gm = q.match(/(\d+)\s*(guests?|people|persons?|pax|heads?)?/);
+  if (gm && parseInt(gm[1]) > 20 && /guest|people|person|pax|head|capacity|fit|hold|seat|accommodate/.test(q)) {
     const n = parseInt(gm[1]);
     const suitable = VENUES.filter(v => v.capacity >= n);
-    if (!suitable.length) return `No venues on our list can fit ${n} guests. The largest is **Lourensford Wine Estate** at 500 guests.`;
-    return `Venues for **${n}+ guests**:\n${suitable.sort((a,b)=>a.capacity-b.capacity).map(v=>`• **${v.name}** — up to ${v.capacity}`).join('\n')}`;
+    if (!suitable.length) return `No venues on our list can accommodate ${n} guests — the largest is **Lourensford Wine Estate** at 500 guests.`;
+    return `Venues that can fit **${n}+ guests**:\n${suitable.sort((a,b)=>a.capacity-b.capacity).map(v=>`• **${v.name}** — up to ${v.capacity} guests`).join('\n')}`;
   }
 
-  if (/large|big wedding|big event|lots of guest|many guest/.test(q)) {
+  // ── Accommodation ──
+  if (/\b(stay|stayed|overnight|accommodation|accommodat|room|rooms|suite|sleep|lodge|hotel on site|on.?site)\b/.test(q)) {
+    return "Venues with **on-site accommodation**:\n• **Babylonstoren** — 16 beautiful farm suites on the estate\n• **Boschendal** — farmstead cottages and manor suites\n• **Delaire Graff Estate** — 5 luxury lodges on the hillside\n• **Grande Provence** — private owner's cottage and rooms\n• **Lanzerac** — full 5-star hotel with 54 rooms on the estate\n• **The Twelve Apostles Hotel & Spa** — 70 ocean-facing rooms\n• **Grande Roche Hotel** — 34 luxury suites on the estate\n• **One&Only Cape Town** — 131 rooms and suites\n• **Rickety Bridge** — restored manor house cottages\n\nThese are perfect if you want your bridal party and guests staying all in one magical place!";
+  }
+
+  // ── Bridal suite ──
+  if (/bridal suite|honeymoon suite|getting ready|bride room/.test(q))
+    return "Most of our venues offer a dedicated **bridal suite** or getting-ready room. Venues with on-site accommodation (like Babylonstoren, Lanzerac, Delaire Graff, Twelve Apostles, One&Only and Grande Roche) are especially great for this — you can get ready in your room and stay the night after your wedding. Contact the specific venue to ask about their bridal suite arrangements!";
+
+  // ── Distance / travel ──
+  if (/how far|distance|how long|drive|km|hour|close|near|get there|travel|from cape town/.test(q)) {
+    if (/franschhoek/.test(q)) return "Franschhoek is about **75 km** from Cape Town city — roughly **1 hour's drive** along the N1 or the beautiful R45. The mountain pass scenery on the way is absolutely stunning.";
+    if (/stellenbosch/.test(q)) return "Stellenbosch is about **45 km** from Cape Town city — roughly **40–45 minutes** via the N2. It's the closest major wine region to the city.";
+    if (/somerset|somerset west/.test(q)) return "Somerset West is about **45 km** from Cape Town — roughly **40 minutes** via the N2. Very accessible for Cape Town-based guests.";
+    if (/paarl/.test(q)) return "Paarl is about **60 km** from Cape Town — roughly **50 minutes** via the N1. A beautiful drive through the winelands.";
+    return "Here's how far each region is from **Cape Town city**:\n\n• **Cape Town venues** (Twelve Apostles, One&Only) — right in the city!\n• **Stellenbosch** — ~45 km, about 40–45 min\n• **Somerset West** — ~45 km, about 40 min\n• **Paarl** — ~60 km, about 50 min\n• **Franschhoek** — ~75 km, about 1 hour\n\nAll are a lovely scenic drive — the journey itself becomes part of the experience!";
+  }
+
+  // ── Transport / parking / shuttle ──
+  if (/parking|shuttle|transport|bus|uber|bolt|taxi|guests arriving|getting there/.test(q))
+    return "**Getting to your venue:**\n\n• All our wine estate venues have **ample parking** on site\n• Many couples arrange **shuttle buses** from Cape Town for guests — your venue can usually recommend local shuttle companies\n• **Uber and Bolt** are available in the Cape Town area but may be limited in remote wine estate areas — best to arrange shuttles for guests\n• Ask your venue coordinator for their recommended transport partners!";
+
+  // ── Food & catering ──
+  if (/food|eat|catering|menu|chef|restaurant|dinner|lunch|meal|cuisine|cater|bring.*own|own.*caterer|outside.*cater|external.*cater/.test(q)) {
+    if (/own caterer|bring.*own|outside caterer|external caterer/.test(q))
+      return "Most of the estate venues are **exclusive use** and require you to use their in-house catering team. This actually ensures top quality and seamless service on the day. Venues like **One&Only** (Nobu), **Delaire Graff** and **The Twelve Apostles** have world-class restaurants on site. If outside catering is important to you, ask the venue directly — policies vary.";
+    return "Food at Winelands weddings is generally **exceptional** — these estates take cuisine seriously. Highlights:\n\n• **One&Only Cape Town** — Nobu restaurant cuisine\n• **Delaire Graff** — fine dining with estate-paired wines\n• **The Twelve Apostles** — award-winning kitchen team\n• **Babylonstoren** — farm-to-table, using produce from their own garden\n• **Boschendal** — celebrated for their long-table feasts\n\nMost venues offer custom menu planning with their chef — contact your favourite to discuss options!";
+  }
+
+  // ── Wine ──
+  if (/\b(wine|wines|wine tasting|cellar|winery|vineyard|harvest|wine pairing|estate wine)\b/.test(q))
+    return "All 12 of our venues are either wine estates or hotel venues surrounded by vineyards! 🍷\n\nFor the **best wine reputations**:\n• **Babylonstoren** — stunning estate wines\n• **Boschendal** — one of SA's most celebrated estates\n• **Delaire Graff** — boutique, award-winning wines\n• **Rickety Bridge** — known for lovely Franschhoek wines\n• **Waterkloof** — biodynamic wines with a cult following\n\nMost venues can arrange **wine tasting** as part of your wedding experience or pre-wedding events. Ask them about wine pairing menus for your reception!";
+
+  // ── Photography ──
+  if (/photo|photograph|picture|backdrop|scenic|instagram|beautiful|camera|shoot|photogenic|best.*photos|photos.*best/.test(q))
+    return "All our venues are incredibly photogenic, but here are the **top picks for wedding photos**:\n\n📸 **Babylonstoren** — dreamy garden paths, Cape Dutch architecture & mountain backdrop\n📸 **Boschendal** — oak-lined avenues, vineyard rows, historic cellar\n📸 **Delaire Graff** — dramatic hilltop panoramas with Stellenbosch Valley below\n📸 **Waterkloof** — striking glass building with False Bay ocean views\n📸 **The Twelve Apostles** — Atlantic Ocean, fynbos and mountain in one frame\n📸 **Grande Provence** — intimate, golden, French-provincial charm\n📸 **Rickety Bridge** — romantic streams, cottage gardens and mountain backdrop\n\nYour wedding photographer will love any of these locations!";
+
+  // ── Seasons / best time ──
+  if (/best time|best month|best season|when.*get married|what month|what time|season|summer|winter|spring|autumn|rain|weather|hot|cold|cape.*weather/.test(q))
+    return "**Best time to get married in Cape Town & the Winelands:**\n\n🌸 **September – November (Spring)** — wildflowers, lush vineyards, mild temps. Beautiful!\n☀️ **December – February (Summer)** — warm and sunny, peak season, vineyards in full leaf. Most popular!\n🍂 **March – May (Autumn)** — harvest season! Golden vineyards, slightly cooler, stunning colours\n🌧️ **June – August (Winter)** — rainy season. Not ideal for outdoor ceremonies, but some venues offer beautiful indoor winter weddings at lower prices\n\nThe **sweet spot** is **October–April** for outdoor vineyard weddings. December and January book up very fast — start enquiring 12–18 months in advance for those dates!";
+
+  // ── How far in advance / booking ──
+  if (/how.*advance|when.*book|how early|how soon|lead time|availability|busy|popular date/.test(q))
+    return "**When to book your venue:**\n\n⏰ For **popular summer dates** (Dec–Feb), book **12–18 months** in advance — these go very fast!\n📅 For **spring and autumn** dates, **9–12 months** ahead is advisable\n🌧️ **Winter** (Jun–Aug) dates are easier to get and often come with better pricing\n\nI'd recommend contacting your top 2–3 venues now to check availability for your preferred date. Use the Email or Phone buttons on each card — the sooner the better!";
+
+  // ── Style / vibe ──
+  if (/romantic|most romantic|romance/.test(q))
+    return "**Most romantic venues:**\n\n💕 **Grande Provence** — intimate, candlelit, French-manor charm in the heart of Franschhoek\n💕 **Rickety Bridge** — cascading streams, rose gardens, cosy cottages\n💕 **Babylonstoren** — whimsical garden paths, golden light, mountain views\n💕 **Lanzerac** — historic estate, vine-covered walls, pure old-world romance\n💕 **Grande Roche** — secluded Paarl mountain setting, timeless elegance";
+
+  if (/rustic|farm|farmhouse|country|barn/.test(q))
+    return "**Best rustic / farm-style venues:**\n\n🌾 **Babylonstoren** — a working 200-year-old farm with beautiful gardens\n🌾 **Rickety Bridge** — charming winery with a homely, romantic feel\n🌾 **Boschendal** — historic farm estate with a relaxed, grand-country feel\n🌾 **Lourensford** — sprawling 4,000 hectare farm with multiple rustic venue spaces";
+
+  if (/modern|contemporary|sleek|architectural|design|art/.test(q))
+    return "**Best modern & contemporary venues:**\n\n🏛️ **Cavalli Estate** — striking sculptural architecture and art\n🏛️ **Delaire Graff Estate** — world-class art collection, ultra-modern design\n🏛️ **Waterkloof Wine Estate** — dramatic glass-and-steel gravity-flow cellar\n🏛️ **One&Only Cape Town** — sleek Marina hotel with Nobu cuisine";
+
+  if (/elegant|classic|traditional|formal|timeless/.test(q))
+    return "**Best elegant & classic venues:**\n\n✨ **Lanzerac Wine Estate** — 5-star hotel, timeless Cape Dutch grandeur\n✨ **Grande Roche Hotel** — old-world manor elegance in Paarl\n✨ **The Twelve Apostles** — iconic 5-star hotel, effortlessly glamorous\n✨ **One&Only Cape Town** — ultimate urban luxury\n✨ **Delaire Graff Estate** — refined opulence on a hilltop";
+
+  if (/garden|outdoor|open air|alfresco|nature|greenery/.test(q))
+    return "**Best garden & outdoor venues:**\n\n🌿 **Babylonstoren** — world-famous gardens, one of SA's most beautiful\n🌿 **Boschendal** — magnificent oak-lined grounds and vineyard lawns\n🌿 **Grande Provence** — romantic oak-shaded estate grounds\n🌿 **Grande Roche Hotel** — manicured gardens on Paarl Mountain slopes\n🌿 **Lanzerac** — sprawling estate gardens in Jonkershoek Valley";
+
+  if (/boho|bohemian|festival|free spirit|eclectic/.test(q))
+    return "For a **boho / free-spirited** wedding, look at:\n\n🌸 **Rickety Bridge** — relaxed, whimsical winery setting\n🌸 **Babylonstoren** — magical gardens perfect for a boho aesthetic\n🌸 **Lourensford** — sprawling farm with multiple rustic outdoor spaces\n\nThese venues are flexible and their natural settings lend themselves beautifully to a boho theme!";
+
+  if (/city|urban|waterfront|cape town based|city wedding/.test(q))
+    return "For a **city or waterfront wedding** right in Cape Town:\n\n🏙️ **One&Only Cape Town** — private island in the V&A Waterfront Marina, Table Mountain backdrop, Nobu dining\n🏔️ **The Twelve Apostles Hotel & Spa** — Camps Bay, Atlantic Ocean meets the mountains\n\nBoth are ultra-luxury and ideal if you want a world-class city setting rather than the winelands!";
+
+  // ── Outdoor ceremonies ──
+  if (/outdoor ceremony|outside ceremony|garden ceremony|ceremony outside|ceremony.*outdoor|outdoor.*wedding|what if it rain|rain plan|weather plan/.test(q))
+    return "**Outdoor ceremonies** are one of the highlights of a Winelands wedding! 🌿\n\nVirtually all our venues offer outdoor ceremony options — vineyard settings, garden lawns, terraces and mountain-view decks.\n\n**Wet weather contingency:** All good venues have an indoor backup plan in case of rain. When you do your venue viewing, always ask: *\"What's your wet-weather plan?\"* — they should have a beautiful indoor space ready.\n\nThe best months for guaranteed outdoor weather are **October to April**.";
+
+  // ── Kids ──
+  if (/kid|child|children|family friendly|baby|babies|little one/.test(q))
+    return "Most of our venues welcome children at weddings, though it's always worth confirming specific policies when you enquire. \n\n**Best venues for family-friendly weddings:**\n• **Babylonstoren** — the gardens are magical for children\n• **Lourensford** — sprawling farm estate, lots of space to roam\n• **Boschendal** — large grounds, relaxed atmosphere\n\nFor venues like **One&Only** or **Delaire Graff** (ultra-luxury), confirm their child policy when you enquire.";
+
+  // ── Comparison queries ──
+  if (/difference between|compare|vs\.?|versus|or.*which|which.*better/.test(q)) {
+    let mentioned = VENUES.filter(v => v.keywords.some(k => q.includes(k)));
+    if (mentioned.length >= 2) {
+      const [a, b] = mentioned;
+      return `**${a.name} vs ${b.name}**\n\n**${a.name}** (${a.region})\n${a.desc}\n👥 Up to ${a.capacity} guests · ${a.tier}\n\n**${b.name}** (${b.region})\n${b.desc}\n👥 Up to ${b.capacity} guests · ${b.tier}\n\nBoth are stunning — the choice often comes down to guest numbers, location preference and overall vibe. Would you like to know more about either one?`;
+    }
+  }
+
+  // ── Recommendations ──
+  if (/recommend|suggest|which.*choose|help me decide|can't decide|what.*best|where.*should|which.*would you|your favourite|your pick/.test(q))
+    return "Happy to help you decide! 😊 To point you in the right direction, it helps to know:\n\n1. **How many guests** are you expecting?\n2. **Which vibe** speaks to you — romantic & historic, modern & sleek, garden & outdoors, or city luxury?\n3. **Do you need on-site accommodation** for yourself and guests?\n4. **Which area** appeals — Franschhoek, Stellenbosch, Somerset West, Paarl, or Cape Town?\n\nJust tell me any of the above and I'll narrow it down for you!";
+
+  // ── Size ──
+  if (/large|big wedding|big event|lots of guest|many guest|big crowd/.test(q))
     return `Best venues for **larger weddings** (200+ guests):\n${VENUES.filter(v=>v.capacity>=200).sort((a,b)=>b.capacity-a.capacity).map(v=>`• **${v.name}** — up to ${v.capacity} guests`).join('\n')}`;
-  }
 
-  if (/small|intimate|cozy|private|less than 100|just us/.test(q)) {
+  if (/small|intimate|cozy|private|just family|small group|less than 100/.test(q))
     return `Best **intimate venues** (up to 120 guests):\n${VENUES.filter(v=>v.capacity<=120).sort((a,b)=>a.capacity-b.capacity).map(v=>`• **${v.name}** — up to ${v.capacity} guests`).join('\n')}`;
-  }
 
-  // Feature queries
+  // ── Views ──
   if (/ocean|sea view|beach|atlantic|false bay|water view/.test(q))
-    return "Venues with **ocean or sea views**:\n• **Waterkloof Wine Estate** — sweeping False Bay panorama\n• **The Twelve Apostles Hotel & Spa** — Atlantic Ocean & mountain views\n• **One&Only Cape Town** — Table Mountain & Marina views";
+    return "Venues with **ocean or sea views**:\n• **Waterkloof Wine Estate** — sweeping False Bay panorama from the hillside\n• **The Twelve Apostles Hotel & Spa** — Atlantic Ocean meets the mountain range\n• **One&Only Cape Town** — Table Mountain & V&A Marina views";
 
-  if (/mountain view|panoram/.test(q))
-    return "Venues with stunning **mountain views**:\n• **Babylonstoren** — Franschhoek mountains\n• **Boschendal** — Drakenstein Mountains\n• **Delaire Graff Estate** — Helshoogte Pass panorama\n• **Lanzerac** — Jonkershoek Valley\n• **Lourensford** — Hottentots Holland mountains";
+  if (/mountain|panoram|view|scenery|landscape/.test(q))
+    return "Venues with stunning **mountain & vineyard views**:\n• **Babylonstoren** — Franschhoek mountain range\n• **Boschendal** — Drakenstein Mountains backdrop\n• **Delaire Graff** — Helshoogte Pass panorama, most dramatic views\n• **Lanzerac** — Jonkershoek Valley mountains\n• **Lourensford** — Hottentots Holland mountains\n• **Grande Roche** — Paarl Mountain slopes";
 
-  if (/cape dutch|historic|heritage|old building/.test(q))
-    return "Venues with beautiful **Cape Dutch architecture**:\n• **Babylonstoren** (200 years old)\n• **Boschendal** (330 years old)\n• **Lanzerac Wine Estate** (300 years old)\n• **Grande Provence**\n• **Grande Roche Hotel**";
+  // ── Architecture ──
+  if (/cape dutch|historic|heritage|old|white.?washed|gable|thatch/.test(q))
+    return "Venues with beautiful **Cape Dutch architecture**:\n• **Babylonstoren** — 200-year-old Cape Dutch farm\n• **Boschendal** — 330 years old, iconic white gables\n• **Lanzerac Wine Estate** — 300-year-old estate\n• **Grande Provence** — charming Cape Dutch manor\n• **Grande Roche Hotel** — historic Paarl manor";
 
-  if (/modern|contemporary|architect/.test(q))
-    return "For a **modern, contemporary** aesthetic:\n• **Cavalli Estate** — dramatic sculptural architecture\n• **Delaire Graff Estate** — modern art meets wine estate\n• **Waterkloof Wine Estate** — striking glass-and-steel cellar";
+  // ── Budget ──
+  if (/price|budget|cheap|afford|tier|cost|expensive|rate|value|package|fee/.test(q))
+    return "Our venues span three price tiers:\n\n⭐ **Premium** — Lanzerac, Waterkloof, Lourensford, Rickety Bridge\n*(Stunning quality, slightly more accessible price point)*\n\n✨ **Luxury** — Babylonstoren, Boschendal, Grande Provence, Cavalli, Grande Roche\n*(High-end, full luxury experience)*\n\n💎 **Ultra Luxury** — Delaire Graff, Twelve Apostles, One&Only\n*(World-class, the very best of everything)*\n\nNone of our venues publish exact pricing — contact them directly via the Email or Phone buttons on their cards for a quote!";
 
-  if (/price|budget|cheap|afford|tier|cost/.test(q))
-    return "Venues by price tier:\n⭐ **Premium** — Lanzerac, Waterkloof, Lourensford, Rickety Bridge\n✨ **Luxury** — Babylonstoren, Boschendal, Grande Provence, Cavalli, Grande Roche\n💎 **Ultra Luxury** — Delaire Graff, Twelve Apostles, One&Only\n\nFor exact pricing, contact each venue using the buttons on their cards.";
+  // ── Viewing / booking ──
+  if (/view|visit|tour|viewing|arrange|appointment|book.*viewing|see.*venue/.test(q))
+    return "To arrange a venue viewing:\n\n📞 Tap the **Phone** button on the card to call them directly\n📧 Tap the **Email** button — a popup opens with the address + a pre-written viewing request, just copy, paste and send!\n\nI'd recommend booking viewings at your **top 2–3 venues** on the same day if possible — it makes comparing them much easier. Which venues are you most interested in seeing?";
 
-  if (/luxury|best|top|finest|ultra/.test(q))
-    return `Our **Ultra Luxury** venues:\n${VENUES.filter(v=>v.tier==='Ultra Luxury').map(v=>`• **${v.name}** (${v.region})`).join('\n')}\n\nThese offer the very pinnacle of service, cuisine and setting.`;
+  // ── Unique / special ──
+  if (/unique|special|different|stand out|unusual|one of a kind|wow/.test(q))
+    return "For something truly **unique and show-stopping**:\n\n🐴 **Cavalli Estate** — thoroughbred horses roam the estate, striking modern sculpture\n🎨 **Delaire Graff Estate** — world-class art collection displayed throughout the venue\n🌿 **Babylonstoren** — one of SA's most magical gardens, unlike anywhere else\n🌊 **Waterkloof** — dramatic glass cellar perched on a clifftop over False Bay\n🏝️ **One&Only Cape Town** — on its own private island in the Waterfront Marina";
 
-  if (/view|visit|tour|viewing|arrange/.test(q))
-    return "To arrange a viewing:\n• Tap **WhatsApp** — opens with a pre-written enquiry message\n• Tap **Email** — opens your mail app with a ready-to-send enquiry\n• Tap **Phone** — calls the venue directly\n\nWhich venue are you thinking of visiting?";
+  // ── Most popular ──
+  if (/most popular|most booked|most famous|iconic|well known|instagram/.test(q))
+    return "The **most sought-after** venues in the Cape Winelands are:\n\n🌟 **Babylonstoren** — regularly featured in international wedding media\n🌟 **Boschendal** — one of SA's most beloved estate weddings\n🌟 **Delaire Graff** — the definition of luxury in Stellenbosch\n🌟 **The Twelve Apostles** — Cape Town's most iconic wedding hotel\n🌟 **One&Only Cape Town** — unmatched city glamour\n\nThese book up very fast — if any of these are on your list, enquire as soon as possible!";
 
-  if (/thank|thanks|great|perfect|awesome|wonderful|love it/.test(q))
-    return "You're so welcome! Wishing you the most magical wedding day. 💍 Come back anytime if you have more questions!";
-
-  if (/bye|goodbye|see you|ciao/.test(q))
-    return "Goodbye! Best of luck finding your dream venue. Wishing you a beautiful wedding! 🥂";
-
-  return "I'm not sure about that — try asking about a specific venue name, region, guest count, or features. Type **help** to see everything I can do!";
+  // ── General fallback — attempt a helpful response ──
+  const venueNames = VENUES.map(v=>v.name).join(', ');
+  return `That's a great question! I may not have the exact answer to that, but here's what I can suggest:\n\n• **Ask the venue directly** — use the Email or Phone buttons on the cards for the most accurate info\n• **Try rephrasing** — ask about a specific venue, region, style, capacity or feature\n• Our featured venues are: ${venueNames}\n\nWhat else can I help you with?`;
 }
 
 // Boot chat
