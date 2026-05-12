@@ -873,20 +873,22 @@ if (localStorage.getItem('mo_guest_registered')) {
   const statusEl = document.getElementById('form-status');
   form.addEventListener('submit', async e => {
     e.preventDefault();
+    const fd = new FormData(form);
+    const guest = { firstName: fd.get('firstName'), lastName: fd.get('lastName'), email: fd.get('email'), time: new Date().toISOString() };
+    // Always save locally so guest is never blocked
+    const all = JSON.parse(localStorage.getItem('mo_guests') || '[]');
+    all.push(guest);
+    localStorage.setItem('mo_guests', JSON.stringify(all));
+    localStorage.setItem('mo_guest_registered', '1');
     enterBtn.disabled = true;
-    enterBtn.textContent = 'Sending…';
-    statusEl.className = 'form-status'; statusEl.style.display = 'none';
-    try {
-      const res = await fetch(form.action, { method:'POST', body: new FormData(form), headers: { Accept: 'application/json' } });
-      if (res.ok) {
-        localStorage.setItem('mo_guest_registered', '1');
-        statusEl.className = 'form-status ok'; statusEl.textContent = 'Welcome! Enjoy your guide 🌊';
-        setTimeout(closeGuestModal, 1200);
-      } else { throw new Error(); }
-    } catch {
-      statusEl.className = 'form-status err'; statusEl.textContent = 'Something went wrong — please try again.';
-      enterBtn.disabled = false; enterBtn.textContent = 'Enter the Guide →';
+    enterBtn.textContent = 'Welcome! ✓';
+    statusEl.className = 'form-status ok'; statusEl.textContent = 'Welcome to Cape Town! Enjoy your guide 🌊';
+    // Also try Formspree if a real ID is configured
+    const hasFormspree = !form.action.includes('REPLACE_WITH_YOUR_FORM_ID');
+    if (hasFormspree) {
+      fetch(form.action, { method:'POST', body: fd, headers: { Accept: 'application/json' } }).catch(() => {});
     }
+    setTimeout(closeGuestModal, 1400);
   });
 }
 
