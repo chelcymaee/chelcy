@@ -159,6 +159,14 @@
     .filter-btn[data-filter="matcha"].active,.filter-btn[data-filter="matcha"]:hover{background:#2D7D3A;border-color:#2D7D3A;color:var(--white)}
     .cat-matcha{background:#2D7D3A;color:var(--white)}
 
+    /* CUISINE FILTERS */
+    .filter-btn[data-filter="sushi"].active,.filter-btn[data-filter="sushi"]:hover{background:#0E6B6B;border-color:#0E6B6B;color:var(--white)}
+    .filter-btn[data-filter="steak"].active,.filter-btn[data-filter="steak"]:hover{background:#7B2012;border-color:#7B2012;color:var(--white)}
+    .filter-btn[data-filter="seafood"].active,.filter-btn[data-filter="seafood"]:hover{background:#1A5276;border-color:#1A5276;color:var(--white)}
+    .cat-sushi{background:#0E6B6B;color:var(--white)}
+    .cat-steak{background:#7B2012;color:var(--white)}
+    .cat-seafood{background:#1A5276;color:var(--white)}
+
     /* SAVE BUTTON */
     .card-save-btn{position:absolute;top:48px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.92);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:all .2s;z-index:3;box-shadow:0 2px 8px rgba(0,0,0,.2)}
     .card-save-btn:hover{transform:scale(1.12);background:#fff}
@@ -266,6 +274,9 @@
   <button class="filter-btn active" data-filter="all">All</button>
   <button class="filter-btn" data-filter="activity">Activities</button>
   <button class="filter-btn" data-filter="restaurant">Restaurants</button>
+  <button class="filter-btn" data-filter="sushi">🍣 Sushi</button>
+  <button class="filter-btn" data-filter="steak">🥩 Steak</button>
+  <button class="filter-btn" data-filter="seafood">🐟 Seafood</button>
   <button class="filter-btn" data-filter="cafe">Cafés</button>
   <button class="filter-btn" data-filter="beach">Beaches</button>
   <button class="filter-btn" data-filter="todo">Things To Do</button>
@@ -477,9 +488,9 @@ const PLACES = [
   },
   // ── RESTAURANTS ──
   {
-    name:'The Codfather', cat:'restaurant', catLabel:'Restaurant',
+    name:'The Codfather', cat:'seafood', catLabel:'Seafood',
     location:'The Drive, Camps Bay', distance:'5 min drive',
-    price:'$$$', img:'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
+    price:'$$$', img:'https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?w=800&q=80',
     desc:"Camps Bay's legendary seafood restaurant where you choose your fresh fish and seafood by weight from the display. A Cape Town institution — simple, delicious and unforgettable.",
     tip:"Ask for the linefish of the day. Arrive early (before 7pm) or book ahead — this place is always packed. The grilled crayfish is incredible if in season.",
     phone:'+27 21 438 0782', mapUrl:'https://maps.google.com/?q=The+Codfather+Camps+Bay',
@@ -490,7 +501,7 @@ const PLACES = [
   {
     name:'Paranga Restaurant', cat:'restaurant', catLabel:'Restaurant',
     location:'The Promenade, Camps Bay', distance:'3 min drive',
-    price:'$$$', img:'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80',
+    price:'$$$', img:'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
     desc:"Right on the Camps Bay promenade with spectacular ocean views. Chic, relaxed atmosphere serving superb grills, seafood and international cuisine with the Atlantic as your backdrop.",
     tip:"Book a sunset table on the terrace — the views over Camps Bay beach at golden hour are incredible. The cocktails here are excellent.",
     phone:'+27 21 438 0404', mapUrl:'https://maps.google.com/?q=Paranga+Restaurant+Camps+Bay',
@@ -501,7 +512,7 @@ const PLACES = [
   {
     name:'La Mouette', cat:'restaurant', catLabel:'Restaurant',
     location:'78 Regent Road, Sea Point', distance:'8 min drive',
-    price:'$$$$', img:'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&q=80',
+    price:'$$$$', img:'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
     desc:"One of Cape Town's most acclaimed fine-dining restaurants in a beautiful Victorian house in Sea Point. Seasonal tasting menus with superb wine pairings — a special-occasion gem.",
     tip:"Book well in advance — this is one of the most popular fine-dining spots in Cape Town. The tasting menu with wine pairing is the way to go for a truly special evening.",
     phone:'+27 21 433 0856', mapUrl:'https://maps.google.com/?q=La+Mouette+Sea+Point',
@@ -510,9 +521,9 @@ const PLACES = [
     keywords:['la mouette','sea point','fine dining','tasting menu']
   },
   {
-    name:'Harbour House', cat:'restaurant', catLabel:'Restaurant',
+    name:'Harbour House', cat:'seafood', catLabel:'Seafood',
     location:'V&A Waterfront, Cape Town', distance:'20 min drive',
-    price:'$$$', img:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+    price:'$$$', img:'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80',
     desc:"Right on the V&A Waterfront, Harbour House serves exceptional seafood with harbour views. A Cape Town classic — the calamari, grilled fish and paella are legendary.",
     tip:"Ask for a window table overlooking the harbour. The weekend lunch is excellent value. Try the whole grilled catch of the day.",
     phone:'+27 21 418 4744', mapUrl:'https://maps.google.com/?q=Harbour+House+V%26A+Waterfront',
@@ -521,15 +532,118 @@ const PLACES = [
     keywords:['harbour house','waterfront','seafood','va waterfront']
   },
   {
-    name:'Kalky\'s', cat:'restaurant', catLabel:'Restaurant',
+    name:'Kalky\'s', cat:'seafood', catLabel:'Seafood',
     location:'Kalk Bay Harbour, Kalk Bay', distance:'35 min drive',
-    price:'$', img:'https://images.unsplash.com/photo-1561731216-c3a4d99437d5?w=800&q=80',
+    price:'$', img:'https://images.unsplash.com/photo-1606851094919-35d8943f69a2?w=800&q=80',
     desc:"The most beloved fish & chips in Cape Town — a no-frills harbour-side institution in Kalk Bay. Fresh linefish, calamari and prawns served in newspaper at plastic tables. Utterly perfect.",
     tip:"Cash only, no bookings — just join the queue, order at the counter and eat on the harbour wall watching the fishing boats. Combine with exploring Kalk Bay village. Worth every minute of the drive.",
     phone:'+27 21 788 1726', mapUrl:'https://maps.google.com/?q=Kalky\'s+Kalk+Bay',
     website:null, booking:null,
     instagram:null, menu:null,
     keywords:["kalky's","kalkys",'kalk bay','fish and chips','fish chips']
+  },
+  // ── SUSHI ──
+  {
+    name:'Willoughby & Co', cat:'sushi', catLabel:'Sushi',
+    location:'V&A Waterfront, Cape Town', distance:'20 min drive',
+    price:'$$', img:'https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=800&q=80',
+    desc:"A Cape Town institution for over 30 years — Willoughby & Co at the V&A Waterfront is the city's most beloved sushi restaurant. Famous for exceptional fresh fish, classic rolls and a buzzing harbour atmosphere.",
+    tip:"The salmon-avo hand rolls and tuna tataki are legendary. Go for an early dinner to avoid the queues — they don't take bookings. The sushi platters are incredible value.",
+    phone:'+27 21 418 6115', mapUrl:'https://maps.google.com/?q=Willoughby+and+Co+V%26A+Waterfront+Cape+Town',
+    website:'https://www.willoughbys.co.za', booking:null,
+    instagram:null, menu:'https://www.willoughbys.co.za',
+    keywords:['willoughby','willoughby and co','willoughbies','sushi','waterfront sushi','va waterfront']
+  },
+  {
+    name:'Wakame', cat:'sushi', catLabel:'Sushi',
+    location:'Corner of Beach & Surrey Roads, Sea Point', distance:'10 min drive',
+    price:'$$$', img:'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=800&q=80',
+    desc:"Cape Town's most celebrated Japanese restaurant — Wakame in Sea Point is the gold standard for sushi and Asian fusion on the Atlantic Seaboard. Stunning ocean views from the upper deck.",
+    tip:"Book the upper deck terrace for sunset — the views over the Atlantic are breathtaking. The prawn gyoza and wagyu sashimi are unmissable. Book well in advance for weekends.",
+    phone:'+27 21 433 2377', mapUrl:'https://maps.google.com/?q=Wakame+Restaurant+Sea+Point+Cape+Town',
+    website:'https://www.wakame.co.za', booking:'https://www.wakame.co.za',
+    instagram:null, menu:'https://www.wakame.co.za/menu',
+    keywords:['wakame','wakame sushi','sea point sushi','japanese','asian fusion']
+  },
+  // ── STEAK ──
+  {
+    name:"Theo's Grill & Tap", cat:'steak', catLabel:'Steak',
+    location:'148 Main Road, Sea Point', distance:'8 min drive',
+    price:'$$', img:'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=800&q=80',
+    desc:"Sea Point's legendary Greek-inspired steakhouse — Theo's has been a Cape Town institution for decades. Generous cuts, perfectly seasoned, at prices that defy the quality. Beloved by locals and visitors alike.",
+    tip:"The fillet with Theo's pepper sauce is the order. Generous portions — the mixed grill is enough for two. Arrives fast, no-fuss, always excellent. Book for weekends.",
+    phone:'+27 21 439 3494', mapUrl:'https://maps.google.com/?q=Theos+Grill+Sea+Point+Cape+Town',
+    website:null, booking:null,
+    instagram:null, menu:null,
+    keywords:["theo's","theos grill","sea point steak","greek grill","steak sea point"]
+  },
+  {
+    name:'Hussar Grill', cat:'steak', catLabel:'Steak',
+    location:'Village Square, Sea Point', distance:'9 min drive',
+    price:'$$$', img:'https://images.unsplash.com/photo-1588168333986-5078d3ae3976?w=800&q=80',
+    desc:"South Africa's iconic steakhouse brand with a prime Sea Point location. Wood-fired steaks, classic sides and a wine list that reads like a tour of the Western Cape. Proper old-school grilling excellence.",
+    tip:"The wood-fired rump with bone marrow butter is extraordinary. The Hussar platter for two is perfect for a special dinner. South African Malbec pairs beautifully with the steaks here.",
+    phone:'+27 21 433 2096', mapUrl:'https://maps.google.com/?q=Hussar+Grill+Sea+Point+Cape+Town',
+    website:'https://www.hussargrill.com', booking:'https://www.hussargrill.com/reservations',
+    instagram:null, menu:'https://www.hussargrill.com/menu',
+    keywords:['hussar grill','hussar','sea point steak','wood fired steak','steakhouse']
+  },
+  // ── SEAFOOD ──
+  {
+    name:'Baia Seafood Restaurant', cat:'seafood', catLabel:'Seafood',
+    location:'V&A Waterfront, Cape Town', distance:'20 min drive',
+    price:'$$$', img:'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800&q=80',
+    desc:"One of Cape Town's finest seafood restaurants perched above the V&A Waterfront with sweeping harbour views. Baia brings Portuguese-Italian flair to the freshest local catch — langoustines, linefish and beautiful seafood risotto.",
+    tip:"Request a window table for harbour views. The crayfish thermidor and Mozambican prawns are the showstoppers. Sunday lunch is spectacular — book well ahead.",
+    phone:'+27 21 421 0935', mapUrl:'https://maps.google.com/?q=Baia+Seafood+Restaurant+V%26A+Waterfront',
+    website:'https://www.baia.co.za', booking:'https://www.baia.co.za',
+    instagram:null, menu:'https://www.baia.co.za/menu',
+    keywords:['baia','baia seafood','waterfront seafood','portuguese seafood','langoustine']
+  },
+  {
+    name:'Sevruga', cat:'seafood', catLabel:'Seafood',
+    location:'V&A Waterfront, Cape Town', distance:'20 min drive',
+    price:'$$$', img:'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
+    desc:"A V&A Waterfront favourite combining upscale seafood with Asian-inspired sushi and fusion dishes. Sevruga's dramatic harbour-facing setting and consistently excellent food make it one of Cape Town's most popular dinner destinations.",
+    tip:"The sushi sharing platter and crayfish are the stars. Spectacular sunset views from the outside terrace. Book a month ahead for a Saturday dinner.",
+    phone:'+27 21 421 5134', mapUrl:'https://maps.google.com/?q=Sevruga+V%26A+Waterfront+Cape+Town',
+    website:'https://www.sevruga.co.za', booking:'https://www.sevruga.co.za',
+    instagram:null, menu:'https://www.sevruga.co.za/menu',
+    keywords:['sevruga','va waterfront','waterfront dinner','sushi seafood','fusion']
+  },
+  // ── ATLANTIC SEABOARD DINING ──
+  {
+    name:'Blues Restaurant', cat:'restaurant', catLabel:'Restaurant',
+    location:'The Promenade, Camps Bay', distance:'3 min drive',
+    price:'$$$', img:'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80',
+    desc:"A Camps Bay strip institution since 1992 — Blues serves stylish international cuisine right on the beachfront promenade. Fresh sushi, wood-fired pizzas, grilled linefish and a legendary Sunday roast with non-stop mountain and ocean views.",
+    tip:"The sushi here is surprisingly excellent for a restaurant not known just for Japanese. Sunday brunch with a Bloody Mary on the terrace while the mountains glow behind you is a peak Cape Town moment.",
+    phone:'+27 21 438 2040', mapUrl:'https://maps.google.com/?q=Blues+Restaurant+Camps+Bay',
+    website:'https://www.blues.co.za', booking:'https://www.blues.co.za',
+    instagram:null, menu:'https://www.blues.co.za/menu',
+    keywords:['blues','blues restaurant','camps bay dining','promenade restaurant','camps bay strip']
+  },
+  {
+    name:'The Bungalow', cat:'restaurant', catLabel:'Restaurant',
+    location:'4 Clifton Road, Clifton', distance:'14 min walk',
+    price:'$$$', img:'https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?w=800&q=80',
+    desc:"The Atlantic Seaboard's most glamorous sundowner spot — The Bungalow at Clifton has unmatched sunset views over the ocean. Chic cocktail culture, fresh seafood and sushi in a beautiful setting just steps from Clifton beach.",
+    tip:"Come for sunset cocktails (the Aperol Spritz or their signature Bungalow cocktail are perfect). The sushi and ceviche are excellent light bites. Book the terrace — you'll want to be outside for the golden hour.",
+    phone:'+27 21 438 2018', mapUrl:'https://maps.google.com/?q=The+Bungalow+Clifton+Cape+Town',
+    website:'https://www.the-bungalow.co.za', booking:'https://www.the-bungalow.co.za',
+    instagram:null, menu:'https://www.the-bungalow.co.za/menu',
+    keywords:['bungalow','the bungalow','clifton','sunset cocktails','sundowner clifton']
+  },
+  {
+    name:'La Perla', cat:'restaurant', catLabel:'Restaurant',
+    location:'Beach Road, Sea Point', distance:'10 min drive',
+    price:'$$', img:'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80',
+    desc:"Sea Point's beloved Italian seafront restaurant since 1953 — La Perla is a Cape Town classic. Ocean views, fresh pasta, wood-fired pizza and traditional Italian dishes. A relaxed neighbourhood gem on the Sea Point promenade.",
+    tip:"The calamari alla Romana and wood-fired Napolitana pizza are standouts. Beachfront terrace tables are magical — go for a long, relaxed Italian lunch. Great for families.",
+    phone:'+27 21 434 2471', mapUrl:'https://maps.google.com/?q=La+Perla+Sea+Point+Cape+Town',
+    website:null, booking:null,
+    instagram:null, menu:null,
+    keywords:['la perla','sea point italian','italian restaurant','pizza sea point','beachfront italian']
   },
   // ── CAFES ──
   {
@@ -817,7 +931,9 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
     const f = btn.dataset.filter;
     document.querySelectorAll('.place-card').forEach(c => {
       const cat = c.dataset.cat;
-      const show = f === 'all' || cat === f || (f === 'cafe' && cat === 'matcha');
+      const show = f === 'all' || cat === f ||
+        (f === 'cafe' && cat === 'matcha') ||
+        (f === 'restaurant' && (cat === 'sushi' || cat === 'steak' || cat === 'seafood'));
       c.classList.toggle('hidden', !show);
     });
   });
@@ -964,7 +1080,7 @@ const msgs = document.getElementById('chat-messages');
 const chipsEl = document.getElementById('chat-chips');
 const input = document.getElementById('chat-input');
 const sendBtn = document.getElementById('chat-send');
-const CHIPS = ['Best restaurants nearby', 'Things to do today', 'Closest beach', 'Best matcha in CT', 'Plan my day'];
+const CHIPS = ['Best restaurants nearby', 'Best sushi in CT', 'Best steak nearby', 'Closest beach', 'Best matcha in CT', 'Plan my day'];
 let chatCtx = { topic: null, lastPlace: null, lastCat: null };
 
 function renderChips(list) {
@@ -1090,11 +1206,13 @@ function getResponse(raw) {
   // ── RESTAURANTS
   if (/restaurant|eat|dinner|lunch|where.*eat|best.*food|hungry|meal|dining/.test(q)) {
     chatCtx.topic = 'restaurant';
-    if (/closest|nearby|walking|promenade/.test(q)) return "Closest restaurants on the Camps Bay strip — all walkable or a very short drive:\n\n🍽️ **Paranga** — 3 min, ocean-view terrace, great cocktails\n🍽️ **The Codfather** — 5 min, legendary fresh seafood by weight\n🍽️ **Blues Restaurant** — Camps Bay strip, relaxed & delicious\n🍽️ **Casablanca** — Camps Bay, Moroccan-inspired, great vibes\n\nThe whole promenade is lined with options — just walk down!";
-    if (/seafood|fish|crayfish|lobster/.test(q)) return "Cape Town's best seafood:\n\n🐟 **The Codfather** (5 min) — choose your fresh fish by weight from the display, Cape Town institution. Get the crayfish if in season!\n🦞 **Harbour House** (V&A, 20 min) — legendary grilled catch, harbour views\n🐟 **Kalky's** (Kalk Bay, 35 min) — the best fish & chips in CT, eat on the harbour wall. Cash only!";
-    if (/fine dining|special|romantic|fancy|tasting menu/.test(q)) return "Best fine dining near Mountain Oasis:\n\n✨ **La Mouette** (Sea Point, 8 min) — Cape Town's most acclaimed fine dining, seasonal tasting menus, Victorian house setting\n✨ **Harbour House** (V&A, 20 min) — elegant seafood, stunning harbour views\n✨ **Paranga** (Camps Bay, 3 min) — beautiful ocean terrace, perfect for a romantic sunset dinner";
-    if (/cheap|budget|affordable|casual/.test(q)) return "Budget & casual eats:\n\n💰 **Kalky's** (Kalk Bay, 35 min) — legendary fish & chips, very cheap, eat on the harbour. Cash only!\n💰 **Camps Bay promenade** — plenty of café-style spots with great value lunches\n💰 **Oranjezicht Market** (Saturdays) — incredible street food at market prices";
-    return "Our top restaurant picks from Mountain Oasis:\n\n🍽️ **Paranga** — 3 min, ocean views & sunset terrace\n🍽️ **The Codfather** — 5 min, legendary seafood by weight\n🍽️ **La Mouette** — 8 min, Sea Point fine dining\n🍽️ **Harbour House** — 20 min, V&A Waterfront seafood\n🍽️ **Kalky's** — 35 min, the best fish & chips in CT\n\nTap Restaurants in the filter bar, or ask me anything more specific!";
+    if (/closest|nearby|walking|promenade/.test(q)) return "Closest restaurants on the Camps Bay strip:\n\n🍽️ **Paranga** — 3 min, ocean-view terrace, great cocktails\n🍽️ **The Codfather** — 5 min, legendary fresh seafood by weight\n🍽️ **Blues Restaurant** — Camps Bay strip, relaxed dining with mountain views\n🍽️ **The Bungalow** — 14 min walk, Clifton sunset cocktails & sushi\n\nThe whole promenade is lined with options — just walk down!";
+    if (/sushi|japanese|rolls|sashimi/.test(q)) return "Cape Town's best sushi:\n\n🍣 **Willoughby & Co** (V&A, 20 min) — CT's most iconic sushi spot for 30+ years. No bookings, go early!\n🍣 **Wakame** (Sea Point, 10 min) — upscale Japanese fusion with ocean views. Book the terrace!\n🍣 **Sevruga** (V&A, 20 min) — elegant sushi & seafood combo, harbour views\n🍣 **The Bungalow** (Clifton, 14 min walk) — great sushi at sunset\n\nTap the 🍣 Sushi filter to see all cards!";
+    if (/steak|grill|beef|meat/.test(q)) return "Best steaks in the area:\n\n🥩 **Theo's Grill & Tap** (Sea Point, 8 min) — Greek-inspired CT institution, incredible fillet at great prices\n🥩 **Hussar Grill** (Sea Point, 9 min) — classic wood-fired South African steakhouse, spectacular SA wine list\n\nTap the 🥩 Steak filter to see both cards!";
+    if (/seafood|fish|crayfish|lobster|prawn/.test(q)) return "Cape Town's best seafood:\n\n🐟 **The Codfather** (5 min) — choose your fresh fish by weight, legendary. Get the crayfish!\n🦞 **Baia Seafood** (V&A, 20 min) — Portuguese-Italian seafood, langoustines & harbour views\n🦐 **Harbour House** (V&A, 20 min) — classic grilled catch, harbour views\n🐟 **Sevruga** (V&A, 20 min) — fusion seafood, elegant setting\n🐟 **Kalky's** (Kalk Bay, 35 min) — the best fish & chips in CT, cash only!\n\nTap 🐟 Seafood filter for all cards!";
+    if (/fine dining|special|romantic|fancy|tasting menu/.test(q)) return "Best fine dining near Mountain Oasis:\n\n✨ **La Mouette** (Sea Point, 8 min) — acclaimed fine dining, seasonal tasting menus, Victorian house\n✨ **Baia Seafood** (V&A, 20 min) — elegant Portuguese-Italian, langoustines & wine\n✨ **Wakame** (Sea Point, 10 min) — upscale Japanese with ocean terrace\n✨ **Paranga** (Camps Bay, 3 min) — ocean terrace, perfect for romantic sunset dinner";
+    if (/cheap|budget|affordable|casual/.test(q)) return "Budget & casual eats:\n\n💰 **Kalky's** (Kalk Bay, 35 min) — legendary fish & chips, cash only, eat on the harbour wall\n💰 **Theo's Grill** (Sea Point, 8 min) — incredible steaks at very fair prices\n💰 **Willoughby & Co** (V&A, 20 min) — great value sushi platters\n💰 **Oranjezicht Market** (Saturdays) — incredible street food at market prices";
+    return "Restaurants on the Atlantic Seaboard & beyond:\n\n🍣 **Sushi:** Willoughby & Co (V&A), Wakame (Sea Point)\n🥩 **Steak:** Theo's Grill & Tap (Sea Point), Hussar Grill (Sea Point)\n🐟 **Seafood:** Codfather (Camps Bay), Baia (V&A), Harbour House (V&A), Kalky's (Kalk Bay)\n🍽️ **Atlantic Seaboard:** Blues (Camps Bay), The Bungalow (Clifton), La Perla (Sea Point)\n✨ **Fine Dining:** La Mouette (Sea Point)\n\nUse the filter buttons above — Sushi 🍣, Steak 🥩, Seafood 🐟 or Restaurants!";
   }
 
   // ── COFFEE / CAFÉ
