@@ -710,6 +710,50 @@ const PLACES = [
     website:'https://www.haascollective.com', booking:null,
     instagram:'https://www.instagram.com/haascollective/', menu:'https://www.haascollective.com',
     keywords:['haas','haas coffee','haas collective','matcha','cbd cafe','design cafe']
+  },
+  {
+    name:'Love Matcha', cat:'matcha', catLabel:'Matcha',
+    location:'Cape Town', distance:'Various locations',
+    price:'$$', img:'https://images.unsplash.com/photo-1515823064-d6e0c04616a7?w=800&q=80',
+    desc:"A Cape Town favourite dedicated entirely to the art of matcha — from smooth ceremonial lattes to creative seasonal matcha drinks. Known for their quality sourcing and beautifully crafted cups that keep regulars coming back daily.",
+    tip:"Follow them on Instagram for their latest location and seasonal specials. Their matcha is seriously good — one of the most talked-about spots among Cape Town matcha lovers.",
+    phone:null, mapUrl:'https://maps.google.com/?q=Love+Matcha+Cape+Town',
+    website:null, booking:null,
+    instagram:'https://www.instagram.com/lovematcha_sa/', menu:null,
+    keywords:['love matcha','lovematcha','love matcha sa']
+  },
+  {
+    name:'Nice to Matcha', cat:'matcha', catLabel:'Matcha',
+    location:'Cape Town', distance:'Various locations',
+    price:'$$', img:'https://images.unsplash.com/photo-1496318447583-f524534e9ce1?w=800&q=80',
+    desc:"One of Cape Town's most beloved matcha destinations — playful name, serious matcha. Specialising in ceremonial-grade Japanese matcha crafted into stunning lattes, cold brews and creative seasonal drinks.",
+    tip:"Check their Instagram for current location and opening hours. The iced matcha latte is a must-order — creamy, vibrant green and perfectly balanced.",
+    phone:null, mapUrl:'https://maps.google.com/?q=Nice+to+Matcha+Cape+Town',
+    website:null, booking:null,
+    instagram:'https://www.instagram.com/nicetomatcha/', menu:null,
+    keywords:['nice to matcha','nicetomatcha','nice matcha']
+  },
+  {
+    name:'Okja Matcha', cat:'matcha', catLabel:'Matcha',
+    location:'Cape Town', distance:'Various locations',
+    price:'$$', img:'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=800&q=80',
+    desc:"A Cape Town matcha gem serving beautifully made ceremonial matcha drinks with a focus on quality and ritual. Known for their smooth, vibrant matcha lattes and a calm, considered approach to the drink.",
+    tip:"Check their Instagram for their current address and hours — these dedicated matcha spots sometimes move or run pop-ups. Worth tracking down!",
+    phone:null, mapUrl:'https://maps.google.com/?q=Okja+Matcha+Cape+Town',
+    website:null, booking:null,
+    instagram:'https://www.instagram.com/okjamatcha/', menu:null,
+    keywords:['okja','okja matcha','okjamatcha']
+  },
+  {
+    name:'Starbucks', cat:'matcha', catLabel:'Matcha · Café',
+    location:'V&A Waterfront & multiple locations, Cape Town', distance:'20 min drive',
+    price:'$$', img:'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=800&q=80',
+    desc:"Cape Town has several Starbucks locations including at the V&A Waterfront. Famous for their Matcha Green Tea Latte, Iced Matcha Latte and seasonal matcha frappuccinos — a familiar favourite for matcha fans on the go.",
+    tip:"The Iced Matcha Latte with oat milk is a crowd-pleaser. The V&A Waterfront branch has great harbour views. Find other branches at Canal Walk, Cavendish Square and major shopping centres.",
+    phone:null, mapUrl:'https://maps.google.com/?q=Starbucks+V%26A+Waterfront+Cape+Town',
+    website:'https://www.starbucks.co.za', booking:null,
+    instagram:'https://www.instagram.com/starbucksza/', menu:'https://www.starbucks.co.za/menu',
+    keywords:['starbucks','starbucks matcha','matcha frappuccino','matcha latte starbucks']
   }
 ];
 
@@ -996,8 +1040,8 @@ function getResponse(raw) {
   // ── MATCHA
   if (/matcha|green tea|ceremonial|matchaba|ceremony matcha|haas/.test(q)) {
     chatCtx.topic = 'matcha';
-    if (/best|top|recommend/.test(q) || q.includes('matcha')) return "Cape Town's best matcha spots 🍵:\n\n**Matchaba** (De Waterkant, 17 min) — CT's dedicated matcha bar, ceremonial-grade. The iced matcha latte is exceptional.\n\n**Haas Coffee Collective** (CBD, 18 min) — Stunning design café with an incredible matcha menu alongside world-class coffee.\n\n**Ceremony Matcha** — The beloved global brand. Find it at specialty stockists across Cape Town — check their website for current locations.\n\nTap the 🍵 **Matcha** filter button to see all matcha cards!";
-    return "We've got three brilliant matcha options on the guide! Tap the 🍵 **Matcha** filter to see them all. **Matchaba** (De Waterkant) is the dedicated matcha bar — their iced matcha latte is a must. **Haas Coffee** (CBD) also does exceptional matcha. And **Ceremony Matcha** is available at select Cape Town stockists.";
+    if (/best|top|recommend/.test(q) || q.includes('matcha')) return "Cape Town's best matcha spots 🍵:\n\n**Matchaba** (De Waterkant, 17 min) — dedicated matcha bar, ceremonial-grade iced lattes\n**Haas Coffee** (CBD, 18 min) — design café with incredible matcha drinks\n**Love Matcha** — much-loved CT matcha specialist\n**Nice to Matcha** — playful name, serious ceremonial matcha\n**Okja Matcha** — calm, quality-focused matcha bar\n**Starbucks** (V&A Waterfront, 20 min) — iced matcha latte & frappuccinos\n**Ceremony Matcha** — global brand, available at CT stockists\n\nTap the 🍵 **Matcha** filter to see all cards!";
+    return "We've got 7 matcha options on the guide! Tap the 🍵 **Matcha** filter to see them all — from dedicated matcha bars like **Matchaba**, **Love Matcha**, **Nice to Matcha** and **Okja Matcha**, to **Haas Coffee**, **Starbucks** and **Ceremony Matcha** stockists.";
   }
 
   // ── SPECIFIC PLACE MATCH
