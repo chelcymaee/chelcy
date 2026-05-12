@@ -155,10 +155,96 @@
     .chat-send:hover{background:var(--coral-light)}
     .chat-send svg{width:15px;height:15px;color:var(--white)}
 
-    @media(max-width:500px){.places-grid{grid-template-columns:1fr;gap:20px;padding:0 14px}.btn-row{grid-template-columns:1fr}.card-img-wrap{height:200px}#chat-window{width:calc(100vw - 20px);right:10px;bottom:90px}.apps-grid{grid-template-columns:1fr 1fr}.delivery-section{padding:0 14px}}
+    /* MATCHA */
+    .filter-btn[data-filter="matcha"].active,.filter-btn[data-filter="matcha"]:hover{background:#2D7D3A;border-color:#2D7D3A;color:var(--white)}
+    .cat-matcha{background:#2D7D3A;color:var(--white)}
+
+    /* SAVE BUTTON */
+    .card-save-btn{position:absolute;top:48px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.92);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:all .2s;z-index:3;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+    .card-save-btn:hover{transform:scale(1.12);background:#fff}
+    .card-save-btn svg{width:16px;height:16px;fill:none;stroke:#888;stroke-width:2;transition:all .2s}
+    .card-save-btn.saved svg{fill:#E74C3C;stroke:#E74C3C}
+
+    /* DAY PLAN SECTION */
+    .day-plan-section{max-width:960px;margin:0 auto;padding:20px 24px 60px}
+    .day-plan-hd{text-align:center;margin-bottom:36px}
+    .day-plan-hd h2{font-size:clamp(1.6rem,3vw,2.4rem);font-weight:400;margin-bottom:8px}
+    .day-plan-hd p{font-family:sans-serif;font-size:.88rem;color:var(--grey)}
+    .day-items{display:flex;flex-direction:column;gap:12px}
+    .day-empty{text-align:center;padding:48px 20px;font-family:sans-serif}
+    .day-empty strong{display:block;font-size:1.05rem;color:var(--charcoal);margin-bottom:8px}
+    .day-empty p{color:var(--grey);font-size:.85rem;line-height:1.6}
+    .day-item{background:var(--white);border-radius:16px;padding:16px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 16px rgba(0,0,0,.07);transition:all .2s}
+    .day-num{width:30px;height:30px;border-radius:50%;background:var(--ocean-light);color:var(--ocean-mid);font-family:sans-serif;font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .day-item-cat{font-size:.58rem;letter-spacing:1.5px;text-transform:uppercase;padding:3px 9px;border-radius:50px;font-family:sans-serif;font-weight:700;white-space:nowrap;flex-shrink:0}
+    .day-item-info{flex:1;min-width:0}
+    .day-item-info h4{font-size:.92rem;font-weight:400;margin-bottom:2px}
+    .day-item-info p{font-family:sans-serif;font-size:.7rem;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .day-actions{display:flex;gap:7px;flex-shrink:0}
+    .day-btn{padding:7px 13px;border-radius:8px;font-family:sans-serif;font-size:.7rem;font-weight:600;text-decoration:none;border:none;cursor:pointer;transition:all .2s;white-space:nowrap}
+    .day-btn-dir{background:var(--coral);color:var(--white)}
+    .day-btn-dir:hover{background:var(--coral-light)}
+    .day-btn-rm{background:transparent;border:1.5px solid rgba(0,0,0,.1);color:var(--grey)}
+    .day-btn-rm:hover{border-color:#E74C3C;color:#E74C3C}
+    .day-plan-footer{display:flex;gap:12px;justify-content:center;margin-top:24px;flex-wrap:wrap}
+    .btn-share-day{padding:10px 24px;border-radius:50px;background:var(--ocean-mid);color:var(--white);border:none;font-family:sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-share-day:hover{background:var(--ocean)}
+    .btn-clear-day{padding:10px 24px;border-radius:50px;background:transparent;border:1.5px solid rgba(0,0,0,.12);color:var(--grey);font-family:sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-clear-day:hover{border-color:#E74C3C;color:#E74C3C}
+    .btn-add-day{background:var(--ocean-mid);color:var(--white);width:100%}
+    .btn-add-day:hover{background:var(--ocean);transform:translateY(-2px)}
+    .btn-add-day.added{background:#2D7D3A}
+
+    /* TOAST */
+    .save-toast{position:fixed;bottom:108px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(30,30,30,.92);color:var(--white);font-family:sans-serif;font-size:.8rem;padding:10px 22px;border-radius:50px;opacity:0;transition:all .3s;z-index:2500;pointer-events:none;white-space:nowrap;backdrop-filter:blur(8px)}
+    .save-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    /* GUEST REGISTRATION MODAL */
+    #guest-modal{position:fixed;inset:0;z-index:5000;background:rgba(10,30,50,.8);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:20px}
+    .guest-box{background:var(--white);border-radius:24px;padding:36px 32px;max-width:420px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,.3)}
+    .guest-eyebrow{font-family:sans-serif;font-size:.7rem;letter-spacing:4px;text-transform:uppercase;color:var(--ocean-mid);margin-bottom:12px}
+    .guest-box h2{font-size:1.75rem;font-weight:400;margin-bottom:8px;line-height:1.2}
+    .guest-box h2 em{color:var(--coral);font-style:italic}
+    .guest-box > p{font-family:sans-serif;font-size:.86rem;color:var(--grey);line-height:1.65;margin-bottom:24px}
+    .guest-form{display:flex;flex-direction:column;gap:11px}
+    .guest-form .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .guest-form input{border:1.5px solid rgba(26,82,118,.2);border-radius:12px;padding:13px 16px;font-family:sans-serif;font-size:.88rem;outline:none;background:var(--sand);color:var(--charcoal);transition:border-color .2s;width:100%;box-sizing:border-box}
+    .guest-form input:focus{border-color:var(--ocean-mid)}
+    .guest-form input::placeholder{color:#bbb}
+    .btn-enter{width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,var(--ocean),var(--ocean-mid));color:var(--white);border:none;font-family:sans-serif;font-size:.9rem;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:all .25s;margin-top:4px}
+    .btn-enter:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(26,82,118,.4)}
+    .btn-enter:disabled{opacity:.6;cursor:not-allowed;transform:none}
+    .btn-skip{width:100%;padding:10px;background:transparent;border:none;font-family:sans-serif;font-size:.78rem;color:var(--grey);cursor:pointer;text-decoration:underline;transition:color .2s;margin-top:2px}
+    .btn-skip:hover{color:var(--charcoal)}
+    .form-status{font-family:sans-serif;font-size:.78rem;text-align:center;padding:8px 12px;border-radius:8px;margin-top:4px;display:none}
+    .form-status.ok{background:#d4edda;color:#155724;display:block}
+    .form-status.err{background:#f8d7da;color:#721c24;display:block}
+
+    @media(max-width:500px){.places-grid{grid-template-columns:1fr;gap:20px;padding:0 14px}.btn-row{grid-template-columns:1fr}.card-img-wrap{height:200px}#chat-window{width:calc(100vw - 20px);right:10px;bottom:90px}.apps-grid{grid-template-columns:1fr 1fr}.delivery-section{padding:0 14px}.guest-box{padding:28px 20px}.guest-form .form-row{grid-template-columns:1fr}.day-actions{flex-direction:column;gap:5px}}
   </style>
 </head>
 <body>
+
+<!-- GUEST REGISTRATION MODAL -->
+<!-- To collect guest emails: create a free account at formspree.io, create a form, and replace REPLACE_WITH_YOUR_FORM_ID below with your form ID -->
+<div id="guest-modal">
+  <div class="guest-box">
+    <p class="guest-eyebrow">Mountain Oasis · Camps Bay</p>
+    <h2>Welcome to<br><em>Cape Town</em> ✦</h2>
+    <p>We're so glad you're here. Drop your details and we'll add you to our guest list for updates, local tips and special offers.</p>
+    <form class="guest-form" id="guest-form" action="https://formspree.io/f/REPLACE_WITH_YOUR_FORM_ID" method="POST">
+      <div class="form-row">
+        <input type="text" name="firstName" placeholder="First name" required autocomplete="given-name"/>
+        <input type="text" name="lastName" placeholder="Surname" required autocomplete="family-name"/>
+      </div>
+      <input type="email" name="email" placeholder="Email address" required autocomplete="email"/>
+      <input type="hidden" name="source" value="Mountain Oasis Camps Bay Guest Guide"/>
+      <button type="submit" class="btn-enter" id="btn-enter">Enter the Guide →</button>
+      <div class="form-status" id="form-status"></div>
+    </form>
+    <button class="btn-skip" onclick="closeGuestModal()">Just browsing? Skip for now</button>
+  </div>
+</div>
 
 <!-- HERO -->
 <section class="hero">
@@ -183,6 +269,7 @@
   <button class="filter-btn" data-filter="cafe">Cafés</button>
   <button class="filter-btn" data-filter="beach">Beaches</button>
   <button class="filter-btn" data-filter="todo">Things To Do</button>
+  <button class="filter-btn" data-filter="matcha">🍵 Matcha</button>
 </nav>
 
 <div class="section-header">
@@ -193,6 +280,21 @@
 
 <div class="places-grid" id="places-grid"></div>
 
+<!-- DAY PLAN SECTION -->
+<section class="day-plan-section" id="day-plan-section" style="display:none">
+  <div class="divider" style="margin-bottom:40px"></div>
+  <div class="day-plan-hd">
+    <p class="eyebrow" style="font-family:sans-serif;font-size:.7rem;letter-spacing:4px;text-transform:uppercase;color:var(--coral);margin-bottom:12px">Your Picks</p>
+    <h2>My Day Plan</h2>
+    <p>Your hand-picked Cape Town experiences, all in one place.</p>
+  </div>
+  <div class="day-items" id="day-items"></div>
+  <div class="day-plan-footer">
+    <button class="btn-share-day" onclick="shareDayPlan()">📋 Copy Day Plan</button>
+    <button class="btn-clear-day" onclick="clearDayPlan()">Clear All</button>
+  </div>
+</section>
+
 <!-- DELIVERY APPS -->
 <div class="delivery-section">
   <div class="divider" style="margin-bottom:40px"></div>
@@ -202,30 +304,38 @@
     <p>Staying in tonight? These apps deliver right to the door at Mountain Oasis.</p>
   </div>
   <div class="apps-grid">
-    <a class="app-card" href="https://www.ubereats.com" target="_blank" rel="noopener">
-      <div class="app-icon" style="background:#000">🛵</div>
+    <div class="app-card" onclick="openAppStore('https://apps.apple.com/za/app/uber-eats-food-groceries/id1058959277','https://play.google.com/store/apps/details?id=com.ubercab.eats')" style="cursor:pointer">
+      <div class="app-icon" style="background:#000;border-radius:18px;display:flex;align-items:center;justify-content:center">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="12" fill="#000"/><path d="M24 10c7.7 0 14 6.3 14 14s-6.3 14-14 14S10 31.7 10 24 16.3 10 24 10zm-6 12v4h12v-4H18z" fill="#06C167"/></svg>
+      </div>
       <div class="app-name">Uber Eats</div>
       <div class="app-desc">Huge range of restaurants delivering to Camps Bay</div>
-      <span class="app-open" style="background:#000">Open App</span>
-    </a>
-    <a class="app-card" href="https://www.mrd.co.za" target="_blank" rel="noopener">
-      <div class="app-icon" style="background:#E8001C">🍕</div>
+      <span class="app-open" style="background:#06C167;color:#000">Download App</span>
+    </div>
+    <div class="app-card" onclick="openAppStore('https://apps.apple.com/za/app/mr-d-takeaway-groceries/id1031141698','https://play.google.com/store/apps/details?id=com.mrd.food')" style="cursor:pointer">
+      <div class="app-icon" style="background:#E8001C;border-radius:18px;display:flex;align-items:center;justify-content:center">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="12" fill="#E8001C"/><text x="24" y="30" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="800" font-size="16">Mr D</text></svg>
+      </div>
       <div class="app-name">Mr D</div>
       <div class="app-desc">Popular SA food delivery — great local restaurant selection</div>
-      <span class="app-open" style="background:#E8001C">Open App</span>
-    </a>
-    <a class="app-card" href="https://sixty60.co.za" target="_blank" rel="noopener">
-      <div class="app-icon" style="background:#E31837">🛒</div>
+      <span class="app-open" style="background:#E8001C">Download App</span>
+    </div>
+    <div class="app-card" onclick="openAppStore('https://apps.apple.com/za/app/checkers-sixty60/id1453556093','https://play.google.com/store/apps/details?id=za.co.shoprite.sixty60')" style="cursor:pointer">
+      <div class="app-icon" style="background:#E31837;border-radius:18px;display:flex;align-items:center;justify-content:center">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="12" fill="#E31837"/><text x="24" y="22" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="800" font-size="11">60|60</text><text x="24" y="34" text-anchor="middle" fill="rgba(255,255,255,.7)" font-family="sans-serif" font-size="8">CHECKERS</text></svg>
+      </div>
       <div class="app-name">Checkers Sixty60</div>
       <div class="app-desc">Groceries delivered in 60 minutes — brilliant for essentials</div>
-      <span class="app-open" style="background:#E31837">Open App</span>
-    </a>
-    <a class="app-card" href="https://www.woolworths.co.za/store/fragments/woolworths-fragment/index.jsp?selectedStoreUUID=&navAction=push&category=food-dash" target="_blank" rel="noopener">
-      <div class="app-icon" style="background:#1C5E1C">🌿</div>
+      <span class="app-open" style="background:#E31837">Download App</span>
+    </div>
+    <div class="app-card" onclick="openAppStore('https://apps.apple.com/za/app/woolworths-pty-ltd/id472968645','https://play.google.com/store/apps/details?id=com.awfs.coordination')" style="cursor:pointer">
+      <div class="app-icon" style="background:#1A1A1A;border-radius:18px;display:flex;align-items:center;justify-content:center">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="12" fill="#1A1A1A"/><text x="24" y="30" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="800" font-size="24">W</text></svg>
+      </div>
       <div class="app-name">Woolies Dash</div>
-      <div class="app-desc">Premium Woolworths groceries and ready meals delivered fast</div>
-      <span class="app-open" style="background:#1C5E1C">Open App</span>
-    </a>
+      <div class="app-desc">Premium Woolworths groceries and ready meals via main app</div>
+      <span class="app-open" style="background:#1A1A1A">Download App</span>
+    </div>
   </div>
 </div>
 
@@ -296,7 +406,7 @@ const PLACES = [
     tip:'Go early morning or late afternoon for clear skies and shorter queues. Book tickets online to skip the line!',
     phone:'+27 21 424 8181', mapUrl:'https://maps.google.com/?q=Table+Mountain+Cableway+Cape+Town',
     website:'https://www.tablemountain.net', booking:'https://www.tablemountain.net',
-    instagram:'https://www.instagram.com/tablemountainct/', menu:null,
+    instagram:'https://www.instagram.com/tablemountainca/', menu:null,
     keywords:['table mountain','cableway','cable car','mountain']
   },
   {
@@ -318,7 +428,7 @@ const PLACES = [
     tip:'You land right on the beach at Camps Bay — it\'s the most dramatic entrance to the beach imaginable! Book at least a day ahead.',
     phone:'+27 82 905 7440', mapUrl:'https://maps.google.com/?q=Signal+Hill+Cape+Town',
     website:'https://www.skywings.co.za', booking:'https://www.skywings.co.za',
-    instagram:'https://www.instagram.com/skywings_sa/', menu:null,
+    instagram:'https://www.instagram.com/flyskywings/', menu:null,
     keywords:['paragliding','paraglide','signal hill','skywings','flying']
   },
   {
@@ -351,18 +461,18 @@ const PLACES = [
     tip:'Check the Summer Sunset Concert schedule — picnicking on the lawn while watching live music with Table Mountain behind you is unmissable. Book lawn tickets in advance.',
     phone:'+27 21 799 8783', mapUrl:'https://maps.google.com/?q=Kirstenbosch+Botanical+Gardens',
     website:'https://www.sanbi.org/gardens/kirstenbosch', booking:null,
-    instagram:'https://www.instagram.com/kirstenboschbg/', menu:null,
+    instagram:'https://www.instagram.com/kirstenbosch_nbg/', menu:null,
     keywords:['kirstenbosch','botanical gardens','gardens','newlands']
   },
   {
     name:'Robben Island', cat:'activity', catLabel:'Activity',
     location:'V&A Waterfront (ferry departure)', distance:'30 min drive + ferry',
-    price:'$$$', img:'https://images.unsplash.com/photo-1504215680853-026ed2a45def?w=800&q=80',
+    price:'$$$', img:'https://images.unsplash.com/photo-1590073242678-70ee3fc28f8e?w=800&q=80',
     desc:"UNESCO World Heritage Site where Nelson Mandela was imprisoned for 18 years. A profoundly moving tour led by former political prisoners — essential historical and cultural experience.",
     tip:'Book weeks in advance — tickets sell out very fast especially in summer. The ferry journey offers beautiful views of Cape Town from the sea.',
     phone:'+27 21 413 4200', mapUrl:'https://maps.google.com/?q=Robben+Island+Ferry+V%26A+Waterfront',
     website:'https://www.robben-island.org.za', booking:'https://www.robben-island.org.za',
-    instagram:'https://www.instagram.com/robbenislandmuseum/', menu:null,
+    instagram:'https://www.instagram.com/robben_island/', menu:null,
     keywords:['robben island','mandela','prison','island']
   },
   // ── RESTAURANTS ──
@@ -374,7 +484,7 @@ const PLACES = [
     tip:"Ask for the linefish of the day. Arrive early (before 7pm) or book ahead — this place is always packed. The grilled crayfish is incredible if in season.",
     phone:'+27 21 438 0782', mapUrl:'https://maps.google.com/?q=The+Codfather+Camps+Bay',
     website:'https://www.codfather.co.za', booking:null,
-    instagram:'https://www.instagram.com/thecodfathercampsbay/', menu:'https://www.codfather.co.za',
+    instagram:'https://www.instagram.com/codfather_campsbay/', menu:'https://www.codfather.co.za',
     keywords:['codfather','seafood','fish','camps bay restaurant']
   },
   {
@@ -385,7 +495,7 @@ const PLACES = [
     tip:"Book a sunset table on the terrace — the views over Camps Bay beach at golden hour are incredible. The cocktails here are excellent.",
     phone:'+27 21 438 0404', mapUrl:'https://maps.google.com/?q=Paranga+Restaurant+Camps+Bay',
     website:'https://www.paranga.co.za', booking:'https://www.paranga.co.za',
-    instagram:'https://www.instagram.com/parangacampsbay/', menu:'https://www.paranga.co.za/menu',
+    instagram:'https://www.instagram.com/officialparanga/', menu:'https://www.paranga.co.za/menu',
     keywords:['paranga','camps bay','promenade','sunset dinner']
   },
   {
@@ -396,7 +506,7 @@ const PLACES = [
     tip:"Book well in advance — this is one of the most popular fine-dining spots in Cape Town. The tasting menu with wine pairing is the way to go for a truly special evening.",
     phone:'+27 21 433 0856', mapUrl:'https://maps.google.com/?q=La+Mouette+Sea+Point',
     website:'https://www.lamouette.co.za', booking:'https://www.lamouette.co.za',
-    instagram:'https://www.instagram.com/la_mouette_restaurant/', menu:'https://www.lamouette.co.za/menus',
+    instagram:'https://www.instagram.com/lamouette_restaurant/', menu:'https://www.lamouette.co.za/menus',
     keywords:['la mouette','sea point','fine dining','tasting menu']
   },
   {
@@ -407,7 +517,7 @@ const PLACES = [
     tip:"Ask for a window table overlooking the harbour. The weekend lunch is excellent value. Try the whole grilled catch of the day.",
     phone:'+27 21 418 4744', mapUrl:'https://maps.google.com/?q=Harbour+House+V%26A+Waterfront',
     website:'https://www.harbourhouse.co.za', booking:'https://www.harbourhouse.co.za',
-    instagram:'https://www.instagram.com/harbourhouserestaurant/', menu:'https://www.harbourhouse.co.za/menu',
+    instagram:'https://www.instagram.com/harbourhouseza/', menu:'https://www.harbourhouse.co.za/menu',
     keywords:['harbour house','waterfront','seafood','va waterfront']
   },
   {
@@ -430,7 +540,7 @@ const PLACES = [
     tip:"Go for the flat white or their single-origin pour-over. The breakfast is excellent. It can get busy — go on a weekday morning for a calmer experience.",
     phone:'+27 21 200 0440', mapUrl:'https://maps.google.com/?q=Truth+Coffee+Cape+Town',
     website:'https://www.truthcoffee.com', booking:null,
-    instagram:'https://www.instagram.com/truth_coffee/', menu:'https://www.truthcoffee.com/food-drink',
+    instagram:'https://www.instagram.com/truthcoffee.capetown/', menu:'https://www.truthcoffee.com/food-drink',
     keywords:['truth coffee','truth','steampunk coffee','cbd coffee']
   },
   {
@@ -441,18 +551,18 @@ const PLACES = [
     tip:"Try their seasonal single-origin filter — they source some incredible beans. The almond croissant pairs beautifully with the espresso.",
     phone:'+27 21 421 1000', mapUrl:'https://maps.google.com/?q=Origin+Coffee+De+Waterkant',
     website:'https://www.originroasting.co.za', booking:null,
-    instagram:'https://www.instagram.com/originroasting/', menu:'https://www.originroasting.co.za',
+    instagram:'https://www.instagram.com/origincoffeesa/', menu:'https://www.originroasting.co.za',
     keywords:['origin coffee','origin roasting','de waterkant','specialty coffee']
   },
   {
     name:'Bootlegger Coffee Company', cat:'cafe', catLabel:'Café',
     location:'Shop 3, 265 Main Road, Sea Point', distance:'10 min drive',
-    price:'$$', img:'https://images.unsplash.com/photo-1504215680853-026ed2a45def?w=800&q=80',
+    price:'$$', img:'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&q=80',
     desc:"Cape Town's much-loved coffee group with a welcoming Sea Point outpost nearby. Excellent espresso, fresh pastries and generous breakfast bowls. Relaxed, sunny vibes perfect for a morning start.",
     tip:"The closest good coffee spot to Camps Bay. The avo toast and smoothie bowls are great. Gets busy on weekend mornings — come early!",
     phone:'+27 21 433 2136', mapUrl:'https://maps.google.com/?q=Bootlegger+Coffee+Sea+Point',
     website:'https://www.bootlegger.co.za', booking:null,
-    instagram:'https://www.instagram.com/bootleggercoffee/', menu:'https://www.bootlegger.co.za/menu',
+    instagram:'https://www.instagram.com/bootleggercoffeecompany/', menu:'https://www.bootlegger.co.za/menu',
     keywords:['bootlegger','bootlegger coffee','sea point coffee','nearest coffee']
   },
   {
@@ -463,7 +573,7 @@ const PLACES = [
     tip:"Combine with a morning in Kalk Bay — wander the antique shops, walk the harbour, grab a coffee here and browse the bric-a-brac. Very Cape Town. No bookings, cash preferred.",
     phone:'+27 21 788 6396', mapUrl:'https://maps.google.com/?q=Olympia+Cafe+Kalk+Bay',
     website:null, booking:null,
-    instagram:'https://www.instagram.com/olympiacafedeli/', menu:null,
+    instagram:'https://www.instagram.com/olympia_cafe/', menu:null,
     keywords:['olympia','olympia cafe','kalk bay cafe']
   },
   // ── BEACHES ──
@@ -509,7 +619,7 @@ const PLACES = [
     tip:"The Saturday and Sunday afternoon markets are great for local crafts and food. The Clock Tower area has excellent wine bars. Visit at sunset for magical harbour views.",
     phone:'+27 21 408 7600', mapUrl:'https://maps.google.com/?q=V%26A+Waterfront+Cape+Town',
     website:'https://www.waterfront.co.za', booking:null,
-    instagram:'https://www.instagram.com/waterfront_ct/', menu:null,
+    instagram:'https://www.instagram.com/vandawaterfront/', menu:null,
     keywords:['waterfront','va waterfront','v&a','shopping','cape town centre']
   },
   {
@@ -526,7 +636,7 @@ const PLACES = [
   {
     name:'Kalk Bay Village & Harbour', cat:'todo', catLabel:'Things To Do',
     location:'Main Road, Kalk Bay', distance:'35 min drive',
-    price:'Free', img:'https://images.unsplash.com/photo-1504215680853-026ed2a45def?w=800&q=80',
+    price:'Free', img:'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=800&q=80',
     desc:"Cape Town's most charming village — antique shops, art galleries, eclectic cafés, a working fishing harbour and a cave right in the hillside. Utterly unique and worth the drive.",
     tip:"Visit on a Saturday morning — the harbour is busiest with fishing boats, and the Kalk Bay Caves are worth exploring. Combine with Olympia Café for breakfast and an afternoon browse.",
     phone:null, mapUrl:'https://maps.google.com/?q=Kalk+Bay+Cape+Town',
@@ -537,12 +647,12 @@ const PLACES = [
   {
     name:"Oranjezicht City Farm Market", cat:'todo', catLabel:'Things To Do',
     location:'Granger Bay, V&A Waterfront', distance:'20 min drive',
-    price:'Free (entry)', img:'https://images.unsplash.com/photo-1559825481-12a05cc00344?w=800&q=80',
+    price:'Free (entry)', img:'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800&q=80',
     desc:"Cape Town's beloved weekly market at the V&A Waterfront — local farmers, artisan food producers, craft brewers, organic produce and incredible street food. The best morning out in Cape Town.",
     tip:"Go on Saturday mornings (9am–2pm). Bring cash. The wood-fired pizza, Cape Malay bunny chow and the local cheese stalls are unmissable. Gets busy after 10am.",
     phone:null, mapUrl:'https://maps.google.com/?q=Oranjezicht+City+Farm+Market+Cape+Town',
     website:'https://www.ozcf.co.za', booking:null,
-    instagram:'https://www.instagram.com/ozcfmarket/', menu:null,
+    instagram:'https://www.instagram.com/ozcfarm/', menu:null,
     keywords:["oranjezicht","ozcf",'market','farm market','saturday market','farmers market']
   },
   {
@@ -559,13 +669,47 @@ const PLACES = [
   {
     name:'Two Oceans Aquarium', cat:'todo', catLabel:'Things To Do',
     location:'Dock Road, V&A Waterfront', distance:'20 min drive',
-    price:'$$', img:'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80',
+    price:'$$', img:'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80',
     desc:"World-class aquarium at the V&A Waterfront showcasing the diverse marine life where the Atlantic and Indian Oceans meet. Ragged-tooth sharks, penguins, turtles and incredible kelp forests.",
     tip:"Great option for a cloudy or windy day. The shark dive is available for certified divers (book ahead). The penguin feeding times are popular with kids.",
     phone:'+27 21 418 3823', mapUrl:'https://maps.google.com/?q=Two+Oceans+Aquarium+Cape+Town',
     website:'https://www.aquarium.co.za', booking:'https://www.aquarium.co.za',
-    instagram:'https://www.instagram.com/twooceansaquarium/', menu:null,
+    instagram:'https://www.instagram.com/2oceansaquarium/', menu:null,
     keywords:['aquarium','two oceans aquarium','two oceans','sharks','penguins']
+  },
+  // ── MATCHA ──
+  {
+    name:'Matchaba', cat:'matcha', catLabel:'Matcha',
+    location:'De Waterkant, Cape Town', distance:'17 min drive',
+    price:'$$', img:'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=800&q=80',
+    desc:"Cape Town's dedicated matcha bar serving ceremonial-grade Japanese matcha crafted into beautiful drinks. Silky iced matcha lattes, hot ceremonial bowls, matcha espresso fusions and seasonal specials — in a serene, minimal space.",
+    tip:"The iced matcha latte is a must. Pair it with a browse through De Waterkant — Origin Coffee is right nearby for a back-to-back specialty drinks morning.",
+    phone:null, mapUrl:'https://maps.google.com/?q=Matchaba+De+Waterkant+Cape+Town',
+    website:'https://www.matchaba.co.za', booking:null,
+    instagram:'https://www.instagram.com/matchaba/', menu:'https://www.matchaba.co.za',
+    keywords:['matchaba','matcha bar','matcha latte','green tea','japanese matcha']
+  },
+  {
+    name:'Ceremony Matcha', cat:'matcha', catLabel:'Matcha',
+    location:'Stockists across Cape Town', distance:'Various',
+    price:'$$', img:'https://images.unsplash.com/photo-1534040385115-33dcb3acba5b?w=800&q=80',
+    desc:"The globally beloved ceremonial-grade matcha brand — beautifully sourced from Uji, Japan. Find Ceremony matcha drinks and powder at select Cape Town specialty cafés, health stores and online for delivery.",
+    tip:"Check their website for the latest Cape Town stockists and pop-up locations. The Ceremony matcha starter kit makes an incredible gift to take home.",
+    phone:null, mapUrl:'https://maps.google.com/?q=Cape+Town+CBD',
+    website:'https://www.ceremonymatcha.com', booking:null,
+    instagram:'https://www.instagram.com/ceremonymatcha/', menu:'https://www.ceremonymatcha.com',
+    keywords:['ceremony','ceremony matcha','ceremonial matcha','matcha powder','uji matcha']
+  },
+  {
+    name:'Haas Coffee Collective', cat:'matcha', catLabel:'Matcha · Café',
+    location:'38 Hout Street, Cape Town CBD', distance:'18 min drive',
+    price:'$$', img:'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=800&q=80',
+    desc:"One of Cape Town's most design-forward specialty coffee shops, also celebrated for their incredible matcha drinks. Beautiful interiors, exceptional baristas and a menu that spans from precision espresso to velvety matcha lattes.",
+    tip:"The matcha latte here is one of the best in Cape Town — try it iced in summer. The food menu is excellent too. Go mid-morning on a weekday for the best experience.",
+    phone:'+27 21 422 4413', mapUrl:'https://maps.google.com/?q=Haas+Coffee+Cape+Town+CBD',
+    website:'https://www.haascollective.com', booking:null,
+    instagram:'https://www.instagram.com/haascollective/', menu:'https://www.haascollective.com',
+    keywords:['haas','haas coffee','haas collective','matcha','cbd cafe','design cafe']
   }
 ];
 
@@ -577,11 +721,14 @@ function emailHref(email, name) {
   return `mailto:${email}?subject=${s}&body=${b}`;
 }
 
+let SAVED = JSON.parse(localStorage.getItem('cb_day_plan') || '[]');
+
 const grid = document.getElementById('places-grid');
-PLACES.forEach(p => {
+PLACES.forEach((p, idx) => {
   const card = document.createElement('div');
   card.className = 'place-card';
   card.dataset.cat = p.cat;
+  card.id = `card-${idx}`;
   const phoneBtn = p.phone ? `<a class="btn btn-phone" href="tel:${p.phone.replace(/\s/g,'')}">${svgUse('ico-phone')} ${p.phone}</a>` : '';
   const dirBtn = `<a class="btn btn-directions" href="${p.mapUrl}" target="_blank" rel="noopener">${svgUse('ico-map')} Directions</a>`;
   const webBtn = p.website ? `<a class="btn btn-web" href="${p.website}" target="_blank" rel="noopener">${svgUse('ico-globe')} Website</a>` : '';
@@ -592,11 +739,14 @@ PLACES.forEach(p => {
   const row1 = hasPair ? `<div class="btn-row">${phoneBtn}${dirBtn}</div>` : dirBtn;
   const hasWebInsta = p.website && p.instagram;
   const row2 = hasWebInsta ? `<div class="btn-row">${webBtn}${instaBtn}</div>` : (p.website ? webBtn : (p.instagram ? instaBtn : ''));
+  const isSaved = SAVED.includes(idx);
+  const heartSvg = `<svg viewBox="0 0 24 24" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>`;
   card.innerHTML = `
     <div class="card-img-wrap">
       <img src="${p.img}" alt="${p.name}" loading="lazy"/>
       <span class="cat-badge cat-${p.cat}">${p.catLabel}</span>
       <span class="price-badge">${p.price}</span>
+      <button class="card-save-btn ${isSaved?'saved':''}" id="save-btn-${idx}" onclick="toggleSave(${idx})" aria-label="Add to day plan">${heartSvg}</button>
     </div>
     <div class="card-body">
       <h3>${p.name}</h3>
@@ -610,6 +760,7 @@ PLACES.forEach(p => {
       ${row2}
       ${menuBtn}
       ${bookBtn}
+      <button class="btn btn-add-day ${isSaved?'added':''}" id="day-btn-${idx}" onclick="toggleSave(${idx})">${isSaved?'✓ In My Day Plan':'+ Add to My Day Plan'}</button>
     </div>`;
   grid.appendChild(card);
 });
@@ -621,10 +772,123 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.classList.add('active');
     const f = btn.dataset.filter;
     document.querySelectorAll('.place-card').forEach(c => {
-      c.classList.toggle('hidden', f !== 'all' && c.dataset.cat !== f);
+      const cat = c.dataset.cat;
+      const show = f === 'all' || cat === f || (f === 'cafe' && cat === 'matcha');
+      c.classList.toggle('hidden', !show);
     });
   });
 });
+
+// ── APP STORE OPENER ─────────────────────────────────────────────────────────
+function openAppStore(iosUrl, androidUrl) {
+  const ios = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+  window.open(ios ? iosUrl : androidUrl, '_blank', 'noopener');
+}
+
+// ── SAVE TOAST ───────────────────────────────────────────────────────────────
+const toast = document.createElement('div');
+toast.className = 'save-toast';
+document.body.appendChild(toast);
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ── DAY PLAN ──────────────────────────────────────────────────────────────────
+function savePlan() { localStorage.setItem('cb_day_plan', JSON.stringify(SAVED)); }
+
+function toggleSave(idx) {
+  const already = SAVED.includes(idx);
+  if (already) {
+    SAVED = SAVED.filter(i => i !== idx);
+    showToast(`Removed from day plan`);
+  } else {
+    SAVED.push(idx);
+    showToast(`✓ Added to My Day Plan!`);
+    document.getElementById('day-plan-section').scrollIntoView({behavior:'smooth', block:'start'});
+  }
+  savePlan();
+  // Update card button states
+  const saveBtn = document.getElementById(`save-btn-${idx}`);
+  const dayBtn = document.getElementById(`day-btn-${idx}`);
+  if (saveBtn) saveBtn.classList.toggle('saved', !already);
+  if (dayBtn) { dayBtn.classList.toggle('added', !already); dayBtn.textContent = !already ? '✓ In My Day Plan' : '+ Add to My Day Plan'; }
+  renderDayPlan();
+}
+
+function renderDayPlan() {
+  const section = document.getElementById('day-plan-section');
+  const container = document.getElementById('day-items');
+  section.style.display = SAVED.length ? 'block' : 'none';
+  if (!SAVED.length) return;
+  container.innerHTML = '';
+  SAVED.forEach((idx, n) => {
+    const p = PLACES[idx];
+    if (!p) return;
+    const el = document.createElement('div');
+    el.className = 'day-item';
+    el.innerHTML = `
+      <div class="day-num">${n+1}</div>
+      <span class="day-item-cat cat-${p.cat}">${p.catLabel}</span>
+      <div class="day-item-info">
+        <h4>${p.name}</h4>
+        <p>${p.location} · ${p.distance}</p>
+      </div>
+      <div class="day-actions">
+        <a class="day-btn day-btn-dir" href="${p.mapUrl}" target="_blank" rel="noopener">📍 Directions</a>
+        <button class="day-btn day-btn-rm" onclick="toggleSave(${idx})">Remove</button>
+      </div>`;
+    container.appendChild(el);
+  });
+}
+
+function clearDayPlan() {
+  SAVED.forEach(idx => {
+    const sb = document.getElementById(`save-btn-${idx}`); if(sb) sb.classList.remove('saved');
+    const db = document.getElementById(`day-btn-${idx}`); if(db) { db.classList.remove('added'); db.textContent = '+ Add to My Day Plan'; }
+  });
+  SAVED = []; savePlan(); renderDayPlan();
+  showToast('Day plan cleared');
+}
+
+function shareDayPlan() {
+  const lines = SAVED.map((idx, n) => { const p = PLACES[idx]; return `${n+1}. ${p.name} — ${p.location} (${p.distance})`; });
+  const text = `My Cape Town Day Plan — Mountain Oasis\n\n${lines.join('\n')}`;
+  navigator.clipboard.writeText(text).then(() => showToast('Day plan copied to clipboard!')).catch(() => showToast('Copy failed — try again'));
+}
+
+// Init day plan on load
+renderDayPlan();
+
+// ── GUEST REGISTRATION ────────────────────────────────────────────────────────
+const guestModal = document.getElementById('guest-modal');
+function closeGuestModal() { guestModal.style.display = 'none'; }
+
+if (localStorage.getItem('mo_guest_registered')) {
+  closeGuestModal();
+} else {
+  const form = document.getElementById('guest-form');
+  const enterBtn = document.getElementById('btn-enter');
+  const statusEl = document.getElementById('form-status');
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    enterBtn.disabled = true;
+    enterBtn.textContent = 'Sending…';
+    statusEl.className = 'form-status'; statusEl.style.display = 'none';
+    try {
+      const res = await fetch(form.action, { method:'POST', body: new FormData(form), headers: { Accept: 'application/json' } });
+      if (res.ok) {
+        localStorage.setItem('mo_guest_registered', '1');
+        statusEl.className = 'form-status ok'; statusEl.textContent = 'Welcome! Enjoy your guide 🌊';
+        setTimeout(closeGuestModal, 1200);
+      } else { throw new Error(); }
+    } catch {
+      statusEl.className = 'form-status err'; statusEl.textContent = 'Something went wrong — please try again.';
+      enterBtn.disabled = false; enterBtn.textContent = 'Enter the Guide →';
+    }
+  });
+}
 
 // ── EMAIL MODAL ───────────────────────────────────────────────────────────────
 const emailModal = document.getElementById('email-modal');
@@ -654,7 +918,8 @@ const msgs = document.getElementById('chat-messages');
 const chipsEl = document.getElementById('chat-chips');
 const input = document.getElementById('chat-input');
 const sendBtn = document.getElementById('chat-send');
-const CHIPS = ['Best restaurants nearby', "Things to do today", 'Closest beach', 'Order food in', 'Table Mountain tips'];
+const CHIPS = ['Best restaurants nearby', 'Things to do today', 'Closest beach', 'Best matcha in CT', 'Plan my day'];
+let chatCtx = { topic: null, lastPlace: null, lastCat: null };
 
 function renderChips(list) {
   chipsEl.innerHTML = '';
@@ -681,122 +946,193 @@ function showTyping() {
 function hideTyping() { const t = document.getElementById('typing'); if(t) t.remove(); }
 function respond(text) {
   showTyping();
-  setTimeout(() => { hideTyping(); addMsg(getResponse(text),'bot'); renderChips(CHIPS); }, 700);
+  const delay = 500 + Math.random() * 400;
+  setTimeout(() => { hideTyping(); const r = getResponse(text); addMsg(r,'bot'); renderChips(getChips()); }, delay);
+}
+
+function getChips() {
+  const t = chatCtx.topic;
+  if (t === 'beach') return ['Is the water cold?','Clifton vs Camps Bay','Llandudno beach'];
+  if (t === 'restaurant') return ['Best seafood','Fine dining options','Somewhere romantic'];
+  if (t === 'coffee' || t === 'matcha') return ['Best matcha latte','Closest coffee','Breakfast spots'];
+  if (t === 'mountain') return ['Best time to go','How long does it take?','Do I need to book?'];
+  if (t === 'activity') return ['Plan my day','Rainy day activities','Best hike'];
+  return CHIPS;
 }
 
 function getResponse(raw) {
   const q = raw.toLowerCase().trim();
 
-  if (/^(hi|hello|hey|howzit|hola|good morning|good afternoon)\b/.test(q))
-    return "Welcome to Mountain Oasis! 🌊 I'm your personal Cape Town guide. Ask me anything — best restaurants, beaches, activities, things to do, how to get around, food delivery, weather tips — I'm here to make your stay amazing!";
+  // ── GREETINGS & THANKS
+  if (/^(hi|hello|hey|howzit|hola|good morning|good afternoon|good evening)\b/.test(q))
+    return "Welcome to Mountain Oasis! 🌊 I'm your personal Cape Town guide. Ask me anything — restaurants, beaches, matcha spots, activities, day trips, Uber, weather, safety — I know it all. What are you looking for?";
 
-  if (/\b(bye|goodbye|thanks|thank you|cheers|amazing|perfect|awesome|great|love it)\b/.test(q))
-    return "You're so welcome! Enjoy every moment in Cape Town — it's one of the most beautiful cities in the world. 🌊";
+  if (/\b(bye|goodbye|see you|ciao)\b/.test(q))
+    return "Enjoy Cape Town — it truly is one of the most beautiful places on earth! 🌊 Come back if you have any questions.";
 
-  // Specific place match
+  if (/\b(thanks|thank you|cheers|thx|great|perfect|awesome|love it|amazing|wonderful|brilliant)\b/.test(q))
+    return "You're so welcome! 😊 Anything else I can help with? Don't forget you can tap the **♡** button on any card to save it to your Day Plan!";
+
+  // ── DAY PLAN / ITINERARY
+  if (/plan.*day|day.*plan|itinerary|what.*should.*do|full day|suggest.*day|day.*out|schedule/.test(q)) {
+    chatCtx.topic = 'activity';
+    if (/morning|breakfast|start/.test(q)) return "**Perfect Cape Town morning from Mountain Oasis:**\n\n☕ **8am** — Coffee at Bootlegger (Sea Point, 10 min drive) or take a matcha at Matchaba (17 min)\n🏖️ **9am** — Morning swim at Camps Bay Beach (2 min walk) while it's quiet\n🏔️ **10:30am** — Head to Table Mountain Cableway (12 min drive) — best time for clear skies\n\nTip: Check the cable car status online before you go! Hit ♡ on any card to save it to your Day Plan.";
+    if (/beach|relaxing|chill|lazy/.test(q)) return "**Perfect Beach Day:**\n\n🌅 **9am** — Grab a flat white from Bootlegger (Sea Point)\n🏖️ **10am** — Set up at Camps Bay Beach (2 min walk) — white sand & mountain backdrop\n🚶 **12pm** — Walk the cliff path to Clifton 4th Beach (12 min)\n🍽️ **2pm** — Lunch at Paranga on the promenade (3 min drive)\n🌅 **6pm** — Sundowner back on Camps Bay promenade\n\nSave places with the ♡ button to build your plan!";
+    if (/adventure|active|energetic|sport/.test(q)) return "**Action-Packed Day:**\n\n🥾 **7am** — Lion's Head hike (10 min drive) — 2–3 hrs, stunning views\n🍵 **11am** — Matcha or coffee reward at Haas or Matchaba\n🚁 **2pm** — Paragliding from Signal Hill (10 min drive) — you land on Camps Bay beach!\n🦞 **7pm** — Celebrate with a crayfish at The Codfather (5 min drive)";
+    if (/peninsula|cape point|day trip/.test(q)) return "**Full Cape Peninsula Day Trip:**\n\n🚗 **8am** — Depart Mountain Oasis\n☕ **8:30am** — Coffee at Olympia Café, Kalk Bay\n🐟 **9am** — Browse Kalk Bay harbour & village\n🐧 **11am** — Boulders Beach penguins, Simon's Town\n⛰️ **1pm** — Cape Point & Cape of Good Hope\n🛣️ **4pm** — Drive Chapman's Peak at sunset back to Camps Bay\n🍽️ **7pm** — Dinner at Paranga";
+    return "**Suggested 3-day Cape Town plan from Mountain Oasis:**\n\n**Day 1 — Icons**\n• Table Mountain → Camps Bay beach → Paranga for sunset dinner\n\n**Day 2 — Peninsula**\n• Kalk Bay → Boulders Penguins → Cape Point → Chapman's Peak drive\n\n**Day 3 — Culture & Markets**\n• Oranjezicht Farm Market (Sat morning) → Bo-Kaap → V&A Waterfront\n\nTap ♡ on any card to build your own custom day plan!";
+  }
+
+  // ── SAVED PLACES / MY DAY PLAN
+  if (/my.*plan|saved|favourites|what.*saved|day.*plan|my.*list/.test(q)) {
+    if (!SAVED.length) return "You haven't saved any places yet! Tap the **♡** button or **+ Add to My Day Plan** on any card to start building your day. I'll scroll you to the Day Plan section once you do.";
+    const names = SAVED.map(i => PLACES[i]?.name).filter(Boolean);
+    return `You've saved **${names.length} place${names.length>1?'s':''}** to your Day Plan:\n\n${names.map((n,i)=>`${i+1}. ${n}`).join('\n')}\n\nScroll down to see your full Day Plan with directions and details. You can also say **"Copy my day plan"** to share it!`;
+  }
+  if (/copy.*plan|share.*plan/.test(q)) { shareDayPlan(); return "Done! Your day plan has been copied to your clipboard — paste it into Notes, WhatsApp or wherever you'd like! 📋"; }
+
+  // ── MATCHA
+  if (/matcha|green tea|ceremonial|matchaba|ceremony matcha|haas/.test(q)) {
+    chatCtx.topic = 'matcha';
+    if (/best|top|recommend/.test(q) || q.includes('matcha')) return "Cape Town's best matcha spots 🍵:\n\n**Matchaba** (De Waterkant, 17 min) — CT's dedicated matcha bar, ceremonial-grade. The iced matcha latte is exceptional.\n\n**Haas Coffee Collective** (CBD, 18 min) — Stunning design café with an incredible matcha menu alongside world-class coffee.\n\n**Ceremony Matcha** — The beloved global brand. Find it at specialty stockists across Cape Town — check their website for current locations.\n\nTap the 🍵 **Matcha** filter button to see all matcha cards!";
+    return "We've got three brilliant matcha options on the guide! Tap the 🍵 **Matcha** filter to see them all. **Matchaba** (De Waterkant) is the dedicated matcha bar — their iced matcha latte is a must. **Haas Coffee** (CBD) also does exceptional matcha. And **Ceremony Matcha** is available at select Cape Town stockists.";
+  }
+
+  // ── SPECIFIC PLACE MATCH
   for (const p of PLACES) {
     if (p.keywords.some(k => q.includes(k))) {
-      if (/phone|call|number|contact/.test(q)) return p.phone ? `📞 **${p.name}**: ${p.phone}` : `**${p.name}** doesn't take phone bookings — just turn up or check their website!`;
-      if (/directions|get there|how.*reach|where.*exactly/.test(q)) return `📍 **${p.name}** is at ${p.location} — ${p.distance} from Mountain Oasis. Tap the Directions button on the card to open Google Maps!`;
-      if (/book|reserve|reservation/.test(q)) return p.booking ? `You can book **${p.name}** online at ${p.booking}. Tap the Book Online button on the card!` : `**${p.name}** doesn't require booking — just turn up!`;
-      if (/tip|advice|recommend|suggest|best time/.test(q)) return `🏠 **Host tip for ${p.name}:** ${p.tip}`;
-      if (/how far|distance|long.*drive|walk/.test(q)) return `**${p.name}** is **${p.distance}** from Mountain Oasis. ${p.location}.`;
-      if (/cost|price|entry fee|how much/.test(q)) return `**${p.name}** is priced **${p.price}** (${p.price === 'Free' ? 'completely free entry!' : p.price === '$' ? 'very affordable' : p.price === '$$' ? 'mid-range' : p.price === '$$$' ? 'higher end' : 'luxury pricing'}). Check their website for exact current prices.`;
-      return `**${p.name}** (${p.catLabel})\n\n${p.desc}\n\n📍 ${p.location} · ${p.distance} from us\n💰 ${p.price}\n\n🏠 **Host tip:** ${p.tip}`;
+      chatCtx.lastPlace = p.name; chatCtx.topic = p.cat;
+      if (/phone|call|number|contact/.test(q)) return p.phone ? `📞 **${p.name}**: ${p.phone}` : `**${p.name}** doesn't have a public call line — check their website or just turn up!`;
+      if (/book|reserve|reservation|table/.test(q)) return p.booking ? `You can book **${p.name}** online — tap the **Book Online** button on the card, or visit: ${p.booking}` : `**${p.name}** doesn't require a reservation — just turn up! ${p.tip.split('.')[0]}.`;
+      if (/menu|food|eat|what.*serve|what.*sell/.test(q)) return p.menu ? `**${p.name}** has their menu online — tap **View Menu** on the card, or visit: ${p.menu}` : `**${p.name}** — ${p.desc} Tap the Website button for the latest menu.`;
+      if (/instagram|social|insta|follow/.test(q)) return p.instagram ? `Follow **${p.name}** on Instagram — tap the Instagram button on the card! They're at ${p.instagram}` : `**${p.name}** doesn't have an Instagram linked in our guide.`;
+      if (/tip|advice|suggest|best time|when/.test(q)) return `🏠 **Host tip for ${p.name}:**\n\n${p.tip}`;
+      if (/how far|distance|drive|walk|from here|from us/.test(q)) return `**${p.name}** is **${p.distance}** from Mountain Oasis. Located at ${p.location}.`;
+      if (/directions|get there|map|google maps/.test(q)) return `📍 **${p.name}** is at ${p.location} — ${p.distance} from us. Tap the **Directions** button on the card to open Google Maps directly!`;
+      if (/cost|price|free|how much|entry/.test(q)) { const priceMap = {'Free':'free — no entry cost!','$':'very affordable','$$':'mid-range priced','$$$':'higher-end priced','$$$$':'fine-dining / premium priced','Free (entry)':'free entry','$ (toll)':'a small toll applies for the drive'}; return `**${p.name}** is **${priceMap[p.price]||p.price}**. Check their website for exact current prices.`; }
+      if (/save|add.*day|day.*plan/.test(q)) return `To add **${p.name}** to your Day Plan, tap the **♡** heart button or the **+ Add to My Day Plan** button on their card! It'll appear in your Day Plan section below.`;
+      return `**${p.name}** (${p.catLabel})\n\n${p.desc}\n\n📍 ${p.location} · ${p.distance} from us\n💰 ${p.price}\n\n🏠 **Host tip:** ${p.tip}\n\nUse the ♡ button on the card to save it to your day plan!`;
     }
   }
 
-  // Food delivery
-  if (/uber eats|ubereats|delivery|order.*food|food.*order|deliver.*here|order.*in|staying in/.test(q))
-    return "Yes, food delivery works great to Camps Bay! 🛵\n\n• **Uber Eats** — biggest selection, most reliable\n• **Mr D** — great local restaurants\n• **Checkers Sixty60** — groceries in 60 min!\n• **Woolies Dash** — premium Woolworths groceries\n\nScroll down on the page to the **Order In** section for direct links to all four!";
-
-  if (/checkers|sixty60|groceries|grocery/.test(q))
-    return "**Checkers Sixty60** delivers groceries to Camps Bay in 60 minutes! It's brilliant for essentials, snacks and drinks. Scroll down to the Order In section on the page for the link. The nearest Checkers is also just a few minutes' drive away.";
-
-  if (/woolworths|woolies|woolies dash/.test(q))
-    return "**Woolies Dash** delivers premium Woolworths food to Camps Bay. Great for quality ready meals, fresh produce and snacks. Scroll to the Order In section for the link!";
-
-  // Beaches
-  if (/beach|swim|sand|sunbathe|ocean|sea/.test(q)) {
-    if (/closest|nearest|walk/.test(q)) return "**Camps Bay Beach** is literally a 2-minute walk from the front door! 🏖️ It's one of the most beautiful beaches in the world — white sand, turquoise water (cold but refreshing!) and the Twelve Apostles as backdrop.\n\n**Also close:**\n• **Clifton 4th** — 12 min walk (sheltered from wind by boulders)\n• **Llandudno** — 15 min drive (wilder, more secluded)";
-    if (/clifton/.test(q)) return "**Clifton Beaches** are a 12–15 minute walk along the cliff path. 4th Beach is the most sheltered and social. 3rd Beach is quieter. All are protected from the South-Easter wind by granite boulders — great on windy days when Camps Bay is breezy!";
-    if (/cold|temperature|water.*cold/.test(q)) return "Yes — the Atlantic Ocean is cold! 🥶 The Benguela Current keeps Cape Town's Atlantic side around 12–16°C even in summer. It's refreshing rather than warm. If you want warmer water, the False Bay side (Muizenberg, Boulders) is noticeably warmer — around 20°C in summer.";
-    return "Your beach options from Mountain Oasis:\n\n🏖️ **Camps Bay Beach** — 2 min walk, iconic and stunning\n🏖️ **Clifton 4th** — 12 min walk, sheltered & social\n🏖️ **Clifton 1st–3rd** — 15 min walk, quieter\n🏖️ **Llandudno** — 15 min drive, wild & secluded\n\nNote: Atlantic side beaches are cold but beautiful. For warmer water, head to Muizenberg (40 min drive) on the False Bay side!";
+  // ── CONTEXT-AWARE FOLLOW-UPS
+  if (/more|else|other|another|similar|also|what about/.test(q) && chatCtx.topic) {
+    const t = chatCtx.topic;
+    if (t === 'restaurant' || t === 'matcha') return "Here are more great options to explore — tap the relevant filter button at the top of the page to see all cards for that category. You can also tap ♡ on any card to save it to your day plan!";
+    if (t === 'beach') return "Other beaches to explore:\n\n🏖️ **Llandudno** (15 min drive) — wild, secluded, dramatic granite boulders\n🏖️ **Muizenberg** (40 min) — warmer water, great for learning to surf\n🏖️ **Boulders Beach** (55 min) — swim with African penguins!\n🏖️ **Hout Bay** (20 min) — sheltered, family-friendly, seal island nearby";
+    if (t === 'activity') return "More things to do:\n\n🚤 **Sunset boat cruise** from the V&A Waterfront — beautiful on a clear evening\n🍷 **Wine tasting in Stellenbosch** — 45 min drive, dozens of award-winning estates\n🎨 **Zeitz MOCAA** — Africa's leading contemporary art museum at the V&A\n🏄 **Surfing at Muizenberg** — Cape Town's surf beach, perfect for beginners";
   }
 
-  // Restaurants
-  if (/restaurant|eat|dinner|lunch|food.*out|where.*eat|best.*food|hungry/.test(q)) {
-    if (/closest|nearby|walking/.test(q)) return "Closest restaurants to Mountain Oasis on the Camps Bay strip:\n\n🍽️ **The Codfather** — 5 min drive, legendary seafood by weight\n🍽️ **Paranga** — 3 min drive, ocean-view terrace dining\n🍽️ **Blues** — Camps Bay strip, relaxed and delicious\n\nThe whole Camps Bay promenade is lined with great options — just walk down!";
-    if (/seafood|fish/.test(q)) return "Best seafood near you:\n\n🐟 **The Codfather** (Camps Bay, 5 min) — choose your fresh fish by weight, Cape Town institution\n🦞 **Harbour House** (V&A Waterfront, 20 min) — famous grilled fish, harbour views\n🐟 **Kalky's** (Kalk Bay, 35 min) — legendary fish & chips on the harbour wall, very casual, cash only";
-    if (/fine dining|special occasion|romantic|fancy/.test(q)) return "Best fine dining options:\n\n✨ **La Mouette** (Sea Point, 8 min) — Cape Town's most acclaimed fine dining, seasonal tasting menu\n✨ **Harbour House** (Waterfront, 20 min) — elegant seafood with harbour views\n✨ **Paranga** (Camps Bay, 3 min) — beautiful terrace, great for a romantic dinner with ocean views";
-    return "Our top restaurant picks from Mountain Oasis:\n\n🍽️ **Paranga** — 3 min, ocean views, great for sunset\n🍽️ **The Codfather** — 5 min, legendary seafood by weight\n🍽️ **La Mouette** — 8 min, Sea Point fine dining\n🍽️ **Harbour House** — 20 min, V&A Waterfront seafood\n🍽️ **Kalky's** — 35 min, the best fish & chips in CT\n\nTap Restaurants in the filter bar for all options!";
+  // ── FOOD DELIVERY
+  if (/deliver|delivery|order.*food|food.*order|order.*in|staying in|uber eats|mr d|sixty60|woolies|groceries/.test(q)) {
+    chatCtx.topic = 'delivery';
+    if (/checkers|sixty60|groceries|grocery/.test(q)) return "**Checkers Sixty60** delivers groceries to Camps Bay in 60 minutes — perfect for essentials, wine, snacks and drinks. Tap the **Download App** button in the Order In section below!";
+    if (/woolies|woolworths|dash/.test(q)) return "**Woolworths Dash** is now part of the main Woolworths app — you can order premium groceries and ready meals delivered fast. Find the link in the Order In section below!";
+    return "Yes, food delivery works brilliantly to Mountain Oasis! 🛵\n\n• **Uber Eats** — biggest restaurant selection, most reliable\n• **Mr D** — great local Cape Town restaurants\n• **Checkers Sixty60** — groceries in 60 min!\n• **Woolies** — premium groceries & ready meals\n\nScroll down to the **Order In** section — tap any app to go straight to the App Store or Google Play!";
   }
 
-  // Cafes/Coffee
-  if (/coffee|cafe|café|breakfast|brunch|flat white|espresso|cappuccino/.test(q)) {
-    if (/closest|nearest|nearby/.test(q)) return "Closest coffee to Mountain Oasis:\n\n☕ **Bootlegger Coffee** (Sea Point, 10 min drive) — closest quality coffee shop, great breakfast too\n\nFor the full experience, the CBD options are 18–20 min drive:\n☕ **Truth Coffee Roasting** — voted one of the world's best\n☕ **Origin Coffee Roasting** — Cape Town's pioneering specialty roaster";
-    return "Cape Town's best coffee spots:\n\n☕ **Truth Coffee Roasting** (CBD, 18 min) — voted one of the world's best coffee shops, steampunk cathedral vibes\n☕ **Origin Coffee Roasting** (De Waterkant, 17 min) — pioneering specialty roaster\n☕ **Bootlegger** (Sea Point, 10 min) — closest to us, excellent espresso and breakfast\n☕ **Olympia Café** (Kalk Bay, 35 min) — charming village café worth the drive\n\nTap Cafés in the filter bar for all options!";
+  // ── BEACHES
+  if (/beach|swim|sand|sunbathe|ocean|sea|surf/.test(q)) {
+    chatCtx.topic = 'beach';
+    if (/closest|nearest|walk/.test(q)) return "**Camps Bay Beach** is literally a 2-minute walk from Mountain Oasis! 🏖️ One of the world's most beautiful beaches — white sand, turquoise water and the Twelve Apostles mountains as backdrop.\n\n**Also close:**\n• **Clifton 4th** — 12 min walk (sheltered from wind)\n• **Llandudno** — 15 min drive (wild & secluded)";
+    if (/clifton/.test(q)) return "**Clifton Beaches** are a scenic 12–15 min walk along the cliff path. 4th Beach is the most sheltered (protected from wind by granite boulders) and very social. 3rd and 2nd are quieter. Great when Camps Bay is breezy!";
+    if (/cold|temperature|warm|water/.test(q)) return "The Atlantic Ocean here is cold — around **12–16°C** even in summer thanks to the Benguela Current 🥶. It's refreshing rather than warm! If you want warmer water, head to **Muizenberg** or **Boulders Beach** on the False Bay (Indian Ocean) side — about 40 min drive. The water there is 20°C+ in summer.";
+    if (/surf|surfing/.test(q)) return "The Atlantic beaches (Camps Bay, Clifton) are generally not great for surfing — the waves are rough and the water is cold. For surfing, **Muizenberg** (40 min drive) is the place — warm(ish) water, gentle waves, perfect for beginners. Several surf schools there too!";
+    return "Your beach options from Mountain Oasis:\n\n🏖️ **Camps Bay** — 2 min walk, iconic white sand\n🏖️ **Clifton 4th** — 12 min walk, sheltered & social\n🏖️ **Llandudno** — 15 min drive, wild & dramatic\n🏖️ **Muizenberg** — 40 min drive, warmer water & surfing\n🏖️ **Boulders Beach** — 55 min, swim with penguins!\n\nNote: Atlantic side is cold but beautiful. Use the Beaches filter to explore!";
   }
 
-  // Table Mountain
-  if (/table mountain|mountain|cableway|cable car/.test(q)) {
-    if (/best time|when|morning|afternoon/.test(q)) return "**Best times for Table Mountain:**\n\n🌅 **Early morning (8–10am)** — clearest skies, shortest queues\n🌇 **Late afternoon (3–5pm)** — beautiful light, fewer crowds, chance of sunset\n\n⚠️ **Avoid:** Midday in summer (busy + windy), anytime the 'tablecloth' cloud is covering the mountain (cable car closes when visibility is poor)\n\n✅ **Always check** the cable car status on their website before going — it closes in high wind. Book online to skip the queue!";
-    return "**Table Mountain Aerial Cableway** is about 12 minutes' drive from us. The rotating cable car takes you to the top in 5 minutes with panoramic views. On a clear day you can see the whole Cape Peninsula!\n\n🏠 **Host tip:** Go early morning or late afternoon. Always check the cable car is running online before you go — it closes in high winds. Book tickets in advance to skip the queue!";
+  // ── RESTAURANTS
+  if (/restaurant|eat|dinner|lunch|where.*eat|best.*food|hungry|meal|dining/.test(q)) {
+    chatCtx.topic = 'restaurant';
+    if (/closest|nearby|walking|promenade/.test(q)) return "Closest restaurants on the Camps Bay strip — all walkable or a very short drive:\n\n🍽️ **Paranga** — 3 min, ocean-view terrace, great cocktails\n🍽️ **The Codfather** — 5 min, legendary fresh seafood by weight\n🍽️ **Blues Restaurant** — Camps Bay strip, relaxed & delicious\n🍽️ **Casablanca** — Camps Bay, Moroccan-inspired, great vibes\n\nThe whole promenade is lined with options — just walk down!";
+    if (/seafood|fish|crayfish|lobster/.test(q)) return "Cape Town's best seafood:\n\n🐟 **The Codfather** (5 min) — choose your fresh fish by weight from the display, Cape Town institution. Get the crayfish if in season!\n🦞 **Harbour House** (V&A, 20 min) — legendary grilled catch, harbour views\n🐟 **Kalky's** (Kalk Bay, 35 min) — the best fish & chips in CT, eat on the harbour wall. Cash only!";
+    if (/fine dining|special|romantic|fancy|tasting menu/.test(q)) return "Best fine dining near Mountain Oasis:\n\n✨ **La Mouette** (Sea Point, 8 min) — Cape Town's most acclaimed fine dining, seasonal tasting menus, Victorian house setting\n✨ **Harbour House** (V&A, 20 min) — elegant seafood, stunning harbour views\n✨ **Paranga** (Camps Bay, 3 min) — beautiful ocean terrace, perfect for a romantic sunset dinner";
+    if (/cheap|budget|affordable|casual/.test(q)) return "Budget & casual eats:\n\n💰 **Kalky's** (Kalk Bay, 35 min) — legendary fish & chips, very cheap, eat on the harbour. Cash only!\n💰 **Camps Bay promenade** — plenty of café-style spots with great value lunches\n💰 **Oranjezicht Market** (Saturdays) — incredible street food at market prices";
+    return "Our top restaurant picks from Mountain Oasis:\n\n🍽️ **Paranga** — 3 min, ocean views & sunset terrace\n🍽️ **The Codfather** — 5 min, legendary seafood by weight\n🍽️ **La Mouette** — 8 min, Sea Point fine dining\n🍽️ **Harbour House** — 20 min, V&A Waterfront seafood\n🍽️ **Kalky's** — 35 min, the best fish & chips in CT\n\nTap Restaurants in the filter bar, or ask me anything more specific!";
   }
 
-  // Activities / what to do
-  if (/what.*do|things.*do|activities|bored|suggestions|recommendations|itinerary|day out|day trip/.test(q)) {
-    if (/rainy|raining|bad weather|cloudy|inside|indoor/.test(q)) return "Best things to do on a rainy or cloudy day in Cape Town:\n\n🐠 **Two Oceans Aquarium** (V&A, 20 min) — world-class and great fun\n🛍️ **V&A Waterfront** (20 min) — shops, restaurants, galleries, all under one roof\n☕ **Truth Coffee** (CBD, 18 min) — incredible steampunk café, great for a rainy morning\n🎨 **Zeitz MOCAA** (V&A, 20 min) — the best contemporary African art museum on the continent\n📚 **CBD & Bo-Kaap** — museums, galleries, colourful streets";
-    if (/first time|first visit|must see|bucket list|tourist/.test(q)) return "**First-time Cape Town must-dos from Mountain Oasis:**\n\n1️⃣ **Table Mountain** — non-negotiable, do it first day if weather is clear\n2️⃣ **Cape Peninsula drive** — Cape Point, Boulders Penguins, Chapman's Peak\n3️⃣ **Camps Bay beach** — it's literally at your door!\n4️⃣ **V&A Waterfront** — food, shopping, harbour views\n5️⃣ **Bo-Kaap** — colourful Cape Malay quarter\n6️⃣ **Kirstenbosch** — magical botanical garden\n7️⃣ **Robben Island** — profound historical experience";
-    return "Things to do near Mountain Oasis:\n\n🏃 **Active:** Lion's Head hike, paragliding, kayaking\n🎯 **Iconic:** Table Mountain, Cape Point, Robben Island, Boulders Penguins\n🌿 **Nature:** Kirstenbosch, Chapman's Peak drive, Llandudno beach\n🏙️ **Culture:** Bo-Kaap, V&A Waterfront, Kalk Bay village\n🛒 **Markets:** Oranjezicht Farm Market (Saturdays!)\n\nTap the filter buttons to browse by category!";
+  // ── COFFEE / CAFÉ
+  if (/coffee|cafe|café|breakfast|brunch|flat white|espresso|cappuccino|latte|croissant/.test(q)) {
+    chatCtx.topic = 'coffee';
+    if (/closest|nearest|nearby/.test(q)) return "Closest quality coffee to Mountain Oasis:\n\n☕ **Bootlegger Coffee** (Sea Point, 10 min drive) — great espresso, excellent breakfast bowls, relaxed vibe. The avo toast is brilliant.\n\nFor the full specialty experience:\n☕ **Truth Coffee** (CBD, 18 min) — voted one of the world's best\n☕ **Origin Coffee** (De Waterkant, 17 min) — pioneering SA specialty roaster";
+    return "Cape Town's café scene is world-class:\n\n☕ **Truth Coffee Roasting** (CBD, 18 min) — voted one of the world's best coffee shops. Steampunk cathedral vibes, extraordinary espresso.\n☕ **Origin Coffee Roasting** (De Waterkant, 17 min) — pioneering specialty roaster, incredible single-origins\n☕ **Bootlegger** (Sea Point, 10 min) — closest to us, excellent espresso and breakfast\n☕ **Olympia Café** (Kalk Bay, 35 min) — charming village café, local legend\n\nFor **matcha**, tap the 🍵 Matcha filter for dedicated spots!";
   }
 
-  // Hike
-  if (/hike|hiking|walk|trek|trails/.test(q))
-    return "Best hikes & walks near Camps Bay:\n\n🥾 **Lion's Head** (10 min drive) — the most spectacular hike in Cape Town, 2–3 hrs, 360° views. Try the full moon hike!\n🚶 **Clifton path** — scenic cliff walk from Camps Bay to Clifton beaches (15 min walk)\n🥾 **Table Mountain** — multiple hiking routes up (3–4 hrs) or take the cable car\n🌿 **Kirstenbosch trails** — easy to moderate forest walks (25 min drive)\n🥾 **Cape Point** — dramatic cliff-top trails at the tip of the Peninsula";
+  // ── TABLE MOUNTAIN
+  if (/table mountain|cableway|cable car/.test(q)) {
+    chatCtx.topic = 'mountain';
+    if (/best time|when|morning|afternoon|time/.test(q)) return "**Best times for Table Mountain:**\n\n🌅 **8–10am** — clearest skies, coolest temperatures, shortest queues\n🌇 **3–5pm** — beautiful golden light, fewer crowds, chance of sunset\n\n⚠️ **Avoid midday** in summer — it gets very busy and windy.\n⚠️ **Check the tablecloth cloud** — when a white cloud blankets the top, the cable car closes.\n\n✅ **Always check** tablemountain.net before going — it closes in high winds. Book tickets online to skip the queue!";
+    if (/hike|walk up|hiking/.test(q)) return "Yes, you can hike up Table Mountain! Several routes:\n\n🥾 **Platteklip Gorge** — most popular, 2–3 hrs, well-marked path up the front face\n🥾 **India Venster** — more scenic, moderate difficulty, 3 hrs\n🥾 **Skeleton Gorge** — starts at Kirstenbosch, beautiful forest route, 3–4 hrs\n\nAlways hike with someone, start early, and bring water + a warm layer — it gets cold on top even in summer!";
+    if (/book|ticket|cost|price/.test(q)) return "Table Mountain Cableway tickets:\n💰 **Adults**: approx R420–R480 return (prices change seasonally)\n💰 **Children (4–17)**: approx R210–R240\n💰 **Under 4**: Free\n\nBook online at tablemountain.net — it's cheaper and you skip the queue. The cable car is a 5-minute rotating ride to the top!";
+    return "**Table Mountain Aerial Cableway** is about 12 min drive from Mountain Oasis. The rotating cable car gives you a spectacular 5-min ride to the top with 360° views of Cape Town, the Atlantic and the Cape Peninsula.\n\n🏠 **Host tip:** Go early morning or late afternoon, check the status online first, and book tickets in advance to skip the queue!";
+  }
 
-  // Weather / best time
-  if (/weather|temperature|hot|cold|wind|windy|rain|summer|winter|best.*time.*year|season/.test(q))
-    return "**Cape Town weather:**\n\n☀️ **Summer (Dec–Feb)** — warm and sunny, 25–30°C, but can be windy (South-Easter). Peak season.\n🌸 **Autumn (Mar–May)** — mild, 20–25°C, less wind. Often the best time to visit!\n🌧️ **Winter (Jun–Aug)** — rainy season, 12–17°C. Some stunning clear winter days though.\n🌺 **Spring (Sep–Nov)** — wildflowers, warming up, great weather starting.\n\n⚠️ **The Cape Doctor (South-Easter wind)** blows hard in summer afternoons — this is normal. Camps Bay gets the full force but Clifton beaches are sheltered from it!";
+  // ── ACTIVITIES
+  if (/what.*do|things.*do|activities|bored|explore|see|visit|must see|bucket list|tourist/.test(q)) {
+    chatCtx.topic = 'activity';
+    if (/rainy|rain|cloudy|bad weather|inside|indoor/.test(q)) return "Best indoor/rainy day options in Cape Town:\n\n🐠 **Two Oceans Aquarium** (V&A, 20 min) — world-class sharks, penguins, turtles\n🛍️ **V&A Waterfront** (20 min) — 80+ restaurants, shops & galleries under one roof\n☕ **Truth Coffee** (CBD, 18 min) — stunning steampunk space, great for a slow morning\n🎨 **Zeitz MOCAA** (V&A, 20 min) — best contemporary African art museum in the world\n🏛️ **South African National Gallery** — free, beautiful historic building in the Gardens";
+    if (/first time|first visit|must|essential|can't miss/.test(q)) return "**First-time Cape Town essentials from Mountain Oasis:**\n\n1️⃣ **Table Mountain** — do it first, on the clearest day\n2️⃣ **Camps Bay beach** — it's at your door!\n3️⃣ **Cape Peninsula drive** — Cape Point, penguins, Chapman's Peak\n4️⃣ **Robben Island** — profound, moving, essential\n5️⃣ **Bo-Kaap** — most photographed street in Africa\n6️⃣ **V&A Waterfront** — food, shopping, harbour life\n7️⃣ **Kirstenbosch** — world's most beautiful botanical garden\n\nSay **'plan my day'** and I'll help build your itinerary!";
+    return "Things to do from Mountain Oasis:\n\n🏃 **Active:** Lion's Head hike, paragliding, surfing at Muizenberg\n🎯 **Iconic:** Table Mountain, Cape Point, Robben Island, Boulders Penguins\n🌿 **Nature:** Kirstenbosch, Chapman's Peak drive, Llandudno beach\n🏙️ **Culture:** Bo-Kaap, V&A Waterfront, Kalk Bay village\n🛒 **Markets:** Oranjezicht Farm Market (Saturdays!)\n🍵 **Wellness:** Matchaba & Haas for matcha, yoga on the beach\n\nSay **'plan my day'** for a suggested full itinerary!";
+  }
 
-  // Getting around / transport
-  if (/uber|taxi|transport|car hire|car rental|getting around|how.*get.*around|drive|driving/.test(q))
-    return "**Getting around Cape Town:**\n\n🚗 **Uber** — works well throughout Cape Town and the Winelands. Very affordable by international standards.\n🚗 **Car hire** — highly recommended for day trips to Cape Point, Kirstenbosch, Stellenbosch etc.\n🚕 **Bolt** — similar to Uber, also works well\n⚠️ **Minibus taxis** — local but not recommended for tourists\n\n**For the V&A Waterfront** — a quick Uber is easiest. **For wine estates** — arrange a driver or use a tour operator so everyone can enjoy the wine!";
+  // ── HIKE
+  if (/hike|hiking|walk|trek|trail|lion.*head/.test(q)) {
+    chatCtx.topic = 'activity';
+    return "Best hikes & walks near Mountain Oasis:\n\n🥾 **Lion's Head** (10 min drive) — the most spectacular hike in Cape Town. 2–3 hrs, 360° views, involves some chain-assisted climbing. Try the full moon hike — hundreds hike up with headlamps, magical!\n🚶 **Clifton cliff path** — casual 15-min walk from Camps Bay to Clifton beaches, stunning views\n🥾 **Table Mountain** — Platteklip Gorge (2–3 hrs) is the classic route up\n🌿 **Kirstenbosch trails** — easy to moderate forest walks on Table Mountain's slopes\n🥾 **Cape Point** — dramatic cliff-top trails at the tip of the Peninsula";
+  }
 
-  // Parking
+  // ── WEATHER
+  if (/weather|temperature|hot|cold|wind|windy|rain|summer|winter|season/.test(q))
+    return "**Cape Town weather guide:**\n\n☀️ **Summer (Dec–Feb)** — 25–32°C, sunny & warm, but the South-Easter wind blows hard in afternoons. Peak season.\n🌸 **Autumn (Mar–May)** — 18–25°C, mild, less wind. Often the **best time to visit**!\n🌧️ **Winter (Jun–Aug)** — 12–17°C, Cape Town's rainy season. Some gloriously clear winter days.\n🌺 **Spring (Sep–Nov)** — warming up, wildflowers, fantastic weather.\n\n⚠️ **The Cape Doctor** (South-Easter wind) is very strong in summer afternoons — totally normal! Clifton beaches are sheltered from it by the granite boulders.";
+
+  // ── TRANSPORT / UBER
+  if (/uber|bolt|taxi|transport|car hire|rent.*car|getting around|how.*get|drive/.test(q))
+    return "**Getting around Cape Town:**\n\n📱 **Uber & Bolt** — work brilliantly, very affordable vs international standards. Best for V&A Waterfront, CBD, city spots.\n🚗 **Car hire** — highly recommended for day trips: Cape Point, Kirstenbosch, Stellenbosch, wine farms. Can hire from the V&A or airport.\n⚠️ **For wine estates** — always arrange a dedicated driver so everyone can drink. Many tour operators offer half-day wine tours.\n\nUber is safe and easy — just like at home. The app works perfectly throughout Cape Town.";
+
+  // ── PARKING
   if (/parking|park.*car/.test(q))
-    return "**Parking at Mountain Oasis:** Please check with your hosts about the specific parking arrangement at the property.\n\n**At Camps Bay beach:** Street parking along Beach Road — free but can be busy in summer. Arrive early.\n**At the V&A Waterfront:** Large paid parking garages on-site.\n**Table Mountain:** Limited parking at the lower cable car station — Uber/taxi recommended.";
+    return "**Parking guide:**\n\n🏠 **Mountain Oasis** — check your booking confirmation for parking details.\n🏖️ **Camps Bay beach** — street parking on Beach Road, free. Busy in summer — arrive early.\n🛍️ **V&A Waterfront** — large paid underground car parks on site.\n🏔️ **Table Mountain** — limited parking at the lower cable car station. Uber is recommended.\n🏞️ **Cape Point** — parking at the gate, included in entry fee.";
 
-  // Sunset
-  if (/sunset|sundowner|golden hour/.test(q))
-    return "Cape Town sunsets are legendary! 🌅 Best spots from Mountain Oasis:\n\n🌅 **Camps Bay beach** — your doorstep! The whole promenade turns golden\n🌅 **Lion's Head** — hike up for a 360° sunset view\n🌅 **Signal Hill** — drive up, no hiking required, spectacular\n🌅 **Chapman's Peak Hotel** — sundowner cocktails with the cliff drive view\n🌅 **Paranga or Blues** — sunset dinner on Camps Bay promenade\n\nSunset is typically around 6pm in winter, 8pm in summer in Cape Town.";
+  // ── SUNSET
+  if (/sunset|sundowner|golden hour|drinks|cocktail/.test(q))
+    return "Cape Town sunsets are absolutely legendary 🌅\n\n**Best spots from Mountain Oasis:**\n🌅 **Camps Bay promenade** — at your doorstep! The whole strip goes golden\n🌅 **Lion's Head** — hike up for a 360° sunset panorama\n🌅 **Signal Hill** — drive up, no hike needed, incredible city & ocean view\n🌅 **Chapman's Peak Hotel** — sundowner cocktails with the cliff-drive view\n🌅 **Paranga or Blues** — eat & watch the sun set over the Atlantic from the terrace\n\nSunset is ~8pm in summer, ~6pm in winter.";
 
-  // Internet / wifi
-  if (/wifi|wi-fi|internet|data|sim card/.test(q))
-    return "Your Mountain Oasis Airbnb has WiFi — check the instructions in your booking for the password.\n\n**For mobile data:** South African SIM cards are cheap and easy to get. Checkers, Vodacom and MTN stores sell tourist SIMs with data bundles. Vodacom and MTN have the best coverage across the Peninsula.";
+  // ── WINE / WINELANDS
+  if (/wine|winelands|stellenbosch|franschhoek|vineyard|tasting/.test(q))
+    return "The Cape Winelands are one of the world's great wine destinations — just 45–60 min from Mountain Oasis!\n\n🍷 **Stellenbosch** — the wine capital of SA. Dozens of world-class estates, beautiful town to walk around.\n🍷 **Franschhoek** — France-meets-Africa mountain valley. More exclusive, spectacular scenery. The Franschhoek Wine Tram is brilliant!\n🍷 **Constantia** — just 20 min drive, oldest wine region in SA. Groot Constantia, Klein Constantia.\n\n**Tip:** Book a driver or wine tour so everyone can enjoy the tastings! Uber also goes to the closer estates.";
 
-  // Safety
-  if (/safe|safety|crime|dangerous|precautions|careful/.test(q))
-    return "Cape Town is generally **safe in tourist areas** like Camps Bay, Clifton, V&A Waterfront, Stellenbosch and the Atlantic Seaboard. Standard precautions apply:\n\n✅ Don't leave valuables visible in parked cars\n✅ Use Uber rather than walking late at night in unfamiliar areas\n✅ The beaches, promenade and restaurant strips are very safe day and night\n✅ Table Mountain — hike in groups and don't carry valuables\n\nCamps Bay itself is one of the safest and most pleasant neighbourhoods in Cape Town. Enjoy it!";
+  // ── WIFI / DATA
+  if (/wifi|wi-fi|internet|sim card|data|password/.test(q))
+    return "Your Mountain Oasis Airbnb has WiFi included — the password is in your booking confirmation or welcome booklet.\n\n**For mobile data:** SA SIM cards are very cheap and easy to buy. Pick one up at a Checkers, Woolworths or Vodacom/MTN store. Vodacom and MTN have the best coverage across the Peninsula and Winelands.";
 
-  // Markets
-  if (/market|markets|saturday|sunday|craft|artisan/.test(q))
-    return "Cape Town's best markets:\n\n🥕 **Oranjezicht City Farm Market** (Saturdays & Sundays, V&A) — the best! Local produce, artisan food, street eats. Don't miss it.\n🎪 **Bay Harbour Market** (Hout Bay, weekends) — fun indoor market with crafts, food and live music\n🛍️ **V&A Waterfront markets** — various craft and food markets running throughout the week\n🌸 **Greenmarket Square** (CBD) — daily outdoor market, great for souvenirs and local crafts";
+  // ── SAFETY
+  if (/safe|safety|crime|danger|careful|precaution|secure/.test(q))
+    return "Cape Town is **very safe in tourist areas** — Camps Bay, Clifton, V&A Waterfront, Atlantic Seaboard, Stellenbosch.\n\n✅ The promenade, restaurants and beaches are safe day and night\n✅ Use Uber/Bolt at night rather than walking in unfamiliar areas\n✅ Don't leave valuables visible in parked cars anywhere\n✅ Hike Lion's Head and Table Mountain with other people, not alone\n✅ ATMs: use ones inside shops/malls, not standalone street ATMs\n\nCamps Bay itself is one of the safest and most pleasant areas in the city. Relax and enjoy it!";
 
-  // Money / currency
-  if (/money|cash|currency|rand|atm|credit card|card|payment/.test(q))
-    return "**Currency:** South African Rand (ZAR). Cards are widely accepted at restaurants, shops and activities.\n\n💳 **Cards:** Visa and Mastercard accepted almost everywhere\n💵 **Cash:** Useful for some informal places (Kalky's fish & chips is cash only!), markets and tips\n🏧 **ATMs:** Plenty at the V&A Waterfront, Camps Bay strip and CBD. Use bank ATMs inside shops rather than standalone ones.";
+  // ── MARKETS
+  if (/market|markets|saturday|sunday|craft|artisan|produce|street food/.test(q)) {
+    chatCtx.topic = 'activity';
+    return "Cape Town's best markets:\n\n🥕 **Oranjezicht City Farm Market** (Sat & Sun, V&A) — the best! Local farmers, artisan food, street eats, craft brewers. Don't miss it!\n🎪 **Bay Harbour Market** (Hout Bay, weekends) — great indoor market with crafts, food & live music\n🛍️ **V&A Waterfront markets** — craft & food markets run regularly\n🌸 **Greenmarket Square** (CBD, Mon–Sat) — outdoor market, great for souvenirs & local crafts\n\nBring cash to all markets!";
+  }
 
-  // Emergency / important numbers
-  if (/emergency|police|ambulance|help|medical|hospital|doctor/.test(q))
-    return "**Important Cape Town numbers:**\n\n🚨 **Emergency:** 112 (from any mobile)\n🚓 **Police:** 10111\n🚑 **Ambulance:** 10177\n🏥 **Nearest hospital:** Netcare Christiaan Barnard Memorial Hospital (CBD)\n🏥 **Closest clinic:** Sea Point Medical Centre\n\n⚠️ For non-emergencies, your hosts can also help direct you to the right services!";
+  // ── MONEY / CURRENCY
+  if (/money|cash|currency|rand|zar|atm|credit card|card|payment|tipping|tip/.test(q))
+    return "**Money in Cape Town:**\n\n💱 **Currency:** South African Rand (ZAR). Currently very good value for most international visitors.\n💳 **Cards:** Visa & Mastercard accepted almost everywhere\n💵 **Cash:** Useful for markets, Kalky's fish & chips (cash only!) and tips\n🏧 **ATMs:** Use ATMs inside Checkers/Woolworths/malls — avoid standalone street ATMs\n\n**Tipping:**\n• Restaurants: 10–15%, 20% for great service\n• Uber/Bolt: optional but R10–20 appreciated\n• Petrol attendants: R5–10 (SA has full-service forecourts!)\n• Parking attendants: R5–10";
 
-  // Tipping
-  if (/tip|tipping|service|waiter/.test(q))
-    return "**Tipping in Cape Town:**\n\n🍽️ **Restaurants:** 10–15% is standard, 20% for exceptional service\n🚕 **Uber/Bolt:** Optional but appreciated — R10–20 is kind\n🏨 **Hotel staff:** R20–50 for bags/housekeeping\n⛽ **Petrol attendants:** R5–10 (South Africa has full-service petrol stations!)\n🅿️ **Parking attendants:** R5–10\n\nTipping culture is strong in Cape Town — service workers rely on tips significantly.";
+  // ── EMERGENCY
+  if (/emergency|police|ambulance|hospital|doctor|medical|help|injured/.test(q))
+    return "**Cape Town emergency numbers:**\n\n🚨 **Emergency (any):** 112 (from any mobile, free)\n🚓 **Police:** 10111\n🚑 **Ambulance/Fire:** 10177\n🏥 **Nearest hospital:** Netcare Christiaan Barnard Memorial (CBD, ~20 min)\n🏥 **Sea Point Medical Centre** — closest clinic to Camps Bay\n\n⚠️ For non-emergencies, reach out to your Airbnb hosts — they'll help direct you to the right services!";
 
-  // General fallback
-  return `Great question! Here are some quick answers:\n\n• 🏖️ **Beach** is 2 min walk (Camps Bay)\n• 🍽️ **Nearest restaurant** is 3 min drive (Paranga, Camps Bay strip)\n• ☕ **Coffee** is 10 min drive (Bootlegger, Sea Point)\n• 🏔️ **Table Mountain** is 12 min drive\n• 🚗 **Uber** works great around Cape Town\n• 🛵 **Uber Eats & Mr D** deliver to Camps Bay\n\nAsk me anything more specific — or browse the guide above by category!`;
+  // ── INTELLIGENT FALLBACK — search PLACES for any word match
+  const words = q.split(/\s+/).filter(w => w.length > 3);
+  for (const p of PLACES) {
+    if (words.some(w => p.name.toLowerCase().includes(w) || p.desc.toLowerCase().includes(w))) {
+      chatCtx.lastPlace = p.name;
+      return `**${p.name}** — ${p.desc.split('.')[0]}.\n\n📍 ${p.location} · ${p.distance} from us · ${p.price}\n\n🏠 ${p.tip}\n\nFind it in the guide above, or tap ♡ to add it to your day plan!`;
+    }
+  }
+
+  return "Great question! Here are some quick picks:\n\n🏖️ **Beach** — 2 min walk (Camps Bay)\n🍽️ **Nearest restaurant** — 3 min drive (Paranga, Camps Bay strip)\n☕ **Coffee** — 10 min drive (Bootlegger, Sea Point)\n🍵 **Matcha** — 17 min drive (Matchaba, De Waterkant)\n🏔️ **Table Mountain** — 12 min drive\n🚗 **Uber** works great everywhere\n🛵 **Uber Eats & Mr D** deliver here\n\nAsk me anything specific — or browse the guide with the filter buttons above!";
 }
 
 // Init chatbot
