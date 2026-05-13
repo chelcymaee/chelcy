@@ -117,6 +117,25 @@
     .app-desc{font-family:sans-serif;font-size:.74rem;color:var(--grey);line-height:1.4}
     .app-open{font-family:sans-serif;font-size:.72rem;font-weight:600;padding:6px 16px;border-radius:50px;color:var(--white);margin-top:4px}
 
+    /* STAY CONNECTED */
+    .stay-connected{background:linear-gradient(135deg,var(--ocean) 0%,#0D3B5E 100%);padding:72px 24px}
+    .stay-inner{max-width:520px;margin:0 auto;text-align:center}
+    .stay-eyebrow{font-family:sans-serif;font-size:.68rem;letter-spacing:4px;text-transform:uppercase;color:#AED6F1;margin-bottom:10px}
+    .stay-connected h2{font-size:clamp(1.8rem,3.5vw,2.6rem);font-weight:400;color:var(--white);margin-bottom:12px}
+    .stay-sub{font-family:sans-serif;font-size:.9rem;color:rgba(255,255,255,.72);line-height:1.7;margin-bottom:28px}
+    .stay-form{display:flex;flex-direction:column;gap:10px}
+    .stay-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .stay-form input{border:1.5px solid rgba(255,255,255,.25);border-radius:12px;padding:13px 16px;font-family:sans-serif;font-size:.88rem;outline:none;background:rgba(255,255,255,.1);color:var(--white);transition:border-color .2s;width:100%;box-sizing:border-box}
+    .stay-form input::placeholder{color:rgba(255,255,255,.45)}
+    .stay-form input:focus{border-color:rgba(255,255,255,.6)}
+    .stay-btn{width:100%;padding:14px;border-radius:12px;background:var(--coral);color:var(--white);border:none;font-family:sans-serif;font-size:.9rem;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:all .25s;margin-top:4px}
+    .stay-btn:hover{background:var(--coral-light);transform:translateY(-2px);box-shadow:0 8px 28px rgba(232,131,106,.4)}
+    .stay-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+    .stay-status{font-family:sans-serif;font-size:.8rem;min-height:20px;color:rgba(255,255,255,.75);margin-top:4px}
+    .stay-status.ok{color:#7DCEA0}
+    .stay-status.err{color:#F1948A}
+    @media(max-width:500px){.stay-row{grid-template-columns:1fr}}
+
     /* FOOTER */
     footer{background:var(--ocean);color:rgba(255,255,255,.6);text-align:center;padding:36px 20px;font-family:sans-serif;font-size:.8rem;line-height:1.8}
     footer a{color:#AED6F1;text-decoration:none}
@@ -158,6 +177,14 @@
     /* MATCHA */
     .filter-btn[data-filter="matcha"].active,.filter-btn[data-filter="matcha"]:hover{background:#2D7D3A;border-color:#2D7D3A;color:var(--white)}
     .cat-matcha{background:#2D7D3A;color:var(--white)}
+
+    /* CUISINE FILTERS */
+    .filter-btn[data-filter="sushi"].active,.filter-btn[data-filter="sushi"]:hover{background:#0E6B6B;border-color:#0E6B6B;color:var(--white)}
+    .filter-btn[data-filter="steak"].active,.filter-btn[data-filter="steak"]:hover{background:#7B2012;border-color:#7B2012;color:var(--white)}
+    .filter-btn[data-filter="seafood"].active,.filter-btn[data-filter="seafood"]:hover{background:#1A5276;border-color:#1A5276;color:var(--white)}
+    .cat-sushi{background:#0E6B6B;color:var(--white)}
+    .cat-steak{background:#7B2012;color:var(--white)}
+    .cat-seafood{background:#1A5276;color:var(--white)}
 
     /* SAVE BUTTON */
     .card-save-btn{position:absolute;top:48px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.92);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:all .2s;z-index:3;box-shadow:0 2px 8px rgba(0,0,0,.2)}
@@ -266,6 +293,9 @@
   <button class="filter-btn active" data-filter="all">All</button>
   <button class="filter-btn" data-filter="activity">Activities</button>
   <button class="filter-btn" data-filter="restaurant">Restaurants</button>
+  <button class="filter-btn" data-filter="sushi">🍣 Sushi</button>
+  <button class="filter-btn" data-filter="steak">🥩 Steak</button>
+  <button class="filter-btn" data-filter="seafood">🐟 Seafood</button>
   <button class="filter-btn" data-filter="cafe">Cafés</button>
   <button class="filter-btn" data-filter="beach">Beaches</button>
   <button class="filter-btn" data-filter="todo">Things To Do</button>
@@ -339,6 +369,25 @@
   </div>
 </div>
 
+<!-- STAY CONNECTED -->
+<div class="stay-connected" id="stay-connected">
+  <div class="stay-inner">
+    <p class="stay-eyebrow">Mountain Oasis · Camps Bay</p>
+    <h2>Stay Connected</h2>
+    <p class="stay-sub">Leave your email and we'll send you local tips, seasonal guides and special offers straight to your inbox.</p>
+    <form class="stay-form" id="stay-form" action="https://formspree.io/f/mrejjrbo" method="POST">
+      <div class="stay-row">
+        <input type="text" name="firstName" placeholder="First name" autocomplete="given-name"/>
+        <input type="text" name="lastName" placeholder="Surname" autocomplete="family-name"/>
+      </div>
+      <input type="email" name="email" placeholder="Email address" required autocomplete="email"/>
+      <input type="hidden" name="source" value="Mountain Oasis Stay Connected Section"/>
+      <button type="submit" class="stay-btn" id="stay-btn">Subscribe →</button>
+      <div class="stay-status" id="stay-status"></div>
+    </form>
+  </div>
+</div>
+
 <footer>
   <p>Curated with love by your hosts at <strong>Mountain Oasis, Camps Bay</strong></p>
   <p style="margin-top:8px">Have a question? Ask our chat assistant below, or reach out to us directly. Enjoy Cape Town! 🌊</p>
@@ -401,7 +450,7 @@ const PLACES = [
   {
     name:'Table Mountain Aerial Cableway', cat:'activity', catLabel:'Activity',
     location:'Tafelberg Road, Table Mountain', distance:'12 min drive',
-    price:'$$', img:'https://images.unsplash.com/photo-1580584126903-c17d41830450?w=800&q=80',
+    price:'$$', img:'https://images.unsplash.com/photo-tRPvXfu5Xf0?w=800&q=80',
     desc:'The iconic rotating cable car to the top of Table Mountain — one of the New Seven Wonders of Nature. Views over Cape Town, the Atlantic and the Cape Peninsula are absolutely unforgettable.',
     tip:'Go early morning or late afternoon for clear skies and shorter queues. Book tickets online to skip the line!',
     phone:'+27 21 424 8181', mapUrl:'https://maps.google.com/?q=Table+Mountain+Cableway+Cape+Town',
@@ -412,7 +461,7 @@ const PLACES = [
   {
     name:"Lion's Head Hike", cat:'activity', catLabel:'Activity',
     location:"Signal Hill Road, Sea Point", distance:'10 min drive',
-    price:'Free', img:'https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&q=80',
+    price:'Free', img:'https://images.unsplash.com/photo-_kxYgaFwrkI?w=800&q=80',
     desc:"A spectacular circular hike around and up Lion's Head peak with 360° views of Cape Town, Camps Bay and the Atlantic Ocean. Suitable for most fitness levels — allow 2–3 hours.",
     tip:'The full moon hike is legendary — hundreds of people hike up with headlamps and watch the moon rise over the city. Absolutely magical!',
     phone:null, mapUrl:"https://maps.google.com/?q=Lion's+Head+Cape+Town",
@@ -423,7 +472,7 @@ const PLACES = [
   {
     name:'Paragliding from Signal Hill', cat:'activity', catLabel:'Activity',
     location:'Signal Hill, Cape Town', distance:'10 min drive',
-    price:'$$$', img:'https://images.unsplash.com/photo-1530866495561-507c9faab2ed?w=800&q=80',
+    price:'$$$', img:'https://images.unsplash.com/photo--JnLPcxod1o?w=800&q=80',
     desc:'Tandem paraglide off Signal Hill with a qualified pilot and soar over Camps Bay and the Atlantic Seaboard. A truly bucket-list experience over one of the world\'s most beautiful coastlines.',
     tip:'You land right on the beach at Camps Bay — it\'s the most dramatic entrance to the beach imaginable! Book at least a day ahead.',
     phone:'+27 82 905 7440', mapUrl:'https://maps.google.com/?q=Signal+Hill+Cape+Town',
@@ -434,7 +483,7 @@ const PLACES = [
   {
     name:'Cape Point & Cape of Good Hope', cat:'activity', catLabel:'Activity',
     location:'Cape Point Nature Reserve, Cape Peninsula', distance:'55 min drive',
-    price:'$$', img:'https://images.unsplash.com/photo-1559825481-12a05cc00344?w=800&q=80',
+    price:'$$', img:'https://images.unsplash.com/photo-3TuSxMKfgqI?w=800&q=80',
     desc:'Drive the spectacular Cape Peninsula to the dramatic cliffs of Cape Point where two oceans almost meet. Hike to the lighthouse, spot baboons, and stop at Boulders Beach for the penguins on the way.',
     tip:'Combine with a stop at Boulders Beach (penguins) and Hout Bay (harbour and seals) for a perfect full-day Peninsula trip. Start early to beat the crowds.',
     phone:'+27 21 780 9010', mapUrl:'https://maps.google.com/?q=Cape+Point+Nature+Reserve',
@@ -445,7 +494,7 @@ const PLACES = [
   {
     name:'Boulders Beach Penguin Colony', cat:'activity', catLabel:'Activity',
     location:"Boulders Beach, Simon's Town", distance:'55 min drive',
-    price:'$$', img:'https://images.unsplash.com/photo-1598965675045-45c5e72c7d05?w=800&q=80',
+    price:'$$', img:'https://images.unsplash.com/photo-UjpEGHu8uNU?w=800&q=80',
     desc:"Home to over 2,000 African penguins who nest and waddle right next to the boardwalk. Combine with Cape Point for a brilliant full-day Cape Peninsula adventure.",
     tip:"Get there before 10am — the penguins are most active in the morning and the beach is quieter. The penguins wander right up to you!",
     phone:'+27 21 786 2329', mapUrl:"https://maps.google.com/?q=Boulders+Beach+Simon's+Town",
@@ -456,7 +505,7 @@ const PLACES = [
   {
     name:'Kirstenbosch Botanical Gardens', cat:'activity', catLabel:'Activity',
     location:'Rhodes Drive, Newlands', distance:'25 min drive',
-    price:'$$', img:'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800&q=80',
+    price:'$$', img:'https://images.unsplash.com/photo-cTdRjF3aDfo?w=800&q=80',
     desc:"One of the world's great botanic gardens on the eastern slopes of Table Mountain. Stunning fynbos, sculptures, the famous tree canopy walk and Sunday concerts on the lawn.",
     tip:'Check the Summer Sunset Concert schedule — picnicking on the lawn while watching live music with Table Mountain behind you is unmissable. Book lawn tickets in advance.',
     phone:'+27 21 799 8783', mapUrl:'https://maps.google.com/?q=Kirstenbosch+Botanical+Gardens',
@@ -467,7 +516,7 @@ const PLACES = [
   {
     name:'Robben Island', cat:'activity', catLabel:'Activity',
     location:'V&A Waterfront (ferry departure)', distance:'30 min drive + ferry',
-    price:'$$$', img:'https://images.unsplash.com/photo-1590073242678-70ee3fc28f8e?w=800&q=80',
+    price:'$$$', img:'https://images.unsplash.com/photo-PPWXd6bvRoM?w=800&q=80',
     desc:"UNESCO World Heritage Site where Nelson Mandela was imprisoned for 18 years. A profoundly moving tour led by former political prisoners — essential historical and cultural experience.",
     tip:'Book weeks in advance — tickets sell out very fast especially in summer. The ferry journey offers beautiful views of Cape Town from the sea.',
     phone:'+27 21 413 4200', mapUrl:'https://maps.google.com/?q=Robben+Island+Ferry+V%26A+Waterfront',
@@ -477,9 +526,9 @@ const PLACES = [
   },
   // ── RESTAURANTS ──
   {
-    name:'The Codfather', cat:'restaurant', catLabel:'Restaurant',
+    name:'The Codfather', cat:'seafood', catLabel:'Seafood',
     location:'The Drive, Camps Bay', distance:'5 min drive',
-    price:'$$$', img:'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
+    price:'$$$', img:'https://images.unsplash.com/photo-Q8ACJJiIKpA?w=800&q=80',
     desc:"Camps Bay's legendary seafood restaurant where you choose your fresh fish and seafood by weight from the display. A Cape Town institution — simple, delicious and unforgettable.",
     tip:"Ask for the linefish of the day. Arrive early (before 7pm) or book ahead — this place is always packed. The grilled crayfish is incredible if in season.",
     phone:'+27 21 438 0782', mapUrl:'https://maps.google.com/?q=The+Codfather+Camps+Bay',
@@ -490,7 +539,7 @@ const PLACES = [
   {
     name:'Paranga Restaurant', cat:'restaurant', catLabel:'Restaurant',
     location:'The Promenade, Camps Bay', distance:'3 min drive',
-    price:'$$$', img:'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80',
+    price:'$$$', img:'https://images.unsplash.com/photo-6gn7jdejEoQ?w=800&q=80',
     desc:"Right on the Camps Bay promenade with spectacular ocean views. Chic, relaxed atmosphere serving superb grills, seafood and international cuisine with the Atlantic as your backdrop.",
     tip:"Book a sunset table on the terrace — the views over Camps Bay beach at golden hour are incredible. The cocktails here are excellent.",
     phone:'+27 21 438 0404', mapUrl:'https://maps.google.com/?q=Paranga+Restaurant+Camps+Bay',
@@ -501,7 +550,7 @@ const PLACES = [
   {
     name:'La Mouette', cat:'restaurant', catLabel:'Restaurant',
     location:'78 Regent Road, Sea Point', distance:'8 min drive',
-    price:'$$$$', img:'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&q=80',
+    price:'$$$$', img:'https://images.unsplash.com/photo-tkfV4_59gxw?w=800&q=80',
     desc:"One of Cape Town's most acclaimed fine-dining restaurants in a beautiful Victorian house in Sea Point. Seasonal tasting menus with superb wine pairings — a special-occasion gem.",
     tip:"Book well in advance — this is one of the most popular fine-dining spots in Cape Town. The tasting menu with wine pairing is the way to go for a truly special evening.",
     phone:'+27 21 433 0856', mapUrl:'https://maps.google.com/?q=La+Mouette+Sea+Point',
@@ -510,9 +559,9 @@ const PLACES = [
     keywords:['la mouette','sea point','fine dining','tasting menu']
   },
   {
-    name:'Harbour House', cat:'restaurant', catLabel:'Restaurant',
+    name:'Harbour House', cat:'seafood', catLabel:'Seafood',
     location:'V&A Waterfront, Cape Town', distance:'20 min drive',
-    price:'$$$', img:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+    price:'$$$', img:'https://images.unsplash.com/photo-3edGjj--6kc?w=800&q=80',
     desc:"Right on the V&A Waterfront, Harbour House serves exceptional seafood with harbour views. A Cape Town classic — the calamari, grilled fish and paella are legendary.",
     tip:"Ask for a window table overlooking the harbour. The weekend lunch is excellent value. Try the whole grilled catch of the day.",
     phone:'+27 21 418 4744', mapUrl:'https://maps.google.com/?q=Harbour+House+V%26A+Waterfront',
@@ -521,9 +570,9 @@ const PLACES = [
     keywords:['harbour house','waterfront','seafood','va waterfront']
   },
   {
-    name:'Kalky\'s', cat:'restaurant', catLabel:'Restaurant',
+    name:'Kalky\'s', cat:'seafood', catLabel:'Seafood',
     location:'Kalk Bay Harbour, Kalk Bay', distance:'35 min drive',
-    price:'$', img:'https://images.unsplash.com/photo-1561731216-c3a4d99437d5?w=800&q=80',
+    price:'$', img:'https://images.unsplash.com/photo-A_tPBct4tz8?w=800&q=80',
     desc:"The most beloved fish & chips in Cape Town — a no-frills harbour-side institution in Kalk Bay. Fresh linefish, calamari and prawns served in newspaper at plastic tables. Utterly perfect.",
     tip:"Cash only, no bookings — just join the queue, order at the counter and eat on the harbour wall watching the fishing boats. Combine with exploring Kalk Bay village. Worth every minute of the drive.",
     phone:'+27 21 788 1726', mapUrl:'https://maps.google.com/?q=Kalky\'s+Kalk+Bay',
@@ -531,11 +580,114 @@ const PLACES = [
     instagram:null, menu:null,
     keywords:["kalky's","kalkys",'kalk bay','fish and chips','fish chips']
   },
+  // ── SUSHI ──
+  {
+    name:'Willoughby & Co', cat:'sushi', catLabel:'Sushi',
+    location:'V&A Waterfront, Cape Town', distance:'20 min drive',
+    price:'$$', img:'https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=800&q=80',
+    desc:"A Cape Town institution for over 30 years — Willoughby & Co at the V&A Waterfront is the city's most beloved sushi restaurant. Famous for exceptional fresh fish, classic rolls and a buzzing harbour atmosphere.",
+    tip:"The salmon-avo hand rolls and tuna tataki are legendary. Go for an early dinner to avoid the queues — they don't take bookings. The sushi platters are incredible value.",
+    phone:'+27 21 418 6115', mapUrl:'https://maps.google.com/?q=Willoughby+and+Co+V%26A+Waterfront+Cape+Town',
+    website:'https://www.willoughbys.co.za', booking:null,
+    instagram:null, menu:'https://www.willoughbys.co.za',
+    keywords:['willoughby','willoughby and co','willoughbies','sushi','waterfront sushi','va waterfront']
+  },
+  {
+    name:'Wakame', cat:'sushi', catLabel:'Sushi',
+    location:'Corner of Beach & Surrey Roads, Sea Point', distance:'10 min drive',
+    price:'$$$', img:'https://images.unsplash.com/photo-WvSXctqZ4UI?w=800&q=80',
+    desc:"Cape Town's most celebrated Japanese restaurant — Wakame in Sea Point is the gold standard for sushi and Asian fusion on the Atlantic Seaboard. Stunning ocean views from the upper deck.",
+    tip:"Book the upper deck terrace for sunset — the views over the Atlantic are breathtaking. The prawn gyoza and wagyu sashimi are unmissable. Book well in advance for weekends.",
+    phone:'+27 21 433 2377', mapUrl:'https://maps.google.com/?q=Wakame+Restaurant+Sea+Point+Cape+Town',
+    website:'https://www.wakame.co.za', booking:'https://www.wakame.co.za',
+    instagram:null, menu:'https://www.wakame.co.za/menu',
+    keywords:['wakame','wakame sushi','sea point sushi','japanese','asian fusion']
+  },
+  // ── STEAK ──
+  {
+    name:"Theo's Grill & Tap", cat:'steak', catLabel:'Steak',
+    location:'148 Main Road, Sea Point', distance:'8 min drive',
+    price:'$$', img:'https://images.unsplash.com/photo-WuKFf6EGswY?w=800&q=80',
+    desc:"Sea Point's legendary Greek-inspired steakhouse — Theo's has been a Cape Town institution for decades. Generous cuts, perfectly seasoned, at prices that defy the quality. Beloved by locals and visitors alike.",
+    tip:"The fillet with Theo's pepper sauce is the order. Generous portions — the mixed grill is enough for two. Arrives fast, no-fuss, always excellent. Book for weekends.",
+    phone:'+27 21 439 3494', mapUrl:'https://maps.google.com/?q=Theos+Grill+Sea+Point+Cape+Town',
+    website:null, booking:null,
+    instagram:null, menu:null,
+    keywords:["theo's","theos grill","sea point steak","greek grill","steak sea point"]
+  },
+  {
+    name:'Hussar Grill', cat:'steak', catLabel:'Steak',
+    location:'Village Square, Sea Point', distance:'9 min drive',
+    price:'$$$', img:'https://images.unsplash.com/photo-ttOZWD1X2oo?w=800&q=80',
+    desc:"South Africa's iconic steakhouse brand with a prime Sea Point location. Wood-fired steaks, classic sides and a wine list that reads like a tour of the Western Cape. Proper old-school grilling excellence.",
+    tip:"The wood-fired rump with bone marrow butter is extraordinary. The Hussar platter for two is perfect for a special dinner. South African Malbec pairs beautifully with the steaks here.",
+    phone:'+27 21 433 2096', mapUrl:'https://maps.google.com/?q=Hussar+Grill+Sea+Point+Cape+Town',
+    website:'https://www.hussargrill.com', booking:'https://www.hussargrill.com/reservations',
+    instagram:null, menu:'https://www.hussargrill.com/menu',
+    keywords:['hussar grill','hussar','sea point steak','wood fired steak','steakhouse']
+  },
+  // ── SEAFOOD ──
+  {
+    name:'Baia Seafood Restaurant', cat:'seafood', catLabel:'Seafood',
+    location:'V&A Waterfront, Cape Town', distance:'20 min drive',
+    price:'$$$', img:'https://images.unsplash.com/photo-G7TBrSTP3wU?w=800&q=80',
+    desc:"One of Cape Town's finest seafood restaurants perched above the V&A Waterfront with sweeping harbour views. Baia brings Portuguese-Italian flair to the freshest local catch — langoustines, linefish and beautiful seafood risotto.",
+    tip:"Request a window table for harbour views. The crayfish thermidor and Mozambican prawns are the showstoppers. Sunday lunch is spectacular — book well ahead.",
+    phone:'+27 21 421 0935', mapUrl:'https://maps.google.com/?q=Baia+Seafood+Restaurant+V%26A+Waterfront',
+    website:'https://www.baia.co.za', booking:'https://www.baia.co.za',
+    instagram:null, menu:'https://www.baia.co.za/menu',
+    keywords:['baia','baia seafood','waterfront seafood','portuguese seafood','langoustine']
+  },
+  {
+    name:'Sevruga', cat:'seafood', catLabel:'Seafood',
+    location:'V&A Waterfront, Cape Town', distance:'20 min drive',
+    price:'$$$', img:'https://images.unsplash.com/photo-W9_ZNruTMVc?w=800&q=80',
+    desc:"A V&A Waterfront favourite combining upscale seafood with Asian-inspired sushi and fusion dishes. Sevruga's dramatic harbour-facing setting and consistently excellent food make it one of Cape Town's most popular dinner destinations.",
+    tip:"The sushi sharing platter and crayfish are the stars. Spectacular sunset views from the outside terrace. Book a month ahead for a Saturday dinner.",
+    phone:'+27 21 421 5134', mapUrl:'https://maps.google.com/?q=Sevruga+V%26A+Waterfront+Cape+Town',
+    website:'https://www.sevruga.co.za', booking:'https://www.sevruga.co.za',
+    instagram:null, menu:'https://www.sevruga.co.za/menu',
+    keywords:['sevruga','va waterfront','waterfront dinner','sushi seafood','fusion']
+  },
+  // ── ATLANTIC SEABOARD DINING ──
+  {
+    name:'Blues Restaurant', cat:'restaurant', catLabel:'Restaurant',
+    location:'The Promenade, Camps Bay', distance:'3 min drive',
+    price:'$$$', img:'https://images.unsplash.com/photo-s8YRr94SUFg?w=800&q=80',
+    desc:"A Camps Bay strip institution since 1992 — Blues serves stylish international cuisine right on the beachfront promenade. Fresh sushi, wood-fired pizzas, grilled linefish and a legendary Sunday roast with non-stop mountain and ocean views.",
+    tip:"The sushi here is surprisingly excellent for a restaurant not known just for Japanese. Sunday brunch with a Bloody Mary on the terrace while the mountains glow behind you is a peak Cape Town moment.",
+    phone:'+27 21 438 2040', mapUrl:'https://maps.google.com/?q=Blues+Restaurant+Camps+Bay',
+    website:'https://www.blues.co.za', booking:'https://www.blues.co.za',
+    instagram:null, menu:'https://www.blues.co.za/menu',
+    keywords:['blues','blues restaurant','camps bay dining','promenade restaurant','camps bay strip']
+  },
+  {
+    name:'The Bungalow', cat:'restaurant', catLabel:'Restaurant',
+    location:'4 Clifton Road, Clifton', distance:'14 min walk',
+    price:'$$$', img:'https://images.unsplash.com/photo-BjZL42U_y8Q?w=800&q=80',
+    desc:"The Atlantic Seaboard's most glamorous sundowner spot — The Bungalow at Clifton has unmatched sunset views over the ocean. Chic cocktail culture, fresh seafood and sushi in a beautiful setting just steps from Clifton beach.",
+    tip:"Come for sunset cocktails (the Aperol Spritz or their signature Bungalow cocktail are perfect). The sushi and ceviche are excellent light bites. Book the terrace — you'll want to be outside for the golden hour.",
+    phone:'+27 21 438 2018', mapUrl:'https://maps.google.com/?q=The+Bungalow+Clifton+Cape+Town',
+    website:'https://www.the-bungalow.co.za', booking:'https://www.the-bungalow.co.za',
+    instagram:null, menu:'https://www.the-bungalow.co.za/menu',
+    keywords:['bungalow','the bungalow','clifton','sunset cocktails','sundowner clifton']
+  },
+  {
+    name:'La Perla', cat:'restaurant', catLabel:'Restaurant',
+    location:'Beach Road, Sea Point', distance:'10 min drive',
+    price:'$$', img:'https://images.unsplash.com/photo-ksYCzSUbYo4?w=800&q=80',
+    desc:"Sea Point's beloved Italian seafront restaurant since 1953 — La Perla is a Cape Town classic. Ocean views, fresh pasta, wood-fired pizza and traditional Italian dishes. A relaxed neighbourhood gem on the Sea Point promenade.",
+    tip:"The calamari alla Romana and wood-fired Napolitana pizza are standouts. Beachfront terrace tables are magical — go for a long, relaxed Italian lunch. Great for families.",
+    phone:'+27 21 434 2471', mapUrl:'https://maps.google.com/?q=La+Perla+Sea+Point+Cape+Town',
+    website:null, booking:null,
+    instagram:null, menu:null,
+    keywords:['la perla','sea point italian','italian restaurant','pizza sea point','beachfront italian']
+  },
   // ── CAFES ──
   {
     name:'Truth Coffee Roasting', cat:'cafe', catLabel:'Café',
     location:'36 Buitenkant Street, Cape Town CBD', distance:'18 min drive',
-    price:'$$', img:'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800&q=80',
+    price:'$$', img:'https://images.unsplash.com/photo-OXXsAafHDeo?w=800&q=80',
     desc:"Voted one of the world's best coffee shops — a steampunk cathedral of coffee in the CBD. The espresso and filter coffee are extraordinary. Even if you don't drink coffee, the space alone is worth visiting.",
     tip:"Go for the flat white or their single-origin pour-over. The breakfast is excellent. It can get busy — go on a weekday morning for a calmer experience.",
     phone:'+27 21 200 0440', mapUrl:'https://maps.google.com/?q=Truth+Coffee+Cape+Town',
@@ -546,7 +698,7 @@ const PLACES = [
   {
     name:'Origin Coffee Roasting', cat:'cafe', catLabel:'Café',
     location:'28 Hudson Street, De Waterkant', distance:'17 min drive',
-    price:'$$', img:'https://images.unsplash.com/photo-1510076857177-7470076d4098?w=800&q=80',
+    price:'$$', img:'https://images.unsplash.com/photo-CO7bBJlVgg8?w=800&q=80',
     desc:"Cape Town's pioneering specialty coffee roaster in the vibrant De Waterkant neighbourhood. Beautiful industrial space, outstanding single-origin espresso and filter coffee. One of the best in Africa.",
     tip:"Try their seasonal single-origin filter — they source some incredible beans. The almond croissant pairs beautifully with the espresso.",
     phone:'+27 21 421 1000', mapUrl:'https://maps.google.com/?q=Origin+Coffee+De+Waterkant',
@@ -580,7 +732,7 @@ const PLACES = [
   {
     name:'Camps Bay Beach', cat:'beach', catLabel:'Beach',
     location:'Beach Road, Camps Bay', distance:'2 min walk',
-    price:'Free', img:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80',
+    price:'Free', img:'https://images.unsplash.com/photo-YE_4HYlnv5A?w=800&q=80',
     desc:"Your home beach — one of the most beautiful in the world. White sand, turquoise water (cold!), the Twelve Apostles mountain backdrop and a promenade lined with cafés and restaurants.",
     tip:"The water is cold (Atlantic Ocean) but incredibly refreshing! Best time is late afternoon when the crowds thin and the light turns golden. The Promenade is perfect for sunset walks.",
     phone:null, mapUrl:'https://maps.google.com/?q=Camps+Bay+Beach',
@@ -591,7 +743,7 @@ const PLACES = [
   {
     name:'Clifton 4th Beach', cat:'beach', catLabel:'Beach',
     location:'Clifton, Cape Town', distance:'12 min walk',
-    price:'Free', img:'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=800&q=80',
+    price:'Free', img:'https://images.unsplash.com/photo-YMly4xlB2CU?w=800&q=80',
     desc:"Cape Town's most fashionable beach — sheltered from the wind by granite boulders, calm waters and a beautiful social atmosphere. A short scenic walk along the Atlantic Seaboard path from Camps Bay.",
     tip:"Protected from the South-Easter wind by the granite boulders — it's often calm and warm here when Camps Bay is windy. The walk along the cliff path from Camps Bay is beautiful.",
     phone:null, mapUrl:'https://maps.google.com/?q=Clifton+4th+Beach',
@@ -602,7 +754,7 @@ const PLACES = [
   {
     name:'Llandudno Beach', cat:'beach', catLabel:'Beach',
     location:'Llandudno, Cape Town', distance:'15 min drive',
-    price:'Free', img:'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80',
+    price:'Free', img:'https://images.unsplash.com/photo-kaGvtLoikgM?w=800&q=80',
     desc:"A secluded, stunning beach hidden between granite boulders with crashing Atlantic waves and mountain scenery. Popular with surfers and those who know Cape Town well. Feels like a secret.",
     tip:"No development, no restaurants, no parking meters — just pure natural beauty. Bring your own snacks and drinks. Great for sunset. The drive down is spectacular.",
     phone:null, mapUrl:'https://maps.google.com/?q=Llandudno+Beach+Cape+Town',
@@ -614,7 +766,7 @@ const PLACES = [
   {
     name:'V&A Waterfront', cat:'todo', catLabel:'Things To Do',
     location:'V&A Waterfront, Cape Town', distance:'20 min drive',
-    price:'Free (entry)', img:'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80',
+    price:'Free (entry)', img:'https://images.unsplash.com/photo-J-yDj62KSxE?w=800&q=80',
     desc:"Cape Town's iconic harbour precinct with world-class shopping, over 80 restaurants, the Two Oceans Aquarium, live music, craft markets, boat tours and Table Mountain as backdrop.",
     tip:"The Saturday and Sunday afternoon markets are great for local crafts and food. The Clock Tower area has excellent wine bars. Visit at sunset for magical harbour views.",
     phone:'+27 21 408 7600', mapUrl:'https://maps.google.com/?q=V%26A+Waterfront+Cape+Town',
@@ -625,7 +777,7 @@ const PLACES = [
   {
     name:"Bo-Kaap (Cape Malay Quarter)", cat:'todo', catLabel:'Things To Do',
     location:'Wale Street, Bo-Kaap, Cape Town', distance:'18 min drive',
-    price:'Free', img:'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80',
+    price:'Free', img:'https://images.unsplash.com/photo-Zoc0u6M_73g?w=800&q=80',
     desc:"The most photographed neighbourhood in Cape Town — cobblestone streets lined with vibrantly painted houses, mosques and a rich Cape Malay cultural heritage. Fascinating and colourful.",
     tip:"Go in the morning for the best light for photos. Stop at the Bo-Kaap Museum and grab a Cape Malay curry at one of the family restaurants for an authentic taste of the Cape.",
     phone:null, mapUrl:'https://maps.google.com/?q=Bo-Kaap+Cape+Town',
@@ -636,7 +788,7 @@ const PLACES = [
   {
     name:'Kalk Bay Village & Harbour', cat:'todo', catLabel:'Things To Do',
     location:'Main Road, Kalk Bay', distance:'35 min drive',
-    price:'Free', img:'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=800&q=80',
+    price:'Free', img:'https://images.unsplash.com/photo-PY324VYTNz0?w=800&q=80',
     desc:"Cape Town's most charming village — antique shops, art galleries, eclectic cafés, a working fishing harbour and a cave right in the hillside. Utterly unique and worth the drive.",
     tip:"Visit on a Saturday morning — the harbour is busiest with fishing boats, and the Kalk Bay Caves are worth exploring. Combine with Olympia Café for breakfast and an afternoon browse.",
     phone:null, mapUrl:'https://maps.google.com/?q=Kalk+Bay+Cape+Town',
@@ -647,7 +799,7 @@ const PLACES = [
   {
     name:"Oranjezicht City Farm Market", cat:'todo', catLabel:'Things To Do',
     location:'Granger Bay, V&A Waterfront', distance:'20 min drive',
-    price:'Free (entry)', img:'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800&q=80',
+    price:'Free (entry)', img:'https://images.unsplash.com/photo-Sya_pQnqx8Y?w=800&q=80',
     desc:"Cape Town's beloved weekly market at the V&A Waterfront — local farmers, artisan food producers, craft brewers, organic produce and incredible street food. The best morning out in Cape Town.",
     tip:"Go on Saturday mornings (9am–2pm). Bring cash. The wood-fired pizza, Cape Malay bunny chow and the local cheese stalls are unmissable. Gets busy after 10am.",
     phone:null, mapUrl:'https://maps.google.com/?q=Oranjezicht+City+Farm+Market+Cape+Town',
@@ -658,7 +810,7 @@ const PLACES = [
   {
     name:"Chapman's Peak Drive", cat:'todo', catLabel:'Things To Do',
     location:'Hout Bay to Noordhoek, Cape Town', distance:'20 min drive to start',
-    price:'$ (toll)', img:'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=800&q=80',
+    price:'$ (toll)', img:'https://images.unsplash.com/photo-agRsZY-guRI?w=800&q=80',
     desc:"One of the world's most scenic coastal drives — a narrow road blasted into the sheer cliffs above the Atlantic with breathtaking views at every turn. A must-do on any Cape Town visit.",
     tip:"Drive it at sunset from Hout Bay towards Noordhoek for the most dramatic light. Stop at the Chapman's Peak Hotel on the Hout Bay side for a sundowner with the view.",
     phone:null, mapUrl:"https://maps.google.com/?q=Chapman's+Peak+Drive+Cape+Town",
@@ -669,7 +821,7 @@ const PLACES = [
   {
     name:'Two Oceans Aquarium', cat:'todo', catLabel:'Things To Do',
     location:'Dock Road, V&A Waterfront', distance:'20 min drive',
-    price:'$$', img:'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80',
+    price:'$$', img:'https://images.unsplash.com/photo-mQDJ7OuQEGg?w=800&q=80',
     desc:"World-class aquarium at the V&A Waterfront showcasing the diverse marine life where the Atlantic and Indian Oceans meet. Ragged-tooth sharks, penguins, turtles and incredible kelp forests.",
     tip:"Great option for a cloudy or windy day. The shark dive is available for certified divers (book ahead). The penguin feeding times are popular with kids.",
     phone:'+27 21 418 3823', mapUrl:'https://maps.google.com/?q=Two+Oceans+Aquarium+Cape+Town',
@@ -736,7 +888,7 @@ const PLACES = [
   {
     name:'Okja Matcha', cat:'matcha', catLabel:'Matcha',
     location:'Cape Town', distance:'Various locations',
-    price:'$$', img:'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=800&q=80',
+    price:'$$', img:'https://images.unsplash.com/photo-1563805042-7684c019e7db?w=800&q=80',
     desc:"A Cape Town matcha gem serving beautifully made ceremonial matcha drinks with a focus on quality and ritual. Known for their smooth, vibrant matcha lattes and a calm, considered approach to the drink.",
     tip:"Check their Instagram for their current address and hours — these dedicated matcha spots sometimes move or run pop-ups. Worth tracking down!",
     phone:null, mapUrl:'https://maps.google.com/?q=Okja+Matcha+Cape+Town',
@@ -817,7 +969,9 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
     const f = btn.dataset.filter;
     document.querySelectorAll('.place-card').forEach(c => {
       const cat = c.dataset.cat;
-      const show = f === 'all' || cat === f || (f === 'cafe' && cat === 'matcha');
+      const show = f === 'all' || cat === f ||
+        (f === 'cafe' && cat === 'matcha') ||
+        (f === 'restaurant' && (cat === 'sushi' || cat === 'steak' || cat === 'seafood'));
       c.classList.toggle('hidden', !show);
     });
   });
@@ -927,12 +1081,35 @@ if (localStorage.getItem('mo_guest_registered')) {
     enterBtn.disabled = true;
     enterBtn.textContent = 'Welcome! ✓';
     statusEl.className = 'form-status ok'; statusEl.textContent = 'Welcome to Cape Town! Enjoy your guide 🌊';
-    // Also try Formspree if a real ID is configured
+    // Also try Formspree — retry once on failure
     const hasFormspree = !form.action.includes('REPLACE_WITH_YOUR_FORM_ID');
     if (hasFormspree) {
-      fetch(form.action, { method:'POST', body: fd, headers: { Accept: 'application/json' } }).catch(() => {});
+      const tryPost = () => fetch(form.action, { method:'POST', body: fd, headers: { Accept: 'application/json' } });
+      tryPost().catch(() => setTimeout(() => tryPost().catch(() => {}), 3000));
     }
     setTimeout(closeGuestModal, 1400);
+  });
+}
+
+// ── STAY CONNECTED FORM ───────────────────────────────────────────────────────
+const stayForm = document.getElementById('stay-form');
+const stayBtn = document.getElementById('stay-btn');
+const stayStatus = document.getElementById('stay-status');
+if (stayForm) {
+  stayForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(stayForm);
+    const guest = { firstName: fd.get('firstName'), lastName: fd.get('lastName'), email: fd.get('email'), time: new Date().toISOString() };
+    const all = JSON.parse(localStorage.getItem('mo_guests') || '[]');
+    all.push(guest);
+    localStorage.setItem('mo_guests', JSON.stringify(all));
+    localStorage.setItem('mo_guest_registered', '1');
+    stayBtn.disabled = true;
+    stayBtn.textContent = 'Subscribed ✓';
+    stayStatus.className = 'stay-status ok';
+    stayStatus.textContent = "You're on the list — enjoy Cape Town!";
+    const tryStay = () => fetch(stayForm.action, { method:'POST', body: fd, headers:{ Accept:'application/json' } });
+    tryStay().catch(() => setTimeout(() => tryStay().catch(()=>{}), 3000));
   });
 }
 
@@ -964,7 +1141,7 @@ const msgs = document.getElementById('chat-messages');
 const chipsEl = document.getElementById('chat-chips');
 const input = document.getElementById('chat-input');
 const sendBtn = document.getElementById('chat-send');
-const CHIPS = ['Best restaurants nearby', 'Things to do today', 'Closest beach', 'Best matcha in CT', 'Plan my day'];
+const CHIPS = ['Best restaurants nearby', 'Best sushi in CT', 'Best steak nearby', 'Closest beach', 'Best matcha in CT', 'Plan my day'];
 let chatCtx = { topic: null, lastPlace: null, lastCat: null };
 
 function renderChips(list) {
@@ -1090,11 +1267,13 @@ function getResponse(raw) {
   // ── RESTAURANTS
   if (/restaurant|eat|dinner|lunch|where.*eat|best.*food|hungry|meal|dining/.test(q)) {
     chatCtx.topic = 'restaurant';
-    if (/closest|nearby|walking|promenade/.test(q)) return "Closest restaurants on the Camps Bay strip — all walkable or a very short drive:\n\n🍽️ **Paranga** — 3 min, ocean-view terrace, great cocktails\n🍽️ **The Codfather** — 5 min, legendary fresh seafood by weight\n🍽️ **Blues Restaurant** — Camps Bay strip, relaxed & delicious\n🍽️ **Casablanca** — Camps Bay, Moroccan-inspired, great vibes\n\nThe whole promenade is lined with options — just walk down!";
-    if (/seafood|fish|crayfish|lobster/.test(q)) return "Cape Town's best seafood:\n\n🐟 **The Codfather** (5 min) — choose your fresh fish by weight from the display, Cape Town institution. Get the crayfish if in season!\n🦞 **Harbour House** (V&A, 20 min) — legendary grilled catch, harbour views\n🐟 **Kalky's** (Kalk Bay, 35 min) — the best fish & chips in CT, eat on the harbour wall. Cash only!";
-    if (/fine dining|special|romantic|fancy|tasting menu/.test(q)) return "Best fine dining near Mountain Oasis:\n\n✨ **La Mouette** (Sea Point, 8 min) — Cape Town's most acclaimed fine dining, seasonal tasting menus, Victorian house setting\n✨ **Harbour House** (V&A, 20 min) — elegant seafood, stunning harbour views\n✨ **Paranga** (Camps Bay, 3 min) — beautiful ocean terrace, perfect for a romantic sunset dinner";
-    if (/cheap|budget|affordable|casual/.test(q)) return "Budget & casual eats:\n\n💰 **Kalky's** (Kalk Bay, 35 min) — legendary fish & chips, very cheap, eat on the harbour. Cash only!\n💰 **Camps Bay promenade** — plenty of café-style spots with great value lunches\n💰 **Oranjezicht Market** (Saturdays) — incredible street food at market prices";
-    return "Our top restaurant picks from Mountain Oasis:\n\n🍽️ **Paranga** — 3 min, ocean views & sunset terrace\n🍽️ **The Codfather** — 5 min, legendary seafood by weight\n🍽️ **La Mouette** — 8 min, Sea Point fine dining\n🍽️ **Harbour House** — 20 min, V&A Waterfront seafood\n🍽️ **Kalky's** — 35 min, the best fish & chips in CT\n\nTap Restaurants in the filter bar, or ask me anything more specific!";
+    if (/closest|nearby|walking|promenade/.test(q)) return "Closest restaurants on the Camps Bay strip:\n\n🍽️ **Paranga** — 3 min, ocean-view terrace, great cocktails\n🍽️ **The Codfather** — 5 min, legendary fresh seafood by weight\n🍽️ **Blues Restaurant** — Camps Bay strip, relaxed dining with mountain views\n🍽️ **The Bungalow** — 14 min walk, Clifton sunset cocktails & sushi\n\nThe whole promenade is lined with options — just walk down!";
+    if (/sushi|japanese|rolls|sashimi/.test(q)) return "Cape Town's best sushi:\n\n🍣 **Willoughby & Co** (V&A, 20 min) — CT's most iconic sushi spot for 30+ years. No bookings, go early!\n🍣 **Wakame** (Sea Point, 10 min) — upscale Japanese fusion with ocean views. Book the terrace!\n🍣 **Sevruga** (V&A, 20 min) — elegant sushi & seafood combo, harbour views\n🍣 **The Bungalow** (Clifton, 14 min walk) — great sushi at sunset\n\nTap the 🍣 Sushi filter to see all cards!";
+    if (/steak|grill|beef|meat/.test(q)) return "Best steaks in the area:\n\n🥩 **Theo's Grill & Tap** (Sea Point, 8 min) — Greek-inspired CT institution, incredible fillet at great prices\n🥩 **Hussar Grill** (Sea Point, 9 min) — classic wood-fired South African steakhouse, spectacular SA wine list\n\nTap the 🥩 Steak filter to see both cards!";
+    if (/seafood|fish|crayfish|lobster|prawn/.test(q)) return "Cape Town's best seafood:\n\n🐟 **The Codfather** (5 min) — choose your fresh fish by weight, legendary. Get the crayfish!\n🦞 **Baia Seafood** (V&A, 20 min) — Portuguese-Italian seafood, langoustines & harbour views\n🦐 **Harbour House** (V&A, 20 min) — classic grilled catch, harbour views\n🐟 **Sevruga** (V&A, 20 min) — fusion seafood, elegant setting\n🐟 **Kalky's** (Kalk Bay, 35 min) — the best fish & chips in CT, cash only!\n\nTap 🐟 Seafood filter for all cards!";
+    if (/fine dining|special|romantic|fancy|tasting menu/.test(q)) return "Best fine dining near Mountain Oasis:\n\n✨ **La Mouette** (Sea Point, 8 min) — acclaimed fine dining, seasonal tasting menus, Victorian house\n✨ **Baia Seafood** (V&A, 20 min) — elegant Portuguese-Italian, langoustines & wine\n✨ **Wakame** (Sea Point, 10 min) — upscale Japanese with ocean terrace\n✨ **Paranga** (Camps Bay, 3 min) — ocean terrace, perfect for romantic sunset dinner";
+    if (/cheap|budget|affordable|casual/.test(q)) return "Budget & casual eats:\n\n💰 **Kalky's** (Kalk Bay, 35 min) — legendary fish & chips, cash only, eat on the harbour wall\n💰 **Theo's Grill** (Sea Point, 8 min) — incredible steaks at very fair prices\n💰 **Willoughby & Co** (V&A, 20 min) — great value sushi platters\n💰 **Oranjezicht Market** (Saturdays) — incredible street food at market prices";
+    return "Restaurants on the Atlantic Seaboard & beyond:\n\n🍣 **Sushi:** Willoughby & Co (V&A), Wakame (Sea Point)\n🥩 **Steak:** Theo's Grill & Tap (Sea Point), Hussar Grill (Sea Point)\n🐟 **Seafood:** Codfather (Camps Bay), Baia (V&A), Harbour House (V&A), Kalky's (Kalk Bay)\n🍽️ **Atlantic Seaboard:** Blues (Camps Bay), The Bungalow (Clifton), La Perla (Sea Point)\n✨ **Fine Dining:** La Mouette (Sea Point)\n\nUse the filter buttons above — Sushi 🍣, Steak 🥩, Seafood 🐟 or Restaurants!";
   }
 
   // ── COFFEE / CAFÉ
