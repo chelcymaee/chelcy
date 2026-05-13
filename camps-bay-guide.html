@@ -1081,10 +1081,11 @@ if (localStorage.getItem('mo_guest_registered')) {
     enterBtn.disabled = true;
     enterBtn.textContent = 'Welcome! ✓';
     statusEl.className = 'form-status ok'; statusEl.textContent = 'Welcome to Cape Town! Enjoy your guide 🌊';
-    // Also try Formspree if a real ID is configured
+    // Also try Formspree — retry once on failure
     const hasFormspree = !form.action.includes('REPLACE_WITH_YOUR_FORM_ID');
     if (hasFormspree) {
-      fetch(form.action, { method:'POST', body: fd, headers: { Accept: 'application/json' } }).catch(() => {});
+      const tryPost = () => fetch(form.action, { method:'POST', body: fd, headers: { Accept: 'application/json' } });
+      tryPost().catch(() => setTimeout(() => tryPost().catch(() => {}), 3000));
     }
     setTimeout(closeGuestModal, 1400);
   });
@@ -1107,7 +1108,8 @@ if (stayForm) {
     stayBtn.textContent = 'Subscribed ✓';
     stayStatus.className = 'stay-status ok';
     stayStatus.textContent = "You're on the list — enjoy Cape Town!";
-    fetch(stayForm.action, { method:'POST', body: fd, headers:{ Accept:'application/json' } }).catch(()=>{});
+    const tryStay = () => fetch(stayForm.action, { method:'POST', body: fd, headers:{ Accept:'application/json' } });
+    tryStay().catch(() => setTimeout(() => tryStay().catch(()=>{}), 3000));
   });
 }
 
