@@ -1030,34 +1030,28 @@ renderDayPlan();
 const guestModal = document.getElementById('guest-modal');
 function closeGuestModal() { guestModal.style.display = 'none'; }
 
-if (sessionStorage.getItem('mo_modal_seen')) {
+if (localStorage.getItem('mo_guest_registered')) {
   closeGuestModal();
-} else {
-  sessionStorage.setItem('mo_modal_seen', '1');
-  const form = document.getElementById('guest-form');
-  const enterBtn = document.getElementById('btn-enter');
-  const statusEl = document.getElementById('form-status');
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    const fd = new FormData(form);
-    const guest = { firstName: fd.get('firstName'), lastName: fd.get('lastName'), email: fd.get('email'), time: new Date().toISOString() };
-    // Always save locally so guest is never blocked
-    const all = JSON.parse(localStorage.getItem('mo_guests') || '[]');
-    all.push(guest);
-    localStorage.setItem('mo_guests', JSON.stringify(all));
-    localStorage.setItem('mo_guest_registered', '1');
-    enterBtn.disabled = true;
-    enterBtn.textContent = 'Welcome! ✓';
-    statusEl.className = 'form-status ok'; statusEl.textContent = 'Welcome to Cape Town! Enjoy your guide 🌊';
-    // Also try Formspree — retry once on failure
-    const hasFormspree = !form.action.includes('REPLACE_WITH_YOUR_FORM_ID');
-    if (hasFormspree) {
-      const tryPost = () => fetch(form.action, { method:'POST', body: fd, headers: { Accept: 'application/json' } });
-      tryPost().catch(() => setTimeout(() => tryPost().catch(() => {}), 3000));
-    }
-    setTimeout(closeGuestModal, 1400);
-  });
 }
+
+const form = document.getElementById('guest-form');
+const enterBtn = document.getElementById('btn-enter');
+const statusEl = document.getElementById('form-status');
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(form);
+  const guest = { firstName: fd.get('firstName'), lastName: fd.get('lastName'), email: fd.get('email'), time: new Date().toISOString() };
+  const all = JSON.parse(localStorage.getItem('mo_guests') || '[]');
+  all.push(guest);
+  localStorage.setItem('mo_guests', JSON.stringify(all));
+  localStorage.setItem('mo_guest_registered', '1');
+  enterBtn.disabled = true;
+  enterBtn.textContent = 'Welcome! ✓';
+  statusEl.className = 'form-status ok'; statusEl.textContent = 'Welcome to Cape Town! Enjoy your guide 🌊';
+  const tryPost = () => fetch(form.action, { method:'POST', body: fd, headers: { Accept: 'application/json' } });
+  tryPost().catch(() => setTimeout(() => tryPost().catch(() => {}), 3000));
+  setTimeout(closeGuestModal, 1400);
+});
 
 // ── STAY CONNECTED FORM ───────────────────────────────────────────────────────
 const stayForm = document.getElementById('stay-form');
