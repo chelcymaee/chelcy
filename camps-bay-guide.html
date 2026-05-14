@@ -1030,10 +1030,7 @@ renderDayPlan();
 const guestModal = document.getElementById('guest-modal');
 function closeGuestModal() { guestModal.style.display = 'none'; }
 
-if (localStorage.getItem('mo_guest_registered')) {
-  closeGuestModal();
-}
-
+// Modal always shows — guests must enter details or skip to view the guide
 const form = document.getElementById('guest-form');
 const enterBtn = document.getElementById('btn-enter');
 const statusEl = document.getElementById('form-status');
