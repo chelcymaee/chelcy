@@ -234,9 +234,11 @@
       background: #fff; border-radius: 16px; padding: 1.6rem 1.4rem;
       border: 1px solid rgba(9,24,42,.08);
       box-shadow: 0 2px 16px rgba(9,24,42,.06);
-      text-align: center; transition: transform .25s, box-shadow .25s;
+      text-align: center; transition: opacity .8s ease, transform .8s ease, box-shadow .25s;
     }
-    .guide-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(9,24,42,.12); }
+    .guide-card.reveal { transform: translateY(28px) scale(.96); }
+    .guide-card.reveal.visible { transform: translateY(0) scale(1); }
+    .guide-card.visible:hover { transform: translateY(-4px) scale(1); box-shadow: 0 8px 30px rgba(9,24,42,.12); }
     .guide-icon { font-size: 2rem; margin-bottom: .6rem; }
     .guide-label { font-weight: 700; font-size: .95rem; color: var(--dark); margin-bottom: .3rem; }
     .guide-sub { font-size: .78rem; color: rgba(9,24,42,.5); }
@@ -611,23 +613,23 @@
   <h2 class="section-title reveal">Camps Bay & <em>beyond</em></h2>
   <p class="section-body reveal">From clifftop sundowners to world-class beaches — we've put together a curated local guide so you can make the most of your stay.</p>
 
-  <div class="guide-cards reveal" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:1rem; max-width:900px; margin:0 auto 2.8rem;">
-    <div class="guide-card">
+  <div class="guide-cards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:1rem; max-width:900px; margin:0 auto 2.8rem;">
+    <div class="guide-card reveal" style="transition-delay:.05s">
       <div class="guide-icon">🍽️</div>
       <div class="guide-label">Restaurants</div>
       <div class="guide-sub">The best spots for every mood</div>
     </div>
-    <div class="guide-card">
+    <div class="guide-card reveal" style="transition-delay:.15s">
       <div class="guide-icon">☕</div>
       <div class="guide-label">Cafés</div>
       <div class="guide-sub">Morning coffee with ocean views</div>
     </div>
-    <div class="guide-card">
+    <div class="guide-card reveal" style="transition-delay:.25s">
       <div class="guide-icon">🏖️</div>
       <div class="guide-label">Beaches</div>
       <div class="guide-sub">White sand, crystal water</div>
     </div>
-    <div class="guide-card">
+    <div class="guide-card reveal" style="transition-delay:.35s">
       <div class="guide-icon">🧗</div>
       <div class="guide-label">Activities</div>
       <div class="guide-sub">Hikes, boat trips & more</div>
@@ -635,7 +637,7 @@
   </div>
 
   <div style="text-align:center;">
-    <a href="camps-bay-guide.html" class="btn-guide reveal">
+    <a href="camps-bay-guide.html" class="btn-guide reveal" style="transition-delay:.45s">
       View Full Area Guide
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </a>
