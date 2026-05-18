@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SKYGATE_TRAVELS – Stay, Explore & Win 🎉</title>
+  <title>Mountain Oasis — Stay, Explore & Win</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
@@ -17,10 +17,10 @@
       --cream:   #F8F3E8;
       --white:   #FFFFFF;
       --airbnb:  #FF5A23;
+      --sage:    #7AAE8E;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     html { scroll-behavior: smooth; }
 
     body {
@@ -30,13 +30,12 @@
       overflow-x: hidden;
     }
 
-    /* ── Islamic geometric overlay ────────────────────────────────── */
+    /* subtle mountain ridge pattern */
     .pattern {
       position: fixed; inset: 0; pointer-events: none; z-index: 0;
       background-image:
-        repeating-linear-gradient(60deg,  rgba(201,168,76,.035) 0, rgba(201,168,76,.035) 1px, transparent 1px, transparent 50px),
-        repeating-linear-gradient(-60deg, rgba(201,168,76,.035) 0, rgba(201,168,76,.035) 1px, transparent 1px, transparent 50px),
-        repeating-linear-gradient(0deg,   rgba(201,168,76,.02)  0, rgba(201,168,76,.02)  1px, transparent 1px, transparent 50px);
+        repeating-linear-gradient(60deg,  rgba(122,174,142,.03) 0, rgba(122,174,142,.03) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(-60deg, rgba(201,168,76,.025) 0, rgba(201,168,76,.025) 1px, transparent 1px, transparent 60px);
     }
 
     /* ── nav ──────────────────────────────────────────────────────── */
@@ -44,141 +43,146 @@
       position: fixed; top: 0; width: 100%; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
       padding: 1rem 2rem;
-      background: rgba(12,26,39,.9);
+      background: rgba(12,26,39,.92);
       backdrop-filter: blur(14px);
-      border-bottom: 1px solid rgba(201,168,76,.18);
+      border-bottom: 1px solid rgba(122,174,142,.2);
     }
     .logo {
       font-family: 'Playfair Display', serif;
-      font-size: 1rem; font-weight: 900;
-      letter-spacing: .12em; color: var(--gold);
+      font-size: 1.05rem; font-weight: 900;
+      letter-spacing: .06em; color: var(--white);
     }
-    .logo span { color: var(--white); }
-    nav .flags { font-size: 1.2rem; letter-spacing: .18em; }
+    .logo em { color: var(--sage); font-style: normal; }
+    .logo-sub {
+      font-size: .62rem; letter-spacing: .16em;
+      color: rgba(248,243,232,.4); text-transform: uppercase;
+      margin-top: .1rem;
+    }
+    .logo-wrap { display: flex; flex-direction: column; }
+    .flags { font-size: 1.2rem; letter-spacing: .16em; }
 
     /* ── hero ─────────────────────────────────────────────────────── */
     .hero {
       position: relative; min-height: 100vh;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      text-align: center; padding: 7rem 1.5rem 4rem;
+      text-align: center; padding: 7rem 1.5rem 5rem;
       overflow: hidden;
     }
     .hero::before {
       content: '';
       position: absolute; inset: 0;
       background:
-        radial-gradient(ellipse 70% 55% at 50% 35%, rgba(201,168,76,.13) 0%, transparent 70%),
-        radial-gradient(ellipse 60% 70% at 85% 80%, rgba(27,107,58,.1)   0%, transparent 60%),
-        radial-gradient(ellipse 55% 55% at 5%  75%, rgba(255,90,35,.07)  0%, transparent 60%);
+        radial-gradient(ellipse 80% 60% at 50% 30%, rgba(122,174,142,.14) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 70% at 85% 85%, rgba(201,168,76,.1)   0%, transparent 60%),
+        radial-gradient(ellipse 55% 50% at 5%  70%, rgba(255,90,35,.06)   0%, transparent 60%);
     }
 
-    .salaam-badge {
-      display: inline-block; margin-bottom: 1.8rem;
-      padding: .4rem 1.4rem;
-      border: 1px solid rgba(201,168,76,.5);
-      border-radius: 100px; font-size: .75rem;
+    .eyebrow-badge {
+      display: inline-block; margin-bottom: 1.6rem;
+      padding: .38rem 1.3rem;
+      border: 1px solid rgba(122,174,142,.5);
+      border-radius: 100px; font-size: .72rem;
       font-weight: 600; letter-spacing: .22em;
-      color: var(--gold-lt); text-transform: uppercase;
+      color: var(--sage); text-transform: uppercase;
       animation: fadeDown .7s ease both;
     }
     .hero h1 {
       font-family: 'Playfair Display', serif;
-      font-size: clamp(3rem, 9vw, 6.5rem);
-      font-weight: 900; line-height: 1.05;
+      font-size: clamp(3.2rem, 10vw, 7rem);
+      font-weight: 900; line-height: 1.02;
       color: var(--white);
       animation: fadeDown .85s .08s ease both;
     }
-    .hero h1 .gold { color: var(--gold); }
-    .hero-tagline {
-      margin-top: 1.3rem;
-      font-size: clamp(1rem, 2.5vw, 1.2rem);
-      font-weight: 300; color: rgba(248,243,232,.7);
-      max-width: 560px; line-height: 1.7;
+    .hero h1 .accent { color: var(--sage); }
+    .hero-sub {
+      margin-top: 1.4rem;
+      font-size: clamp(.95rem, 2.5vw, 1.15rem);
+      font-weight: 300; color: rgba(248,243,232,.65);
+      max-width: 540px; line-height: 1.78;
       animation: fadeDown .95s .18s ease both;
     }
+    .hero-sub strong { color: var(--cream); font-weight: 500; }
     .hero-cta-row {
       display: flex; flex-wrap: wrap; gap: 1rem;
-      justify-content: center; margin-top: 2.5rem;
-      animation: fadeDown 1.1s .28s ease both;
+      justify-content: center; margin-top: 2.6rem;
+      animation: fadeDown 1.05s .28s ease both;
     }
     .btn-primary {
-      padding: .85rem 2rem;
-      background: linear-gradient(135deg, var(--gold), #A8852E);
-      color: var(--dark); font-weight: 700; font-size: .9rem;
+      padding: .88rem 2.1rem;
+      background: linear-gradient(135deg, var(--airbnb), #C94418);
+      color: var(--white); font-weight: 700; font-size: .9rem;
       border-radius: 50px; text-decoration: none;
-      letter-spacing: .04em;
-      box-shadow: 0 4px 22px rgba(201,168,76,.35);
+      letter-spacing: .03em;
+      box-shadow: 0 4px 22px rgba(255,90,35,.35);
       transition: transform .2s, box-shadow .2s;
     }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(201,168,76,.5); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(255,90,35,.5); }
     .btn-ghost {
-      padding: .85rem 2rem;
-      border: 1px solid rgba(201,168,76,.45);
+      padding: .88rem 2.1rem;
+      border: 1px solid rgba(201,168,76,.4);
       color: var(--gold); font-size: .9rem;
       border-radius: 50px; text-decoration: none;
       transition: all .2s;
     }
-    .btn-ghost:hover { background: rgba(201,168,76,.1); border-color: var(--gold); }
+    .btn-ghost:hover { background: rgba(201,168,76,.08); border-color: var(--gold); }
 
-    /* ── scroll-down cue ──────────────────────────────────────────── */
     .scroll-cue {
       position: absolute; bottom: 2rem; left: 50%;
       transform: translateX(-50%);
-      display: flex; flex-direction: column; align-items: center;
-      gap: .4rem; animation: float 2.4s ease-in-out infinite;
+      display: flex; flex-direction: column; align-items: center; gap: .4rem;
+      animation: float 2.4s ease-in-out infinite;
     }
-    .scroll-cue span { font-size: .65rem; letter-spacing: .2em; color: rgba(201,168,76,.45); text-transform: uppercase; }
-    .scroll-cue svg { width: 18px; opacity: .4; }
+    .scroll-cue span { font-size: .62rem; letter-spacing: .2em; color: rgba(122,174,142,.45); text-transform: uppercase; }
+    .scroll-cue svg { width: 16px; opacity: .35; }
     @keyframes float {
       0%,100% { transform: translateX(-50%) translateY(0); }
-      50%      { transform: translateX(-50%) translateY(6px); }
+      50%      { transform: translateX(-50%) translateY(7px); }
     }
 
-    /* ── section chrome ───────────────────────────────────────────── */
+    /* ── section base ─────────────────────────────────────────────── */
     section { position: relative; z-index: 1; padding: 5rem 1.5rem; }
     .section-label {
-      text-align: center; font-size: .68rem; font-weight: 600;
-      letter-spacing: .28em; text-transform: uppercase; color: var(--gold);
+      text-align: center; font-size: .67rem; font-weight: 600;
+      letter-spacing: .28em; text-transform: uppercase; color: var(--sage);
       margin-bottom: .55rem;
     }
     .section-title {
       text-align: center;
       font-family: 'Playfair Display', serif;
       font-size: clamp(1.9rem, 4vw, 2.9rem);
-      color: var(--white); margin-bottom: .8rem;
+      color: var(--white); margin-bottom: .85rem;
     }
     .section-desc {
-      text-align: center; color: rgba(248,243,232,.65);
-      font-size: .93rem; max-width: 560px;
-      margin: 0 auto 3rem; line-height: 1.75;
+      text-align: center; color: rgba(248,243,232,.62);
+      font-size: .92rem; max-width: 560px;
+      margin: 0 auto 3rem; line-height: 1.78;
     }
 
-    /* ── Mountain Oasis Airbnb section ─────────────────────────────── */
+    /* ── airbnb section ───────────────────────────────────────────── */
     #airbnb { background: linear-gradient(180deg, rgba(255,90,35,.05), transparent); }
     .airbnb-wrap {
-      max-width: 820px; margin: 0 auto;
+      max-width: 860px; margin: 0 auto;
       display: grid; grid-template-columns: 1fr 1fr;
-      gap: 2rem; align-items: center;
+      gap: 2.5rem; align-items: center;
     }
     @media (max-width: 640px) { .airbnb-wrap { grid-template-columns: 1fr; } }
-    .airbnb-copy {}
-    .airbnb-copy .eyebrow {
-      font-size: .7rem; letter-spacing: .22em;
+    .airbnb-copy .sub-eyebrow {
+      font-size: .68rem; letter-spacing: .22em;
       text-transform: uppercase; color: var(--airbnb); margin-bottom: .6rem;
     }
     .airbnb-copy h3 {
       font-family: 'Playfair Display', serif;
-      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-size: clamp(1.7rem, 3.5vw, 2.4rem);
       color: var(--white); margin-bottom: 1rem;
     }
     .airbnb-copy p {
-      font-size: .92rem; color: rgba(248,243,232,.65);
-      line-height: 1.75; margin-bottom: 1.5rem;
+      font-size: .91rem; color: rgba(248,243,232,.65);
+      line-height: 1.78; margin-bottom: 1.6rem;
     }
     .btn-airbnb {
       display: inline-flex; align-items: center; gap: .5rem;
-      padding: .85rem 2rem;
+      padding: .88rem 2rem;
       background: linear-gradient(135deg, var(--airbnb), #C94418);
       color: var(--white); text-decoration: none;
       border-radius: 50px; font-weight: 600; font-size: .9rem;
@@ -187,23 +191,63 @@
     }
     .btn-airbnb:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,90,35,.5); }
     .airbnb-visual {
-      border-radius: 20px; overflow: hidden;
-      border: 1px solid rgba(255,90,35,.25);
-      background: linear-gradient(135deg, rgba(255,90,35,.1), rgba(255,90,35,.03));
+      border-radius: 22px; overflow: hidden;
+      border: 1px solid rgba(255,90,35,.22);
+      background: linear-gradient(145deg, rgba(255,90,35,.09), rgba(12,26,39,.7));
       aspect-ratio: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: .8rem; text-align: center; padding: 2rem;
+      gap: 1rem; text-align: center; padding: 2rem;
     }
-    .airbnb-visual .big-icon { font-size: 4.5rem; }
+    .airbnb-visual .big-icon { font-size: 5rem; }
     .airbnb-visual .props { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
     .prop-chip {
-      padding: .3rem .8rem;
-      border: 1px solid rgba(255,90,35,.3);
-      border-radius: 100px; font-size: .75rem; color: rgba(248,243,232,.7);
+      padding: .3rem .85rem;
+      border: 1px solid rgba(255,90,35,.28);
+      border-radius: 100px; font-size: .74rem; color: rgba(248,243,232,.7);
     }
 
+    /* ── Instagram / behold.so ────────────────────────────────────── */
+    #reels { background: rgba(122,174,142,.04); }
+    .behold-outer { max-width: 1100px; margin: 0 auto; }
+    #behold-placeholder {
+      text-align: center; color: rgba(248,243,232,.28);
+      font-size: .82rem; margin-top: 1.2rem; font-style: italic;
+    }
+
+    /* ── travel partner section ───────────────────────────────────── */
+    #travel { background: rgba(201,168,76,.03); }
+    .travel-intro {
+      max-width: 700px; margin: 0 auto 3rem;
+      border: 1px solid rgba(201,168,76,.2);
+      border-radius: 18px; padding: 2rem 2.5rem;
+      background: linear-gradient(135deg, rgba(201,168,76,.06), rgba(201,168,76,.02));
+      text-align: center;
+    }
+    .travel-intro p {
+      font-size: .95rem; color: rgba(248,243,232,.7);
+      line-height: 1.8;
+    }
+    .travel-intro strong { color: var(--gold); }
+    .travel-brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem; color: var(--gold);
+      letter-spacing: .1em; margin-bottom: .6rem;
+    }
+    .services-flex {
+      display: flex; flex-wrap: wrap; gap: .9rem;
+      justify-content: center; max-width: 680px; margin: 0 auto 2.5rem;
+    }
+    .s-chip {
+      padding: .6rem 1.3rem;
+      border: 1px solid rgba(201,168,76,.22);
+      border-radius: 100px; font-size: .84rem;
+      color: rgba(248,243,232,.75); background: rgba(255,255,255,.025);
+      transition: all .2s; cursor: default;
+    }
+    .s-chip:hover { background: rgba(201,168,76,.1); border-color: var(--gold); color: var(--gold); }
+
     /* ── competition ──────────────────────────────────────────────── */
-    #competition { background: rgba(201,168,76,.03); }
+    #competition { background: rgba(201,168,76,.025); }
     .comp-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -215,14 +259,14 @@
       background: linear-gradient(145deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
       transition: transform .3s, border-color .3s;
     }
-    .comp-card:hover { transform: translateY(-4px); border-color: rgba(201,168,76,.55); }
+    .comp-card:hover { transform: translateY(-4px); border-color: rgba(201,168,76,.5); }
     .comp-card .icon { font-size: 2.2rem; margin-bottom: 1rem; }
     .comp-card h3 { font-family: 'Playfair Display', serif; font-size: 1.15rem; color: var(--gold); margin-bottom: .5rem; }
-    .comp-card p { font-size: .88rem; color: rgba(248,243,232,.65); line-height: 1.7; }
+    .comp-card p { font-size: .88rem; color: rgba(248,243,232,.65); line-height: 1.72; }
     .comp-card strong { color: var(--cream); }
 
     /* ── prizes ───────────────────────────────────────────────────── */
-    #prizes { background: rgba(27,107,58,.04); }
+    #prizes {}
     .prize-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -232,7 +276,7 @@
       position: relative; overflow: hidden;
       border-radius: 22px; padding: 2.5rem 2rem 2rem;
       text-align: center;
-      border: 1px solid rgba(201,168,76,.3);
+      border: 1px solid rgba(201,168,76,.28);
       background: linear-gradient(160deg, var(--navy), rgba(12,26,39,.9));
       transition: transform .3s, box-shadow .3s;
     }
@@ -240,13 +284,13 @@
     .prize-card::before {
       content: ''; position: absolute; top: -70px; right: -70px;
       width: 180px; height: 180px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(201,168,76,.12), transparent 70%);
+      background: radial-gradient(circle, rgba(201,168,76,.1), transparent 70%);
     }
     .prize-tag {
       display: inline-block; margin-bottom: 1.2rem;
       padding: .3rem 1rem;
-      background: rgba(201,168,76,.12);
-      border: 1px solid rgba(201,168,76,.35);
+      background: rgba(201,168,76,.1);
+      border: 1px solid rgba(201,168,76,.32);
       border-radius: 100px; font-size: .68rem;
       letter-spacing: .18em; text-transform: uppercase; color: var(--gold-lt);
     }
@@ -256,57 +300,30 @@
     }
     .prize-currency { font-size: 1.4rem; vertical-align: super; margin-right: .1rem; }
     .prize-domestic .prize-amount  { color: #5BC8F5; }
-    .prize-domestic  { border-color: rgba(91,200,245,.28); }
+    .prize-domestic { border-color: rgba(91,200,245,.25); }
     .prize-international .prize-amount { color: var(--gold); }
-    .prize-label {
-      margin-top: .9rem; font-size: 1rem; font-weight: 500; color: var(--white);
-    }
-    .prize-note {
-      margin-top: .6rem; font-size: .78rem; color: rgba(248,243,232,.5);
-    }
+    .prize-label { margin-top: .9rem; font-size: 1rem; font-weight: 500; color: var(--white); }
+    .prize-note  { margin-top: .6rem; font-size: .78rem; color: rgba(248,243,232,.5); }
     .validity-box {
       max-width: 500px; margin: 2.5rem auto 0;
       padding: 1.1rem 1.5rem;
-      background: rgba(27,107,58,.12);
-      border: 1px solid rgba(27,107,58,.4);
+      background: rgba(27,107,58,.1);
+      border: 1px solid rgba(27,107,58,.38);
       border-radius: 14px; text-align: center;
     }
     .validity-box p { font-size: .88rem; color: #6BD49A; }
-    .validity-box strong { color: #AAEEC8; }
-
-    /* ── services ─────────────────────────────────────────────────── */
-    #services {}
-    .services-flex {
-      display: flex; flex-wrap: wrap; gap: .9rem;
-      justify-content: center; max-width: 680px; margin: 0 auto;
-    }
-    .s-chip {
-      padding: .6rem 1.3rem;
-      border: 1px solid rgba(201,168,76,.25);
-      border-radius: 100px; font-size: .85rem;
-      color: rgba(248,243,232,.8); background: rgba(255,255,255,.025);
-      transition: all .2s; cursor: default;
-    }
-    .s-chip:hover { background: rgba(201,168,76,.1); border-color: var(--gold); color: var(--gold); }
-
-    /* ── Instagram / behold.so ────────────────────────────────────── */
-    #reels { background: rgba(131,58,180,.035); }
-    .behold-outer { max-width: 1100px; margin: 0 auto; }
-    #behold-placeholder {
-      text-align: center; color: rgba(248,243,232,.3);
-      font-size: .82rem; margin-top: 1.2rem; font-style: italic;
-    }
+    .validity-box strong { color: #A8EEC6; }
 
     /* ── partners ─────────────────────────────────────────────────── */
     #partners { background: rgba(201,168,76,.03); }
     .partners-flex {
-      display: flex; flex-wrap: wrap; gap: 1.3rem;
+      display: flex; flex-wrap: wrap; gap: 1.2rem;
       justify-content: center; max-width: 820px; margin: 0 auto;
     }
     .partner-card {
       display: flex; align-items: center; gap: .8rem;
       padding: 1rem 1.8rem;
-      border: 1px solid rgba(201,168,76,.22);
+      border: 1px solid rgba(201,168,76,.2);
       border-radius: 14px;
       background: rgba(255,255,255,.025);
       font-size: .9rem; font-weight: 500; color: var(--cream);
@@ -324,11 +341,10 @@
     .c-card {
       display: flex; align-items: center; gap: .75rem;
       padding: 1rem 1.7rem;
-      border: 1px solid rgba(201,168,76,.22);
+      border: 1px solid rgba(201,168,76,.2);
       border-radius: 14px;
       background: rgba(255,255,255,.025);
-      font-size: .9rem; color: var(--cream);
-      text-decoration: none;
+      font-size: .9rem; color: var(--cream); text-decoration: none;
       transition: all .25s;
     }
     .c-card:hover { background: rgba(201,168,76,.08); border-color: var(--gold); color: var(--gold); }
@@ -337,10 +353,11 @@
     /* ── footer ───────────────────────────────────────────────────── */
     footer {
       text-align: center; padding: 2.2rem 1.5rem;
-      border-top: 1px solid rgba(201,168,76,.12);
-      font-size: .76rem; color: rgba(248,243,232,.3);
+      border-top: 1px solid rgba(122,174,142,.1);
+      font-size: .75rem; color: rgba(248,243,232,.28);
     }
-    footer strong { color: rgba(201,168,76,.55); }
+    footer strong { color: rgba(122,174,142,.5); }
+    footer .skygate-credit { color: rgba(201,168,76,.4); }
 
     /* ── animations ───────────────────────────────────────────────── */
     @keyframes fadeDown {
@@ -352,7 +369,7 @@
       100% { background-position:  200% center; }
     }
     .shimmer {
-      background: linear-gradient(90deg, var(--gold) 20%, var(--gold-lt) 50%, var(--gold) 80%);
+      background: linear-gradient(90deg, var(--sage) 20%, #A8DFBF 50%, var(--sage) 80%);
       background-size: 200% auto;
       -webkit-background-clip: text; background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -366,7 +383,6 @@
     /* ── responsive ───────────────────────────────────────────────── */
     @media (max-width:600px) {
       nav { padding: .75rem 1rem; }
-      .logo { font-size: .85rem; }
       section { padding: 3.5rem 1rem; }
     }
   </style>
@@ -376,25 +392,28 @@
 
 <!-- NAV -->
 <nav>
-  <div class="logo">SKYGATE<span>_TRAVELS</span></div>
+  <div class="logo-wrap">
+    <div class="logo">Mountain <em>Oasis</em></div>
+    <div class="logo-sub">by SKYGATE_TRAVELS</div>
+  </div>
   <div class="flags">🇿🇦 ✈️ 🇸🇦</div>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="salaam-badge">Asalaam all 🌙</div>
+  <div class="eyebrow-badge">Welcome to Mountain Oasis 🏔️</div>
   <h1>
-    <span class="shimmer">Stay.</span><br/>
-    <span class="gold">Explore. Win.</span>
+    <span class="shimmer">Rest Here.</span><br/>
+    <span class="accent">Go Anywhere.</span>
   </h1>
-  <p class="hero-tagline">
-    Welcome to <strong>Mountain Oasis</strong> — and to the world of SKYGATE_TRAVELS.
-    Whether you're resting your head with us or planning your next adventure,
-    you're in exactly the right place.
+  <p class="hero-sub">
+    A peaceful mountain retreat for the traveller at heart.
+    Stay with us at <strong>Mountain Oasis</strong> — and let us take you further
+    through our travel partner, <strong>SKYGATE_TRAVELS</strong>.
   </p>
   <div class="hero-cta-row">
-    <a class="btn-primary" href="#airbnb">🏡 View Our Airbnb</a>
-    <a class="btn-ghost"   href="#competition">🎉 See the Competition</a>
+    <a class="btn-primary" href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301" target="_blank" rel="noopener noreferrer">🏡 Book on Airbnb</a>
+    <a class="btn-ghost"   href="#competition">🎉 Birthday Competition</a>
   </div>
 
   <div class="scroll-cue">
@@ -407,16 +426,15 @@
 
 <!-- MOUNTAIN OASIS AIRBNB -->
 <section id="airbnb">
-  <p class="section-label reveal">Where You'll Stay</p>
+  <p class="section-label reveal">Your Mountain Escape</p>
   <div class="airbnb-wrap">
     <div class="airbnb-copy reveal">
-      <p class="eyebrow">🏡 Our Airbnb</p>
+      <p class="sub-eyebrow">🏡 Airbnb Listing</p>
       <h3>Mountain Oasis</h3>
       <p>
-        A beautiful retreat nestled in nature — perfect for unwinding between adventures.
-        When you stay with us at Mountain Oasis, you also become part of the
-        SKYGATE_TRAVELS family. That means exclusive access to our travel packages,
-        and entry into our birthday competition.
+        Nestled in nature and designed for rest, Mountain Oasis is the perfect base
+        whether you're exploring locally or arriving from afar. Wake up refreshed
+        and ready for your next adventure.
       </p>
       <a
         class="btn-airbnb"
@@ -433,108 +451,35 @@
         <span class="prop-chip">🌿 Nature</span>
         <span class="prop-chip">🌄 Views</span>
         <span class="prop-chip">🛁 Comfort</span>
-        <span class="prop-chip">✈️ Travel Ready</span>
+        <span class="prop-chip">🤫 Peaceful</span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- COMPETITION -->
-<section id="competition">
-  <p class="section-label reveal">Birthday Month 🎂</p>
-  <h2 class="section-title reveal">We're Celebrating — and You Could Win</h2>
-  <p class="section-desc reveal">
-    As SKYGATE_TRAVELS approaches its birthday month, we're running a competition.
-    We understand the current economic climate in South Africa — so we made the prize worth it.
-  </p>
-
-  <div class="comp-grid">
-    <div class="comp-card reveal">
-      <div class="icon">🧳</div>
-      <h3>Already a Client?</h3>
-      <p>Clients of SKYGATE_TRAVELS are <strong>automatically entered</strong>. No action required — just sit back and wait for the draw.</p>
-    </div>
-    <div class="comp-card reveal">
-      <div class="icon">📩</div>
-      <h3>Not Yet a Client?</h3>
-      <p>Details on how to enter will be shared <strong>very soon</strong>. Stay close — this is one you don't want to miss.</p>
-    </div>
-    <div class="comp-card reveal">
-      <div class="icon">⏳</div>
-      <h3>12-Month Validity</h3>
-      <p>Win a voucher valid for a <strong>full year</strong>. Travel when the time is right for you — no pressure, no rush.</p>
-    </div>
-  </div>
-</section>
-
-<!-- PRIZES -->
-<section id="prizes">
-  <p class="section-label reveal">The Prize</p>
-  <h2 class="section-title reveal">Choose Your Horizon</h2>
-  <p class="section-desc reveal">One winner. One choice. Where will your voucher take you?</p>
-
-  <div class="prize-grid">
-    <div class="prize-card prize-domestic reveal">
-      <span class="prize-tag">✈️ Domestic</span>
-      <div class="prize-amount"><span class="prize-currency">R</span>1000</div>
-      <p class="prize-label">Flight Voucher</p>
-      <p class="prize-note">Explore the beauty of South Africa 🇿🇦</p>
-    </div>
-    <div class="prize-card prize-international reveal">
-      <span class="prize-tag">🌍 International</span>
-      <div class="prize-amount"><span class="prize-currency">R</span>1500</div>
-      <p class="prize-label">Flight Voucher</p>
-      <p class="prize-note">Take on the world 🌐</p>
-    </div>
-  </div>
-
-  <div class="validity-box reveal">
-    <p>⏳ Both vouchers valid for <strong>12 months</strong> from the date of winning.</p>
-  </div>
-</section>
-
-<!-- SERVICES -->
-<section id="services">
-  <p class="section-label reveal">Book With Us</p>
-  <h2 class="section-title reveal">Your Full-Service Travel Partner</h2>
-  <p class="section-desc reveal">
-    From spiritual journeys to corporate trips — SKYGATE_TRAVELS handles it all.
-    Get in touch and let us take care of the details.
-  </p>
-  <div class="services-flex">
-    <span class="s-chip reveal">🕋 Umrah Packages</span>
-    <span class="s-chip reveal">🏖️ Leisure Travel</span>
-    <span class="s-chip reveal">💼 Corporate Travel</span>
-    <span class="s-chip reveal">✈️ Flight Bookings</span>
-    <span class="s-chip reveal">🏨 Accommodation</span>
-    <span class="s-chip reveal">🗺️ Custom Itineraries</span>
-  </div>
-</section>
-
 <!-- INSTAGRAM REELS -->
 <section id="reels">
-  <p class="section-label reveal">Inspiration Awaits</p>
-  <h2 class="section-title reveal">Latest from Instagram</h2>
+  <p class="section-label reveal">Our World</p>
+  <h2 class="section-title reveal">Mountain Oasis on Instagram</h2>
   <p class="section-desc reveal">
-    Follow our journey — travel reels, destination highlights, and exclusive deals, straight from the road.
+    Follow along for stays, views, and travel inspiration — straight from the mountain.
   </p>
 
   <div class="behold-outer reveal">
     <!--
-      ═══════════════════════════════════════════════════════════════
-      BEHOLD.SO INSTAGRAM EMBED
-      Steps to activate:
-        1. Visit https://behold.so and connect your Instagram account
-        2. Create a new feed and copy the Feed ID shown in the dashboard
-        3. Replace  YOUR_BEHOLD_FEED_ID  below with your actual Feed ID
-      ═══════════════════════════════════════════════════════════════
+      ══════════════════════════════════════════════════════════════
+      MOUNTAIN OASIS — BEHOLD.SO INSTAGRAM EMBED
+        1. Go to https://behold.so and connect the Mountain Oasis
+           Instagram account
+        2. Create a new feed — copy the Feed ID from the dashboard
+        3. Replace  YOUR_BEHOLD_FEED_ID  below with the real ID
+      ══════════════════════════════════════════════════════════════
     -->
     <div id="behold-widget" data-feed-id="YOUR_BEHOLD_FEED_ID"></div>
     <script src="https://w.behold.so/widget.js" defer></script>
   </div>
-
   <p id="behold-placeholder">
-    📸 Instagram feed coming soon — connect via behold.so to display your reels here.
+    📸 Instagram feed coming soon — connect your Mountain Oasis account via behold.so to display reels here.
   </p>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -547,11 +492,94 @@
   </script>
 </section>
 
+<!-- TRAVEL PARTNER — SKYGATE_TRAVELS -->
+<section id="travel">
+  <p class="section-label reveal">Plan Your Next Trip</p>
+  <h2 class="section-title reveal">Introducing SKYGATE_TRAVELS</h2>
+  <p class="section-desc reveal">
+    Asalaam all — Mountain Oasis is proud to be associated with <strong>SKYGATE_TRAVELS</strong>.
+    Whether you need flights, an Umrah package, or a fully planned getaway,
+    they've got you covered.
+  </p>
+
+  <div class="travel-intro reveal">
+    <div class="travel-brand">SKYGATE_TRAVELS</div>
+    <p>
+      We understand the current economic times in South Africa —
+      which is why <strong>SKYGATE_TRAVELS</strong> works hard to make travel
+      accessible for everyone. Get in touch for your
+      <strong>Umrah</strong>, leisure, or corporate travel needs.
+    </p>
+  </div>
+
+  <div class="services-flex">
+    <span class="s-chip reveal">🕋 Umrah Packages</span>
+    <span class="s-chip reveal">🏖️ Leisure Travel</span>
+    <span class="s-chip reveal">💼 Corporate Travel</span>
+    <span class="s-chip reveal">✈️ Flight Bookings</span>
+    <span class="s-chip reveal">🏨 Accommodation</span>
+    <span class="s-chip reveal">🗺️ Custom Itineraries</span>
+  </div>
+</section>
+
+<!-- COMPETITION -->
+<section id="competition">
+  <p class="section-label reveal">Birthday Month 🎂</p>
+  <h2 class="section-title reveal">SKYGATE_TRAVELS is Giving Back</h2>
+  <p class="section-desc reveal">
+    As SKYGATE_TRAVELS celebrates its birthday month, there's a competition — and the prize is a travel voucher worth your while.
+  </p>
+
+  <div class="comp-grid">
+    <div class="comp-card reveal">
+      <div class="icon">🧳</div>
+      <h3>Already a Client?</h3>
+      <p>Clients of SKYGATE_TRAVELS are <strong>automatically entered</strong>. Nothing to do — just wait for the draw.</p>
+    </div>
+    <div class="comp-card reveal">
+      <div class="icon">📩</div>
+      <h3>Not Yet a Client?</h3>
+      <p>Entry details for new clients will be <strong>shared very soon</strong>. Watch this space — you won't want to miss it.</p>
+    </div>
+    <div class="comp-card reveal">
+      <div class="icon">⏳</div>
+      <h3>12-Month Voucher</h3>
+      <p>The prize is valid for a <strong>full year</strong>. Travel when it suits you, on your terms.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PRIZES -->
+<section id="prizes">
+  <p class="section-label reveal">The Prize</p>
+  <h2 class="section-title reveal">Choose Your Horizon</h2>
+  <p class="section-desc reveal">One winner. One choice. Where will it take you?</p>
+
+  <div class="prize-grid">
+    <div class="prize-card prize-domestic reveal">
+      <span class="prize-tag">✈️ Domestic Flight</span>
+      <div class="prize-amount"><span class="prize-currency">R</span>1000</div>
+      <p class="prize-label">Flight Voucher</p>
+      <p class="prize-note">Explore South Africa 🇿🇦</p>
+    </div>
+    <div class="prize-card prize-international reveal">
+      <span class="prize-tag">🌍 International Flight</span>
+      <div class="prize-amount"><span class="prize-currency">R</span>1500</div>
+      <p class="prize-label">Flight Voucher</p>
+      <p class="prize-note">See the world 🌐</p>
+    </div>
+  </div>
+
+  <div class="validity-box reveal">
+    <p>⏳ Both vouchers valid for a full <strong>12 months</strong> from the date of winning.</p>
+  </div>
+</section>
+
 <!-- PARTNERS -->
 <section id="partners">
-  <p class="section-label reveal">Our Network</p>
-  <h2 class="section-title reveal">Trusted Partners</h2>
-  <p class="section-desc reveal">World-class organisations that power the SKYGATE_TRAVELS experience.</p>
+  <p class="section-label reveal">Trusted Network</p>
+  <h2 class="section-title reveal">Our Partners</h2>
+  <p class="section-desc reveal">SKYGATE_TRAVELS works with world-class organisations to deliver exceptional travel experiences.</p>
 
   <div class="partners-flex">
     <div class="partner-card reveal"><span class="p-icon">🇸🇦</span> Saudi Tourism Authority</div>
@@ -562,11 +590,11 @@
 
 <!-- CONTACT -->
 <section id="contact">
-  <p class="section-label reveal">Let's Talk</p>
-  <h2 class="section-title reveal">Get in Touch</h2>
+  <p class="section-label reveal">Reach Out</p>
+  <h2 class="section-title reveal">Get in Touch with SKYGATE_TRAVELS</h2>
   <p class="section-desc reveal">
-    Ready to book a trip, ask about the competition, or just say salaam?
-    We're always here.
+    Ready to book your next trip or ask about the competition?
+    We're here — just send a message.
   </p>
   <div class="contact-row">
     <a class="c-card reveal" href="https://wa.me/27766747863" target="_blank" rel="noopener noreferrer">
@@ -581,8 +609,8 @@
 
 <!-- FOOTER -->
 <footer>
-  <p><strong>SKYGATE_TRAVELS</strong> — Birthday Month Competition</p>
-  <p style="margin-top:.35rem;">Vouchers subject to availability and standard terms &amp; conditions apply.</p>
+  <p><strong>Mountain Oasis</strong> — A <span class="skygate-credit">SKYGATE_TRAVELS</span> Property</p>
+  <p style="margin-top:.35rem;">Vouchers subject to availability. Standard terms &amp; conditions apply.</p>
 </footer>
 
 <!-- SCROLL REVEAL -->
