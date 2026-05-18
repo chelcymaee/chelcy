@@ -145,6 +145,48 @@
     .about-photo { border-radius: 20px; overflow: hidden; aspect-ratio: 4/5; box-shadow: 0 30px 80px rgba(0,0,0,.5); }
     .about-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
+    /* REVIEWS */
+    #reviews { background: rgba(46,40,35,.35); }
+    .reviews-summary {
+      display: flex; align-items: center; justify-content: center; gap: 1rem;
+      margin-bottom: 3rem;
+    }
+    .reviews-summary .big-stars { font-size: 1.5rem; letter-spacing: .1em; color: var(--gold); }
+    .reviews-summary .score {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 3rem; font-weight: 700; color: var(--cream); line-height: 1;
+    }
+    .reviews-summary .meta { font-size: .82rem; color: var(--mist); }
+    .reviews-summary .meta strong { display: block; font-size: 1rem; color: var(--cream); font-weight: 500; }
+    .reviews-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.2rem; max-width: 1100px; margin: 0 auto;
+    }
+    .review-card {
+      background: linear-gradient(145deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+      border: 1px solid rgba(196,163,90,.15);
+      border-radius: 16px; padding: 1.6rem;
+      transition: border-color .3s, transform .3s;
+    }
+    .review-card:hover { border-color: rgba(196,163,90,.35); transform: translateY(-3px); }
+    .review-header { display: flex; align-items: center; gap: .9rem; margin-bottom: 1rem; }
+    .reviewer-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), #8A6A2E);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.15rem; font-weight: 700; color: var(--dark);
+      flex-shrink: 0;
+    }
+    .reviewer-info .name { font-weight: 600; font-size: .9rem; color: var(--cream); }
+    .reviewer-info .location { font-size: .75rem; color: rgba(244,239,230,.45); margin-top: .1rem; }
+    .review-stars { color: var(--gold); font-size: .85rem; letter-spacing: .05em; margin-bottom: .5rem; }
+    .review-meta { font-size: .7rem; color: rgba(244,239,230,.35); margin-bottom: .8rem; letter-spacing: .04em; }
+    .review-text { font-size: .87rem; color: rgba(244,239,230,.65); line-height: 1.75; font-style: italic; }
+    .review-text::before { content: '\201C'; color: var(--gold); font-size: 1.2rem; font-style: normal; margin-right: .1rem; }
+    .review-text::after  { content: '\201D'; color: var(--gold); font-size: 1.2rem; font-style: normal; margin-left: .1rem; }
+
     /* INSTAGRAM */
     #reels { background: var(--warm); }
     .behold-outer { max-width: 1200px; margin: 0 auto; }
@@ -232,6 +274,7 @@
   <div class="nav-logo">Mountain <span>Oasis</span></div>
   <div class="nav-right">
     <a class="nav-link" href="#gallery">Gallery</a>
+    <a class="nav-link" href="#reviews">Reviews</a>
     <a class="nav-link" href="#reels">Instagram</a>
     <a class="nav-book" href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301" target="_blank" rel="noopener noreferrer">🏡 Book Now</a>
   </div>
@@ -329,6 +372,128 @@
     <div class="about-photo reveal">
       <img src="images/photo-06.png" alt="Mountain Oasis exterior with Twelve Apostles" loading="lazy" />
     </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section id="reviews">
+  <p class="section-eyebrow reveal">Guest Reviews</p>
+  <h2 class="section-title reveal">What guests <em>are saying</em></h2>
+
+  <div class="reviews-summary reveal">
+    <div class="score">4.9</div>
+    <div>
+      <div class="big-stars">★★★★★</div>
+      <div class="meta"><strong>8 reviews</strong> on Airbnb</div>
+    </div>
+  </div>
+
+  <div class="reviews-grid">
+
+    <div class="review-card reveal">
+      <div class="review-header">
+        <div class="reviewer-avatar">K</div>
+        <div class="reviewer-info">
+          <div class="name">Kirsten</div>
+          <div class="location">New York, New York</div>
+        </div>
+      </div>
+      <div class="review-stars">★★★★★</div>
+      <div class="review-meta">April 2026 · Group trip</div>
+      <div class="review-text">The house and view was amazing! Insane sunset views! Dre met us at check-in and helped us bring all of our stuff in — she was so welcoming! The place is kitted with everything you need.</div>
+    </div>
+
+    <div class="review-card reveal">
+      <div class="review-header">
+        <div class="reviewer-avatar">D</div>
+        <div class="reviewer-info">
+          <div class="name">Deyvi</div>
+          <div class="location">Istanbul, Turkey</div>
+        </div>
+      </div>
+      <div class="review-stars">★★★★★</div>
+      <div class="review-meta">May 2025 · Group trip</div>
+      <div class="review-text">It was a fantastic trip for us and staying at Glen's house has amplified and enhanced the holiday mood definitely. We had a wonderful time in the house — the hosts went above and beyond.</div>
+    </div>
+
+    <div class="review-card reveal">
+      <div class="review-header">
+        <div class="reviewer-avatar">L</div>
+        <div class="reviewer-info">
+          <div class="name">Leon</div>
+          <div class="location">2 years on Airbnb</div>
+        </div>
+      </div>
+      <div class="review-stars">★★★★★</div>
+      <div class="review-meta">September 2025 · Group trip</div>
+      <div class="review-text">We had the best stay and weekend!</div>
+    </div>
+
+    <div class="review-card reveal">
+      <div class="review-header">
+        <div class="reviewer-avatar">C</div>
+        <div class="reviewer-info">
+          <div class="name">Charmaine</div>
+          <div class="location">Johannesburg, South Africa</div>
+        </div>
+      </div>
+      <div class="review-stars">★★★★★</div>
+      <div class="review-meta">January 2025 · Group trip</div>
+      <div class="review-text">I had the pleasure of staying at Glen &amp; Ilke's property, and I couldn't be more impressed. The accommodation was immaculate, with every detail thoughtfully arranged for guests.</div>
+    </div>
+
+    <div class="review-card reveal">
+      <div class="review-header">
+        <div class="reviewer-avatar">J</div>
+        <div class="reviewer-info">
+          <div class="name">Jason</div>
+          <div class="location">8 years on Airbnb</div>
+        </div>
+      </div>
+      <div class="review-stars">★★★★</div>
+      <div class="review-meta">March 2026 · Stayed with kids</div>
+      <div class="review-text">Incredible location, views and apartment was amazing. Apartment was very well stocked and having the cleaning crew come every other day was a treat!</div>
+    </div>
+
+    <div class="review-card reveal">
+      <div class="review-header">
+        <div class="reviewer-avatar">D</div>
+        <div class="reviewer-info">
+          <div class="name">Dylan</div>
+          <div class="location">Gilbert, Arizona</div>
+        </div>
+      </div>
+      <div class="review-stars">★★★★★</div>
+      <div class="review-meta">January 2026 · Stayed a few nights</div>
+      <div class="review-text">Amazing location. Beautiful, tasteful home. Lots of privacy. Glen was a helpful, communicative, and very friendly host throughout our stay.</div>
+    </div>
+
+    <div class="review-card reveal">
+      <div class="review-header">
+        <div class="reviewer-avatar">B</div>
+        <div class="reviewer-info">
+          <div class="name">Berny</div>
+          <div class="location">Kenya</div>
+        </div>
+      </div>
+      <div class="review-stars">★★★★★</div>
+      <div class="review-meta">December 2025 · Stayed with kids</div>
+      <div class="review-text">Glen's place felt like home. The check-in and welcoming was thoughtful and well organised and the host was very pro-active and checked on us throughout the trip. Location is unbeatable.</div>
+    </div>
+
+    <div class="review-card reveal">
+      <div class="review-header">
+        <div class="reviewer-avatar">K</div>
+        <div class="reviewer-info">
+          <div class="name">Kristopher</div>
+          <div class="location">Orchard Lake Village, Michigan</div>
+        </div>
+      </div>
+      <div class="review-stars">★★★★★</div>
+      <div class="review-meta">November 2025 · Group trip</div>
+      <div class="review-text">Beautiful place with the most incredible views from everywhere. I could sit on the balcony and never leave — the view of the ocean and Lion's Head is absolutely breathtaking.</div>
+    </div>
+
   </div>
 </section>
 
