@@ -384,6 +384,41 @@
     .reveal { opacity:0; transform:translateY(28px); transition: opacity .8s ease, transform .8s ease; }
     .reveal.visible { opacity:1; transform:none; }
 
+    /* ── sticky book bar ──────────────────────────────────────────── */
+    .sticky-book {
+      position: fixed; bottom: 1.5rem; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      z-index: 300;
+      display: flex; align-items: center; gap: 1rem;
+      padding: .9rem 1.4rem .9rem 1.6rem;
+      background: rgba(26,22,20,.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(196,163,90,.2);
+      border-radius: 100px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.5);
+      transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .4s ease;
+      opacity: 0;
+      white-space: nowrap;
+    }
+    .sticky-book.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .sticky-book .sticky-label {
+      font-size: .8rem; color: rgba(244,239,230,.6);
+    }
+    .sticky-book .sticky-label strong { color: var(--cream); font-weight: 500; }
+    .sticky-book .sticky-btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .65rem 1.5rem;
+      background: linear-gradient(135deg, var(--airbnb), #D44A1A);
+      color: var(--white); font-weight: 700; font-size: .84rem;
+      border-radius: 50px; text-decoration: none;
+      box-shadow: 0 4px 16px rgba(255,90,35,.4);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .sticky-book .sticky-btn:hover { transform: scale(1.04); box-shadow: 0 6px 22px rgba(255,90,35,.55); }
+
     /* ── responsive nav ───────────────────────────────────────────── */
     @media (max-width: 600px) {
       nav { padding: .85rem 1.2rem; }
@@ -391,6 +426,8 @@
       .hero-content { padding: 0 1.5rem 4rem; }
       .scroll-line { display: none; }
       section { padding: 4rem 1.2rem; }
+      .sticky-book .sticky-label { display: none; }
+      .sticky-book { padding: .75rem; }
     }
   </style>
 </head>
@@ -598,13 +635,37 @@
   <p>Listed on <a href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301" target="_blank" rel="noopener noreferrer">Airbnb</a> · Cape Town, South Africa</p>
 </footer>
 
-<!-- SCROLL REVEAL -->
+<!-- STICKY BOOK BAR -->
+<div class="sticky-book" id="stickyBar">
+  <div class="sticky-label"><strong>Mountain Oasis</strong> · Cape Town</div>
+  <a
+    class="sticky-btn"
+    href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301"
+    target="_blank" rel="noopener noreferrer"
+  >🏡 Book Now</a>
+</div>
+
+<!-- SCROLL REVEAL + STICKY BAR LOGIC -->
 <script>
   const io = new IntersectionObserver(
     entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
     { threshold: 0.08 }
   );
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // Show sticky bar after scrolling past the hero
+  const bar = document.getElementById('stickyBar');
+  const hero = document.querySelector('.hero');
+  const bookSection = document.getElementById('book');
+  const ioBar = new IntersectionObserver(entries => {
+    const heroVisible   = entries.find(e => e.target === hero)?.isIntersecting;
+    const bookVisible   = entries.find(e => e.target === bookSection)?.isIntersecting;
+    if (heroVisible === false || bookVisible === true) {
+      bar.classList.toggle('show', !heroVisible && !bookVisible);
+    }
+  }, { threshold: 0.1 });
+  ioBar.observe(hero);
+  ioBar.observe(bookSection);
 </script>
 </body>
 </html>
