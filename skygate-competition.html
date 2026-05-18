@@ -339,32 +339,14 @@
   <p class="section-body reveal">Real stays, real sunsets. Follow along for the moments that don't make it into the listing photos.</p>
 
   <div class="behold-outer reveal">
-    <!--
-      To activate: go to behold.so, connect your Mountain Oasis Instagram,
-      create a feed, copy the Feed ID, and replace YOUR_BEHOLD_FEED_ID below.
-    -->
-    <div id="behold-widget" data-feed-id="YOUR_BEHOLD_FEED_ID"></div>
-    <script src="https://w.behold.so/widget.js" defer></script>
+    <behold-widget feed-id="P208DIyLdCf6ysWwxAhs"></behold-widget>
+    <script>
+      (() => {
+        const d=document,s=d.createElement("script");s.type="module";
+        s.src="https://w.behold.so/widget.js";d.head.append(s);
+      })();
+    </script>
   </div>
-
-  <div class="ig-placeholder" id="behold-placeholder">
-    <div class="ig-icon">📸</div>
-    <h3>Connect your Instagram</h3>
-    <p>To display your Instagram reels here, set up a free embed via <a href="https://behold.so" target="_blank" rel="noopener noreferrer">behold.so</a>:</p>
-    <ol class="steps">
-      <li>Go to <strong>behold.so</strong> and sign up free</li>
-      <li>Connect your <strong>Mountain Oasis Instagram</strong> account</li>
-      <li>Create a new feed — copy the <strong>Feed ID</strong></li>
-      <li>Send the Feed ID to get it added here</li>
-    </ol>
-  </div>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const w = document.getElementById('behold-widget');
-      const ph = document.getElementById('behold-placeholder');
-      new MutationObserver(() => { if (w.children.length > 0) ph.style.display = 'none'; }).observe(w, { childList: true });
-    });
-  </script>
 </section>
 
 <!-- BOOK CTA -->
