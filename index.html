@@ -622,5 +622,341 @@
   ioBar.observe(hero);
   ioBar.observe(bookSection);
 </script>
+
+<!-- CHATBOT -->
+<style>
+  #chat-bubble {
+    position: fixed; bottom: 1.8rem; right: 1.8rem; z-index: 400;
+    width: 58px; height: 58px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--dark), var(--navy-mid));
+    border: 2px solid rgba(201,168,76,.5);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: 0 6px 28px rgba(9,24,42,.55);
+    transition: transform .2s, box-shadow .2s;
+  }
+  #chat-bubble:hover { transform: scale(1.08); box-shadow: 0 10px 36px rgba(9,24,42,.7); }
+  #chat-bubble svg { transition: opacity .2s; }
+  #chat-bubble.open .icon-chat { opacity: 0; position: absolute; }
+  #chat-bubble.open .icon-close { opacity: 1; }
+  #chat-bubble .icon-close { opacity: 0; position: absolute; }
+
+  #chat-window {
+    position: fixed; bottom: 5.5rem; right: 1.8rem; z-index: 399;
+    width: 360px; max-width: calc(100vw - 2rem);
+    background: #fff; border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(9,24,42,.22), 0 2px 8px rgba(9,24,42,.1);
+    display: flex; flex-direction: column; overflow: hidden;
+    transform: scale(.85) translateY(20px); transform-origin: bottom right;
+    opacity: 0; pointer-events: none;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1), opacity .25s ease;
+    max-height: 520px;
+  }
+  #chat-window.open { transform: scale(1) translateY(0); opacity: 1; pointer-events: all; }
+
+  #chat-header {
+    background: linear-gradient(135deg, var(--dark) 0%, var(--navy-mid) 100%);
+    padding: 1rem 1.2rem; display: flex; align-items: center; gap: .8rem;
+    border-bottom: 1px solid rgba(201,168,76,.2);
+  }
+  .chat-avatar {
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--gold), #A07828);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-weight: 700; color: var(--dark);
+  }
+  .chat-header-text { flex: 1; }
+  .chat-title { font-weight: 600; font-size: .9rem; color: #fff; }
+  .chat-subtitle { font-size: .72rem; color: rgba(255,255,255,.5); margin-top: .1rem; }
+  .chat-close {
+    background: none; border: none; cursor: pointer; color: rgba(255,255,255,.5);
+    font-size: 1.1rem; padding: .2rem; line-height: 1; transition: color .2s;
+  }
+  .chat-close:hover { color: #fff; }
+
+  #chat-messages {
+    flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .7rem;
+    scroll-behavior: smooth;
+  }
+  #chat-messages::-webkit-scrollbar { width: 4px; }
+  #chat-messages::-webkit-scrollbar-thumb { background: rgba(9,24,42,.12); border-radius: 4px; }
+
+  .msg { max-width: 82%; font-size: .84rem; line-height: 1.6; padding: .65rem .9rem; border-radius: 14px; animation: msgIn .25s ease; }
+  @keyframes msgIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .msg.bot { background: #F0F3F8; color: var(--dark); border-bottom-left-radius: 4px; align-self: flex-start; }
+  .msg.user { background: linear-gradient(135deg, var(--dark), var(--navy-mid)); color: #fff; border-bottom-right-radius: 4px; align-self: flex-end; }
+
+  .typing { display: flex; gap: 4px; align-items: center; padding: .65rem .9rem; background: #F0F3F8; border-radius: 14px; border-bottom-left-radius: 4px; align-self: flex-start; }
+  .typing span { width: 7px; height: 7px; border-radius: 50%; background: rgba(9,24,42,.3); animation: bounce .9s infinite; }
+  .typing span:nth-child(2) { animation-delay: .15s; }
+  .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%,60%,100% { transform:translateY(0); } 30% { transform:translateY(-5px); } }
+
+  #chat-input-row {
+    display: flex; gap: .5rem; padding: .8rem; border-top: 1px solid rgba(9,24,42,.08);
+    background: #fff;
+  }
+  #chat-input {
+    flex: 1; border: 1px solid rgba(9,24,42,.15); border-radius: 50px;
+    padding: .55rem 1rem; font-size: .84rem; color: var(--dark); outline: none;
+    font-family: 'Inter', sans-serif; background: #F7F8FA;
+    transition: border-color .2s;
+  }
+  #chat-input:focus { border-color: var(--gold); background: #fff; }
+  #chat-send {
+    width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--dark), var(--navy-mid));
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    transition: transform .15s, opacity .15s;
+  }
+  #chat-send:hover { transform: scale(1.08); }
+
+  .chat-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .3rem; }
+  .chip {
+    font-size: .75rem; padding: .35rem .85rem; border-radius: 50px; cursor: pointer;
+    border: 1px solid rgba(201,168,76,.4); color: var(--dark); background: rgba(201,168,76,.08);
+    transition: background .2s, border-color .2s; white-space: nowrap;
+  }
+  .chip:hover { background: rgba(201,168,76,.2); border-color: var(--gold); }
+
+  @media (max-width: 420px) {
+    #chat-window { right: 1rem; bottom: 5rem; width: calc(100vw - 2rem); }
+    #chat-bubble { bottom: 1.2rem; right: 1.2rem; }
+  }
+</style>
+
+<!-- Chat bubble -->
+<div id="chat-bubble" onclick="toggleChat()" title="Ask us anything">
+  <svg class="icon-chat" width="24" height="24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <svg class="icon-close" width="20" height="20" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+</div>
+
+<!-- Chat window -->
+<div id="chat-window">
+  <div id="chat-header">
+    <div class="chat-avatar">M</div>
+    <div class="chat-header-text">
+      <div class="chat-title">Mountain Oasis Host</div>
+      <div class="chat-subtitle">Ask me anything about the property</div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div id="chat-messages"></div>
+  <div id="chat-input-row">
+    <input id="chat-input" type="text" placeholder="e.g. Is there parking?" maxlength="200" />
+    <button id="chat-send" onclick="sendMsg()">
+      <svg width="16" height="16" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+(function() {
+  const AIRBNB = 'https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301';
+
+  const KB = [
+    {
+      keys: ['bedroom','bed','sleep','how many room','how many bed','how many people','capacity','guest','accommodate'],
+      answer: 'Mountain Oasis has <strong>3 bedrooms</strong> — all beautifully appointed with views of either the ocean or the mountains. It\'s a 6-bed, 2-storey home that can comfortably sleep a group. Each room has ample closet space so you can settle right in.'
+    },
+    {
+      keys: ['bathroom','bath','toilet','ensuite','shower'],
+      answer: 'The <strong>main bedroom has its own ensuite bathroom</strong>. Bedrooms 2 and 3 share a bathroom and have access to a separate guest toilet as well.'
+    },
+    {
+      keys: ['pool','swim','plunge'],
+      answer: 'Yes! There\'s a gorgeous <strong>private outdoor pool</strong> — perfect for sunny Cape Town days. There\'s also a <strong>wood-fired hot tub</strong> that\'s open 24 hours, available all year round. 🌊'
+    },
+    {
+      keys: ['hot tub','jacuzzi','spa','tub'],
+      answer: 'There\'s a <strong>wood-fired hot tub</strong> on the property — private, open 24 hours a day, and available all year round. Perfect for starlit evenings. 🔥'
+    },
+    {
+      keys: ['kitchen','cook','cooking','applianc','smeg','coffee','kettle','nutribullet','airfryer','blender','microwave','oven','stove','fridge','freezer','dishwasher'],
+      answer: 'The kitchen is <strong>fully equipped</strong> for all your culinary adventures. It includes Smeg appliances (kettle & toaster), a Nutribullet blender, airfryer, French press, Nespresso machine, microwave, oven, stove, fridge, freezer, and dishwasher. Pots, pans, oil, salt & pepper are all stocked.'
+    },
+    {
+      keys: ['wifi','internet','connect','data','uncapped','fibre'],
+      answer: 'Absolutely — <strong>free uncapped WiFi</strong> is included throughout the property. No limits, no extra charges.'
+    },
+    {
+      keys: ['loadshed','load shed','eskom','power cut','electricity','inverter','outage'],
+      answer: 'No stress about load shedding! The property has a <strong>dedicated inverter that automatically switches on</strong> the moment load shedding kicks in — so you\'ll have uninterrupted access to essential appliances and power throughout your stay. 💡'
+    },
+    {
+      keys: ['park','car','vehicle','garage','driveway'],
+      answer: 'There\'s <strong>on-street private parking</strong> with space for up to 4 cars. Please note parking is shared with guests in the downstairs apartment. There\'s also a convenient <strong>side lift</strong> from the parking area up to the property.'
+    },
+    {
+      keys: ['lift','elevator','access','stairs','entry','check in','checkin'],
+      answer: 'Access is via a <strong>side lift from the on-street parking</strong>, then a short walk up the stairs to your oasis. For check-in details and exact times, please check your Airbnb booking or message the host directly.'
+    },
+    {
+      keys: ['location','where','address','area','camps bay','neighbourhood','close','nearby','beach','restaurant','city','cape town'],
+      answer: 'Mountain Oasis is nestled on the <strong>highest road in Camps Bay</strong>, offering a tranquil retreat with easy access to everything. It\'s just a <strong>5-minute drive</strong> to vibrant restaurants and beautiful beaches, and only <strong>10 minutes</strong> to the heart of Cape Town City Centre.'
+    },
+    {
+      keys: ['view','ocean','mountain','12 apostle','scenery','panoram','sunset'],
+      answer: 'The views are absolutely breathtaking — <strong>sweeping panoramic views of Camps Bay and the Atlantic Ocean</strong>, with the iconic <strong>12 Apostles Mountain Range</strong> as your backdrop. Every room, balcony, and the pool all face these incredible vistas. 🌅'
+    },
+    {
+      keys: ['balcony','terrace','patio','outdoor','outside'],
+      answer: 'There are <strong>private balconies</strong> where you can soak in the ocean air, enjoy your morning coffee, or watch the sunset paint the sky. There\'s also an outdoor dining area and sun loungers.'
+    },
+    {
+      keys: ['bbq','braai','grill','barbecue'],
+      answer: 'Yes — there\'s an <strong>outdoor gas BBQ</strong> perfect for al fresco dining and sundowner braais with those incredible ocean views. 🔥'
+    },
+    {
+      keys: ['aircon','air con','air conditioning','cool','fan','heat','warm','cold'],
+      answer: 'There\'s <strong>air conditioning in the dining room</strong> to keep you cool on warm days, plus a <strong>wood-burning fireplace</strong> for cozy Cape Town evenings. Portable fans are also available.'
+    },
+    {
+      keys: ['fireplace','fire','cozy'],
+      answer: 'The living and dining room features a beautiful <strong>wood-burning fireplace</strong> — perfect for those chilly Cape Town winter evenings. 🔥'
+    },
+    {
+      keys: ['tv','netflix','stream','watch','entertainment'],
+      answer: 'There\'s a <strong>Smart TV with HD Netflix and standard cable</strong> — so if you want a cosy movie night in, you\'re covered.'
+    },
+    {
+      keys: ['wash','laundry','cloth','dryer','iron'],
+      answer: 'There\'s a <strong>washing machine and dryer</strong> on the property, plus an iron and drying rack. For longer stays this is really convenient.'
+    },
+    {
+      keys: ['housekeeper','clean','housekeep','linen','towel','refresh'],
+      answer: 'Housekeeping is available <strong>on request</strong> (except Sundays and public holidays — just chat to the host). For stays of <strong>7 nights or longer</strong>, you\'ll receive a complimentary refresh of linens and towels.'
+    },
+    {
+      keys: ['food','groceries','self cater','catering','provision','supply'],
+      answer: 'Mountain Oasis is a <strong>self-catering</strong> property. The hosts provide the basics to get you started — <strong>tea, coffee, milk, and sugar</strong> are included. Camps Bay\'s restaurants and shops are just a 5-minute drive away.'
+    },
+    {
+      keys: ['long stay','long term','month','extend'],
+      answer: 'Long-term stays (28 nights or longer) are welcome! Luggage drop-off before check-in or after check-out is also allowed. Reach out to the host on Airbnb for details.'
+    },
+    {
+      keys: ['pet','dog','cat','animal'],
+      answer: 'Pet policy isn\'t listed — we\'d recommend <strong>messaging the host directly on Airbnb</strong> to confirm before booking.'
+    },
+    {
+      keys: ['price','cost','rate','how much','fee','charge','per night'],
+      answer: 'For live pricing and availability, head directly to the Airbnb listing — rates vary by date and season. <a href="' + AIRBNB + '" target="_blank" style="color:var(--gold);font-weight:600;">Check prices on Airbnb →</a>'
+    },
+    {
+      keys: ['book','booking','availab','reserve','when','date'],
+      answer: 'You can check availability and book directly on Airbnb. <a href="' + AIRBNB + '" target="_blank" style="color:var(--gold);font-weight:600;">Book Mountain Oasis →</a>'
+    },
+    {
+      keys: ['how many bathroom','how many bath'],
+      answer: 'There are <strong>2 bathrooms</strong> — an ensuite for the main bedroom, and a shared bathroom for bedrooms 2 and 3, plus a separate guest toilet.'
+    },
+    {
+      keys: ['hello','hi','hey','howzit','hiya','good morning','good afternoon','good evening'],
+      answer: 'Hi there! 👋 Welcome to Mountain Oasis. I\'m here to answer any questions you have about the property. What would you like to know?',
+      chips: ['Bedrooms & bathrooms','Pool & hot tub','Location','WiFi & amenities']
+    }
+  ];
+
+  const DEFAULT = "Great question! For anything I can't answer, I'd recommend <a href='" + AIRBNB + "' target='_blank' style='color:var(--gold);font-weight:600;'>messaging the host on Airbnb</a> directly — they're very responsive. Is there anything else I can help with?";
+
+  const SUGGESTIONS = ['Pool & hot tub','Parking','WiFi','Load shedding','Kitchen','Location','Bedrooms','Reviews'];
+
+  let chatOpen = false;
+  let greeted = false;
+
+  function toggleChat() {
+    chatOpen = !chatOpen;
+    document.getElementById('chat-window').classList.toggle('open', chatOpen);
+    document.getElementById('chat-bubble').classList.toggle('open', chatOpen);
+    if (chatOpen && !greeted) {
+      greeted = true;
+      setTimeout(() => {
+        addMsg('bot', 'Hi! 👋 I\'m here to help with any questions about <strong>Mountain Oasis</strong>. What would you like to know?');
+        addChips(SUGGESTIONS);
+      }, 300);
+    }
+    if (chatOpen) setTimeout(() => document.getElementById('chat-input').focus(), 350);
+  }
+
+  function addMsg(role, html) {
+    const msgs = document.getElementById('chat-messages');
+    const d = document.createElement('div');
+    d.className = 'msg ' + role;
+    d.innerHTML = html;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+  }
+
+  function addChips(items) {
+    const msgs = document.getElementById('chat-messages');
+    const wrap = document.createElement('div');
+    wrap.className = 'chat-chips';
+    items.forEach(label => {
+      const c = document.createElement('span');
+      c.className = 'chip';
+      c.textContent = label;
+      c.onclick = () => { wrap.remove(); processInput(label); };
+      wrap.appendChild(c);
+    });
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function showTyping() {
+    const msgs = document.getElementById('chat-messages');
+    const t = document.createElement('div');
+    t.className = 'typing'; t.id = 'typing';
+    t.innerHTML = '<span></span><span></span><span></span>';
+    msgs.appendChild(t);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing');
+    if (t) t.remove();
+  }
+
+  function getAnswer(text) {
+    const q = text.toLowerCase();
+    for (const entry of KB) {
+      if (entry.keys.some(k => q.includes(k))) return entry;
+    }
+    return null;
+  }
+
+  function processInput(text) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    addMsg('user', trimmed);
+    showTyping();
+    setTimeout(() => {
+      removeTyping();
+      const match = getAnswer(trimmed);
+      if (match) {
+        addMsg('bot', match.answer);
+        if (match.chips) addChips(match.chips);
+      } else {
+        addMsg('bot', DEFAULT);
+      }
+    }, 700 + Math.random() * 400);
+  }
+
+  function sendMsg() {
+    const inp = document.getElementById('chat-input');
+    const val = inp.value.trim();
+    if (!val) return;
+    inp.value = '';
+    processInput(val);
+  }
+
+  document.getElementById('chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMsg();
+  });
+
+  window.toggleChat = toggleChat;
+  window.sendMsg = sendMsg;
+})();
+</script>
 </body>
 </html>
