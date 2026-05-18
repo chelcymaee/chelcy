@@ -106,11 +106,21 @@
     .dark-section .section-body { color: var(--mist); }
     .dark-section .section-eyebrow { color: var(--gold); }
 
-    /* FEATURES */
-    #features { padding: 2.5rem 2rem; background: var(--dark); border-top: 1px solid rgba(201,168,76,.15); border-bottom: 1px solid rgba(201,168,76,.15); }
-    .feat-row { display: flex; flex-wrap: wrap; gap: .7rem; justify-content: center; max-width: 950px; margin: 0 auto; }
-    .feat { display: flex; align-items: center; gap: .55rem; padding: .65rem 1.3rem; border: 1px solid rgba(201,168,76,.2); border-radius: 100px; font-size: .82rem; color: rgba(255,255,255,.8); background: rgba(13,34,64,.7); transition: all .2s; }
-    .feat:hover { border-color: var(--gold); color: var(--white); background: rgba(201,168,76,.1); }
+    /* FEATURES TICKER */
+    #features { padding: 0; background: var(--dark); border-top: 1px solid rgba(201,168,76,.15); border-bottom: 1px solid rgba(201,168,76,.15); overflow: hidden; }
+    .ticker-wrap { display: flex; width: 100%; overflow: hidden; padding: 1.3rem 0; cursor: default; }
+    .ticker-track {
+      display: flex; gap: 0; flex-shrink: 0; min-width: 100%;
+      animation: ticker 28s linear infinite;
+    }
+    .ticker-wrap:hover .ticker-track { animation-play-state: paused; }
+    .feat { display: inline-flex; align-items: center; gap: .55rem; padding: .65rem 1.5rem; margin-right: .7rem;
+      border: 1px solid rgba(201,168,76,.25); border-radius: 100px; font-size: .82rem;
+      color: rgba(255,255,255,.8); background: rgba(255,255,255,.04);
+      white-space: nowrap; flex-shrink: 0; transition: border-color .2s, color .2s;
+    }
+    .feat:hover { border-color: var(--gold); color: var(--white); }
+    @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
     /* GALLERY */
     #gallery { padding: 6rem 2rem; background: #FFFFFF; }
@@ -280,6 +290,29 @@
       section { padding: 4rem 1.2rem; }
       .sticky-book .sticky-label { display: none; }
       .sticky-book { padding: .75rem; }
+
+      /* About — stack vertically, photo first */
+      .about-wrap { grid-template-columns: 1fr; gap: 2rem; }
+      .about-wrap .about-photo { order: -1; aspect-ratio: 16/10; border-radius: 14px; }
+
+      /* Book CTA */
+      .book-inner h2 { font-size: 2.4rem; }
+
+      /* Sticky bar full-width on mobile */
+      .sticky-book { left: 1rem; right: 1rem; transform: translateX(0) translateY(100px); width: calc(100% - 2rem); border-radius: 16px; justify-content: space-between; }
+      .sticky-book.show { transform: translateX(0) translateY(0); }
+      .sticky-book .sticky-label { display: block; }
+
+      /* Reviews — single column */
+      .reviews-grid { grid-template-columns: 1fr; }
+
+      /* Split photo — stack */
+      .split-photo { grid-template-columns: 1fr; height: auto; }
+      .split-photo .half { height: 260px; }
+
+      /* Hero actions stacked */
+      .hero-actions { flex-direction: column; align-items: flex-start; gap: .7rem; }
+      .btn-book, .btn-outline { width: 100%; justify-content: center; }
     }
   </style>
 </head>
@@ -313,17 +346,30 @@
 
 <!-- FEATURES -->
 <section id="features">
-  <div class="feat-row">
-    <div class="feat">🌊 Ocean Views</div>
-    <div class="feat">🏔️ Mountain Backdrop</div>
-    <div class="feat">🌅 Sunset Terrace</div>
-    <div class="feat">🔥 Fireplace</div>
-    <div class="feat">🛁 Luxe Interiors</div>
-    <div class="feat">🏖️ Camps Bay Nearby</div>
-    <div class="feat">🤫 Total Privacy</div>
-    <div class="feat">🌙 Starlit Nights</div>
-    <div class="feat">☕ Slow Mornings</div>
-    <div class="feat">💧 Private Plunge Pool</div>
+  <div class="ticker-wrap">
+    <div class="ticker-track" aria-hidden="true">
+      <div class="feat">🌊 Ocean Views</div>
+      <div class="feat">🏔️ Mountain Backdrop</div>
+      <div class="feat">🌅 Sunset Terrace</div>
+      <div class="feat">🔥 Fireplace</div>
+      <div class="feat">🛁 Luxe Interiors</div>
+      <div class="feat">🏖️ Camps Bay Nearby</div>
+      <div class="feat">🤫 Total Privacy</div>
+      <div class="feat">🌙 Starlit Nights</div>
+      <div class="feat">☕ Slow Mornings</div>
+      <div class="feat">💧 Private Plunge Pool</div>
+      <!-- duplicate for seamless loop -->
+      <div class="feat">🌊 Ocean Views</div>
+      <div class="feat">🏔️ Mountain Backdrop</div>
+      <div class="feat">🌅 Sunset Terrace</div>
+      <div class="feat">🔥 Fireplace</div>
+      <div class="feat">🛁 Luxe Interiors</div>
+      <div class="feat">🏖️ Camps Bay Nearby</div>
+      <div class="feat">🤫 Total Privacy</div>
+      <div class="feat">🌙 Starlit Nights</div>
+      <div class="feat">☕ Slow Mornings</div>
+      <div class="feat">💧 Private Plunge Pool</div>
+    </div>
   </div>
 </section>
 
