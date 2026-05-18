@@ -229,6 +229,33 @@
     .ig-placeholder .steps li { font-size: .82rem; color: rgba(9,24,42,.4); line-height: 1.9; list-style: decimal; margin-left: 1.2rem; }
     .ig-placeholder .steps li strong { color: rgba(9,24,42,.7); }
 
+    /* MAP */
+    #location { background: #fff; padding: 6rem 2rem; }
+    .map-wrapper {
+      max-width: 900px; margin: 0 auto; border-radius: 20px; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(9,24,42,.12);
+      border: 2px solid rgba(201,168,76,.2);
+      position: relative; cursor: pointer;
+    }
+    .map-wrapper iframe { display: block; width: 100%; height: 420px; border: 0; pointer-events: none; }
+    .map-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+      padding-bottom: 2rem;
+      background: linear-gradient(to top, rgba(9,24,42,.55) 0%, transparent 50%);
+      transition: background .3s;
+    }
+    .map-wrapper:hover .map-overlay { background: linear-gradient(to top, rgba(9,24,42,.7) 0%, transparent 50%); }
+    .map-directions-btn {
+      display: inline-flex; align-items: center; gap: .55rem;
+      padding: .85rem 2rem; font-size: .88rem; font-weight: 700;
+      background: var(--gold); color: var(--dark); border-radius: 50px;
+      text-decoration: none; box-shadow: 0 6px 24px rgba(0,0,0,.3);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .map-wrapper:hover .map-directions-btn { transform: translateY(-3px); box-shadow: 0 10px 32px rgba(0,0,0,.4); }
+    @media (max-width: 600px) { .map-wrapper iframe { height: 300px; } }
+
     /* LISTINGS */
     .listings-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -388,6 +415,7 @@
     <a class="nav-link" href="#gallery">Gallery</a>
     <a class="nav-link" href="#reviews">Reviews</a>
     <a class="nav-link" href="#reels">Instagram</a>
+    <a class="nav-link" href="#location">Location</a>
     <a class="nav-link" href="#listings">Listings</a>
     <a class="nav-link" href="camps-bay-guide.html">Area Guide</a>
     <a class="nav-book" href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301" target="_blank" rel="noopener noreferrer">🏡 Book Now</a>
@@ -683,6 +711,29 @@
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </a>
   </div>
+</section>
+
+<!-- LOCATION MAP -->
+<section id="location">
+  <p class="section-eyebrow reveal">Find Us</p>
+  <h2 class="section-title reveal">Perched above <em>Camps Bay</em></h2>
+  <p class="section-body reveal">On the highest road in Camps Bay — 5 minutes to the beach, 10 minutes to the city. Tap the map for directions.</p>
+
+  <a class="map-wrapper reveal" href="https://www.google.com/maps/dir/?api=1&destination=Mountain+Oasis+Camps+Bay+Cape+Town" target="_blank" rel="noopener noreferrer" aria-label="Get directions to Mountain Oasis on Google Maps">
+    <iframe
+      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3310.9!2d18.3714!3d-33.9503!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1dcc672a2f594b4f%3A0x6e8b1b1e1e1e1e1e!2sCamps+Bay%2C+Cape+Town%2C+South+Africa!5e0!3m2!1sen!2sza!4v1700000000000"
+      allowfullscreen=""
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"
+      title="Mountain Oasis location map"
+    ></iframe>
+    <div class="map-overlay">
+      <span class="map-directions-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+        Get Directions
+      </span>
+    </div>
+  </a>
 </section>
 
 <!-- LISTINGS -->
