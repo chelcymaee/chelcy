@@ -3,455 +3,448 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mountain Oasis — Stay, Explore & Win</title>
+  <title>Mountain Oasis — Your Perfect Escape</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --gold:    #C9A84C;
-      --gold-lt: #E8C96A;
-      --dark:    #0C1A27;
-      --navy:    #172840;
-      --green:   #1B6B3A;
-      --cream:   #F8F3E8;
+      --stone:   #2C2A26;
+      --moss:    #3D5A45;
+      --sage:    #7A9E87;
+      --mist:    #B8C9BE;
+      --cream:   #F4EFE6;
+      --warm:    #E8DDD0;
+      --gold:    #C4A35A;
+      --gold-lt: #DFC080;
+      --sky:     #8AADBA;
       --white:   #FFFFFF;
       --airbnb:  #FF5A23;
-      --sage:    #7AAE8E;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
 
     body {
-      background: var(--dark);
+      background: var(--stone);
       color: var(--cream);
       font-family: 'Inter', sans-serif;
       overflow-x: hidden;
     }
 
-    /* subtle mountain ridge pattern */
-    .pattern {
+    /* ── subtle texture ───────────────────────────────────────────── */
+    .texture {
       position: fixed; inset: 0; pointer-events: none; z-index: 0;
       background-image:
-        repeating-linear-gradient(60deg,  rgba(122,174,142,.03) 0, rgba(122,174,142,.03) 1px, transparent 1px, transparent 60px),
-        repeating-linear-gradient(-60deg, rgba(201,168,76,.025) 0, rgba(201,168,76,.025) 1px, transparent 1px, transparent 60px);
+        radial-gradient(circle at 20% 20%, rgba(61,90,69,.18) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(138,173,186,.1) 0%, transparent 50%),
+        radial-gradient(circle at 60% 10%, rgba(196,163,90,.08) 0%, transparent 40%);
     }
 
     /* ── nav ──────────────────────────────────────────────────────── */
     nav {
       position: fixed; top: 0; width: 100%; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 1rem 2rem;
-      background: rgba(12,26,39,.92);
-      backdrop-filter: blur(14px);
-      border-bottom: 1px solid rgba(122,174,142,.2);
+      padding: 1.2rem 2.5rem;
+      background: rgba(44,42,38,.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(196,163,90,.15);
     }
-    .logo {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.05rem; font-weight: 900;
-      letter-spacing: .06em; color: var(--white);
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem; font-weight: 600;
+      letter-spacing: .12em; color: var(--cream);
     }
-    .logo em { color: var(--sage); font-style: normal; }
-    .logo-sub {
-      font-size: .62rem; letter-spacing: .16em;
-      color: rgba(248,243,232,.4); text-transform: uppercase;
-      margin-top: .1rem;
+    .nav-logo span { color: var(--gold); }
+    .nav-book {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .55rem 1.3rem;
+      background: var(--airbnb);
+      color: var(--white); text-decoration: none;
+      border-radius: 50px; font-size: .8rem; font-weight: 600;
+      transition: opacity .2s, transform .2s;
     }
-    .logo-wrap { display: flex; flex-direction: column; }
-    .flags { font-size: 1.2rem; letter-spacing: .16em; }
+    .nav-book:hover { opacity: .9; transform: translateY(-1px); }
 
     /* ── hero ─────────────────────────────────────────────────────── */
     .hero {
       position: relative; min-height: 100vh;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      text-align: center; padding: 7rem 1.5rem 5rem;
+      text-align: center; padding: 8rem 2rem 5rem;
       overflow: hidden;
     }
-    .hero::before {
+
+    /* layered mountain silhouette via CSS */
+    .mountain-bg {
+      position: absolute; inset: 0; pointer-events: none;
+    }
+    .mountain-bg::before {
       content: '';
-      position: absolute; inset: 0;
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 55%;
+      background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(44,42,38,.4) 40%,
+        rgba(44,42,38,.85) 100%
+      );
+    }
+    /* back range */
+    .mountain-bg .r1 {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
       background:
-        radial-gradient(ellipse 80% 60% at 50% 30%, rgba(122,174,142,.14) 0%, transparent 65%),
-        radial-gradient(ellipse 60% 70% at 85% 85%, rgba(201,168,76,.1)   0%, transparent 60%),
-        radial-gradient(ellipse 55% 50% at 5%  70%, rgba(255,90,35,.06)   0%, transparent 60%);
+        radial-gradient(ellipse 60% 100% at 25% 100%, rgba(61,90,69,.35) 0%, transparent 70%),
+        radial-gradient(ellipse 70% 110% at 75% 100%, rgba(61,90,69,.3)  0%, transparent 70%),
+        radial-gradient(ellipse 50% 90%  at 50% 100%, rgba(44,58,50,.4)  0%, transparent 70%);
+    }
+    /* atmosphere glow */
+    .mountain-bg .glow {
+      position: absolute; top: 0; left: 0; right: 0; height: 60%;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%, rgba(138,173,186,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 30% 30%, rgba(196,163,90,.08) 0%, transparent 50%);
     }
 
-    .eyebrow-badge {
-      display: inline-block; margin-bottom: 1.6rem;
-      padding: .38rem 1.3rem;
-      border: 1px solid rgba(122,174,142,.5);
-      border-radius: 100px; font-size: .72rem;
-      font-weight: 600; letter-spacing: .22em;
-      color: var(--sage); text-transform: uppercase;
-      animation: fadeDown .7s ease both;
+    .hero-tag {
+      display: inline-block; margin-bottom: 1.8rem;
+      padding: .4rem 1.4rem;
+      border: 1px solid rgba(196,163,90,.4);
+      border-radius: 100px; font-size: .7rem;
+      font-weight: 600; letter-spacing: .28em;
+      color: var(--gold-lt); text-transform: uppercase;
+      animation: fadeUp .8s ease both;
     }
     .hero h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(3.2rem, 10vw, 7rem);
-      font-weight: 900; line-height: 1.02;
-      color: var(--white);
-      animation: fadeDown .85s .08s ease both;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(4rem, 12vw, 8.5rem);
+      font-weight: 700; line-height: .95;
+      color: var(--white); letter-spacing: -.01em;
+      animation: fadeUp .9s .1s ease both;
     }
-    .hero h1 .accent { color: var(--sage); }
-    .hero-sub {
-      margin-top: 1.4rem;
-      font-size: clamp(.95rem, 2.5vw, 1.15rem);
-      font-weight: 300; color: rgba(248,243,232,.65);
-      max-width: 540px; line-height: 1.78;
-      animation: fadeDown .95s .18s ease both;
+    .hero h1 em {
+      display: block; color: var(--gold);
+      font-style: italic; font-weight: 400;
+      font-size: .55em; letter-spacing: .08em;
+      margin-top: .3em;
     }
-    .hero-sub strong { color: var(--cream); font-weight: 500; }
-    .hero-cta-row {
+    .hero-desc {
+      margin-top: 1.6rem;
+      font-size: clamp(.95rem, 2vw, 1.1rem);
+      font-weight: 300; color: rgba(244,239,230,.7);
+      max-width: 480px; line-height: 1.82;
+      animation: fadeUp 1s .2s ease both;
+    }
+    .hero-actions {
       display: flex; flex-wrap: wrap; gap: 1rem;
-      justify-content: center; margin-top: 2.6rem;
-      animation: fadeDown 1.05s .28s ease both;
+      justify-content: center; margin-top: 2.8rem;
+      animation: fadeUp 1.1s .3s ease both;
     }
-    .btn-primary {
-      padding: .88rem 2.1rem;
-      background: linear-gradient(135deg, var(--airbnb), #C94418);
-      color: var(--white); font-weight: 700; font-size: .9rem;
+    .btn-book {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: 1rem 2.4rem;
+      background: linear-gradient(135deg, var(--airbnb), #D44A1A);
+      color: var(--white); font-weight: 700; font-size: .95rem;
       border-radius: 50px; text-decoration: none;
-      letter-spacing: .03em;
-      box-shadow: 0 4px 22px rgba(255,90,35,.35);
+      box-shadow: 0 6px 28px rgba(255,90,35,.38);
       transition: transform .2s, box-shadow .2s;
     }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(255,90,35,.5); }
-    .btn-ghost {
-      padding: .88rem 2.1rem;
-      border: 1px solid rgba(201,168,76,.4);
-      color: var(--gold); font-size: .9rem;
+    .btn-book:hover { transform: translateY(-2px); box-shadow: 0 10px 36px rgba(255,90,35,.52); }
+    .btn-scroll {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: 1rem 2.4rem;
+      border: 1px solid rgba(244,239,230,.25);
+      color: rgba(244,239,230,.75); font-size: .95rem;
       border-radius: 50px; text-decoration: none;
       transition: all .2s;
     }
-    .btn-ghost:hover { background: rgba(201,168,76,.08); border-color: var(--gold); }
+    .btn-scroll:hover { border-color: rgba(244,239,230,.5); color: var(--cream); }
 
-    .scroll-cue {
-      position: absolute; bottom: 2rem; left: 50%;
+    .scroll-hint {
+      position: absolute; bottom: 2.2rem; left: 50%;
       transform: translateX(-50%);
-      display: flex; flex-direction: column; align-items: center; gap: .4rem;
-      animation: float 2.4s ease-in-out infinite;
+      display: flex; flex-direction: column; align-items: center; gap: .5rem;
+      animation: bounce 2.8s ease-in-out infinite;
     }
-    .scroll-cue span { font-size: .62rem; letter-spacing: .2em; color: rgba(122,174,142,.45); text-transform: uppercase; }
-    .scroll-cue svg { width: 16px; opacity: .35; }
-    @keyframes float {
+    .scroll-hint span { font-size: .6rem; letter-spacing: .22em; color: rgba(196,163,90,.4); text-transform: uppercase; }
+    @keyframes bounce {
       0%,100% { transform: translateX(-50%) translateY(0); }
-      50%      { transform: translateX(-50%) translateY(7px); }
+      50%      { transform: translateX(-50%) translateY(8px); }
     }
 
     /* ── section base ─────────────────────────────────────────────── */
-    section { position: relative; z-index: 1; padding: 5rem 1.5rem; }
-    .section-label {
-      text-align: center; font-size: .67rem; font-weight: 600;
-      letter-spacing: .28em; text-transform: uppercase; color: var(--sage);
-      margin-bottom: .55rem;
+    section { position: relative; z-index: 1; padding: 5.5rem 2rem; }
+    .section-eyebrow {
+      text-align: center; font-size: .68rem; font-weight: 600;
+      letter-spacing: .3em; text-transform: uppercase; color: var(--sage);
+      margin-bottom: .6rem;
     }
     .section-title {
       text-align: center;
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(1.9rem, 4vw, 2.9rem);
-      color: var(--white); margin-bottom: .85rem;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.2rem, 5vw, 3.4rem);
+      font-weight: 700; color: var(--cream); margin-bottom: .9rem;
+      line-height: 1.1;
     }
-    .section-desc {
-      text-align: center; color: rgba(248,243,232,.62);
-      font-size: .92rem; max-width: 560px;
-      margin: 0 auto 3rem; line-height: 1.78;
-    }
-
-    /* ── airbnb section ───────────────────────────────────────────── */
-    #airbnb { background: linear-gradient(180deg, rgba(255,90,35,.05), transparent); }
-    .airbnb-wrap {
-      max-width: 860px; margin: 0 auto;
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 2.5rem; align-items: center;
-    }
-    @media (max-width: 640px) { .airbnb-wrap { grid-template-columns: 1fr; } }
-    .airbnb-copy .sub-eyebrow {
-      font-size: .68rem; letter-spacing: .22em;
-      text-transform: uppercase; color: var(--airbnb); margin-bottom: .6rem;
-    }
-    .airbnb-copy h3 {
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(1.7rem, 3.5vw, 2.4rem);
-      color: var(--white); margin-bottom: 1rem;
-    }
-    .airbnb-copy p {
-      font-size: .91rem; color: rgba(248,243,232,.65);
-      line-height: 1.78; margin-bottom: 1.6rem;
-    }
-    .btn-airbnb {
-      display: inline-flex; align-items: center; gap: .5rem;
-      padding: .88rem 2rem;
-      background: linear-gradient(135deg, var(--airbnb), #C94418);
-      color: var(--white); text-decoration: none;
-      border-radius: 50px; font-weight: 600; font-size: .9rem;
-      box-shadow: 0 4px 20px rgba(255,90,35,.3);
-      transition: transform .2s, box-shadow .2s;
-    }
-    .btn-airbnb:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,90,35,.5); }
-    .airbnb-visual {
-      border-radius: 22px; overflow: hidden;
-      border: 1px solid rgba(255,90,35,.22);
-      background: linear-gradient(145deg, rgba(255,90,35,.09), rgba(12,26,39,.7));
-      aspect-ratio: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 1rem; text-align: center; padding: 2rem;
-    }
-    .airbnb-visual .big-icon { font-size: 5rem; }
-    .airbnb-visual .props { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
-    .prop-chip {
-      padding: .3rem .85rem;
-      border: 1px solid rgba(255,90,35,.28);
-      border-radius: 100px; font-size: .74rem; color: rgba(248,243,232,.7);
+    .section-title em { color: var(--gold); font-style: italic; }
+    .section-body {
+      text-align: center; color: rgba(244,239,230,.6);
+      font-size: .93rem; max-width: 520px;
+      margin: 0 auto 3rem; line-height: 1.82;
     }
 
-    /* ── Instagram / behold.so ────────────────────────────────────── */
-    #reels { background: rgba(122,174,142,.04); }
-    .behold-outer { max-width: 1100px; margin: 0 auto; }
-    #behold-placeholder {
-      text-align: center; color: rgba(248,243,232,.28);
-      font-size: .82rem; margin-top: 1.2rem; font-style: italic;
+    /* ── features strip ───────────────────────────────────────────── */
+    #features { background: rgba(61,90,69,.12); padding: 3.5rem 2rem; }
+    .features-row {
+      display: flex; flex-wrap: wrap; gap: .8rem;
+      justify-content: center; max-width: 900px; margin: 0 auto;
     }
-
-    /* ── travel partner section ───────────────────────────────────── */
-    #travel { background: rgba(201,168,76,.03); }
-    .travel-intro {
-      max-width: 700px; margin: 0 auto 3rem;
-      border: 1px solid rgba(201,168,76,.2);
-      border-radius: 18px; padding: 2rem 2.5rem;
-      background: linear-gradient(135deg, rgba(201,168,76,.06), rgba(201,168,76,.02));
-      text-align: center;
-    }
-    .travel-intro p {
-      font-size: .95rem; color: rgba(248,243,232,.7);
-      line-height: 1.8;
-    }
-    .travel-intro strong { color: var(--gold); }
-    .travel-brand {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.3rem; color: var(--gold);
-      letter-spacing: .1em; margin-bottom: .6rem;
-    }
-    .services-flex {
-      display: flex; flex-wrap: wrap; gap: .9rem;
-      justify-content: center; max-width: 680px; margin: 0 auto 2.5rem;
-    }
-    .s-chip {
-      padding: .6rem 1.3rem;
-      border: 1px solid rgba(201,168,76,.22);
+    .feat {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .7rem 1.4rem;
+      border: 1px solid rgba(122,158,135,.2);
       border-radius: 100px; font-size: .84rem;
-      color: rgba(248,243,232,.75); background: rgba(255,255,255,.025);
-      transition: all .2s; cursor: default;
+      color: rgba(244,239,230,.8); background: rgba(61,90,69,.15);
+      transition: all .2s;
     }
-    .s-chip:hover { background: rgba(201,168,76,.1); border-color: var(--gold); color: var(--gold); }
+    .feat:hover { background: rgba(61,90,69,.3); border-color: var(--sage); color: var(--cream); }
+    .feat-icon { font-size: 1.1rem; }
 
-    /* ── competition ──────────────────────────────────────────────── */
-    #competition { background: rgba(201,168,76,.025); }
-    .comp-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem; max-width: 880px; margin: 0 auto;
+    /* ── about / story ────────────────────────────────────────────── */
+    #about { background: none; }
+    .about-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 4rem; align-items: center;
+      max-width: 1000px; margin: 0 auto;
     }
-    .comp-card {
-      border: 1px solid rgba(201,168,76,.2);
-      border-radius: 18px; padding: 2rem;
-      background: linear-gradient(145deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
-      transition: transform .3s, border-color .3s;
+    @media (max-width: 700px) { .about-grid { grid-template-columns: 1fr; gap: 2.5rem; } }
+    .about-copy {}
+    .about-copy .eyebrow {
+      font-size: .67rem; letter-spacing: .28em;
+      text-transform: uppercase; color: var(--sage); margin-bottom: .7rem;
     }
-    .comp-card:hover { transform: translateY(-4px); border-color: rgba(201,168,76,.5); }
-    .comp-card .icon { font-size: 2.2rem; margin-bottom: 1rem; }
-    .comp-card h3 { font-family: 'Playfair Display', serif; font-size: 1.15rem; color: var(--gold); margin-bottom: .5rem; }
-    .comp-card p { font-size: .88rem; color: rgba(248,243,232,.65); line-height: 1.72; }
-    .comp-card strong { color: var(--cream); }
+    .about-copy h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 700; color: var(--cream); line-height: 1.1;
+      margin-bottom: 1.2rem;
+    }
+    .about-copy h2 em { color: var(--gold); font-style: italic; }
+    .about-copy p {
+      font-size: .92rem; color: rgba(244,239,230,.65);
+      line-height: 1.85; margin-bottom: 1rem;
+    }
+    .about-copy p:last-child { margin-bottom: 0; }
+    .about-visual {
+      border-radius: 24px; overflow: hidden;
+      border: 1px solid rgba(122,158,135,.2);
+      background: linear-gradient(145deg, rgba(61,90,69,.25), rgba(44,42,38,.5));
+      aspect-ratio: 4/5; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1.2rem; text-align: center; padding: 2.5rem;
+      position: relative;
+    }
+    .about-visual::before {
+      content: ''; position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%, rgba(138,173,186,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 60% at 30% 80%, rgba(61,90,69,.2) 0%, transparent 60%);
+    }
+    .about-visual .mountain-icon { font-size: 6rem; position: relative; }
+    .about-visual .stat-row {
+      display: flex; gap: 2rem; position: relative;
+    }
+    .stat { text-align: center; }
+    .stat .num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.2rem; font-weight: 700; color: var(--gold); line-height: 1;
+    }
+    .stat .lbl { font-size: .72rem; color: rgba(244,239,230,.5); letter-spacing: .1em; margin-top: .2rem; }
 
-    /* ── prizes ───────────────────────────────────────────────────── */
-    #prizes {}
-    .prize-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 2rem; max-width: 760px; margin: 0 auto;
+    /* ── Instagram ────────────────────────────────────────────────── */
+    #reels { background: rgba(44,42,38,.5); }
+    .behold-outer { max-width: 1200px; margin: 0 auto; }
+    #behold-placeholder {
+      text-align: center; color: rgba(244,239,230,.25);
+      font-size: .82rem; margin-top: 1.5rem; font-style: italic;
+      padding: 3rem;
+      border: 1px dashed rgba(122,158,135,.2);
+      border-radius: 16px; max-width: 600px; margin-left: auto; margin-right: auto;
     }
-    .prize-card {
-      position: relative; overflow: hidden;
-      border-radius: 22px; padding: 2.5rem 2rem 2rem;
+
+    /* ── CTA / book ───────────────────────────────────────────────── */
+    #book {
+      background: linear-gradient(160deg, rgba(61,90,69,.2), rgba(196,163,90,.06));
       text-align: center;
-      border: 1px solid rgba(201,168,76,.28);
-      background: linear-gradient(160deg, var(--navy), rgba(12,26,39,.9));
-      transition: transform .3s, box-shadow .3s;
     }
-    .prize-card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(201,168,76,.18); }
-    .prize-card::before {
-      content: ''; position: absolute; top: -70px; right: -70px;
-      width: 180px; height: 180px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(201,168,76,.1), transparent 70%);
+    .book-card {
+      max-width: 700px; margin: 0 auto;
+      border: 1px solid rgba(196,163,90,.25);
+      border-radius: 28px; padding: 4rem 3rem;
+      background: linear-gradient(160deg, rgba(61,90,69,.15), rgba(44,42,38,.4));
+      position: relative; overflow: hidden;
     }
-    .prize-tag {
-      display: inline-block; margin-bottom: 1.2rem;
-      padding: .3rem 1rem;
-      background: rgba(201,168,76,.1);
-      border: 1px solid rgba(201,168,76,.32);
-      border-radius: 100px; font-size: .68rem;
-      letter-spacing: .18em; text-transform: uppercase; color: var(--gold-lt);
+    .book-card::before {
+      content: ''; position: absolute;
+      top: -100px; right: -100px;
+      width: 280px; height: 280px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(196,163,90,.08), transparent 70%);
     }
-    .prize-amount {
-      font-family: 'Playfair Display', serif;
-      font-size: 4rem; font-weight: 900; line-height: 1;
+    .book-card::after {
+      content: ''; position: absolute;
+      bottom: -80px; left: -80px;
+      width: 220px; height: 220px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(61,90,69,.15), transparent 70%);
     }
-    .prize-currency { font-size: 1.4rem; vertical-align: super; margin-right: .1rem; }
-    .prize-domestic .prize-amount  { color: #5BC8F5; }
-    .prize-domestic { border-color: rgba(91,200,245,.25); }
-    .prize-international .prize-amount { color: var(--gold); }
-    .prize-label { margin-top: .9rem; font-size: 1rem; font-weight: 500; color: var(--white); }
-    .prize-note  { margin-top: .6rem; font-size: .78rem; color: rgba(248,243,232,.5); }
-    .validity-box {
-      max-width: 500px; margin: 2.5rem auto 0;
-      padding: 1.1rem 1.5rem;
-      background: rgba(27,107,58,.1);
-      border: 1px solid rgba(27,107,58,.38);
-      border-radius: 14px; text-align: center;
+    .book-card .big-icon { font-size: 3.5rem; margin-bottom: 1.2rem; position: relative; }
+    .book-card h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 700; color: var(--cream); margin-bottom: 1rem; position: relative;
     }
-    .validity-box p { font-size: .88rem; color: #6BD49A; }
-    .validity-box strong { color: #A8EEC6; }
-
-    /* ── partners ─────────────────────────────────────────────────── */
-    #partners { background: rgba(201,168,76,.03); }
-    .partners-flex {
-      display: flex; flex-wrap: wrap; gap: 1.2rem;
-      justify-content: center; max-width: 820px; margin: 0 auto;
+    .book-card p {
+      font-size: .93rem; color: rgba(244,239,230,.6);
+      max-width: 440px; margin: 0 auto 2rem; line-height: 1.82; position: relative;
     }
-    .partner-card {
-      display: flex; align-items: center; gap: .8rem;
-      padding: 1rem 1.8rem;
-      border: 1px solid rgba(201,168,76,.2);
-      border-radius: 14px;
-      background: rgba(255,255,255,.025);
-      font-size: .9rem; font-weight: 500; color: var(--cream);
-      transition: all .25s;
+    .btn-book-lg {
+      display: inline-flex; align-items: center; gap: .6rem;
+      padding: 1.1rem 2.8rem; font-size: 1rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--airbnb), #D44A1A);
+      color: var(--white); text-decoration: none; border-radius: 50px;
+      box-shadow: 0 8px 32px rgba(255,90,35,.4);
+      transition: transform .2s, box-shadow .2s; position: relative;
     }
-    .partner-card:hover { background: rgba(201,168,76,.07); border-color: var(--gold); }
-    .partner-card .p-icon { font-size: 1.4rem; }
-
-    /* ── contact ──────────────────────────────────────────────────── */
-    #contact { text-align: center; }
-    .contact-row {
-      display: flex; flex-wrap: wrap; gap: 1rem;
-      justify-content: center; margin-bottom: 2rem;
-    }
-    .c-card {
-      display: flex; align-items: center; gap: .75rem;
-      padding: 1rem 1.7rem;
-      border: 1px solid rgba(201,168,76,.2);
-      border-radius: 14px;
-      background: rgba(255,255,255,.025);
-      font-size: .9rem; color: var(--cream); text-decoration: none;
-      transition: all .25s;
-    }
-    .c-card:hover { background: rgba(201,168,76,.08); border-color: var(--gold); color: var(--gold); }
-    .c-icon { font-size: 1.25rem; }
+    .btn-book-lg:hover { transform: translateY(-3px); box-shadow: 0 14px 44px rgba(255,90,35,.55); }
 
     /* ── footer ───────────────────────────────────────────────────── */
     footer {
-      text-align: center; padding: 2.2rem 1.5rem;
-      border-top: 1px solid rgba(122,174,142,.1);
-      font-size: .75rem; color: rgba(248,243,232,.28);
+      text-align: center; padding: 2.5rem 2rem;
+      border-top: 1px solid rgba(122,158,135,.1);
+      font-size: .75rem; color: rgba(244,239,230,.28);
     }
-    footer strong { color: rgba(122,174,142,.5); }
-    footer .skygate-credit { color: rgba(201,168,76,.4); }
+    footer strong { color: rgba(196,163,90,.45); }
+    .footer-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem; font-weight: 700;
+      color: rgba(244,239,230,.3); letter-spacing: .1em; margin-bottom: .5rem;
+    }
+    .footer-logo span { color: rgba(196,163,90,.4); }
 
     /* ── animations ───────────────────────────────────────────────── */
-    @keyframes fadeDown {
-      from { opacity:0; transform:translateY(-18px); }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(22px); }
       to   { opacity:1; transform:translateY(0); }
-    }
-    @keyframes shimmer {
-      0%   { background-position: -200% center; }
-      100% { background-position:  200% center; }
-    }
-    .shimmer {
-      background: linear-gradient(90deg, var(--sage) 20%, #A8DFBF 50%, var(--sage) 80%);
-      background-size: 200% auto;
-      -webkit-background-clip: text; background-clip: text;
-      -webkit-text-fill-color: transparent;
-      animation: shimmer 3.5s linear infinite;
     }
 
     /* ── scroll reveal ────────────────────────────────────────────── */
-    .reveal { opacity:0; transform:translateY(28px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal { opacity:0; transform:translateY(30px); transition: opacity .75s ease, transform .75s ease; }
     .reveal.visible { opacity:1; transform:none; }
 
     /* ── responsive ───────────────────────────────────────────────── */
     @media (max-width:600px) {
-      nav { padding: .75rem 1rem; }
-      section { padding: 3.5rem 1rem; }
+      nav { padding: .8rem 1.2rem; }
+      .nav-logo { font-size: 1.1rem; }
+      section { padding: 4rem 1.2rem; }
+      .book-card { padding: 2.5rem 1.5rem; }
     }
   </style>
 </head>
 <body>
-<div class="pattern"></div>
+<div class="texture"></div>
 
 <!-- NAV -->
 <nav>
-  <div class="logo-wrap">
-    <div class="logo">Mountain <em>Oasis</em></div>
-    <div class="logo-sub">by SKYGATE_TRAVELS</div>
-  </div>
-  <div class="flags">🇿🇦 ✈️ 🇸🇦</div>
+  <div class="nav-logo">Mountain <span>Oasis</span></div>
+  <a
+    class="nav-book"
+    href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301"
+    target="_blank" rel="noopener noreferrer"
+  >
+    🏡 Book Now
+  </a>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="eyebrow-badge">Welcome to Mountain Oasis 🏔️</div>
-  <h1>
-    <span class="shimmer">Rest Here.</span><br/>
-    <span class="accent">Go Anywhere.</span>
-  </h1>
-  <p class="hero-sub">
-    A peaceful mountain retreat for the traveller at heart.
-    Stay with us at <strong>Mountain Oasis</strong> — and let us take you further
-    through our travel partner, <strong>SKYGATE_TRAVELS</strong>.
-  </p>
-  <div class="hero-cta-row">
-    <a class="btn-primary" href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301" target="_blank" rel="noopener noreferrer">🏡 Book on Airbnb</a>
-    <a class="btn-ghost"   href="#competition">🎉 Birthday Competition</a>
+  <div class="mountain-bg">
+    <div class="glow"></div>
+    <div class="r1"></div>
   </div>
 
-  <div class="scroll-cue">
-    <span>scroll</span>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <div class="hero-tag">Airbnb · South Africa</div>
+  <h1>
+    Mountain
+    <em>Oasis</em>
+  </h1>
+  <p class="hero-desc">
+    A rare retreat where mountain air and warm hospitality meet.
+    Switch off, breathe deep, and wake up somewhere worth remembering.
+  </p>
+  <div class="hero-actions">
+    <a
+      class="btn-book"
+      href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301"
+      target="_blank" rel="noopener noreferrer"
+    >
+      🏡 Book Your Stay
+    </a>
+    <a class="btn-scroll" href="#reels">See the Vibes ↓</a>
+  </div>
+
+  <div class="scroll-hint">
+    <span>discover</span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(196,163,90,.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="6 9 12 15 18 9"/>
     </svg>
   </div>
 </section>
 
-<!-- MOUNTAIN OASIS AIRBNB -->
-<section id="airbnb">
-  <p class="section-label reveal">Your Mountain Escape</p>
-  <div class="airbnb-wrap">
-    <div class="airbnb-copy reveal">
-      <p class="sub-eyebrow">🏡 Airbnb Listing</p>
-      <h3>Mountain Oasis</h3>
+<!-- FEATURE CHIPS -->
+<section id="features">
+  <div class="features-row">
+    <div class="feat"><span class="feat-icon">🏔️</span> Mountain Views</div>
+    <div class="feat"><span class="feat-icon">🌿</span> Nature Surrounds</div>
+    <div class="feat"><span class="feat-icon">🌅</span> Sunrise Mornings</div>
+    <div class="feat"><span class="feat-icon">🛁</span> Cosy Interiors</div>
+    <div class="feat"><span class="feat-icon">🤫</span> Total Privacy</div>
+    <div class="feat"><span class="feat-icon">☕</span> Slow Mornings</div>
+    <div class="feat"><span class="feat-icon">🌙</span> Starlit Nights</div>
+    <div class="feat"><span class="feat-icon">📍</span> South Africa</div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="about-grid">
+    <div class="about-copy reveal">
+      <p class="eyebrow">The Space</p>
+      <h2>Your home<br/><em>above it all</em></h2>
       <p>
-        Nestled in nature and designed for rest, Mountain Oasis is the perfect base
-        whether you're exploring locally or arriving from afar. Wake up refreshed
-        and ready for your next adventure.
+        Mountain Oasis is a handpicked retreat designed for guests who want to slow
+        down without giving up comfort. Whether you're a solo traveller, a couple
+        seeking a quiet escape, or a small group in need of space — this is where
+        you exhale.
       </p>
-      <a
-        class="btn-airbnb"
-        href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301"
-        target="_blank" rel="noopener noreferrer"
-      >
-        Book Mountain Oasis on Airbnb →
-      </a>
+      <p>
+        Surrounded by natural beauty, with the kind of views that make you
+        put your phone down and just be present. Come for the mountains.
+        Stay for the feeling.
+      </p>
     </div>
-    <div class="airbnb-visual reveal">
-      <div class="big-icon">🏔️</div>
-      <div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--white);">Mountain Oasis</div>
-      <div class="props">
-        <span class="prop-chip">🌿 Nature</span>
-        <span class="prop-chip">🌄 Views</span>
-        <span class="prop-chip">🛁 Comfort</span>
-        <span class="prop-chip">🤫 Peaceful</span>
+    <div class="about-visual reveal">
+      <div class="mountain-icon">🏔️</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="num">★ 5</div>
+          <div class="lbl">Rating</div>
+        </div>
+        <div class="stat">
+          <div class="num">🏡</div>
+          <div class="lbl">Private</div>
+        </div>
+        <div class="stat">
+          <div class="num">∞</div>
+          <div class="lbl">Views</div>
+        </div>
       </div>
     </div>
   </div>
@@ -459,27 +452,28 @@
 
 <!-- INSTAGRAM REELS -->
 <section id="reels">
-  <p class="section-label reveal">Our World</p>
-  <h2 class="section-title reveal">Mountain Oasis on Instagram</h2>
-  <p class="section-desc reveal">
-    Follow along for stays, views, and travel inspiration — straight from the mountain.
+  <p class="section-eyebrow reveal">Follow Along</p>
+  <h2 class="section-title reveal">Life at <em>Mountain Oasis</em></h2>
+  <p class="section-body reveal">
+    Real moments, real stays. Follow us on Instagram to see what's waiting for you.
   </p>
 
   <div class="behold-outer reveal">
     <!--
-      ══════════════════════════════════════════════════════════════
-      MOUNTAIN OASIS — BEHOLD.SO INSTAGRAM EMBED
-        1. Go to https://behold.so and connect the Mountain Oasis
-           Instagram account
-        2. Create a new feed — copy the Feed ID from the dashboard
-        3. Replace  YOUR_BEHOLD_FEED_ID  below with the real ID
-      ══════════════════════════════════════════════════════════════
+      ════════════════════════════════════════════════════════════
+      MOUNTAIN OASIS — INSTAGRAM EMBED via BEHOLD.SO
+        1. Go to https://behold.so
+        2. Connect your Mountain Oasis Instagram account
+        3. Create a feed — copy the Feed ID
+        4. Replace  YOUR_BEHOLD_FEED_ID  below with the real ID
+      ════════════════════════════════════════════════════════════
     -->
     <div id="behold-widget" data-feed-id="YOUR_BEHOLD_FEED_ID"></div>
     <script src="https://w.behold.so/widget.js" defer></script>
   </div>
+
   <p id="behold-placeholder">
-    📸 Instagram feed coming soon — connect your Mountain Oasis account via behold.so to display reels here.
+    📸 Instagram feed coming soon — add your Mountain Oasis Feed ID from behold.so to show reels here.
   </p>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -492,125 +486,29 @@
   </script>
 </section>
 
-<!-- TRAVEL PARTNER — SKYGATE_TRAVELS -->
-<section id="travel">
-  <p class="section-label reveal">Plan Your Next Trip</p>
-  <h2 class="section-title reveal">Introducing SKYGATE_TRAVELS</h2>
-  <p class="section-desc reveal">
-    Asalaam all — Mountain Oasis is proud to be associated with <strong>SKYGATE_TRAVELS</strong>.
-    Whether you need flights, an Umrah package, or a fully planned getaway,
-    they've got you covered.
-  </p>
-
-  <div class="travel-intro reveal">
-    <div class="travel-brand">SKYGATE_TRAVELS</div>
+<!-- BOOK CTA -->
+<section id="book">
+  <div class="book-card reveal">
+    <div class="big-icon">🏔️</div>
+    <h2>Ready to escape?</h2>
     <p>
-      We understand the current economic times in South Africa —
-      which is why <strong>SKYGATE_TRAVELS</strong> works hard to make travel
-      accessible for everyone. Get in touch for your
-      <strong>Umrah</strong>, leisure, or corporate travel needs.
+      Check availability and book Mountain Oasis directly on Airbnb.
+      Your mountain retreat is waiting.
     </p>
-  </div>
-
-  <div class="services-flex">
-    <span class="s-chip reveal">🕋 Umrah Packages</span>
-    <span class="s-chip reveal">🏖️ Leisure Travel</span>
-    <span class="s-chip reveal">💼 Corporate Travel</span>
-    <span class="s-chip reveal">✈️ Flight Bookings</span>
-    <span class="s-chip reveal">🏨 Accommodation</span>
-    <span class="s-chip reveal">🗺️ Custom Itineraries</span>
-  </div>
-</section>
-
-<!-- COMPETITION -->
-<section id="competition">
-  <p class="section-label reveal">Birthday Month 🎂</p>
-  <h2 class="section-title reveal">SKYGATE_TRAVELS is Giving Back</h2>
-  <p class="section-desc reveal">
-    As SKYGATE_TRAVELS celebrates its birthday month, there's a competition — and the prize is a travel voucher worth your while.
-  </p>
-
-  <div class="comp-grid">
-    <div class="comp-card reveal">
-      <div class="icon">🧳</div>
-      <h3>Already a Client?</h3>
-      <p>Clients of SKYGATE_TRAVELS are <strong>automatically entered</strong>. Nothing to do — just wait for the draw.</p>
-    </div>
-    <div class="comp-card reveal">
-      <div class="icon">📩</div>
-      <h3>Not Yet a Client?</h3>
-      <p>Entry details for new clients will be <strong>shared very soon</strong>. Watch this space — you won't want to miss it.</p>
-    </div>
-    <div class="comp-card reveal">
-      <div class="icon">⏳</div>
-      <h3>12-Month Voucher</h3>
-      <p>The prize is valid for a <strong>full year</strong>. Travel when it suits you, on your terms.</p>
-    </div>
-  </div>
-</section>
-
-<!-- PRIZES -->
-<section id="prizes">
-  <p class="section-label reveal">The Prize</p>
-  <h2 class="section-title reveal">Choose Your Horizon</h2>
-  <p class="section-desc reveal">One winner. One choice. Where will it take you?</p>
-
-  <div class="prize-grid">
-    <div class="prize-card prize-domestic reveal">
-      <span class="prize-tag">✈️ Domestic Flight</span>
-      <div class="prize-amount"><span class="prize-currency">R</span>1000</div>
-      <p class="prize-label">Flight Voucher</p>
-      <p class="prize-note">Explore South Africa 🇿🇦</p>
-    </div>
-    <div class="prize-card prize-international reveal">
-      <span class="prize-tag">🌍 International Flight</span>
-      <div class="prize-amount"><span class="prize-currency">R</span>1500</div>
-      <p class="prize-label">Flight Voucher</p>
-      <p class="prize-note">See the world 🌐</p>
-    </div>
-  </div>
-
-  <div class="validity-box reveal">
-    <p>⏳ Both vouchers valid for a full <strong>12 months</strong> from the date of winning.</p>
-  </div>
-</section>
-
-<!-- PARTNERS -->
-<section id="partners">
-  <p class="section-label reveal">Trusted Network</p>
-  <h2 class="section-title reveal">Our Partners</h2>
-  <p class="section-desc reveal">SKYGATE_TRAVELS works with world-class organisations to deliver exceptional travel experiences.</p>
-
-  <div class="partners-flex">
-    <div class="partner-card reveal"><span class="p-icon">🇸🇦</span> Saudi Tourism Authority</div>
-    <div class="partner-card reveal"><span class="p-icon">✈️</span> FlySafair</div>
-    <div class="partner-card reveal"><span class="p-icon">🎓</span> MANCOSA Universities South Africa</div>
-  </div>
-</section>
-
-<!-- CONTACT -->
-<section id="contact">
-  <p class="section-label reveal">Reach Out</p>
-  <h2 class="section-title reveal">Get in Touch with SKYGATE_TRAVELS</h2>
-  <p class="section-desc reveal">
-    Ready to book your next trip or ask about the competition?
-    We're here — just send a message.
-  </p>
-  <div class="contact-row">
-    <a class="c-card reveal" href="https://wa.me/27766747863" target="_blank" rel="noopener noreferrer">
-      <span class="c-icon">💬</span> WhatsApp: +27 76 674 7863
-    </a>
-    <a class="c-card reveal" href="tel:+966583485986">
-      <span class="c-icon">📱</span> Mobile: +966 583 485 986
+    <a
+      class="btn-book-lg"
+      href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301"
+      target="_blank" rel="noopener noreferrer"
+    >
+      🏡 Book on Airbnb
     </a>
   </div>
-  <div style="font-size:2rem;letter-spacing:.35em;margin-top:1rem;" class="reveal">🇿🇦 ✈️ 🇸🇦</div>
 </section>
 
 <!-- FOOTER -->
 <footer>
-  <p><strong>Mountain Oasis</strong> — A <span class="skygate-credit">SKYGATE_TRAVELS</span> Property</p>
-  <p style="margin-top:.35rem;">Vouchers subject to availability. Standard terms &amp; conditions apply.</p>
+  <div class="footer-logo">Mountain <span>Oasis</span></div>
+  <p>Listed on <strong>Airbnb</strong> · South Africa</p>
 </footer>
 
 <!-- SCROLL REVEAL -->
