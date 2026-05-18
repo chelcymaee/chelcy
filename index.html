@@ -229,6 +229,46 @@
     .ig-placeholder .steps li { font-size: .82rem; color: rgba(9,24,42,.4); line-height: 1.9; list-style: decimal; margin-left: 1.2rem; }
     .ig-placeholder .steps li strong { color: rgba(9,24,42,.7); }
 
+    /* LISTINGS */
+    .listings-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.2rem; max-width: 1100px; margin: 0 auto;
+    }
+    .listing-card {
+      background: rgba(255,255,255,.05); border: 1px solid rgba(201,168,76,.2);
+      border-radius: 20px; padding: 2rem 1.6rem; position: relative;
+      display: flex; flex-direction: column; gap: .6rem;
+      transition: opacity .8s ease, transform .8s ease, border-color .25s, background .25s;
+    }
+    .listing-card:hover { border-color: rgba(201,168,76,.55); background: rgba(255,255,255,.08); }
+    .listing-badge {
+      position: absolute; top: -12px; left: 1.4rem;
+      background: linear-gradient(135deg, var(--gold), #A07828);
+      color: var(--dark); font-size: .65rem; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase;
+      padding: .3rem .9rem; border-radius: 50px;
+    }
+    .listing-icon { font-size: 2rem; margin-bottom: .2rem; }
+    .listing-name { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 700; color: var(--cream); }
+    .listing-detail { font-size: .75rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+    .listing-desc { font-size: .84rem; color: rgba(255,255,255,.55); line-height: 1.75; flex: 1; }
+    .listing-btn {
+      display: inline-flex; align-items: center; margin-top: .6rem;
+      padding: .65rem 1.4rem; font-size: .82rem; font-weight: 700;
+      border: 1px solid rgba(201,168,76,.35); color: var(--gold-lt);
+      border-radius: 50px; text-decoration: none;
+      transition: background .2s, border-color .2s, color .2s;
+      align-self: flex-start;
+    }
+    .listing-btn:hover { background: rgba(201,168,76,.15); border-color: var(--gold); color: #fff; }
+    .listing-btn-primary {
+      background: linear-gradient(135deg, var(--airbnb), #D44A1A);
+      border-color: transparent; color: #fff;
+      box-shadow: 0 4px 18px rgba(255,90,35,.35);
+    }
+    .listing-btn-primary:hover { opacity: .9; background: linear-gradient(135deg, var(--airbnb), #D44A1A); border-color: transparent; color: #fff; }
+    @media (max-width: 600px) { .listings-grid { grid-template-columns: 1fr; } }
+
     /* AREA GUIDE */
     .guide-card {
       background: #fff; border-radius: 16px; padding: 1.6rem 1.4rem;
@@ -348,6 +388,7 @@
     <a class="nav-link" href="#gallery">Gallery</a>
     <a class="nav-link" href="#reviews">Reviews</a>
     <a class="nav-link" href="#reels">Instagram</a>
+    <a class="nav-link" href="#listings">Listings</a>
     <a class="nav-link" href="camps-bay-guide.html">Area Guide</a>
     <a class="nav-book" href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301" target="_blank" rel="noopener noreferrer">🏡 Book Now</a>
   </div>
@@ -644,6 +685,50 @@
   </div>
 </section>
 
+<!-- LISTINGS -->
+<section id="listings" style="background: var(--dark); padding: 6rem 2rem;">
+  <p class="section-eyebrow dark-section reveal">Our Listings</p>
+  <h2 class="section-title dark-section reveal">Choose your <em>perfect fit</em></h2>
+  <p class="section-body dark-section reveal">Same stunning views and mountain setting — available as the full house or separately. Book the space that suits your group.</p>
+
+  <div class="listings-grid">
+
+    <div class="listing-card reveal" style="transition-delay:.05s">
+      <div class="listing-badge">Most Popular</div>
+      <div class="listing-icon">🏡</div>
+      <h3 class="listing-name">The Full House</h3>
+      <div class="listing-detail">6 bedrooms · Up to 12 guests</div>
+      <p class="listing-desc">The entire Mountain Oasis — both levels combined. Perfect for large groups, family reunions or a full takeover experience.</p>
+      <a class="listing-btn listing-btn-primary" href="https://www.airbnb.com/rooms/39274776?guests=1&adults=1&s=67&unique_share_id=d2bff195-9519-4d70-acfb-9aaf23d64301" target="_blank" rel="noopener noreferrer">View on Airbnb →</a>
+    </div>
+
+    <div class="listing-card reveal" style="transition-delay:.15s">
+      <div class="listing-icon">⬆️</div>
+      <h3 class="listing-name">Upstairs</h3>
+      <div class="listing-detail">3 bedrooms · Up to 6 guests</div>
+      <p class="listing-desc">The upper level with breathtaking panoramic views of the ocean and mountains. Ideal for a smaller group wanting the full luxury experience.</p>
+      <a class="listing-btn" href="https://www.airbnb.com/rooms/6408551?guests=1&adults=1&s=67&unique_share_id=ab0121e1-9d32-4514-9790-c4dad93407bf" target="_blank" rel="noopener noreferrer">View on Airbnb →</a>
+    </div>
+
+    <div class="listing-card reveal" style="transition-delay:.25s">
+      <div class="listing-icon">⬇️</div>
+      <h3 class="listing-name">Downstairs</h3>
+      <div class="listing-detail">3 bedrooms · Up to 6 guests</div>
+      <p class="listing-desc">The lower level with its own private entrance, air conditioning in every room, and direct access to the outdoor living areas.</p>
+      <a class="listing-btn" href="https://www.airbnb.com/rooms/40175524?guests=1&adults=1&s=67&unique_share_id=f8115f06-2c3c-4924-9cae-0c6ef2950a66" target="_blank" rel="noopener noreferrer">View on Airbnb →</a>
+    </div>
+
+    <div class="listing-card reveal" style="transition-delay:.35s">
+      <div class="listing-icon">🌿</div>
+      <h3 class="listing-name">The Bungalow</h3>
+      <div class="listing-detail">2 bedrooms · Up to 4 guests</div>
+      <p class="listing-desc">A cosy, self-contained bungalow — perfect for couples or small families looking for a more intimate mountain escape.</p>
+      <a class="listing-btn" href="https://www.airbnb.com/rooms/1655522968148779693?guests=1&adults=1&s=67&unique_share_id=fe5bb192-1ab8-48eb-b416-3f0014af6519" target="_blank" rel="noopener noreferrer">View on Airbnb →</a>
+    </div>
+
+  </div>
+</section>
+
 <!-- BOOK CTA -->
 <section id="book">
   <div class="book-bg"></div>
@@ -905,7 +990,19 @@
     },
     {
       keys: ['book','booking','availab','reserve','when','date'],
-      answer: 'You can check availability and book directly on Airbnb. <a href="' + AIRBNB + '" target="_blank" style="color:var(--gold);font-weight:600;">Book Mountain Oasis →</a>'
+      answer: 'Mountain Oasis has <strong>4 listings</strong> depending on your group size:<br><br>🏡 <strong>Full House</strong> – 6 bed, up to 12 guests: <a href="' + AIRBNB + '" target="_blank" style="color:var(--gold);font-weight:600;">Book here →</a><br>⬆️ <strong>Upstairs</strong> – 3 bed, up to 6 guests: <a href="https://www.airbnb.com/rooms/6408551?guests=1&adults=1&s=67&unique_share_id=ab0121e1-9d32-4514-9790-c4dad93407bf" target="_blank" style="color:var(--gold);font-weight:600;">Book here →</a><br>⬇️ <strong>Downstairs</strong> – 3 bed, up to 6 guests: <a href="https://www.airbnb.com/rooms/40175524?guests=1&adults=1&s=67&unique_share_id=f8115f06-2c3c-4924-9cae-0c6ef2950a66" target="_blank" style="color:var(--gold);font-weight:600;">Book here →</a><br>🌿 <strong>Bungalow</strong> – 2 bed, up to 4 guests: <a href="https://www.airbnb.com/rooms/1655522968148779693?guests=1&adults=1&s=67&unique_share_id=fe5bb192-1ab8-48eb-b416-3f0014af6519" target="_blank" style="color:var(--gold);font-weight:600;">Book here →</a>'
+    },
+    {
+      keys: ['upstairs','upper level','upper floor'],
+      answer: 'The <strong>Upstairs</strong> listing has 3 bedrooms and accommodates up to 6 guests. It features breathtaking panoramic views of the ocean and mountains. <a href="https://www.airbnb.com/rooms/6408551?guests=1&adults=1&s=67&unique_share_id=ab0121e1-9d32-4514-9790-c4dad93407bf" target="_blank" style="color:var(--gold);font-weight:600;">Book Upstairs on Airbnb →</a>'
+    },
+    {
+      keys: ['downstairs','lower level','lower floor','ground floor'],
+      answer: 'The <strong>Downstairs</strong> listing has 3 bedrooms and accommodates up to 6 guests. It has air conditioning in every room and its own private entrance. <a href="https://www.airbnb.com/rooms/40175524?guests=1&adults=1&s=67&unique_share_id=f8115f06-2c3c-4924-9cae-0c6ef2950a66" target="_blank" style="color:var(--gold);font-weight:600;">Book Downstairs on Airbnb →</a>'
+    },
+    {
+      keys: ['bungalow','cottage','studio','small','2 bedroom','two bedroom','couple','4 guest'],
+      answer: 'The <strong>Bungalow</strong> is a cosy self-contained listing with 2 bedrooms for up to 4 guests — perfect for couples or a small family wanting an intimate mountain escape. <a href="https://www.airbnb.com/rooms/1655522968148779693?guests=1&adults=1&s=67&unique_share_id=fe5bb192-1ab8-48eb-b416-3f0014af6519" target="_blank" style="color:var(--gold);font-weight:600;">Book Bungalow on Airbnb →</a>'
     },
     {
       keys: ['how many bathroom','how many bath'],
