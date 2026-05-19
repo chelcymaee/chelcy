@@ -138,7 +138,7 @@
 <!-- HEADER -->
 <header class="header">
   <span class="header-title">Mountain Oasis · Check-In Tour</span>
-  <span class="step-counter" id="stepCounter">1 / 9</span>
+  <span class="step-counter" id="stepCounter">1 / 10</span>
 </header>
 
 <!-- PROGRESS BAR -->
@@ -469,6 +469,43 @@
       </div>
       <div class="info-list">
         <div class="finish-content" style="padding:10px 0 0;text-align:left">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 9: INTERCOM ── -->
+  <div class="slide" data-index="9">
+    <div style="flex-shrink:0;background:linear-gradient(135deg,#2C3E50,#4A235A);padding:32px 20px 28px;display:flex;align-items:center;gap:14px">
+      <div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0">📟</div>
+      <div>
+        <div style="font-family:sans-serif;font-size:.68rem;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:4px">Step 10</div>
+        <div style="font-family:'Georgia',serif;font-size:1.5rem;color:#fff;font-weight:400">The <em>Intercom</em></div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <h2>The <em>Intercom</em></h2>
+      <p class="slide-subtitle">Hikvision · opening gates remotely</p>
+      <div class="tip-box">
+        <strong>When someone rings at the gate</strong>
+        The Hikvision intercom will alert you. Tap the screen to wake it, then use Live View to see who's there and unlock remotely.
+      </div>
+      <div class="steps-numbered">
+        <div class="step-n">
+          <div class="step-num">1</div>
+          <div class="step-n-text"><strong>Tap the intercom screen</strong> to wake it up.</div>
+        </div>
+        <div class="step-n">
+          <div class="step-num">2</div>
+          <div class="step-n-text"><strong>Tap Live View (left)</strong> — this shows the <strong>main gate</strong>. Use the unlock button to open it.</div>
+        </div>
+        <div class="step-n">
+          <div class="step-num">3</div>
+          <div class="step-n-text"><strong>Tap Live View (right)</strong> — this shows the <strong>elevator gate</strong>. Use the unlock button to open it.</div>
+        </div>
+      </div>
+      <div class="info-list">
+        <div class="finish-content" style="padding:10px 0 0;text-align:left">
           <p style="font-family:sans-serif;font-size:.88rem;line-height:1.7;color:#555;margin:0">That's everything! Tap <strong>Finish</strong> below and enjoy your stay at Mountain Oasis.</p>
         </div>
       </div>
@@ -494,8 +531,8 @@
 </nav>
 
 <script>
-  const TOTAL = 9;
-  const LABELS = ['Welcome','Living Room','Kitchen','Main Bedroom','Guest Bedroom 2','Guest Bedroom 3','Balcony','Hot Tub','Elevator'];
+  const TOTAL = 10;
+  const LABELS = ['Welcome','Living Room','Kitchen','Main Bedroom','Guest Bedroom 2','Guest Bedroom 3','Balcony','Hot Tub','Elevator','Intercom'];
   let current = 0;
 
   const slides = document.querySelectorAll('.slide');
