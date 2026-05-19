@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Check-In Tour · Garden Retreat · Camps Bay</title>
+  <title>Check-In Tour · Mountain Oasis · Camps Bay</title>
   <style>
     :root {
       --ocean:#1A5276; --ocean-mid:#2471A3; --ocean-light:#D6EAF8;
@@ -183,7 +183,7 @@
 
 <!-- ── HEADER ── -->
 <header class="header">
-  <span class="header-title">Garden Retreat · Check-In Tour</span>
+  <span class="header-title">Mountain Oasis · Check-In Tour</span>
   <span class="step-counter" id="stepCounter">1 / 8</span>
 </header>
 
@@ -478,7 +478,7 @@
       </div>
       <div class="info-list">
         <div style="font-family:sans-serif;font-size:.88rem;line-height:1.7;color:#555">
-          That's everything! Tap <strong>Finish</strong> below and enjoy your stay at Garden Retreat.
+          That's everything! Tap <strong>Finish</strong> below and enjoy your stay at Mountain Oasis.
         </div>
       </div>
     </div>
@@ -578,7 +578,7 @@
       await fetch('https://formspree.io/f/' + FORMSPREE_DOWNSTAIRS, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ name, email, phone, property: 'Garden Retreat (Downstairs)' })
+        body: JSON.stringify({ name, email, phone, property: 'Mountain Oasis (Downstairs)' })
       });
     } catch(e) { /* fail silently — still let guest in */ }
 
