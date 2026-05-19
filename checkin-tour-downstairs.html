@@ -303,12 +303,50 @@
     </div>
   </div>
 
-  <!-- ── SLIDE 3: FIRST GUEST BEDROOM ── -->
+  <!-- ── SLIDE 3: MAIN BEDROOM ── -->
   <div class="slide" data-index="3">
     <div class="slide-header" style="background:linear-gradient(135deg,#5D4037,#8D6E63)">
       <div class="sh-icon">🛏️</div>
       <div class="sh-text">
         <div class="sh-step">Step 4</div>
+        <div class="sh-title">The <em style="font-style:italic;color:var(--coral-light)">Main Bedroom</em></div>
+      </div>
+    </div>
+    <div class="slide-body">
+      <h2>The <em>Main Bedroom</em></h2>
+      <p class="slide-subtitle">Fan, aircon &amp; towels</p>
+      <div class="info-list">
+        <div class="info-item">
+          <div class="info-icon">🌀</div>
+          <div class="info-text">
+            <strong>Extra Fan</strong>
+            There's an extra fan stored in the <strong>cupboard</strong> — perfect for warmer summer nights.
+          </div>
+        </div>
+        <div class="info-item">
+          <div class="info-icon">❄️</div>
+          <div class="info-text">
+            <strong>Air Conditioner</strong>
+            The aircon remote is mounted <strong>on the wall</strong> in this room.
+          </div>
+        </div>
+        <div class="info-item">
+          <div class="info-icon">🏖️</div>
+          <div class="info-text">
+            <strong>Extra Beach Towels</strong>
+            Additional beach towels are in the <strong>cupboard</strong> in this room.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLIDE 4: GUEST BEDROOM 1 ── -->
+  <div class="slide" data-index="4">
+    <div class="slide-header" style="background:linear-gradient(135deg,#4A235A,#6C3483)">
+      <div class="sh-icon">🛏️</div>
+      <div class="sh-text">
+        <div class="sh-step">Step 5</div>
         <div class="sh-title">Guest <em style="font-style:italic;color:var(--coral-light)">Bedroom One</em></div>
       </div>
     </div>
@@ -342,44 +380,6 @@
           <div class="info-text">
             <strong>Extra Beach Towels</strong>
             Additional beach towels are in the <strong>cupboard</strong> in this room.
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── SLIDE 4: OTHER BEDROOMS ── -->
-  <div class="slide" data-index="4">
-    <div class="slide-header" style="background:linear-gradient(135deg,#4A235A,#6C3483)">
-      <div class="sh-icon">🛏️</div>
-      <div class="sh-text">
-        <div class="sh-step">Step 5</div>
-        <div class="sh-title">All <em style="font-style:italic;color:var(--coral-light)">Bedrooms</em></div>
-      </div>
-    </div>
-    <div class="slide-body">
-      <h2>All <em>Bedrooms</em></h2>
-      <p class="slide-subtitle">Good to know in every room</p>
-      <div class="info-list">
-        <div class="info-item">
-          <div class="info-icon">❄️</div>
-          <div class="info-text">
-            <strong>Air Conditioners</strong>
-            Every bedroom has an aircon. The <strong>remote is on the wall</strong> in each room — just grab it and go.
-          </div>
-        </div>
-        <div class="info-item">
-          <div class="info-icon">🏖️</div>
-          <div class="info-text">
-            <strong>Extra Beach Towels</strong>
-            Each bedroom has extra beach towels stored in the <strong>cupboard</strong>.
-          </div>
-        </div>
-        <div class="info-item">
-          <div class="info-icon">🪟</div>
-          <div class="info-text">
-            <strong>Shutters</strong>
-            Keys for each room's shutters are <strong>hanging on the wall next to them</strong>.
           </div>
         </div>
       </div>
@@ -504,7 +504,7 @@
 
 <script>
   const TOTAL = 8;
-  const LABELS = ['Welcome','Arrival','Living Room','Guest Bedroom 1','All Bedrooms','Pets','Elevator','Intercom'];
+  const LABELS = ['Welcome','Arrival','Living Room','Main Bedroom','Guest Bedroom 1','Pets','Elevator','Intercom'];
   let current = 0;
 
   const slides = document.querySelectorAll('.slide');
