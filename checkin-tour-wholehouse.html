@@ -156,6 +156,11 @@
     .btn-next.finish{background:var(--green)}
     .step-label{font-family:sans-serif;font-size:.68rem;color:var(--grey);text-align:center;letter-spacing:1px}
 
+    /* ── LANG PICKER ── */
+    .lang-picker{display:flex;gap:3px;align-items:center}
+    .lang-btn{padding:4px 7px;border-radius:6px;border:1px solid rgba(26,82,118,.22);background:transparent;font-family:sans-serif;font-size:.62rem;font-weight:700;letter-spacing:.5px;color:var(--grey);cursor:pointer;transition:all .18s}
+    .lang-btn.active,.lang-btn:hover{background:var(--ocean-mid);color:var(--white);border-color:var(--ocean-mid)}
+
     @media(max-width:360px){
       .quick-cards,.wifi-pair{grid-template-columns:1fr}
       .btn-nav{padding:12px 14px;font-size:.72rem}
@@ -169,36 +174,45 @@
   <div class="gate-hero">
     <img src="Screenshot%202026-05-15%20at%2014.09.09.png" alt="Mountain Oasis"/>
     <div class="gate-hero-overlay">
-      <p class="gate-eyebrow">Welcome to</p>
-      <h1>Mountain <em>Oasis</em></h1>
+      <p class="gate-eyebrow" data-i18n="gate_eyebrow">Welcome to</p>
+      <h1 data-i18n-html="gate_title">Mountain <em>Oasis</em></h1>
     </div>
   </div>
   <div class="gate-body">
-    <h2>Before we begin</h2>
-    <p>Please fill in your details so we can take care of you during your stay.</p>
+    <h2 data-i18n="gate_h2">Before we begin</h2>
+    <p data-i18n="gate_p">Please fill in your details so we can take care of you during your stay.</p>
     <div class="form-group" id="fg-name">
-      <label>Full Name</label>
+      <label data-i18n="gate_name">Full Name</label>
       <input type="text" id="f-name" placeholder="Jane Smith" autocomplete="name"/>
-      <div class="form-error">Please enter your name</div>
+      <div class="form-error" data-i18n="gate_name_err">Please enter your name</div>
     </div>
     <div class="form-group" id="fg-email">
-      <label>Email Address</label>
+      <label data-i18n="gate_email">Email Address</label>
       <input type="email" id="f-email" placeholder="jane@example.com" autocomplete="email"/>
-      <div class="form-error">Please enter a valid email</div>
+      <div class="form-error" data-i18n="gate_email_err">Please enter a valid email</div>
     </div>
     <div class="form-group" id="fg-phone">
-      <label>Phone Number</label>
+      <label data-i18n="gate_phone">Phone Number</label>
       <input type="tel" id="f-phone" placeholder="+27 82 000 0000" autocomplete="tel"/>
-      <div class="form-error">Please enter your phone number</div>
+      <div class="form-error" data-i18n="gate_phone_err">Please enter your phone number</div>
     </div>
-    <button class="btn-start" id="btnStart" onclick="submitGate()">Start Check-In Tour →</button>
+    <button class="btn-start" id="btnStart" onclick="submitGate()" data-i18n="gate_btn">Start Check-In Tour →</button>
   </div>
 </div>
 
 <!-- ── HEADER ── -->
 <header class="header">
-  <span class="header-title">Mountain Oasis · Full House Tour</span>
-  <span class="step-counter" id="stepCounter">1 / 15</span>
+  <span class="header-title" data-i18n="header_title">Mountain Oasis · Full House Tour</span>
+  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+    <div class="lang-picker" id="langPicker">
+      <button class="lang-btn active" onclick="setLang('en')" title="English">EN</button>
+      <button class="lang-btn" onclick="setLang('de')" title="Deutsch">DE</button>
+      <button class="lang-btn" onclick="setLang('fr')" title="Français">FR</button>
+      <button class="lang-btn" onclick="setLang('nl')" title="Nederlands">NL</button>
+      <button class="lang-btn" onclick="setLang('af')" title="Afrikaans">AF</button>
+    </div>
+    <span class="step-counter" id="stepCounter">1 / 14</span>
+  </div>
 </header>
 <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
 
@@ -601,16 +615,107 @@
 <nav class="nav-bar">
   <button class="btn-nav btn-prev" id="btnPrev" onclick="navigate(-1)" disabled>
     <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-    Back
+    <span id="navBackText">Back</span>
   </button>
   <span class="step-label" id="stepLabel">Welcome</span>
   <button class="btn-nav btn-next" id="btnNext" onclick="navigate(1)">
-    Next
-    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+    <span id="navNextText">Next</span>
+    <svg id="navNextArrow" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
   </button>
 </nav>
 
 <script>
+  /* ── TRANSLATIONS ── */
+  const T = {
+    en: {
+      header_title:'Mountain Oasis · Full House Tour',
+      gate_eyebrow:'Welcome to', gate_title:'Mountain <em>Oasis</em>',
+      gate_h2:'Before we begin',
+      gate_p:'Please fill in your details so we can take care of you during your stay.',
+      gate_name:'Full Name', gate_name_err:'Please enter your name',
+      gate_email:'Email Address', gate_email_err:'Please enter a valid email',
+      gate_phone:'Phone Number', gate_phone_err:'Please enter your phone number',
+      gate_btn:'Start Check-In Tour →',
+      nav_back:'Back', nav_next:'Next',
+      nav_finish:'🎉 Enjoy your stay!', nav_done:'✓ Tour complete',
+      labels:['Welcome','Arrival','Upstairs Living Room','Upstairs Kitchen','Upstairs Main Bedroom','Upstairs Guest Bedrooms','Upstairs Balcony','Hot Tub','Downstairs Living Room','Downstairs Main Bedroom','Downstairs Guest Bedroom 1','Pets','Elevator','Intercom'],
+    },
+    de: {
+      header_title:'Mountain Oasis · Ganzes Haus',
+      gate_eyebrow:'Willkommen in', gate_title:'Mountain <em>Oasis</em>',
+      gate_h2:'Bevor wir beginnen',
+      gate_p:'Bitte geben Sie Ihre Daten ein, damit wir während Ihres Aufenthalts für Sie sorgen können.',
+      gate_name:'Vollständiger Name', gate_name_err:'Bitte geben Sie Ihren Namen ein',
+      gate_email:'E-Mail-Adresse', gate_email_err:'Bitte geben Sie eine gültige E-Mail ein',
+      gate_phone:'Telefonnummer', gate_phone_err:'Bitte geben Sie Ihre Telefonnummer ein',
+      gate_btn:'Check-In Tour starten →',
+      nav_back:'Zurück', nav_next:'Weiter',
+      nav_finish:'🎉 Genießen Sie Ihren Aufenthalt!', nav_done:'✓ Tour abgeschlossen',
+      labels:['Willkommen','Ankunft','Wohnzimmer (OG)','Küche (OG)','Hauptschlafzimmer (OG)','Gästezimmer (OG)','Balkon (OG)','Whirlpool','Wohnzimmer (UG)','Hauptschlafzimmer (UG)','Gästezimmer 1 (UG)','Haustiere','Aufzug','Gegensprechanlage'],
+    },
+    fr: {
+      header_title:'Mountain Oasis · Maison complète',
+      gate_eyebrow:'Bienvenue à', gate_title:'Mountain <em>Oasis</em>',
+      gate_h2:'Avant de commencer',
+      gate_p:'Veuillez renseigner vos coordonnées afin que nous puissions prendre soin de vous pendant votre séjour.',
+      gate_name:'Nom complet', gate_name_err:'Veuillez entrer votre nom',
+      gate_email:'Adresse e-mail', gate_email_err:'Veuillez entrer un e-mail valide',
+      gate_phone:'Numéro de téléphone', gate_phone_err:'Veuillez entrer votre numéro de téléphone',
+      gate_btn:'Commencer la visite →',
+      nav_back:'Retour', nav_next:'Suivant',
+      nav_finish:'🎉 Profitez de votre séjour !', nav_done:'✓ Visite terminée',
+      labels:['Bienvenue','Arrivée','Salon (haut)','Cuisine (haut)','Chambre principale (haut)','Chambres d\'amis (haut)','Balcon (haut)','Jacuzzi','Salon (bas)','Chambre principale (bas)','Chambre d\'amis 1 (bas)','Animaux','Ascenseur','Interphone'],
+    },
+    nl: {
+      header_title:'Mountain Oasis · Volledig huis',
+      gate_eyebrow:'Welkom bij', gate_title:'Mountain <em>Oasis</em>',
+      gate_h2:'Voordat we beginnen',
+      gate_p:'Vul uw gegevens in zodat wij goed voor u kunnen zorgen tijdens uw verblijf.',
+      gate_name:'Volledige naam', gate_name_err:'Vul uw naam in',
+      gate_email:'E-mailadres', gate_email_err:'Vul een geldig e-mailadres in',
+      gate_phone:'Telefoonnummer', gate_phone_err:'Vul uw telefoonnummer in',
+      gate_btn:'Start Check-In Tour →',
+      nav_back:'Terug', nav_next:'Volgende',
+      nav_finish:'🎉 Geniet van uw verblijf!', nav_done:'✓ Tour voltooid',
+      labels:['Welkom','Aankomst','Woonkamer (boven)','Keuken (boven)','Slaapkamer (boven)','Gastenkamers (boven)','Balkon (boven)','Bubbelbad','Woonkamer (beneden)','Slaapkamer (beneden)','Gastenkamer 1 (beneden)','Huisdieren','Lift','Intercom'],
+    },
+    af: {
+      header_title:'Mountain Oasis · Hele huis',
+      gate_eyebrow:'Welkom by', gate_title:'Mountain <em>Oasis</em>',
+      gate_h2:'Voordat ons begin',
+      gate_p:'Vul asseblief jou besonderhede in sodat ons na jou kan omsien tydens jou verblyf.',
+      gate_name:'Volle naam', gate_name_err:'Vul asseblief jou naam in',
+      gate_email:'E-posadres', gate_email_err:'Vul asseblief \'n geldige e-pos in',
+      gate_phone:'Telefoonnommer', gate_phone_err:'Vul asseblief jou telefoonnommer in',
+      gate_btn:'Begin Inskakel-toer →',
+      nav_back:'Terug', nav_next:'Volgende',
+      nav_finish:'🎉 Geniet van jou verblyf!', nav_done:'✓ Toer voltooi',
+      labels:['Welkom','Aankoms','Sitkamer (bo)','Kombuis (bo)','Hoofslaapkamer (bo)','Gastekamers (bo)','Balkon (bo)','Bubbelbad','Sitkamer (onder)','Hoofslaapkamer (onder)','Gastekamer 1 (onder)','Troeteldiere','Hyser','Interkom'],
+    },
+  };
+
+  let currentLang = 'en';
+  function setLang(lang) {
+    if (!T[lang]) return;
+    currentLang = lang;
+    const t = T[lang];
+    document.documentElement.lang = lang;
+    document.querySelectorAll('.lang-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('onclick').includes("'"+lang+"'"));
+    });
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const k = el.getAttribute('data-i18n');
+      if (t[k] !== undefined) el.textContent = t[k];
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+      const k = el.getAttribute('data-i18n-html');
+      if (t[k] !== undefined) el.innerHTML = t[k];
+    });
+    LABELS.splice(0, LABELS.length, ...t.labels);
+    stepLabel.textContent = LABELS[current];
+    updateNavText();
+  }
+
   const TOTAL = 14;
   const LABELS = ['Welcome','Arrival','Upstairs Living Room','Upstairs Kitchen','Upstairs Main Bedroom','Upstairs Guest Bedrooms','Upstairs Balcony','Hot Tub','Downstairs Living Room','Downstairs Main Bedroom','Downstairs Guest Bedroom 1','Pets','Elevator','Intercom'];
   let current = 0;
@@ -645,6 +750,18 @@
 
   function navigate(dir) { goTo(current + dir); }
 
+  function updateNavText() {
+    const t = T[currentLang];
+    document.getElementById('navBackText').textContent = t.nav_back;
+    if (current === TOTAL - 1) {
+      document.getElementById('navNextText').textContent = t.nav_finish;
+      document.getElementById('navNextArrow').style.display = 'none';
+    } else {
+      document.getElementById('navNextText').textContent = t.nav_next;
+      document.getElementById('navNextArrow').style.display = '';
+    }
+  }
+
   function updateUI() {
     const dots = dotsWrap.querySelectorAll('.dot');
     dots.forEach((d, i) => {
@@ -656,14 +773,17 @@
     stepLabel.textContent = LABELS[current];
     btnPrev.disabled = current === 0;
     if (current === TOTAL - 1) {
-      btnNext.innerHTML = '🎉&nbsp; Enjoy your stay!';
       btnNext.classList.add('finish');
-      btnNext.onclick = () => { btnNext.textContent = '✓  Tour complete'; btnNext.disabled = true; };
+      btnNext.onclick = () => {
+        document.getElementById('navNextText').textContent = T[currentLang].nav_done;
+        document.getElementById('navNextArrow').style.display = 'none';
+        btnNext.disabled = true;
+      };
     } else {
       btnNext.classList.remove('finish');
-      btnNext.innerHTML = 'Next <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>';
       btnNext.onclick = () => navigate(1);
     }
+    updateNavText();
   }
 
   const FORMSPREE = 'xzdwdzbb';
