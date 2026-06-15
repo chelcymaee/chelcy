@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Cubby",
+    "slug": "cubby",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "cubby",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A3C34"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cubby.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Cubby uses your location to find nearby luggage hosts.",
+        "NSPhotoLibraryUsageDescription": "Cubby needs photo access so you can add profile and storage photos.",
+        "NSCameraUsageDescription": "Cubby needs camera access to take photos of your storage space."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1A3C34",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-location",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cubby needs access to your photos to add storage space images."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
