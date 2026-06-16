@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import { supabase } from '../../src/lib/supabase';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -17,11 +18,34 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    // Demo: skip real auth, go straight to traveller tabs
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        Alert.alert('Sign in failed', error.message);
+        return;
+      }
+      const user = data.user;
+      let role = 'traveller';
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        if (profile?.role) role = profile.role;
+      }
+      if (role === 'host' || role === 'both') {
+        router.replace('/(host)/bank-details');
+      } else if (role === 'runner') {
+        router.replace('/(runner)/dashboard');
+      } else {
+        router.replace('/(traveller)/explore');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'Something went wrong');
+    } finally {
       setLoading(false);
-      router.replace('/(traveller)/explore');
-    }, 800);
+    }
   }
 
   return (

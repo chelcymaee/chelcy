@@ -35,7 +35,7 @@ export default function Profile() {
     { icon: '💳', label: 'Payment methods', onPress: () => router.push('/(traveller)/payment-details') },
     { icon: '🔔', label: 'Notifications', onPress: () => router.push('/(traveller)/notifications') },
     { icon: '✅', label: 'Get verified', onPress: () => router.push('/(traveller)/verification'), highlight: true },
-    { icon: '🏠', label: 'Become a Cubby host', onPress: () => router.push('/(host)/bank-details'), accent: true },
+    { icon: '🏠', label: 'Switch to Host mode', onPress: () => router.replace('/(host)/dashboard'), accent: true },
     { icon: '🛡️', label: 'Safety & trust', onPress: () => router.push('/(traveller)/safety') },
     { icon: '❓', label: 'Help & support', onPress: () => router.push('/(traveller)/support') },
   ];
@@ -90,6 +90,15 @@ export default function Profile() {
             <Text style={styles.statLabel}>Total spent</Text>
           </View>
         </View>
+
+        {/* Mode switcher */}
+        <TouchableOpacity style={styles.switchBanner} onPress={() => router.replace('/(host)/dashboard')} activeOpacity={0.85}>
+          <View>
+            <Text style={styles.switchBannerTitle}>Switch to Host mode 🏠</Text>
+            <Text style={styles.switchBannerSub}>Manage your listing and earnings</Text>
+          </View>
+          <Text style={styles.switchBannerArrow}>›</Text>
+        </TouchableOpacity>
 
         <View style={styles.menu}>
           {MENU_ITEMS.map((item, idx) => (

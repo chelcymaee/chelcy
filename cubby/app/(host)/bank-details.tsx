@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Scro
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
+import { supabase } from '../../src/lib/supabase';
 
 const STORAGE_KEY = 'cubby_bank_details';
 
@@ -24,9 +25,28 @@ export default function BankDetails() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then(data => {
-      if (data) {
-        const d = JSON.parse(data);
+    async function loadBankDetails() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('bank_details')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        if (data) {
+          setBank(data.bank ?? '');
+          setAccountHolder(data.account_holder ?? '');
+          setAccountNumber(data.account_number ?? '');
+          setBranchCode(data.branch_code ?? '');
+          setAccountType(data.account_type ?? 'Cheque / Current');
+          setSaved(true);
+          return;
+        }
+      }
+      // Fallback to AsyncStorage
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const d = JSON.parse(stored);
         setBank(d.bank ?? '');
         setAccountHolder(d.accountHolder ?? '');
         setAccountNumber(d.accountNumber ?? '');
@@ -34,7 +54,8 @@ export default function BankDetails() {
         setAccountType(d.accountType ?? 'Cheque / Current');
         setSaved(true);
       }
-    });
+    }
+    loadBankDetails();
   }, []);
 
   function selectBank(b: string) {
@@ -47,7 +68,25 @@ export default function BankDetails() {
       Alert.alert('Please fill in all required fields');
       return;
     }
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ bank, accountHolder, accountNumber, branchCode, accountType }));
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase.from('bank_details').upsert({
+        user_id: user.id,
+        bank,
+        account_holder: accountHolder,
+        account_number: accountNumber,
+        branch_code: branchCode,
+        account_type: accountType,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+      if (error) {
+        Alert.alert('Save failed', error.message);
+        return;
+      }
+    } else {
+      // Fallback for web preview / unauthenticated
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ bank, accountHolder, accountNumber, branchCode, accountType }));
+    }
     setSaved(true);
     Alert.alert('Bank details saved!', "You'll receive payouts within 2 business days of each completed booking.", [
       { text: 'OK', onPress: () => router.replace('/(host)/dashboard') },

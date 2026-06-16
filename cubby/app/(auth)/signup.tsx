@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import { supabase } from '../../src/lib/supabase';
 
 type Role = 'traveller' | 'host' | 'both' | 'runner';
 
@@ -21,18 +22,36 @@ export default function Signup() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      if (role === 'host') {
-        router.replace('/(host)/bank-details');
-      } else if (role === 'both') {
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        Alert.alert('Sign up failed', error.message);
+        return;
+      }
+      const user = data.user;
+      if (user) {
+        const { error: profileError } = await supabase.from('profiles').insert({
+          id: user.id,
+          email,
+          full_name: fullName,
+          role,
+        });
+        if (profileError) {
+          console.warn('Profile insert error:', profileError.message);
+        }
+      }
+      if (role === 'host' || role === 'both') {
         router.replace('/(host)/bank-details');
       } else if (role === 'runner') {
         router.replace('/(runner)/dashboard');
       } else {
-        router.replace('/(traveller)/payment-details');
+        router.replace('/(traveller)/explore');
       }
-    }, 800);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
   }
 
   const roleOptions: { value: Role; label: string; emoji: string; desc: string }[] = [
