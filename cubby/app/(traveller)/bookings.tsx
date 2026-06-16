@@ -75,6 +75,16 @@ function BookingCard({ booking }: { booking: Booking }) {
         </View>
       )}
 
+      {/* Leave a review for completed bookings */}
+      {booking.status === 'completed' && (
+        <TouchableOpacity
+          style={{ margin: 12, marginTop: 0, backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+          onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostName: booking.host.display_name } })}
+        >
+          <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.white }}>⭐ Leave a review</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Date */}
       <Text style={styles.date}>{booking.drop_off_date}</Text>
     </View>

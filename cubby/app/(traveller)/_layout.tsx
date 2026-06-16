@@ -37,6 +37,8 @@ export default function TravellerLayout() {
       <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="safety" options={{ href: null }} />
       <Tabs.Screen name="support" options={{ href: null }} />
+      <Tabs.Screen name="booking-confirmation" options={{ href: null }} />
+      <Tabs.Screen name="review" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -63,6 +63,22 @@ export default function Dashboard() {
           </View>
         </View>
 
+        {/* Weekly breakdown */}
+        <View style={styles.weekCard}>
+          <Text style={styles.weekTitle}>This week</Text>
+          <View style={styles.weekBars}>
+            {['M','T','W','T','F','S','S'].map((day, i) => {
+              const heights = [60, 80, 40, 90, 100, 70, 30];
+              return (
+                <View key={i} style={styles.weekBarCol}>
+                  <View style={[styles.weekBar, { height: heights[i] }]} />
+                  <Text style={styles.weekBarLabel}>{day}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Status toggle */}
         <View style={styles.statusCard}>
           <View>
@@ -217,6 +233,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10, alignItems: 'center',
   },
   declineBtnText: { color: Colors.error, fontWeight: '700', fontSize: 14 },
+  weekCard: { backgroundColor: Colors.white, marginHorizontal: 20, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: Colors.border, marginBottom: 20 },
+  weekTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 },
+  weekBars: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 110 },
+  weekBarCol: { flex: 1, alignItems: 'center', gap: 4 },
+  weekBar: { width: '100%', backgroundColor: Colors.primary, borderRadius: 6, opacity: 0.8 },
+  weekBarLabel: { fontSize: 10, color: Colors.textSecondary },
   tipCard: {
     backgroundColor: '#FFF9EC',
     borderRadius: 14,

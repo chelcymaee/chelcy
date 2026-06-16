@@ -31,7 +31,17 @@ export default function Booking() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      router.replace('/(traveller)/bookings');
+      router.replace({
+        pathname: '/(traveller)/booking-confirmation',
+        params: {
+          hostName: host.display_name,
+          dropOff: dropTime,
+          pickUp: pickTime,
+          bags: String(bags),
+          total: String(grandTotal),
+          pin: String(Math.floor(1000 + Math.random() * 9000)),
+        },
+      });
     }, 1200);
   }
 
