@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
+
+const STORAGE_KEY = 'cubby_bank_details';
 
 const BANKS = ['Capitec', 'FNB', 'Standard Bank', 'Absa', 'Nedbank', 'TymeBank', 'Discovery Bank', 'African Bank'];
 const ACCOUNT_TYPES = ['Cheque / Current', 'Savings'];
@@ -18,17 +21,34 @@ export default function BankDetails() {
   const [accountNumber, setAccountNumber] = useState('');
   const [branchCode, setBranchCode] = useState('');
   const [accountType, setAccountType] = useState('Cheque / Current');
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY).then(data => {
+      if (data) {
+        const d = JSON.parse(data);
+        setBank(d.bank ?? '');
+        setAccountHolder(d.accountHolder ?? '');
+        setAccountNumber(d.accountNumber ?? '');
+        setBranchCode(d.branchCode ?? '');
+        setAccountType(d.accountType ?? 'Cheque / Current');
+        setSaved(true);
+      }
+    });
+  }, []);
 
   function selectBank(b: string) {
     setBank(b);
     setBranchCode(BRANCH_CODES[b] || '');
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!bank || !accountHolder || !accountNumber) {
       Alert.alert('Please fill in all required fields');
       return;
     }
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ bank, accountHolder, accountNumber, branchCode, accountType }));
+    setSaved(true);
     Alert.alert('Bank details saved!', "You'll receive payouts within 2 business days of each completed booking.", [
       { text: 'OK', onPress: () => router.replace('/(host)/dashboard') },
     ]);
@@ -42,7 +62,12 @@ export default function BankDetails() {
         </TouchableOpacity>
 
         <Text style={styles.emoji}>🏦</Text>
-        <Text style={styles.heading}>Add bank account</Text>
+        <Text style={styles.heading}>{saved ? 'Edit bank account' : 'Add bank account'}</Text>
+        {saved && (
+          <View style={styles.savedBadge}>
+            <Text style={styles.savedBadgeText}>✅ Bank details on file</Text>
+          </View>
+        )}
         <Text style={styles.sub}>We'll pay your earnings directly into this account within 2 business days.</Text>
 
         <Text style={styles.label}>Select your bank</Text>
@@ -110,4 +135,6 @@ const styles = StyleSheet.create({
   payoutText: { flex: 1, fontSize: 12, color: Colors.textSecondary, lineHeight: 18 },
   btn: { backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
   btnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  savedBadge: { backgroundColor: '#F0FFF4', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, alignSelf: 'flex-start', marginBottom: 8, borderWidth: 1, borderColor: Colors.success },
+  savedBadgeText: { fontSize: 13, fontWeight: '700', color: Colors.success },
 });
