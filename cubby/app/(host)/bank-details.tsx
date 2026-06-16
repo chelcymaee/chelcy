@@ -99,7 +99,7 @@ export default function BankDetails() {
 
         <View style={styles.payoutNote}>
           <Text style={styles.payoutIcon}>💰</Text>
-          <Text style={styles.payoutText}>Cubby takes a 15% platform fee. The remaining 85% is paid to you after each completed booking.</Text>
+          <Text style={styles.payoutText}>Cubby takes a 30% platform fee. The remaining 70% is paid to you after each completed booking.</Text>
         </View>
 
         <TouchableOpacity style={styles.btn} onPress={handleSave} activeOpacity={0.85}>
