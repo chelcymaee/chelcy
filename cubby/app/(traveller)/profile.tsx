@@ -1,11 +1,30 @@
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Image, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 
 export default function Profile() {
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [name, setName] = useState('Chelcy');
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState('');
+
+  useEffect(() => {
+    AsyncStorage.getItem('cubby_traveller_profile').then(raw => {
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (data.name) setName(data.name);
+        if (data.avatarUri) setAvatar(data.avatarUri);
+      } catch {}
+    });
+  }, []);
+
+  async function saveProfile(newName: string, avatarUri: string | null) {
+    await AsyncStorage.setItem('cubby_traveller_profile', JSON.stringify({ name: newName, avatarUri }));
+  }
 
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -20,8 +39,22 @@ export default function Profile() {
       quality: 0.8,
     });
     if (!result.canceled) {
-      setAvatar(result.assets[0].uri);
+      const uri = result.assets[0].uri;
+      setAvatar(uri);
+      await saveProfile(name, uri);
     }
+  }
+
+  function handleEditPress() {
+    setDraftName(name);
+    setEditingName(true);
+  }
+
+  async function handleSaveName() {
+    const trimmed = draftName.trim() || name;
+    setName(trimmed);
+    setEditingName(false);
+    await saveProfile(trimmed, avatar);
   }
 
   function handleSignOut() {
@@ -61,17 +94,35 @@ export default function Profile() {
             </View>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <View style={styles.nameRow}>
-              <Text style={styles.profileName}>Chelcy</Text>
-              <View style={styles.unverifiedBadge}>
-                <Text style={styles.unverifiedText}>Unverified</Text>
+            {editingName ? (
+              <View style={styles.nameRow}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={draftName}
+                  onChangeText={setDraftName}
+                  autoFocus
+                  onSubmitEditing={handleSaveName}
+                />
               </View>
-            </View>
+            ) : (
+              <View style={styles.nameRow}>
+                <Text style={styles.profileName}>{name}</Text>
+                <View style={styles.unverifiedBadge}>
+                  <Text style={styles.unverifiedText}>Unverified</Text>
+                </View>
+              </View>
+            )}
             <Text style={styles.profileEmail}>chelcymae1@gmail.com</Text>
           </View>
-          <TouchableOpacity style={styles.editBtn}>
-            <Text style={styles.editBtnText}>Edit</Text>
-          </TouchableOpacity>
+          {editingName ? (
+            <TouchableOpacity style={styles.editBtn} onPress={handleSaveName}>
+              <Text style={styles.editBtnText}>Save</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.editBtn} onPress={handleEditPress}>
+              <Text style={styles.editBtnText}>Edit</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.statsRow}>
@@ -161,6 +212,7 @@ const styles = StyleSheet.create({
   },
   avatarEditText: { fontSize: 10 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  nameInput: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, borderBottomWidth: 1.5, borderBottomColor: Colors.primary, minWidth: 100 },
   profileName: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
   unverifiedBadge: {
     backgroundColor: '#FEF3C7', borderRadius: 8,

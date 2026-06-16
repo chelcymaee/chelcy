@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 
 export default function PaymentDetails() {
@@ -8,6 +9,19 @@ export default function PaymentDetails() {
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
   const [cardHolder, setCardHolder] = useState('');
+  const [savedMasked, setSavedMasked] = useState<string | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem('cubby_payment_details').then(raw => {
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (data.maskedNumber) setSavedMasked(data.maskedNumber);
+        if (data.expiry) setExpiry(data.expiry);
+        if (data.cardHolder) setCardHolder(data.cardHolder);
+      } catch {}
+    });
+  }, []);
 
   function formatCardNumber(text: string) {
     const cleaned = text.replace(/\s/g, '');
@@ -24,11 +38,16 @@ export default function PaymentDetails() {
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!cardNumber || !expiry || !cvv || !cardHolder) {
       Alert.alert('Please fill in all card details');
       return;
     }
+    const digits = cardNumber.replace(/\s/g, '');
+    const lastFour = digits.slice(-4);
+    const maskedNumber = `**** **** **** ${lastFour}`;
+    await AsyncStorage.setItem('cubby_payment_details', JSON.stringify({ maskedNumber, expiry, cardHolder }));
+    setSavedMasked(maskedNumber);
     Alert.alert('Card saved!', 'Your card has been added securely.', [
       { text: 'OK', onPress: () => router.replace('/(traveller)/explore') },
     ]);
@@ -45,8 +64,14 @@ export default function PaymentDetails() {
         <Text style={styles.heading}>Add payment card</Text>
         <Text style={styles.sub}>Your card is charged when a booking is confirmed. Secured via PayFast.</Text>
 
+        {savedMasked && (
+          <View style={styles.savedNote}>
+            <Text style={styles.savedNoteText}>Saved card: {savedMasked}</Text>
+          </View>
+        )}
+
         <View style={styles.cardPreview}>
-          <Text style={styles.cardPreviewNumber}>{cardNumber || '•••• •••• •••• ••••'}</Text>
+          <Text style={styles.cardPreviewNumber}>{cardNumber || savedMasked || '•••• •••• •••• ••••'}</Text>
           <View style={styles.cardPreviewBottom}>
             <Text style={styles.cardPreviewLabel}>{cardHolder || 'CARDHOLDER NAME'}</Text>
             <Text style={styles.cardPreviewExpiry}>{expiry || 'MM/YY'}</Text>
@@ -104,4 +129,6 @@ const styles = StyleSheet.create({
   secureText: { flex: 1, fontSize: 12, color: Colors.textSecondary, lineHeight: 18 },
   btn: { backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
   btnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  savedNote: { backgroundColor: '#F0FFF4', borderRadius: 10, padding: 10, marginBottom: 12 },
+  savedNoteText: { fontSize: 14, color: Colors.success, fontWeight: '600' },
 });

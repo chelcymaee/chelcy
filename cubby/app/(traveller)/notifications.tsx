@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Switch, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 
 interface NotifSetting {
@@ -20,8 +21,24 @@ export default function Notifications() {
     { id: 'news', title: 'Cubby news', desc: 'New features and announcements', enabled: false },
   ]);
 
+  useEffect(() => {
+    AsyncStorage.getItem('cubby_notifications').then(raw => {
+      if (!raw) return;
+      try {
+        const saved: Record<string, boolean> = JSON.parse(raw);
+        setSettings(prev => prev.map(s => saved[s.id] !== undefined ? { ...s, enabled: saved[s.id] } : s));
+      } catch {}
+    });
+  }, []);
+
   function toggle(id: string) {
-    setSettings(prev => prev.map(s => s.id === id ? { ...s, enabled: !s.enabled } : s));
+    setSettings(prev => {
+      const next = prev.map(s => s.id === id ? { ...s, enabled: !s.enabled } : s);
+      const map: Record<string, boolean> = {};
+      next.forEach(s => { map[s.id] = s.enabled; });
+      AsyncStorage.setItem('cubby_notifications', JSON.stringify(map));
+      return next;
+    });
   }
 
   return (

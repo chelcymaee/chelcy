@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, TextInput, Switch, Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -28,13 +29,37 @@ export default function HostProfile() {
   const [untilTime, setUntilTime] = useState('20:00');
   const [days, setDays] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
   const [isActive, setIsActive] = useState(true);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('cubby_host_profile').then(raw => {
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (data.displayName !== undefined) setDisplayName(data.displayName);
+        if (data.bio !== undefined) setBio(data.bio);
+        if (data.location !== undefined) setLocation(data.location);
+        if (data.type !== undefined) setType(data.type);
+        if (data.pricePerBag !== undefined) setPricePerBag(data.pricePerBag);
+        if (data.maxBags !== undefined) setMaxBags(data.maxBags);
+        if (data.fromTime !== undefined) setFromTime(data.fromTime);
+        if (data.untilTime !== undefined) setUntilTime(data.untilTime);
+        if (data.days !== undefined) setDays(data.days);
+        if (data.isActive !== undefined) setIsActive(data.isActive);
+      } catch {}
+    });
+  }, []);
 
   function toggleDay(d: string) {
     setDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
   }
 
-  function save() {
-    Alert.alert('Profile saved!', 'Your host profile has been updated.');
+  async function save() {
+    const data = { displayName, bio, location, type, pricePerBag, maxBags, fromTime, untilTime, days, isActive };
+    await AsyncStorage.setItem('cubby_host_profile', JSON.stringify(data));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    Alert.alert('Saved!', 'Your host profile has been saved.');
   }
 
   return (
@@ -157,7 +182,7 @@ export default function HostProfile() {
 
         {/* Save */}
         <TouchableOpacity style={styles.saveBtn} onPress={save} activeOpacity={0.85}>
-          <Text style={styles.saveBtnText}>Save profile</Text>
+          <Text style={styles.saveBtnText}>{saved ? 'Saved!' : 'Save profile'}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
