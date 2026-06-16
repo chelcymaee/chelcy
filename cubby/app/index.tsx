@@ -17,9 +17,11 @@ export default function Welcome() {
 
       <View style={styles.pillsRow}>
         <View style={styles.pill}><Text style={styles.pillText}>☕ Cafés</Text></View>
-        <View style={styles.pill}><Text style={styles.pillText}>🏠 Homes</Text></View>
-        <View style={styles.pill}><Text style={styles.pillText}>🚗 Runners</Text></View>
-        <View style={styles.pill}><Text style={styles.pillText}>🛍️ Shops</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>🏨 Hotels</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>🛏️ Hostels</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>🔑 Airbnbs</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>🗺️ Tour Operators</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>🚗 Bag Runners</Text></View>
       </View>
 
       <View style={styles.ctas}>

@@ -16,10 +16,11 @@ export default function HostDetail() {
   if (!host) return null;
 
   const typeEmoji: Record<string, string> = {
-    cafe: '☕', home: '🏠', shop: '🛍️', guesthouse: '🏨', other: '📦',
+    cafe: '☕', hotel: '🏨', hostel: '🛏️', guesthouse: '🏡', airbnb: '🔑', tour_operator: '🗺️', home: '🏠', other: '📦',
   };
   const typeLabel: Record<string, string> = {
-    cafe: 'Café', home: 'Private Home', shop: 'Shop', guesthouse: 'Guesthouse', other: 'Other',
+    cafe: 'Café', hotel: 'Hotel', hostel: 'Hostel', guesthouse: 'Guesthouse',
+    airbnb: 'Airbnb Host', tour_operator: 'Tour Operator', home: 'Private Home', other: 'Other',
   };
 
   const total = host.price_per_bag_per_day * bagCount;

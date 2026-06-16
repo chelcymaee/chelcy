@@ -8,7 +8,7 @@ import { Colors } from '../../src/constants/colors';
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
 
-const BUSINESS_FILTERS = ['All', 'Café', 'Home', 'Shop', 'Guesthouse'];
+const BUSINESS_FILTERS = ['All', 'Café', 'Hotel', 'Hostel', 'Guesthouse', 'Airbnb', 'Tour Operator'];
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -21,7 +21,7 @@ function StarRating({ rating }: { rating: number }) {
 
 function HostCard({ host, onPress }: { host: Host; onPress: () => void }) {
   const typeEmoji: Record<string, string> = {
-    cafe: '☕', home: '🏠', shop: '🛍️', guesthouse: '🏨', other: '📦',
+    cafe: '☕', hotel: '🏨', hostel: '🛏️', guesthouse: '🏡', airbnb: '🔑', tour_operator: '🗺️', home: '🏠', other: '📦',
   };
 
   return (
@@ -74,9 +74,11 @@ export default function Explore() {
       || h.location_name.toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === 'All'
       || (filter === 'Café' && h.business_type === 'cafe')
-      || (filter === 'Home' && h.business_type === 'home')
-      || (filter === 'Shop' && h.business_type === 'shop')
-      || (filter === 'Guesthouse' && h.business_type === 'guesthouse');
+      || (filter === 'Hotel' && h.business_type === 'hotel')
+      || (filter === 'Hostel' && h.business_type === 'hostel')
+      || (filter === 'Guesthouse' && h.business_type === 'guesthouse')
+      || (filter === 'Airbnb' && h.business_type === 'airbnb')
+      || (filter === 'Tour Operator' && h.business_type === 'tour_operator');
     return matchSearch && matchFilter;
   });
 

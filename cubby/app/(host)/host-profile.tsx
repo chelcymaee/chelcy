@@ -8,9 +8,12 @@ import { Colors } from '../../src/constants/colors';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TYPES = [
   { value: 'cafe', label: 'Café', emoji: '☕' },
+  { value: 'hotel', label: 'Hotel', emoji: '🏨' },
+  { value: 'hostel', label: 'Hostel', emoji: '🛏️' },
+  { value: 'guesthouse', label: 'Guesthouse', emoji: '🏡' },
+  { value: 'airbnb', label: 'Airbnb', emoji: '🔑' },
+  { value: 'tour_operator', label: 'Tour Operator', emoji: '🗺️' },
   { value: 'home', label: 'Home', emoji: '🏠' },
-  { value: 'shop', label: 'Shop', emoji: '🛍️' },
-  { value: 'guesthouse', label: 'Guesthouse', emoji: '🏨' },
   { value: 'other', label: 'Other', emoji: '📦' },
 ];
 

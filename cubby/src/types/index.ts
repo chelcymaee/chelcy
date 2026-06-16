@@ -20,7 +20,7 @@ export interface Host {
   location_name: string;         // e.g. "Sea Point, Cape Town"
   latitude: number;
   longitude: number;
-  business_type: 'cafe' | 'home' | 'shop' | 'guesthouse' | 'other';
+  business_type: 'cafe' | 'hotel' | 'hostel' | 'guesthouse' | 'airbnb' | 'tour_operator' | 'home' | 'other';
   photos: string[];
   price_per_bag_per_day: number; // in ZAR
   max_bags: number;
