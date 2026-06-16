@@ -33,6 +33,10 @@ export default function TravellerLayout() {
       <Tabs.Screen name="chat" options={{ href: null }} />
       <Tabs.Screen name="payment-details" options={{ href: null }} />
       <Tabs.Screen name="runners" options={{ href: null }} />
+      <Tabs.Screen name="verification" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="safety" options={{ href: null }} />
+      <Tabs.Screen name="support" options={{ href: null }} />
     </Tabs>
   );
 }
