@@ -6,7 +6,7 @@ import {
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 
-type Role = 'traveller' | 'host' | 'both';
+type Role = 'traveller' | 'host' | 'both' | 'runner';
 
 export default function Signup() {
   const [fullName, setFullName] = useState('');
@@ -24,9 +24,13 @@ export default function Signup() {
     setTimeout(() => {
       setLoading(false);
       if (role === 'host') {
-        router.replace('/(host)/dashboard');
+        router.replace('/(host)/bank-details');
+      } else if (role === 'both') {
+        router.replace('/(host)/bank-details');
+      } else if (role === 'runner') {
+        router.replace('/(runner)/dashboard');
       } else {
-        router.replace('/(traveller)/explore');
+        router.replace('/(traveller)/payment-details');
       }
     }, 800);
   }
@@ -35,6 +39,7 @@ export default function Signup() {
     { value: 'traveller', emoji: '🧳', label: 'Traveller', desc: 'I need to store my bags' },
     { value: 'host', emoji: '🏠', label: 'Host', desc: 'I want to earn by storing bags' },
     { value: 'both', emoji: '✌️', label: 'Both', desc: 'I travel and host' },
+    { value: 'runner', emoji: '🚗', label: 'Bag Runner', desc: 'I pick up & deliver bags' },
   ];
 
   return (

@@ -152,6 +152,22 @@ export default function Explore() {
             <Text style={styles.emptyText}>No hosts found{'\n'}Try a different search</Text>
           </View>
         }
+        ListFooterComponent={
+          <View style={styles.runnerBanner}>
+            <Text style={styles.runnerBannerEmoji}>🚗</Text>
+            <Text style={styles.runnerBannerTitle}>Need bags delivered?</Text>
+            <Text style={styles.runnerBannerDesc}>
+              Don't want to carry your bags? A Bag Runner can pick them up and deliver them straight to your destination.
+            </Text>
+            <TouchableOpacity
+              style={styles.runnerBannerBtn}
+              onPress={() => router.push('/(traveller)/runners')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.runnerBannerBtnText}>Find a Bag Runner →</Text>
+            </TouchableOpacity>
+          </View>
+        }
       />
     </SafeAreaView>
   );
@@ -240,4 +256,23 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 60 },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 16, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
+  runnerBanner: {
+    backgroundColor: Colors.white,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    padding: 20,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  runnerBannerEmoji: { fontSize: 40, marginBottom: 8 },
+  runnerBannerTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginBottom: 6 },
+  runnerBannerDesc: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  runnerBannerBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+  },
+  runnerBannerBtnText: { color: Colors.white, fontWeight: '700', fontSize: 15 },
 });

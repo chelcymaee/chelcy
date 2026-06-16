@@ -24,27 +24,15 @@ export default function TravellerLayout() {
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ focused }) => <Icon emoji="🗺️" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="bookings"
-        options={{
-          title: 'Bookings',
-          tabBarIcon: ({ focused }) => <Icon emoji="🎟️" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ focused }) => <Icon emoji="👤" focused={focused} />,
-        }}
-      />
+      <Tabs.Screen name="explore" options={{ title: 'Explore', tabBarIcon: ({ focused }) => <Icon emoji="🗺️" focused={focused} /> }} />
+      <Tabs.Screen name="bookings" options={{ title: 'Bookings', tabBarIcon: ({ focused }) => <Icon emoji="🎟️" focused={focused} /> }} />
+      <Tabs.Screen name="messages" options={{ title: 'Messages', tabBarIcon: ({ focused }) => <Icon emoji="💬" focused={focused} /> }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ focused }) => <Icon emoji="👤" focused={focused} /> }} />
+      <Tabs.Screen name="host-detail" options={{ href: null }} />
+      <Tabs.Screen name="booking" options={{ href: null }} />
+      <Tabs.Screen name="chat" options={{ href: null }} />
+      <Tabs.Screen name="payment-details" options={{ href: null }} />
+      <Tabs.Screen name="runners" options={{ href: null }} />
     </Tabs>
   );
 }

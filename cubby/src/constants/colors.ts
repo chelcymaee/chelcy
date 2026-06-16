@@ -1,27 +1,18 @@
 export const Colors = {
-  // Brand
-  primary: '#1A3C34',       // deep forest green
-  primaryLight: '#2D6A58',
-  accent: '#F4A261',        // warm amber
-  accentLight: '#F7C59F',
-
-  // Neutrals
+  primary: '#FF5C5C',
+  primaryDark: '#E04040',
+  primaryLight: '#FF8A80',
+  accent: '#FFD93D',
+  accentAlt: '#6BCB77',
   white: '#FFFFFF',
-  offWhite: '#F8F6F2',
-  background: '#F5F3EF',
-  border: '#E5E0D8',
-
-  // Text
+  offWhite: '#FFF8F8',
+  background: '#FAFAFA',
+  border: '#F0EAEA',
   textPrimary: '#1A1A1A',
   textSecondary: '#6B7280',
   textLight: '#9CA3AF',
-
-  // Status
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#3B82F6',
-
-  // Stars
-  star: '#FBBF24',
+  success: '#6BCB77',
+  warning: '#FFD93D',
+  error: '#FF5C5C',
+  star: '#FFD93D',
 };

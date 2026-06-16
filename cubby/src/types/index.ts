@@ -1,4 +1,4 @@
-export type UserRole = 'traveller' | 'host' | 'both';
+export type UserRole = 'traveller' | 'host' | 'runner' | 'both';
 
 export interface UserProfile {
   id: string;
@@ -47,6 +47,35 @@ export interface Booking {
   total_price: number;
   status: 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled';
   pin_code: string;
+  created_at: string;
+}
+
+export interface Runner {
+  id: string;
+  user_id: string;
+  display_name: string;
+  avatar_url?: string;
+  vehicle_type: 'car' | 'suv' | 'bakkie' | 'motorbike';
+  max_bags: number;
+  price_per_bag_per_delivery: number; // ZAR
+  current_area: string;
+  rating: number;
+  review_count: number;
+  is_available: boolean;
+  created_at: string;
+}
+
+export interface DeliveryBooking {
+  id: string;
+  traveller_id: string;
+  runner_id: string;
+  runner: Runner;
+  pickup_address: string;
+  dropoff_address: string;
+  pickup_time: string;
+  bag_count: number;
+  total_price: number;
+  status: 'pending' | 'accepted' | 'picked_up' | 'delivering' | 'delivered' | 'cancelled';
   created_at: string;
 }
 

@@ -34,8 +34,8 @@ export default function Profile() {
             <Text style={styles.avatarEmoji}>👤</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.profileName}>Demo User</Text>
-            <Text style={styles.profileEmail}>demo@cubby.app</Text>
+            <Text style={styles.profileName}>Chelcy</Text>
+            <Text style={styles.profileEmail}>chelcymae1@gmail.com</Text>
             <View style={styles.verifiedRow}>
               <View style={styles.verifiedBadge}>
                 <Text style={styles.verifiedText}>✓ Verified</Text>
