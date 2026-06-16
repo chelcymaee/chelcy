@@ -35,7 +35,7 @@ export default function Profile() {
     { icon: '💳', label: 'Payment methods', onPress: () => router.push('/(traveller)/payment-details') },
     { icon: '🔔', label: 'Notifications', onPress: () => router.push('/(traveller)/notifications') },
     { icon: '✅', label: 'Get verified', onPress: () => router.push('/(traveller)/verification'), highlight: true },
-    { icon: '🏠', label: 'Switch to Host mode', onPress: () => router.replace('/(host)/dashboard'), accent: true },
+    { icon: '🏦', label: 'Bank details (hosts)', onPress: () => router.push('/(host)/bank-details') },
     { icon: '🛡️', label: 'Safety & trust', onPress: () => router.push('/(traveller)/safety') },
     { icon: '❓', label: 'Help & support', onPress: () => router.push('/(traveller)/support') },
   ];
@@ -202,4 +202,12 @@ const styles = StyleSheet.create({
   },
   signOutText: { fontSize: 16, fontWeight: '700', color: Colors.error },
   version: { textAlign: 'center', color: Colors.textLight, fontSize: 12, marginBottom: 8 },
+  switchBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.primary, marginHorizontal: 20, borderRadius: 16,
+    padding: 16, marginBottom: 16,
+  },
+  switchBannerTitle: { fontSize: 16, fontWeight: '800', color: Colors.white },
+  switchBannerSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  switchBannerArrow: { fontSize: 24, color: Colors.white },
 });
