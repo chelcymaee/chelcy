@@ -2,419 +2,460 @@ import { useState, useRef } from 'react';
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
   StyleSheet, SafeAreaView, ScrollView, Platform,
-  useSafeAreaInsets,
+  Modal, useSafeAreaInsets,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
 
-const BUSINESS_FILTERS = ['All', 'Café', 'Hotel', 'Hostel', 'Guesthouse', 'Airbnb', 'Tour Operator'];
+const TIME_SLOTS = [
+  '7am–8am','8am–9am','9am–10am','10am–11am','11am–12pm',
+  '12pm–1pm','1pm–2pm','2pm–3pm','3pm–4pm','4pm–5pm',
+  '5pm–6pm','6pm–7pm','7pm–8pm','8pm–9pm',
+];
 
 const typeEmoji: Record<string, string> = {
   cafe: '☕', hotel: '🏨', hostel: '🛏️', guesthouse: '🏡',
   airbnb: '🔑', tour_operator: '🗺️', home: '🏠', other: '📦',
 };
 
-// Mini card shown in the bottom horizontal strip
-function HostMiniCard({ host, highlighted, onPress }: { host: Host; highlighted: boolean; onPress: () => void }) {
-  return (
-    <TouchableOpacity
-      style={[styles.miniCard, highlighted && styles.miniCardHighlighted]}
-      onPress={onPress}
-      activeOpacity={0.88}
-    >
-      <View style={styles.miniCardRow}>
-        <Text style={styles.miniCardEmoji}>{typeEmoji[host.business_type] ?? '📦'}</Text>
-        <View style={styles.miniCardInfo}>
-          <Text style={styles.miniCardName} numberOfLines={1}>{host.display_name}</Text>
-          <Text style={styles.miniCardLocation} numberOfLines={1}>📍 {host.location_name}</Text>
-          <View style={styles.miniCardBottomRow}>
-            <View style={styles.miniPriceBadge}>
-              <Text style={styles.miniPriceText}>R{host.price_per_bag_per_day}/day</Text>
-            </View>
-            <Text style={styles.miniRating}>★ {host.rating.toFixed(1)}</Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+function todayLabel() {
+  const now = new Date();
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `Today, ${now.getDate()} ${months[now.getMonth()]}`;
 }
 
-// Full card for the web/list fallback
-function HostCard({ host, onPress }: { host: Host; onPress: () => void }) {
-  return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.92}>
-      <View style={styles.cardImage}>
-        <Text style={styles.cardImageEmoji}>{typeEmoji[host.business_type] ?? '📦'}</Text>
-        <View style={styles.instantBadge}>
-          <Text style={styles.instantBadgeText}>⚡ Instant Book</Text>
-        </View>
-      </View>
-      <View style={styles.cardBody}>
-        <View style={styles.cardTopRow}>
-          <Text style={styles.cardName} numberOfLines={1}>{host.display_name}</Text>
-          <View style={styles.priceBadge}>
-            <Text style={styles.priceText}>R{host.price_per_bag_per_day}</Text>
-            <Text style={styles.priceUnit}>/bag/day</Text>
-          </View>
-        </View>
-        <View style={styles.locationRow}>
-          <Text style={styles.cardLocation}>📍 {host.location_name}</Text>
-        </View>
-        <View style={styles.statsRow}>
-          <Text style={styles.starText}>★ {host.rating.toFixed(1)}</Text>
-          <Text style={styles.statSep}>·</Text>
-          <Text style={styles.statText}>{host.review_count} reviews</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-// Map-first layout (native only)
-function MapFirstExplore({ filtered, search, setSearch, filter, setFilter }: {
-  filtered: Host[];
-  search: string;
-  setSearch: (s: string) => void;
-  filter: string;
-  setFilter: (f: string) => void;
+// ─── Time Picker Modal ────────────────────────────────────────────────────────
+function TimePickerModal({
+  visible, title, selected, onSelect, onClose,
+}: {
+  visible: boolean; title: string; selected: string;
+  onSelect: (t: string) => void; onClose: () => void;
 }) {
-  const insets = useSafeAreaInsets();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const flatListRef = useRef<FlatList>(null);
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>{title}</Text>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
+            {TIME_SLOTS.map(slot => (
+              <TouchableOpacity
+                key={slot}
+                style={[styles.timeSlotRow, selected === slot && styles.timeSlotRowActive]}
+                onPress={() => { onSelect(slot); onClose(); }}
+              >
+                <Text style={[styles.timeSlotText, selected === slot && styles.timeSlotTextActive]}>
+                  {slot}
+                </Text>
+                {selected === slot && <Text style={styles.timeSlotCheck}>✓</Text>}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
 
-  // Lazy import HostMap only on native to avoid web issues
-  const HostMap = require('../../src/components/HostMap').default;
-
-  function handlePinPress(hostId: string) {
-    setSelectedId(hostId);
-    const idx = filtered.findIndex(h => h.id === hostId);
-    if (idx >= 0 && flatListRef.current) {
-      flatListRef.current.scrollToIndex({ index: idx, animated: true, viewPosition: 0 });
-    }
-  }
+// ─── Location Search Modal ────────────────────────────────────────────────────
+function LocationModal({
+  visible, value, onSelect, onClose,
+}: {
+  visible: boolean; value: string; onSelect: (l: string) => void; onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  const suggestions = ['Cape Town, South Africa', 'Sea Point, Cape Town', 'V&A Waterfront, Cape Town', 'Camps Bay, Cape Town', 'Green Point, Cape Town'];
 
   return (
-    <View style={styles.mapContainer}>
-      {/* Map fills entire screen */}
-      <HostMap
-        filtered={filtered}
-        style={StyleSheet.absoluteFillObject}
-        onPinPress={handlePinPress}
-      />
-
-      {/* Floating top bar */}
-      <View style={[styles.floatingTop, { paddingTop: insets.top + 8 }]}>
-        {/* Search box */}
-        <View style={styles.floatingSearchBox}>
-          <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
-            style={styles.searchInput}
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search Cape Town..."
-            placeholderTextColor="#6B7280"
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Text style={{ fontSize: 16, color: '#6B7280' }}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Filter chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterScroll}
-          contentContainerStyle={styles.filterContent}
-        >
-          {BUSINESS_FILTERS.map(f => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.filterChip, filter === f && styles.filterChipActive]}
-              onPress={() => setFilter(f)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={[styles.modalSheet, { paddingBottom: 32 }]}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>Where to?</Text>
+          <View style={styles.locInputRow}>
+            <Text style={styles.locInputIcon}>📍</Text>
+            <TextInput
+              style={styles.locInput}
+              value={draft}
+              onChangeText={setDraft}
+              autoFocus
+              placeholder="Search location…"
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
+          {suggestions.map(s => (
+            <TouchableOpacity key={s} style={styles.suggestionRow} onPress={() => { onSelect(s); onClose(); }}>
+              <Text style={styles.suggestionIcon}>🔍</Text>
+              <Text style={styles.suggestionText}>{s}</Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
-      </View>
-
-      {/* Bottom cards strip */}
-      <View style={[styles.bottomStrip, { paddingBottom: insets.bottom + 8 }]}>
-        <Text style={styles.hostsNearLabel}>{filtered.length} hosts near you</Text>
-        <FlatList
-          ref={flatListRef}
-          data={filtered}
-          keyExtractor={item => item.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          pagingEnabled={false}
-          contentContainerStyle={styles.miniCardList}
-          renderItem={({ item }) => (
-            <HostMiniCard
-              host={item}
-              highlighted={selectedId === item.id}
-              onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id } })}
-            />
-          )}
-          ListEmptyComponent={
-            <View style={styles.miniEmpty}>
-              <Text style={styles.miniEmptyText}>No hosts found. Try a different filter.</Text>
-            </View>
-          }
-        />
-      </View>
-    </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
-// Web/list fallback
-function ListExplore({ filtered, search, setSearch, filter, setFilter }: {
-  filtered: Host[];
-  search: string;
-  setSearch: (s: string) => void;
-  filter: string;
-  setFilter: (f: string) => void;
+// ─── Results Host Card ────────────────────────────────────────────────────────
+function ResultCard({ host, index, onPress }: { host: Host; index: number; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.resultCard} onPress={onPress} activeOpacity={0.92}>
+      <View style={styles.resultCardLeft}>
+        <View style={styles.resultEmojiBox}>
+          <Text style={styles.resultEmoji}>{typeEmoji[host.business_type] ?? '📦'}</Text>
+        </View>
+      </View>
+      <View style={styles.resultCardBody}>
+        <Text style={styles.resultLabel}>STORAGE IN</Text>
+        <Text style={styles.resultName}>{host.display_name}</Text>
+        <Text style={styles.resultLocation}>{host.location_name}</Text>
+        <View style={styles.resultStatsRow}>
+          <Text style={styles.resultStar}>★ {host.rating.toFixed(1)}</Text>
+          <Text style={styles.resultStatSep}>·</Text>
+          <Text style={styles.resultStatText}>{host.review_count} reviews</Text>
+          <Text style={styles.resultStatSep}>·</Text>
+          <Text style={styles.resultPrice}>R{host.price_per_bag_per_day}/bag/day</Text>
+          <Text style={styles.resultStatSep}>·</Text>
+          <Text style={styles.resultWalk}>🚶 {3 + index * 2} min</Text>
+        </View>
+        <View style={styles.resultBadgeRow}>
+          <View style={styles.openBadge}><Text style={styles.openBadgeText}>OPEN</Text></View>
+          {index === 0 && <View style={styles.closestBadge}><Text style={styles.closestBadgeText}>CLOSEST</Text></View>}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Search Screen ────────────────────────────────────────────────────────────
+function SearchScreen({
+  location, setLocation,
+  dropOff, setDropOff,
+  pickUp, setPickUp,
+  onSearch,
+}: {
+  location: string; setLocation: (l: string) => void;
+  dropOff: string; setDropOff: (t: string) => void;
+  pickUp: string; setPickUp: (t: string) => void;
+  onSearch: () => void;
 }) {
+  const [showLocation, setShowLocation] = useState(false);
+  const [showDropOff, setShowDropOff] = useState(false);
+  const [showPickUp, setShowPickUp] = useState(false);
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Good morning 👋</Text>
-          <Text style={styles.headerTitle}>Find storage near you</Text>
+      <ScrollView contentContainerStyle={styles.searchScroll} showsVerticalScrollIndicator={false}>
+        <Text style={styles.searchHeading}>Find storage near you</Text>
+
+        {/* Where */}
+        <Text style={styles.sectionLabel}>Where?</Text>
+        <TouchableOpacity style={styles.locationCard} onPress={() => setShowLocation(true)} activeOpacity={0.85}>
+          <Text style={styles.locationCardPin}>📍</Text>
+          <Text style={styles.locationCardText} numberOfLines={1}>{location}</Text>
+          <Text style={styles.locationCardGps}>⊕</Text>
+        </TouchableOpacity>
+
+        {/* When */}
+        <Text style={styles.sectionLabel}>When?</Text>
+        <View style={styles.dateCard}>
+          <Text style={styles.dateCardIcon}>📅</Text>
+          <Text style={styles.dateCardText}>{todayLabel()}</Text>
         </View>
-        <View style={styles.locationChip}>
-          <Text style={styles.locationChipText}>📍 Cape Town</Text>
-        </View>
-      </View>
 
-      <View style={styles.searchRow}>
-        <View style={styles.searchBox}>
-          <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
-            style={styles.searchInput}
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search Cape Town..."
-            placeholderTextColor="#6B7280"
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Text style={{ fontSize: 16, color: '#6B7280' }}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersScroll}
-        contentContainerStyle={styles.filtersContent}
-      >
-        {BUSINESS_FILTERS.map(f => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterChip, filter === f && styles.filterChipActive]}
-            onPress={() => setFilter(f)}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <Text style={styles.resultCount}>{filtered.length} hosts available</Text>
-
-      <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <HostCard
-            host={item}
-            onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id } })}
-          />
-        )}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>🚀</Text>
-            <Text style={styles.emptyTitle}>Growing fast in Cape Town</Text>
-            <Text style={styles.emptyText}>
-              No hosts in this category yet — but we're signing up new hosts every day.
-            </Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(traveller)/support')}>
-              <Text style={styles.emptyBtnText}>Nominate a location</Text>
+        {/* Times */}
+        <View style={styles.timesRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.timeLabel}>Drop-off Time</Text>
+            <TouchableOpacity style={styles.timeSelector} onPress={() => setShowDropOff(true)} activeOpacity={0.85}>
+              <Text style={styles.timeSelectorText}>{dropOff}</Text>
+              <Text style={styles.timeSelectorArrow}>▾</Text>
             </TouchableOpacity>
           </View>
-        }
+          <View style={styles.timeArrowBetween}><Text style={styles.timeArrowBetweenText}>→</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.timeLabel}>Pick-up Time</Text>
+            <TouchableOpacity style={styles.timeSelector} onPress={() => setShowPickUp(true)} activeOpacity={0.85}>
+              <Text style={styles.timeSelectorText}>{pickUp}</Text>
+              <Text style={styles.timeSelectorArrow}>▾</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.seeResultsBtn} onPress={onSearch} activeOpacity={0.88}>
+          <Text style={styles.seeResultsBtnText}>See results →</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      <LocationModal
+        visible={showLocation}
+        value={location}
+        onSelect={setLocation}
+        onClose={() => setShowLocation(false)}
+      />
+      <TimePickerModal
+        visible={showDropOff}
+        title="Drop-off Time"
+        selected={dropOff}
+        onSelect={setDropOff}
+        onClose={() => setShowDropOff(false)}
+      />
+      <TimePickerModal
+        visible={showPickUp}
+        title="Pick-up Time"
+        selected={pickUp}
+        onSelect={setPickUp}
+        onClose={() => setShowPickUp(false)}
       />
     </SafeAreaView>
   );
 }
 
+// ─── Results Screen ───────────────────────────────────────────────────────────
+function ResultsScreen({
+  hosts, location, dropOff, pickUp,
+  onBack,
+}: {
+  hosts: Host[]; location: string; dropOff: string; pickUp: string;
+  onBack: () => void;
+}) {
+  const [showMap, setShowMap] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  // Lazy-load HostMap on native only
+  const HostMap = Platform.OS !== 'web'
+    ? require('../../src/components/HostMap').default
+    : null;
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Top bar */}
+      <View style={styles.resultsTopBar}>
+        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+          <Text style={styles.backBtnText}>‹</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.resultsSummary} numberOfLines={1}>
+            {location} · {todayLabel()} · {dropOff} → {pickUp}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={styles.resultsCount}>{hosts.length} storage spots</Text>
+
+      {showMap && HostMap ? (
+        <View style={{ flex: 1 }}>
+          <HostMap
+            filtered={hosts}
+            style={StyleSheet.absoluteFillObject}
+            onPinPress={(id: string) => {
+              router.push({ pathname: '/(traveller)/host-detail', params: { id } });
+            }}
+          />
+        </View>
+      ) : (
+        <FlatList
+          data={hosts}
+          keyExtractor={item => item.id}
+          renderItem={({ item, index }) => (
+            <ResultCard
+              host={item}
+              index={index}
+              onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id } })}
+            />
+          )}
+          contentContainerStyle={styles.resultsList}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyEmoji}>🔍</Text>
+              <Text style={styles.emptyTitle}>No spots found</Text>
+              <Text style={styles.emptyText}>Try a different location or time.</Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* Map toggle bar */}
+      {Platform.OS !== 'web' && (
+        <TouchableOpacity
+          style={[styles.mapToggleBar, { paddingBottom: insets.bottom + 8 }]}
+          onPress={() => setShowMap(v => !v)}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.mapToggleText}>
+            {showMap ? 'Show list 📋' : 'Tap to show on map 🗺️'}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </SafeAreaView>
+  );
+}
+
+// ─── Main Export ──────────────────────────────────────────────────────────────
 export default function Explore() {
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('All');
+  const [step, setStep] = useState<'search' | 'results'>('search');
+  const [location, setLocation] = useState('Cape Town, South Africa');
+  const [dropOff, setDropOff] = useState('9am–10am');
+  const [pickUp, setPickUp] = useState('5pm–6pm');
 
-  const filtered = MOCK_HOSTS.filter(h => {
-    const matchSearch = h.display_name.toLowerCase().includes(search.toLowerCase())
-      || h.location_name.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'All'
-      || (filter === 'Café' && h.business_type === 'cafe')
-      || (filter === 'Hotel' && h.business_type === 'hotel')
-      || (filter === 'Hostel' && h.business_type === 'hostel')
-      || (filter === 'Guesthouse' && h.business_type === 'guesthouse')
-      || (filter === 'Airbnb' && h.business_type === 'airbnb')
-      || (filter === 'Tour Operator' && h.business_type === 'tour_operator');
-    return matchSearch && matchFilter;
-  });
+  const hosts = MOCK_HOSTS;
 
-  if (Platform.OS === 'web') {
+  if (step === 'results') {
     return (
-      <ListExplore
-        filtered={filtered}
-        search={search}
-        setSearch={setSearch}
-        filter={filter}
-        setFilter={setFilter}
+      <ResultsScreen
+        hosts={hosts}
+        location={location}
+        dropOff={dropOff}
+        pickUp={pickUp}
+        onBack={() => setStep('search')}
       />
     );
   }
 
   return (
-    <MapFirstExplore
-      filtered={filtered}
-      search={search}
-      setSearch={setSearch}
-      filter={filter}
-      setFilter={setFilter}
+    <SearchScreen
+      location={location}
+      setLocation={setLocation}
+      dropOff={dropOff}
+      setDropOff={setDropOff}
+      pickUp={pickUp}
+      setPickUp={setPickUp}
+      onSearch={() => setStep('results')}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  // Map-first styles
-  mapContainer: { flex: 1 },
-  floatingTop: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  floatingSearchBox: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12,
-    gap: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15, shadowRadius: 8, elevation: 5,
-    marginBottom: 10,
-  },
-  filterScroll: { },
-  filterContent: { gap: 8 },
-  bottomStrip: {
-    position: 'absolute',
-    bottom: 0, left: 0, right: 0,
-    paddingTop: 12,
-  },
-  hostsNearLabel: {
-    fontSize: 13, fontWeight: '700', color: '#FFFFFF',
-    marginLeft: 16, marginBottom: 8,
-    textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
-  },
-  miniCardList: { paddingHorizontal: 12, gap: 0 },
-  miniCard: {
-    width: 220, backgroundColor: '#FFFFFF', borderRadius: 16,
-    marginLeft: 12, padding: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
-  },
-  miniCardHighlighted: {
-    borderWidth: 2, borderColor: '#FF5C5C',
-  },
-  miniCardRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  miniCardEmoji: { fontSize: 28, lineHeight: 36 },
-  miniCardInfo: { flex: 1 },
-  miniCardName: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 2 },
-  miniCardLocation: { fontSize: 12, color: '#6B7280', marginBottom: 6 },
-  miniCardBottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  miniPriceBadge: { backgroundColor: '#FFF0F0', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
-  miniPriceText: { fontSize: 12, fontWeight: '700', color: '#FF5C5C' },
-  miniRating: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
-  miniEmpty: { width: 280, padding: 20, alignItems: 'center' },
-  miniEmptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center' },
-
-  // Shared filter chip styles
-  filterChip: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E5E7EB',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08, shadowRadius: 3, elevation: 2,
-  },
-  filterChipActive: { backgroundColor: '#FF5C5C', borderColor: '#FF5C5C' },
-  filterText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
-  filterTextActive: { color: '#FFFFFF' },
-
-  // Web/list layout styles
   container: { flex: 1, backgroundColor: '#FAFAFA' },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12,
+
+  // ── Search screen ──
+  searchScroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 },
+  searchHeading: { fontSize: 26, fontWeight: '800', color: '#1A1A1A', marginBottom: 28 },
+
+  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', marginBottom: 8, letterSpacing: 0.5 },
+
+  locationCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 16,
+    borderWidth: 1.5, borderColor: '#F0EAEA',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+    marginBottom: 20,
   },
-  greeting: { fontSize: 14, color: '#6B7280' },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: '#111827', marginTop: 2 },
-  locationChip: { backgroundColor: '#FF5C5C', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
-  locationChipText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
-  searchRow: { paddingHorizontal: 20, marginBottom: 8 },
-  searchBox: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
-    borderWidth: 1.5, borderColor: '#E5E7EB', gap: 8,
+  locationCardPin: { fontSize: 18 },
+  locationCardText: { flex: 1, fontSize: 16, color: '#1A1A1A', fontWeight: '500' },
+  locationCardGps: { fontSize: 20, color: '#FF5C5C', fontWeight: '700' },
+
+  dateCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 16,
+    borderWidth: 1.5, borderColor: '#F0EAEA',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+    marginBottom: 20,
   },
-  searchIcon: { fontSize: 16 },
-  searchInput: { flex: 1, fontSize: 16, color: '#111827' },
-  filtersScroll: { marginBottom: 6 },
-  filtersContent: { paddingHorizontal: 20, gap: 8 },
-  resultCount: { paddingHorizontal: 20, fontSize: 13, color: '#6B7280', marginBottom: 8 },
-  list: { paddingHorizontal: 20, paddingBottom: 32, gap: 16 },
-  card: {
-    backgroundColor: '#FFFFFF', borderRadius: 18, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
+  dateCardIcon: { fontSize: 18 },
+  dateCardText: { fontSize: 16, color: '#1A1A1A', fontWeight: '500' },
+
+  timesRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 32 },
+  timeLabel: { fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 6 },
+  timeSelector: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14,
+    borderWidth: 1.5, borderColor: '#F0EAEA',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
-  cardImage: {
-    height: 140, backgroundColor: '#FFF0F0', alignItems: 'center',
-    justifyContent: 'center', position: 'relative',
+  timeSelectorText: { fontSize: 14, fontWeight: '600', color: '#1A1A1A' },
+  timeSelectorArrow: { fontSize: 14, color: '#6B7280' },
+  timeArrowBetween: { paddingBottom: 14, paddingHorizontal: 2 },
+  timeArrowBetweenText: { fontSize: 18, color: '#9CA3AF' },
+
+  seeResultsBtn: {
+    backgroundColor: '#FF5C5C', borderRadius: 18, paddingVertical: 18, alignItems: 'center',
+    shadowColor: '#FF5C5C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
   },
-  cardImageEmoji: { fontSize: 56 },
-  instantBadge: {
-    position: 'absolute', top: 10, left: 10,
-    backgroundColor: '#FF5C5C', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4,
+  seeResultsBtnText: { fontSize: 17, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.3 },
+
+  // ── Modals ──
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalSheet: {
+    backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24,
   },
-  instantBadgeText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
-  cardBody: { padding: 14 },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
-  cardName: { fontSize: 17, fontWeight: '700', color: '#111827', flex: 1, marginRight: 8 },
-  priceBadge: { alignItems: 'flex-end' },
-  priceText: { fontSize: 16, fontWeight: '800', color: '#FF5C5C' },
-  priceUnit: { fontSize: 10, color: '#6B7280' },
-  locationRow: { marginBottom: 6 },
-  cardLocation: { fontSize: 13, color: '#6B7280' },
-  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  starText: { fontSize: 12, fontWeight: '700', color: '#F59E0B' },
-  statSep: { color: '#9CA3AF' },
-  statText: { fontSize: 12, color: '#6B7280' },
+  modalHandle: { width: 36, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', marginBottom: 16 },
+
+  timeSlotRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 14, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#F0EAEA',
+  },
+  timeSlotRowActive: { backgroundColor: '#FFF0F0', borderRadius: 10, paddingHorizontal: 10 },
+  timeSlotText: { fontSize: 16, color: '#1A1A1A' },
+  timeSlotTextActive: { fontWeight: '700', color: '#FF5C5C' },
+  timeSlotCheck: { fontSize: 16, color: '#FF5C5C', fontWeight: '700' },
+
+  locInputRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#FAFAFA', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14,
+    borderWidth: 1.5, borderColor: '#F0EAEA', marginBottom: 16,
+  },
+  locInputIcon: { fontSize: 18 },
+  locInput: { flex: 1, fontSize: 16, color: '#1A1A1A' },
+  suggestionRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F0EAEA',
+  },
+  suggestionIcon: { fontSize: 16 },
+  suggestionText: { fontSize: 15, color: '#1A1A1A' },
+
+  // ── Results screen ──
+  resultsTopBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: '#F0EAEA', backgroundColor: '#FFFFFF',
+  },
+  backBtn: { padding: 4 },
+  backBtnText: { fontSize: 28, color: '#1A1A1A', lineHeight: 28 },
+  resultsSummary: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
+
+  resultsCount: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', paddingHorizontal: 20, paddingTop: 14, paddingBottom: 6 },
+  resultsList: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 80, gap: 12 },
+
+  resultCard: {
+    flexDirection: 'row', gap: 14, backgroundColor: '#FFFFFF', borderRadius: 18, padding: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+  },
+  resultCardLeft: { justifyContent: 'flex-start', paddingTop: 2 },
+  resultEmojiBox: {
+    width: 52, height: 52, borderRadius: 14, backgroundColor: '#FFF0F0',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  resultEmoji: { fontSize: 26 },
+  resultCardBody: { flex: 1 },
+  resultLabel: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.8, marginBottom: 2 },
+  resultName: { fontSize: 17, fontWeight: '800', color: '#1A1A1A', marginBottom: 2 },
+  resultLocation: { fontSize: 13, color: '#6B7280', marginBottom: 6 },
+  resultStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 3, marginBottom: 8 },
+  resultStar: { fontSize: 12, fontWeight: '700', color: '#F59E0B' },
+  resultStatSep: { fontSize: 12, color: '#D1D5DB' },
+  resultStatText: { fontSize: 12, color: '#6B7280' },
+  resultPrice: { fontSize: 12, fontWeight: '700', color: '#FF5C5C' },
+  resultWalk: { fontSize: 12, color: '#6B7280' },
+  resultBadgeRow: { flexDirection: 'row', gap: 6 },
+  openBadge: { backgroundColor: '#DCFCE7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  openBadgeText: { fontSize: 10, fontWeight: '800', color: '#16A34A', letterSpacing: 0.5 },
+  closestBadge: { backgroundColor: '#EEF2FF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  closestBadgeText: { fontSize: 10, fontWeight: '800', color: '#4F46E5', letterSpacing: 0.5 },
+
+  mapToggleBar: {
+    backgroundColor: '#1A1A1A', paddingTop: 16, alignItems: 'center',
+  },
+  mapToggleText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+
+  // Shared empty state
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 20 },
-  emptyEmoji: { fontSize: 52, marginBottom: 12 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 8 },
-  emptyText: { fontSize: 15, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 24 },
-  emptyBtn: { backgroundColor: '#FF5C5C', borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14 },
-  emptyBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  emptyEmoji: { fontSize: 48, marginBottom: 12 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 8 },
+  emptyText: { fontSize: 15, color: '#6B7280', textAlign: 'center' },
 });

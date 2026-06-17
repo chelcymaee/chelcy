@@ -5,6 +5,41 @@ import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface MenuItem {
+  icon: string;
+  label: string;
+  onPress: () => void;
+  highlight?: boolean;
+}
+
+interface MenuSection {
+  title: string;
+  items: MenuItem[];
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+function SectionHeader({ title }: { title: string }) {
+  return <Text style={styles.sectionHeader}>{title}</Text>;
+}
+
+function MenuRow({ item, isLast }: { item: MenuItem; isLast: boolean }) {
+  return (
+    <TouchableOpacity
+      style={[styles.menuRow, isLast && { borderBottomWidth: 0 }]}
+      onPress={item.onPress}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.menuRowIcon}>{item.icon}</Text>
+      <Text style={[styles.menuRowLabel, item.highlight && styles.menuRowLabelHighlight]}>
+        {item.label}
+      </Text>
+      <Text style={styles.menuRowChevron}>›</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function Profile() {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [name, setName] = useState('Chelcy');
@@ -64,53 +99,52 @@ export default function Profile() {
     ]);
   }
 
-  const MENU_ITEMS = [
-    { icon: '💳', label: 'Payment methods', onPress: () => router.push('/(traveller)/payment-details') },
-    { icon: '🔔', label: 'Notifications', onPress: () => router.push('/(traveller)/notifications') },
-    { icon: '✅', label: 'Get verified', onPress: () => router.push('/(traveller)/verification'), highlight: true },
-    { icon: '🏦', label: 'Bank details (hosts)', onPress: () => router.push('/(host)/bank-details') },
-    { icon: '🛡️', label: 'Safety & trust', onPress: () => router.push('/(traveller)/safety') },
-    { icon: '❓', label: 'Help & support', onPress: () => router.push('/(traveller)/support') },
+  function handleDeleteAccount() {
+    Alert.alert('Delete account', 'This action cannot be undone. Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => {} },
+    ]);
+  }
+
+  const SECTIONS: MenuSection[] = [
+    {
+      title: 'Hosting',
+      items: [
+        { icon: '🏠', label: 'Switch to Host Dashboard', onPress: () => router.replace('/(host)/dashboard') },
+        { icon: '📋', label: 'My host listing', onPress: () => router.push('/(host)/host-profile') },
+        { icon: '🏦', label: 'Bank details', onPress: () => router.push('/(host)/bank-details') },
+      ],
+    },
+    {
+      title: 'General',
+      items: [
+        { icon: '💳', label: 'Payment methods', onPress: () => router.push('/(traveller)/payment-details') },
+        { icon: '🔔', label: 'Notifications', onPress: () => router.push('/(traveller)/notifications') },
+        { icon: '✅', label: 'Get verified ✅', onPress: () => router.push('/(traveller)/verification'), highlight: true },
+      ],
+    },
+    {
+      title: 'Information',
+      items: [
+        { icon: '❓', label: 'How it works', onPress: () => router.push('/(traveller)/support') },
+        { icon: '💬', label: 'FAQ', onPress: () => router.push('/(traveller)/support') },
+        { icon: '🛡️', label: 'Safety & trust', onPress: () => router.push('/(traveller)/safety') },
+        { icon: '📞', label: 'Contact support', onPress: () => router.push('/(traveller)/support') },
+      ],
+    },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.heading}>Account</Text>
         </View>
 
-        {/* Become a Host card */}
-        <TouchableOpacity
-          style={styles.becomeHostCard}
-          onPress={() => router.push('/(host)/bank-details')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.becomeHostLeft}>
-            <Text style={styles.becomeHostEmoji}>🏠</Text>
-            <View>
-              <Text style={styles.becomeHostTitle}>Become a Cubby Host</Text>
-              <Text style={styles.becomeHostSub}>Earn money storing bags for travellers</Text>
-            </View>
-          </View>
-          <Text style={styles.becomeHostArrow}>›</Text>
-        </TouchableOpacity>
-
-        {/* Switch to Host Dashboard */}
-        <TouchableOpacity
-          style={styles.switchBanner}
-          onPress={() => router.replace('/(host)/dashboard')}
-          activeOpacity={0.85}
-        >
-          <View>
-            <Text style={styles.switchBannerTitle}>Switch to Host Dashboard 🏠</Text>
-            <Text style={styles.switchBannerSub}>Manage your listing and earnings</Text>
-          </View>
-          <Text style={styles.switchBannerArrow}>›</Text>
-        </TouchableOpacity>
-
-        <View style={styles.profileCard}>
-          <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
+        {/* Profile row */}
+        <TouchableOpacity style={styles.profileRow} activeOpacity={0.85} onPress={pickImage}>
+          <View style={styles.avatarContainer}>
             {avatar ? (
               <Image source={{ uri: avatar }} style={styles.avatarImage} />
             ) : (
@@ -121,87 +155,67 @@ export default function Profile() {
             <View style={styles.avatarEditBadge}>
               <Text style={styles.avatarEditText}>📷</Text>
             </View>
-          </TouchableOpacity>
+          </View>
           <View style={{ flex: 1 }}>
             {editingName ? (
-              <View style={styles.nameRow}>
-                <TextInput
-                  style={styles.nameInput}
-                  value={draftName}
-                  onChangeText={setDraftName}
-                  autoFocus
-                  onSubmitEditing={handleSaveName}
-                />
-              </View>
+              <TextInput
+                style={styles.nameInput}
+                value={draftName}
+                onChangeText={setDraftName}
+                autoFocus
+                onSubmitEditing={handleSaveName}
+              />
             ) : (
-              <View style={styles.nameRow}>
-                <Text style={styles.profileName}>{name}</Text>
-                <View style={styles.unverifiedBadge}>
-                  <Text style={styles.unverifiedText}>Unverified</Text>
-                </View>
-              </View>
+              <Text style={styles.profileName}>{name}</Text>
             )}
             <Text style={styles.profileEmail}>chelcymae1@gmail.com</Text>
           </View>
           {editingName ? (
-            <TouchableOpacity style={styles.editBtn} onPress={handleSaveName}>
-              <Text style={styles.editBtnText}>Save</Text>
+            <TouchableOpacity style={styles.editChip} onPress={handleSaveName}>
+              <Text style={styles.editChipText}>Save</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.editBtn} onPress={handleEditPress}>
-              <Text style={styles.editBtnText}>Edit</Text>
+            <TouchableOpacity style={styles.editChip} onPress={handleEditPress}>
+              <Text style={styles.editChipText}>Edit ›</Text>
             </TouchableOpacity>
           )}
-        </View>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statNum}>0</Text>
-            <Text style={styles.statLabel}>Bookings</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statNum}>0</Text>
-            <Text style={styles.statLabel}>Reviews</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statNum}>R0</Text>
-            <Text style={styles.statLabel}>Total spent</Text>
-          </View>
-        </View>
-
-        <View style={styles.menu}>
-          {MENU_ITEMS.map((item, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={[
-                styles.menuItem,
-                item.highlight && styles.menuItemHighlight,
-                item.accent && styles.menuItemAccent,
-                idx === MENU_ITEMS.length - 1 && { borderBottomWidth: 0 },
-              ]}
-              onPress={item.onPress}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.menuIcon}>{item.icon}</Text>
-              <Text style={[
-                styles.menuLabel,
-                item.highlight && styles.menuLabelHighlight,
-                item.accent && styles.menuLabelAccent,
-              ]}>
-                {item.label}
-              </Text>
-              <Text style={styles.menuArrow}>›</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>Cubby v1.0 · Cape Town 🇿🇦</Text>
+        {/* Become a Host banner */}
+        <TouchableOpacity
+          style={styles.becomeHostCard}
+          onPress={() => router.push('/(host)/bank-details')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.becomeHostEmoji}>🏠</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.becomeHostTitle}>Become a Cubby Host</Text>
+            <Text style={styles.becomeHostSub}>Earn money storing bags →</Text>
+          </View>
+          <Text style={styles.becomeHostArrow}>›</Text>
+        </TouchableOpacity>
+
+        {/* Menu sections */}
+        {SECTIONS.map(section => (
+          <View key={section.title}>
+            <SectionHeader title={section.title} />
+            <View style={styles.menuSection}>
+              {section.items.map((item, idx) => (
+                <MenuRow key={item.label} item={item} isLast={idx === section.items.length - 1} />
+              ))}
+            </View>
+          </View>
+        ))}
+
+        {/* Sign out / Delete */}
+        <View style={styles.divider} />
+        <TouchableOpacity style={styles.signOutRow} onPress={handleSignOut}>
+          <Text style={styles.signOutText}>Sign out</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.deleteRow} onPress={handleDeleteAccount}>
+          <Text style={styles.deleteText}>Delete account</Text>
+        </TouchableOpacity>
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
@@ -210,86 +224,82 @@ export default function Profile() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: { padding: 20, paddingTop: 8 },
+
+  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
-  profileCard: {
+
+  // Profile row
+  profileRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: Colors.white, marginHorizontal: 20, borderRadius: 18,
-    padding: 16, borderWidth: 1, borderColor: Colors.border, marginBottom: 16,
+    padding: 16, borderWidth: 1, borderColor: Colors.border, marginBottom: 16, marginTop: 8,
   },
   avatarContainer: { position: 'relative' },
-  avatarImage: { width: 64, height: 64, borderRadius: 32 },
+  avatarImage: { width: 56, height: 56, borderRadius: 28 },
   avatar: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: Colors.border, alignItems: 'center', justifyContent: 'center',
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#F0EAEA', alignItems: 'center', justifyContent: 'center',
   },
-  avatarEmoji: { fontSize: 32 },
+  avatarEmoji: { fontSize: 28 },
   avatarEditBadge: {
     position: 'absolute', bottom: 0, right: 0,
-    width: 22, height: 22, borderRadius: 11,
+    width: 20, height: 20, borderRadius: 10,
     backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: Colors.white,
   },
-  avatarEditText: { fontSize: 10 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  nameInput: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, borderBottomWidth: 1.5, borderBottomColor: Colors.primary, minWidth: 100 },
-  profileName: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  unverifiedBadge: {
-    backgroundColor: '#FEF3C7', borderRadius: 8,
-    paddingHorizontal: 6, paddingVertical: 2,
+  avatarEditText: { fontSize: 9 },
+  profileName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
+  nameInput: {
+    fontSize: 17, fontWeight: '700', color: Colors.textPrimary,
+    borderBottomWidth: 1.5, borderBottomColor: Colors.primary, minWidth: 100,
   },
-  unverifiedText: { fontSize: 10, fontWeight: '700', color: '#D97706' },
   profileEmail: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-  editBtn: {
+  editChip: {
     borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 7,
+    paddingHorizontal: 12, paddingVertical: 6,
   },
-  editBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
-  statsRow: {
-    flexDirection: 'row', backgroundColor: Colors.white, marginHorizontal: 20,
-    borderRadius: 18, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: Colors.border,
+  editChipText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+
+  // Become a host
+  becomeHostCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#FF5C5C', marginHorizontal: 20, borderRadius: 16,
+    padding: 16, marginBottom: 8,
   },
-  statBox: { flex: 1, alignItems: 'center' },
-  statNum: { fontSize: 20, fontWeight: '800', color: Colors.primary },
-  statLabel: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
-  menu: {
-    marginHorizontal: 20, backgroundColor: Colors.white, borderRadius: 18,
-    overflow: 'hidden', borderWidth: 1, borderColor: Colors.border, marginBottom: 20,
+  becomeHostEmoji: { fontSize: 26 },
+  becomeHostTitle: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  becomeHostSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  becomeHostArrow: { fontSize: 22, color: '#FFFFFF' },
+
+  // Section header
+  sectionHeader: {
+    fontSize: 13, fontWeight: '700', color: '#6B7280',
+    textTransform: 'uppercase', letterSpacing: 0.5,
+    paddingHorizontal: 20, marginTop: 24, marginBottom: 8,
   },
-  menuItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
+
+  // Menu section
+  menuSection: {
+    backgroundColor: Colors.white, marginHorizontal: 20,
+    borderRadius: 16, overflow: 'hidden',
+    borderWidth: 1, borderColor: Colors.border,
   },
-  menuItemHighlight: { backgroundColor: '#F0FFF4' },
-  menuItemAccent: { backgroundColor: '#FFF8F8' },
-  menuIcon: { fontSize: 22, width: 28 },
-  menuLabel: { flex: 1, fontSize: 16, color: Colors.textPrimary },
-  menuLabelHighlight: { color: Colors.success, fontWeight: '700' },
-  menuLabelAccent: { color: Colors.primary, fontWeight: '700' },
-  menuArrow: { fontSize: 20, color: Colors.textLight },
-  signOutBtn: {
-    marginHorizontal: 20, borderWidth: 1.5, borderColor: Colors.error,
-    borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 16,
+  menuRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingHorizontal: 20, height: 56,
+    borderBottomWidth: 1, borderBottomColor: '#F0EAEA',
+  },
+  menuRowIcon: { fontSize: 20, width: 26 },
+  menuRowLabel: { flex: 1, fontSize: 15, color: Colors.textPrimary },
+  menuRowLabelHighlight: { color: '#FF5C5C', fontWeight: '700' },
+  menuRowChevron: { fontSize: 20, color: Colors.textSecondary },
+
+  // Divider + sign out
+  divider: { height: 1, backgroundColor: Colors.border, marginHorizontal: 20, marginTop: 28, marginBottom: 4 },
+  signOutRow: {
+    paddingHorizontal: 20, paddingVertical: 18, alignItems: 'center',
   },
   signOutText: { fontSize: 16, fontWeight: '700', color: Colors.error },
-  version: { textAlign: 'center', color: Colors.textLight, fontSize: 12, marginBottom: 8 },
-  becomeHostCard: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FF5C5C', marginHorizontal: 20, borderRadius: 16,
-    padding: 16, marginBottom: 12,
-  },
-  becomeHostLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  becomeHostEmoji: { fontSize: 28 },
-  becomeHostTitle: { fontSize: 16, fontWeight: '800', color: '#FFFFFF', marginBottom: 2 },
-  becomeHostSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
-  becomeHostArrow: { fontSize: 24, color: '#FFFFFF' },
-  switchBanner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#111827', marginHorizontal: 20, borderRadius: 16,
-    padding: 16, marginBottom: 16,
-  },
-  switchBannerTitle: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
-  switchBannerSub: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
-  switchBannerArrow: { fontSize: 24, color: '#FFFFFF' },
+  deleteRow: { paddingHorizontal: 20, paddingVertical: 10, alignItems: 'center' },
+  deleteText: { fontSize: 13, color: Colors.textLight },
 });
