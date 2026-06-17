@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
-  StyleSheet, SafeAreaView, ScrollView, Platform,
-  Modal, useSafeAreaInsets,
+  StyleSheet, SafeAreaView, ScrollView, Platform, Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
