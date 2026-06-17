@@ -1,8 +1,20 @@
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
-const UPCOMING = [
+type Booking = {
+  id: string;
+  traveller: string;
+  bags: number;
+  dropOff: string;
+  pickUp: string;
+  total: number;
+  status: string;
+};
+
+const INITIAL_BOOKINGS: Booking[] = [
   {
     id: '1',
     traveller: 'Sarah T.',
@@ -24,6 +36,46 @@ const UPCOMING = [
 ];
 
 export default function Dashboard() {
+  const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+
+  async function handleComplete(booking: Booking) {
+    setCompletingId(booking.id);
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.functions.invoke('complete-booking', {
+          body: { bookingId: booking.id },
+        });
+
+        if (error || !data?.success) {
+          Alert.alert('Error', 'Could not process payout. Please try again.');
+          return;
+        }
+
+        setBookings(prev =>
+          prev.map(b => b.id === booking.id ? { ...b, status: 'completed' } : b),
+        );
+
+        Alert.alert(
+          'Payout Initiated',
+          `Payout of R${data.hostAmount.toFixed(2)} will be sent to ${data.bankName} within 1-2 business days.`,
+        );
+      } else {
+        // Demo mode — just update local state
+        setBookings(prev =>
+          prev.map(b => b.id === booking.id ? { ...b, status: 'completed' } : b),
+        );
+        const hostAmount = (booking.total * 0.70).toFixed(2);
+        Alert.alert(
+          'Booking Complete',
+          `Payout of R${hostAmount} will be sent once Cubby is live.`,
+        );
+      }
+    } finally {
+      setCompletingId(null);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -94,7 +146,7 @@ export default function Dashboard() {
         {/* Today's bookings */}
         <Text style={styles.sectionTitle}>Today's bookings</Text>
         <View style={styles.bookingsList}>
-          {UPCOMING.map(b => (
+          {bookings.map(b => (
             <View key={b.id} style={styles.bookingCard}>
               <View style={styles.bookingTop}>
                 <View style={styles.travIcon}>
@@ -106,9 +158,27 @@ export default function Dashboard() {
                 </View>
                 <View>
                   <Text style={styles.bookingAmount}>R{b.total}</Text>
-                  <View style={[styles.bookingStatus, { backgroundColor: b.status === 'confirmed' ? '#D1FAE5' : '#FEF3C7' }]}>
-                    <Text style={[styles.bookingStatusText, { color: b.status === 'confirmed' ? Colors.success : Colors.warning }]}>
-                      {b.status === 'confirmed' ? 'Confirmed' : 'Pending'}
+                  <View style={[
+                    styles.bookingStatus,
+                    {
+                      backgroundColor:
+                        b.status === 'confirmed' ? '#D1FAE5' :
+                        b.status === 'completed' ? '#EDE9FE' :
+                        '#FEF3C7',
+                    },
+                  ]}>
+                    <Text style={[
+                      styles.bookingStatusText,
+                      {
+                        color:
+                          b.status === 'confirmed' ? Colors.success :
+                          b.status === 'completed' ? '#7C3AED' :
+                          Colors.warning,
+                      },
+                    ]}>
+                      {b.status === 'confirmed' ? 'Confirmed' :
+                       b.status === 'completed' ? 'Completed' :
+                       'Pending'}
                     </Text>
                   </View>
                 </View>
@@ -121,6 +191,20 @@ export default function Dashboard() {
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.declineBtn}>
                     <Text style={styles.declineBtnText}>✕ Decline</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {b.status === 'confirmed' && (
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={[styles.completeBtn, completingId === b.id && styles.completeBtnDisabled]}
+                    onPress={() => handleComplete(b)}
+                    disabled={completingId === b.id}
+                  >
+                    <Text style={styles.completeBtnText}>
+                      {completingId === b.id ? 'Processing…' : '✓ Mark complete & pay out'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -233,6 +317,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10, alignItems: 'center',
   },
   declineBtnText: { color: Colors.error, fontWeight: '700', fontSize: 14 },
+  completeBtn: {
+    flex: 1, backgroundColor: Colors.primary, borderRadius: 10,
+    paddingVertical: 10, alignItems: 'center',
+  },
+  completeBtnDisabled: { opacity: 0.6 },
+  completeBtnText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
   weekCard: { backgroundColor: Colors.white, marginHorizontal: 20, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: Colors.border, marginBottom: 20 },
   weekTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 },
   weekBars: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 110 },

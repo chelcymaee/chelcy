@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Alert,
+  TouchableOpacity, Alert, Linking,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 const TIME_SLOTS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
@@ -27,22 +28,82 @@ export default function Booking() {
   const platformFee = Math.round(total * 0.1);
   const grandTotal = total + platformFee;
 
-  function handleConfirm() {
+  async function handleConfirm() {
     setLoading(true);
-    setTimeout(() => {
+    try {
+      if (isSupabaseConfigured) {
+        // Get logged-in user's email
+        const { data: { user } } = await supabase.auth.getUser();
+        const travellerEmail = user?.email ?? '';
+
+        // Create a pending booking record first so we have an ID
+        const { data: booking, error: bookingError } = await supabase
+          .from('bookings')
+          .insert({
+            host_id: host.id,
+            traveller_id: user?.id,
+            drop_off_date: new Date().toISOString().split('T')[0],
+            drop_off_time: dropTime,
+            pick_up_date: new Date().toISOString().split('T')[0],
+            pick_up_time: pickTime,
+            bag_count: bags,
+            total_price: grandTotal,
+            status: 'pending',
+            pin_code: String(Math.floor(1000 + Math.random() * 9000)),
+          })
+          .select('id')
+          .single();
+
+        if (bookingError || !booking) {
+          Alert.alert('Error', 'Could not create booking. Please try again.');
+          return;
+        }
+
+        const { data, error } = await supabase.functions.invoke('create-payment', {
+          body: {
+            bookingId: booking.id,
+            amount: grandTotal * 100, // send in cents
+            bagCount: bags,
+            hostName: host.display_name,
+            travellerId: user?.id,
+            travellerEmail,
+          },
+        });
+
+        if (error || !data?.redirectUrl) {
+          Alert.alert('Payment Error', 'Could not start payment. Please try again.');
+          return;
+        }
+
+        // Open the Peach Payments checkout in the browser
+        await Linking.openURL(data.redirectUrl);
+      } else {
+        // Supabase not yet configured — demo mode
+        Alert.alert(
+          'Coming Soon',
+          'Payment processing will be available once Cubby goes live. Your booking has been saved.',
+          [
+            {
+              text: 'OK',
+              onPress: () =>
+                router.replace({
+                  pathname: '/(traveller)/booking-confirmation',
+                  params: {
+                    hostName: host.display_name,
+                    dropOff: dropTime,
+                    pickUp: pickTime,
+                    bags: String(bags),
+                    total: String(grandTotal),
+                    pin: String(Math.floor(1000 + Math.random() * 9000)),
+                  },
+                }),
+            },
+          ],
+        );
+      }
+    } finally {
       setLoading(false);
-      router.replace({
-        pathname: '/(traveller)/booking-confirmation',
-        params: {
-          hostName: host.display_name,
-          dropOff: dropTime,
-          pickUp: pickTime,
-          bags: String(bags),
-          total: String(grandTotal),
-          pin: String(Math.floor(1000 + Math.random() * 9000)),
-        },
-      });
-    }, 1200);
+    }
   }
 
   return (

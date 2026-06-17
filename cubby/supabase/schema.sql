@@ -93,3 +93,31 @@ create table if not exists reviews (
 alter table reviews enable row level security;
 create policy "Reviews are publicly viewable" on reviews for select using (true);
 create policy "Travellers can create reviews" on reviews for insert with check (auth.uid() = reviewer_id);
+
+-- -------------------------------------------------------------------------
+-- Payment & payout additions
+-- -------------------------------------------------------------------------
+
+-- Host bank details (keyed by host listing id)
+CREATE TABLE IF NOT EXISTS host_bank_details (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  host_id UUID REFERENCES hosts(id) ON DELETE CASCADE,
+  account_holder TEXT NOT NULL,
+  bank_name TEXT NOT NULL,
+  account_number TEXT NOT NULL,
+  account_type TEXT NOT NULL DEFAULT 'Cheque',
+  branch_code TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE host_bank_details ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can manage bank details" ON host_bank_details FOR ALL USING (true);
+
+-- Payment & payout columns on bookings
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS checkout_id TEXT,
+  ADD COLUMN IF NOT EXISTS host_payout_amount DECIMAL(10,2),
+  ADD COLUMN IF NOT EXISTS cubby_amount DECIMAL(10,2),
+  ADD COLUMN IF NOT EXISTS payout_status TEXT DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS payout_id TEXT;
