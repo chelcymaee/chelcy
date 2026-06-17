@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
-  StyleSheet, SafeAreaView, ScrollView, Switch,
+  StyleSheet, SafeAreaView, ScrollView, Switch, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import MapView, { Marker, Callout } from 'react-native-maps';
 import { Colors } from '../../src/constants/colors';
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
@@ -57,6 +56,27 @@ function HostCard({ host, onPress }: { host: Host; onPress: () => void }) {
         </View>
       </View>
     </TouchableOpacity>
+  );
+}
+
+function NativeMap({ filtered }: { filtered: Host[] }) {
+  // Lazy import so web bundle never loads react-native-maps
+  const MapView = require('react-native-maps').default;
+  const { Marker, Callout } = require('react-native-maps');
+  return (
+    <MapView style={{ flex: 1 }} initialRegion={{ latitude: -33.9249, longitude: 18.4241, latitudeDelta: 0.08, longitudeDelta: 0.08 }}>
+      {filtered.filter(h => h.latitude && h.longitude).map(host => (
+        <Marker key={host.id} coordinate={{ latitude: host.latitude, longitude: host.longitude }}>
+          <Callout onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: host.id } })}>
+            <View style={{ padding: 8, maxWidth: 180 }}>
+              <Text style={{ fontWeight: '700', fontSize: 14 }}>{typeEmoji[host.business_type] ?? '📦'} {host.display_name}</Text>
+              <Text style={{ color: '#6B7280', fontSize: 12 }}>R{host.price_per_bag_per_day}/bag/day · ★ {host.rating.toFixed(1)}</Text>
+              <Text style={{ color: '#FF5C5C', fontSize: 12, fontWeight: '600', marginTop: 4 }}>Tap to view →</Text>
+            </View>
+          </Callout>
+        </Marker>
+      ))}
+    </MapView>
   );
 }
 
@@ -201,40 +221,15 @@ export default function Explore() {
       <Text style={styles.resultCount}>{filtered.length} hosts available</Text>
 
       {viewMode === 'map' ? (
-        <MapView
-          style={{ flex: 1 }}
-          initialRegion={{
-            latitude: -33.9249,
-            longitude: 18.4241,
-            latitudeDelta: 0.08,
-            longitudeDelta: 0.08,
-          }}
-        >
-          {filtered
-            .filter(host => host.latitude != null && host.longitude != null)
-            .map(host => (
-              <Marker
-                key={host.id}
-                coordinate={{ latitude: host.latitude, longitude: host.longitude }}
-              >
-                <Callout
-                  onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: host.id } })}
-                >
-                  <View style={{ padding: 8, maxWidth: 180 }}>
-                    <Text style={{ fontWeight: '700', fontSize: 14 }}>
-                      {typeEmoji[host.business_type] ?? '📦'} {host.display_name}
-                    </Text>
-                    <Text style={{ color: '#6B7280', fontSize: 12 }}>
-                      R{host.price_per_bag_per_day}/bag/day · ★ {host.rating.toFixed(1)}
-                    </Text>
-                    <Text style={{ color: '#FF5C5C', fontSize: 12, fontWeight: '600', marginTop: 4 }}>
-                      Tap to view →
-                    </Text>
-                  </View>
-                </Callout>
-              </Marker>
-            ))}
-        </MapView>
+        Platform.OS === 'web' ? (
+          <View style={styles.mapWebPlaceholder}>
+            <Text style={styles.mapWebEmoji}>🗺️</Text>
+            <Text style={styles.mapWebTitle}>Map view available on mobile</Text>
+            <Text style={styles.mapWebSub}>Download the Cubby app to see hosts on a live map of Cape Town</Text>
+          </View>
+        ) : (
+          <NativeMap filtered={filtered} />
+        )
       ) : (
         <FlatList
           data={filtered}
@@ -341,6 +336,10 @@ const styles = StyleSheet.create({
   viewToggleBtnActive: { backgroundColor: Colors.primary },
   viewToggleText: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
   viewToggleTextActive: { color: Colors.white },
+  mapWebPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  mapWebEmoji: { fontSize: 64, marginBottom: 16 },
+  mapWebTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8, textAlign: 'center' },
+  mapWebSub: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22 },
   filtersScroll: { marginBottom: 6 },
   filtersContent: { paddingHorizontal: 20, gap: 8 },
   filterChip: {
