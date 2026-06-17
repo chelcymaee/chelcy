@@ -1,18 +1,32 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../src/constants/colors';
 
-const { width } = Dimensions.get('window');
+function LogoPin() {
+  return (
+    <View style={styles.pinWrap}>
+      {/* Pin shape made from views */}
+      <View style={styles.pinCircle}>
+        <View style={styles.pinBag}>
+          <View style={styles.bagHandle} />
+          <View style={styles.bagBody}>
+            <View style={styles.bagDot} />
+          </View>
+        </View>
+      </View>
+      <View style={styles.pinPoint} />
+      <View style={styles.pinShadow} />
+    </View>
+  );
+}
 
 export default function Welcome() {
   return (
     <View style={styles.container}>
       <View style={styles.topSection}>
-        <View style={styles.logoBox}>
-          <Text style={styles.logoIcon}>🧳</Text>
-        </View>
-        <Text style={styles.logoText}>cubby</Text>
-        <Text style={styles.tagline}>Drop your bags.{'\n'}Own your day.</Text>
+        <LogoPin />
+        <Text style={styles.logoText}>Cubby</Text>
+        <Text style={styles.tagline}>STORE. EXPLORE. <Text style={styles.taglineAccent}>COLLECT.</Text></Text>
       </View>
 
       <View style={styles.pillsRow}>
@@ -39,15 +53,46 @@ export default function Welcome() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'space-between', paddingTop: 100, paddingBottom: 50, paddingHorizontal: 24 },
+  container: { flex: 1, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'space-between', paddingTop: 80, paddingBottom: 50, paddingHorizontal: 24 },
+
+  // Logo pin
   topSection: { alignItems: 'center' },
-  logoBox: { width: 80, height: 80, borderRadius: 24, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16 },
-  logoIcon: { fontSize: 40 },
-  logoText: { fontSize: 48, fontWeight: '900', color: Colors.white, letterSpacing: -2 },
-  tagline: { fontSize: 20, color: 'rgba(255,255,255,0.85)', textAlign: 'center', marginTop: 12, lineHeight: 28, fontWeight: '500' },
+  pinWrap: { alignItems: 'center', marginBottom: 20 },
+  pinCircle: {
+    width: 90, height: 90, borderRadius: 45,
+    backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 6, borderColor: Colors.white,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16,
+  },
+  pinBag: { alignItems: 'center' },
+  bagHandle: {
+    width: 22, height: 8, borderTopLeftRadius: 8, borderTopRightRadius: 8,
+    borderWidth: 4, borderColor: Colors.primary, borderBottomWidth: 0, marginBottom: -2,
+  },
+  bagBody: {
+    width: 36, height: 32, borderRadius: 6,
+    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
+  },
+  bagDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accent },
+  pinPoint: {
+    width: 0, height: 0,
+    borderLeftWidth: 14, borderRightWidth: 14, borderTopWidth: 20,
+    borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: Colors.white,
+    marginTop: -2,
+  },
+  pinShadow: {
+    width: 20, height: 8, borderRadius: 10,
+    backgroundColor: Colors.accent, marginTop: 4, opacity: 0.9,
+  },
+
+  logoText: { fontSize: 52, fontWeight: '900', color: Colors.white, letterSpacing: -1, marginBottom: 8 },
+  tagline: { fontSize: 14, color: Colors.white, letterSpacing: 3, fontWeight: '700' },
+  taglineAccent: { color: Colors.accent },
+
   pillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
   pill: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
   pillText: { color: Colors.white, fontSize: 14, fontWeight: '600' },
+
   ctas: { width: '100%', gap: 12 },
   btnPrimary: { backgroundColor: Colors.white, borderRadius: 18, paddingVertical: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8 },
   btnPrimaryText: { fontSize: 17, fontWeight: '800', color: Colors.primary },
