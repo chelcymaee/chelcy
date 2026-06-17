@@ -1,0 +1,112 @@
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { router } from 'expo-router';
+import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Colors } from '../src/constants/colors';
+
+function LogoPin() {
+  return (
+    <View style={styles.pinWrap}>
+      {/* Pin shape made from views */}
+      <View style={styles.pinCircle}>
+        <View style={styles.pinBag}>
+          <View style={styles.bagHandle} />
+          <View style={styles.bagBody}>
+            <View style={styles.bagDot} />
+          </View>
+        </View>
+      </View>
+      <View style={styles.pinPoint} />
+      <View style={styles.pinShadow} />
+    </View>
+  );
+}
+
+export default function Welcome() {
+  useEffect(() => {
+    AsyncStorage.getItem('cubby_onboarded').then(val => {
+      if (!val) {
+        router.replace('/onboarding');
+      }
+    });
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.topSection}>
+        <LogoPin />
+        <Text style={styles.logoText}>Cubby</Text>
+        <Text style={styles.tagline}>STORE. EXPLORE. <Text style={styles.taglineAccent}>COLLECT.</Text></Text>
+      </View>
+
+      <View style={styles.pillsRow}>
+        <View style={styles.pill}><Text style={styles.pillText}>☕ Cafés</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>🏨 Hotels</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>🛏️ Hostels</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>🔑 Airbnbs</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>🗺️ Tour Operators</Text></View>
+        <View style={styles.pill}><Text style={styles.pillText}>🚗 Bag Runners</Text></View>
+      </View>
+
+      <View style={styles.ctas}>
+        <TouchableOpacity style={styles.btnPrimary} onPress={() => router.push('/(auth)/signup')} activeOpacity={0.85}>
+          <Text style={styles.btnPrimaryText}>Get started — it's free</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.btnSecondary} onPress={() => router.push('/(auth)/login')} activeOpacity={0.85}>
+          <Text style={styles.btnSecondaryText}>I already have an account</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.location}>📍 Cape Town, South Africa</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'space-between', paddingTop: 80, paddingBottom: 50, paddingHorizontal: 24 },
+
+  // Logo pin
+  topSection: { alignItems: 'center' },
+  pinWrap: { alignItems: 'center', marginBottom: 20 },
+  pinCircle: {
+    width: 90, height: 90, borderRadius: 45,
+    backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 6, borderColor: Colors.white,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16,
+  },
+  pinBag: { alignItems: 'center' },
+  bagHandle: {
+    width: 22, height: 8, borderTopLeftRadius: 8, borderTopRightRadius: 8,
+    borderWidth: 4, borderColor: Colors.primary, borderBottomWidth: 0, marginBottom: -2,
+  },
+  bagBody: {
+    width: 36, height: 32, borderRadius: 6,
+    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
+  },
+  bagDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accent },
+  pinPoint: {
+    width: 0, height: 0,
+    borderLeftWidth: 14, borderRightWidth: 14, borderTopWidth: 20,
+    borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: Colors.white,
+    marginTop: -2,
+  },
+  pinShadow: {
+    width: 20, height: 8, borderRadius: 10,
+    backgroundColor: Colors.accent, marginTop: 4, opacity: 0.9,
+  },
+
+  logoText: { fontSize: 52, fontWeight: '900', color: Colors.white, letterSpacing: -1, marginBottom: 8 },
+  tagline: { fontSize: 14, color: Colors.white, letterSpacing: 3, fontWeight: '700' },
+  taglineAccent: { color: Colors.accent },
+
+  pillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
+  pill: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
+  pillText: { color: Colors.white, fontSize: 14, fontWeight: '600' },
+
+  ctas: { width: '100%', gap: 12 },
+  btnPrimary: { backgroundColor: Colors.white, borderRadius: 18, paddingVertical: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8 },
+  btnPrimaryText: { fontSize: 17, fontWeight: '800', color: Colors.primary },
+  btnSecondary: { borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)', borderRadius: 18, paddingVertical: 18, alignItems: 'center' },
+  btnSecondaryText: { fontSize: 17, fontWeight: '600', color: Colors.white },
+  location: { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+});
