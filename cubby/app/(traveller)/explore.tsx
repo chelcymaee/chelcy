@@ -1,11 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ScrollView, Platform, Modal,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
-import { MOCK_HOSTS, MOCK_RUNNERS, Runner } from '../../src/lib/mock-data';
+import { MOCK_RUNNERS, Runner } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
 
 const TIME_SLOTS = [
@@ -333,14 +334,48 @@ function ResultsScreen({
   );
 }
 
+function normalizeHost(raw: any): Host {
+  return {
+    id: raw.id,
+    user_id: raw.user_id ?? raw.id,
+    display_name: raw.display_name ?? raw.displayName ?? '',
+    bio: raw.bio ?? '',
+    business_type: raw.business_type ?? raw.businessType ?? 'other',
+    location_name: raw.location_name ?? raw.locationName ?? '',
+    latitude: raw.latitude ?? 0,
+    longitude: raw.longitude ?? 0,
+    price_per_bag_per_day: raw.price_per_bag_per_day ?? raw.pricePerBag ?? 100,
+    rating: raw.rating ?? 0,
+    review_count: raw.review_count ?? raw.reviewCount ?? 0,
+    response_rate: raw.response_rate ?? raw.responseRate ?? 100,
+    available_from: raw.available_from ?? raw.availableFrom ?? '08:00',
+    available_until: raw.available_until ?? raw.availableUntil ?? '20:00',
+    available_days: raw.available_days ?? raw.availableDays ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    max_bags: raw.max_bags ?? raw.maxBags ?? 10,
+    photos: raw.photos ?? [],
+    is_active: raw.is_active ?? raw.active ?? true,
+    created_at: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+  };
+}
+
 // ─── Main Export ──────────────────────────────────────────────────────────────
 export default function Explore() {
   const [step, setStep] = useState<'search' | 'results'>('search');
   const [location, setLocation] = useState('Cape Town, South Africa');
   const [dropOff, setDropOff] = useState('9am–10am');
   const [pickUp, setPickUp] = useState('5pm–6pm');
+  const [hosts, setHosts] = useState<Host[]>([]);
 
-  const hosts = MOCK_HOSTS;
+  useFocusEffect(useCallback(() => {
+    AsyncStorage.getItem('cubby_hosts').then(raw => {
+      if (raw) {
+        const all = JSON.parse(raw).map(normalizeHost);
+        setHosts(all.filter((h: Host) => h.is_active));
+      } else {
+        setHosts([]);
+      }
+    });
+  }, []));
 
   if (step === 'results') {
     return (
