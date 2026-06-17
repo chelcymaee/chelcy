@@ -1,5 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../src/constants/colors';
 
 function LogoPin() {
@@ -21,6 +23,14 @@ function LogoPin() {
 }
 
 export default function Welcome() {
+  useEffect(() => {
+    AsyncStorage.getItem('cubby_onboarded').then(val => {
+      if (!val) {
+        router.replace('/onboarding');
+      }
+    });
+  }, []);
+
   return (
     <View style={styles.container}>
       <View style={styles.topSection}>
