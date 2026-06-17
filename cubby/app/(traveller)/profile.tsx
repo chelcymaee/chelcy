@@ -245,6 +245,10 @@ export default function Profile() {
           <Text style={styles.deleteText}>Delete account</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={() => router.push('/(admin)/login')}>
+          <Text style={{ color: 'rgba(0,0,0,0.08)', fontSize: 11, textAlign: 'center', marginTop: 20 }}>v1.0.0</Text>
+        </TouchableOpacity>
+
         <View style={{ height: 40 }} />
       </ScrollView>
 
