@@ -3,8 +3,6 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ScrollView, Platform, Modal,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MOCK_RUNNERS } from '../../src/lib/mock-data';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { MOCK_HOSTS, MOCK_RUNNERS, Runner } from '../../src/lib/mock-data';
@@ -254,7 +252,7 @@ function ResultsScreen({
   onBack: () => void;
 }) {
   const [showMap, setShowMap] = useState(false);
-  const insets = useSafeAreaInsets();
+  const insets = { bottom: 0 };
 
   // Lazy-load HostMap on native only
   const HostMap = Platform.OS !== 'web'
