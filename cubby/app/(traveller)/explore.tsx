@@ -4,6 +4,7 @@ import {
   StyleSheet, SafeAreaView, ScrollView, Switch,
 } from 'react-native';
 import { router } from 'expo-router';
+import MapView, { Marker, Callout } from 'react-native-maps';
 import { Colors } from '../../src/constants/colors';
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
@@ -11,12 +12,12 @@ import { Host } from '../../src/types';
 const BUSINESS_FILTERS = ['All', 'Café', 'Hotel', 'Hostel', 'Guesthouse', 'Airbnb', 'Tour Operator'];
 const SORT_OPTIONS = ['Nearest', 'Best rated', 'Cheapest'];
 
-function HostCard({ host, onPress }: { host: Host; onPress: () => void }) {
-  const typeEmoji: Record<string, string> = {
-    cafe: '☕', hotel: '🏨', hostel: '🛏️', guesthouse: '🏡',
-    airbnb: '🔑', tour_operator: '🗺️', home: '🏠', other: '📦',
-  };
+const typeEmoji: Record<string, string> = {
+  cafe: '☕', hotel: '🏨', hostel: '🛏️', guesthouse: '🏡',
+  airbnb: '🔑', tour_operator: '🗺️', home: '🏠', other: '📦',
+};
 
+function HostCard({ host, onPress }: { host: Host; onPress: () => void }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.92}>
       <View style={styles.cardImage}>
@@ -65,6 +66,7 @@ export default function Explore() {
   const [sort, setSort] = useState('Nearest');
   const [availableNow, setAvailableNow] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(true);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   const filtered = MOCK_HOSTS.filter(h => {
     const matchSearch = h.display_name.toLowerCase().includes(search.toLowerCase())
@@ -161,6 +163,22 @@ export default function Explore() {
         </View>
       </View>
 
+      {/* View toggle */}
+      <View style={styles.viewToggle}>
+        <TouchableOpacity
+          style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
+          onPress={() => setViewMode('list')}
+        >
+          <Text style={[styles.viewToggleText, viewMode === 'list' && styles.viewToggleTextActive]}>☰ List</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.viewToggleBtn, viewMode === 'map' && styles.viewToggleBtnActive]}
+          onPress={() => setViewMode('map')}
+        >
+          <Text style={[styles.viewToggleText, viewMode === 'map' && styles.viewToggleTextActive]}>🗺️ Map</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Filters */}
       <ScrollView
         horizontal
@@ -182,49 +200,86 @@ export default function Explore() {
 
       <Text style={styles.resultCount}>{filtered.length} hosts available</Text>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <HostCard
-            host={item}
-            onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id } })}
-          />
-        )}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>🚀</Text>
-            <Text style={styles.emptyTitle}>Growing fast in Cape Town</Text>
-            <Text style={styles.emptyText}>
-              No hosts in this category yet — but we're signing up new hosts every day.{'\n\n'}
-              Know a café, hotel, or guesthouse that should be on Cubby?
-            </Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(traveller)/support')}>
-              <Text style={styles.emptyBtnText}>Nominate a location</Text>
-            </TouchableOpacity>
-          </View>
-        }
-        ListFooterComponent={
-          filtered.length > 0 ? (
-            <View style={styles.runnerBanner}>
-              <Text style={styles.runnerBannerEmoji}>🚗</Text>
-              <Text style={styles.runnerBannerTitle}>Need bags collected & delivered?</Text>
-              <Text style={styles.runnerBannerDesc}>
-                A Cubby Runner will pick up your bags and deliver them when you're ready. Perfect for airport transfers.
-              </Text>
-              <TouchableOpacity
-                style={styles.runnerBannerBtn}
-                onPress={() => router.push('/(traveller)/runners')}
-                activeOpacity={0.85}
+      {viewMode === 'map' ? (
+        <MapView
+          style={{ flex: 1 }}
+          initialRegion={{
+            latitude: -33.9249,
+            longitude: 18.4241,
+            latitudeDelta: 0.08,
+            longitudeDelta: 0.08,
+          }}
+        >
+          {filtered
+            .filter(host => host.latitude != null && host.longitude != null)
+            .map(host => (
+              <Marker
+                key={host.id}
+                coordinate={{ latitude: host.latitude, longitude: host.longitude }}
               >
-                <Text style={styles.runnerBannerBtnText}>Find a Bag Runner →</Text>
+                <Callout
+                  onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: host.id } })}
+                >
+                  <View style={{ padding: 8, maxWidth: 180 }}>
+                    <Text style={{ fontWeight: '700', fontSize: 14 }}>
+                      {typeEmoji[host.business_type] ?? '📦'} {host.display_name}
+                    </Text>
+                    <Text style={{ color: '#6B7280', fontSize: 12 }}>
+                      R{host.price_per_bag_per_day}/bag/day · ★ {host.rating.toFixed(1)}
+                    </Text>
+                    <Text style={{ color: '#FF5C5C', fontSize: 12, fontWeight: '600', marginTop: 4 }}>
+                      Tap to view →
+                    </Text>
+                  </View>
+                </Callout>
+              </Marker>
+            ))}
+        </MapView>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <HostCard
+              host={item}
+              onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id } })}
+            />
+          )}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyEmoji}>🚀</Text>
+              <Text style={styles.emptyTitle}>Growing fast in Cape Town</Text>
+              <Text style={styles.emptyText}>
+                No hosts in this category yet — but we're signing up new hosts every day.{'\n\n'}
+                Know a café, hotel, or guesthouse that should be on Cubby?
+              </Text>
+              <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(traveller)/support')}>
+                <Text style={styles.emptyBtnText}>Nominate a location</Text>
               </TouchableOpacity>
             </View>
-          ) : null
-        }
-      />
+          }
+          ListFooterComponent={
+            filtered.length > 0 ? (
+              <View style={styles.runnerBanner}>
+                <Text style={styles.runnerBannerEmoji}>🚗</Text>
+                <Text style={styles.runnerBannerTitle}>Need bags collected & delivered?</Text>
+                <Text style={styles.runnerBannerDesc}>
+                  A Cubby Runner will pick up your bags and deliver them when you're ready. Perfect for airport transfers.
+                </Text>
+                <TouchableOpacity
+                  style={styles.runnerBannerBtn}
+                  onPress={() => router.push('/(traveller)/runners')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.runnerBannerBtnText}>Find a Bag Runner →</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -277,6 +332,15 @@ const styles = StyleSheet.create({
   sortChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   sortText: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
   sortTextActive: { color: Colors.white },
+  viewToggle: {
+    flexDirection: 'row', marginHorizontal: 20, marginBottom: 8,
+    backgroundColor: Colors.white, borderRadius: 12, padding: 4,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  viewToggleBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
+  viewToggleBtnActive: { backgroundColor: Colors.primary },
+  viewToggleText: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
+  viewToggleTextActive: { color: Colors.white },
   filtersScroll: { marginBottom: 6 },
   filtersContent: { paddingHorizontal: 20, gap: 8 },
   filterChip: {
