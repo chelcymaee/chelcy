@@ -1,12 +1,13 @@
 import { useState, useRef } from 'react';
 import {
-  View, Text, TextInput, FlatList, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ScrollView, Platform, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MOCK_RUNNERS } from '../../src/lib/mock-data';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
-import { MOCK_HOSTS } from '../../src/lib/mock-data';
+import { MOCK_HOSTS, MOCK_RUNNERS, Runner } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
 
 const TIME_SLOTS = [
@@ -213,6 +214,37 @@ function SearchScreen({
   );
 }
 
+// ─── Runner Card ─────────────────────────────────────────────────────────────
+function RunnerCard({ runner }: { runner: Runner }) {
+  return (
+    <View style={styles.runnerCard}>
+      <View style={styles.runnerLeft}>
+        <View style={styles.runnerAvatarBox}>
+          <Text style={styles.runnerAvatarText}>{runner.name[0]}</Text>
+        </View>
+      </View>
+      <View style={styles.runnerBody}>
+        <View style={styles.runnerTopRow}>
+          <Text style={styles.runnerName}>{runner.name}</Text>
+          <View style={styles.runnerAvailBadge}><Text style={styles.runnerAvailText}>AVAILABLE</Text></View>
+        </View>
+        <Text style={styles.runnerVehicle}>🚗 {runner.vehicle} · {runner.location_name}</Text>
+        <View style={styles.runnerStatsRow}>
+          <Text style={styles.runnerStar}>★ {runner.rating.toFixed(1)}</Text>
+          <Text style={styles.runnerSep}>·</Text>
+          <Text style={styles.runnerStat}>{runner.review_count} reviews</Text>
+          <Text style={styles.runnerSep}>·</Text>
+          <Text style={styles.runnerEta}>⏱ {runner.eta_minutes} min away</Text>
+        </View>
+        <View style={styles.runnerBottomRow}>
+          <Text style={styles.runnerPrice}>R{runner.price_per_bag}/bag</Text>
+          <Text style={styles.runnerRadius}>Delivers up to {runner.delivery_radius_km}km</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 // ─── Results Screen ───────────────────────────────────────────────────────────
 function ResultsScreen({
   hosts, location, dropOff, pickUp,
@@ -256,26 +288,35 @@ function ResultsScreen({
           />
         </View>
       ) : (
-        <FlatList
-          data={hosts}
-          keyExtractor={item => item.id}
-          renderItem={({ item, index }) => (
+        <ScrollView contentContainerStyle={styles.resultsList} showsVerticalScrollIndicator={false}>
+          {/* Storage spots */}
+          <Text style={styles.sectionHeader}>📦 Storage spots near you</Text>
+          {hosts.map((item, index) => (
             <ResultCard
+              key={item.id}
               host={item}
               index={index}
               onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id } })}
             />
-          )}
-          contentContainerStyle={styles.resultsList}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
+          ))}
+
+          {/* Bag Runners */}
+          <View style={styles.runnerSectionHeader}>
+            <Text style={styles.sectionHeader}>🚗 Cubby Runners near you</Text>
+            <Text style={styles.sectionSubHeader}>Drivers who store your bags & deliver on demand</Text>
+          </View>
+          {MOCK_RUNNERS.map(runner => (
+            <RunnerCard key={runner.id} runner={runner} />
+          ))}
+
+          {hosts.length === 0 && (
             <View style={styles.empty}>
               <Text style={styles.emptyEmoji}>🔍</Text>
               <Text style={styles.emptyTitle}>No spots found</Text>
               <Text style={styles.emptyText}>Try a different location or time.</Text>
             </View>
-          }
-        />
+          )}
+        </ScrollView>
       )}
 
       {/* Map toggle bar */}
@@ -452,6 +493,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1A1A', paddingTop: 16, alignItems: 'center',
   },
   mapToggleText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+
+  sectionHeader: { fontSize: 15, fontWeight: '800', color: '#1A1A1A', marginBottom: 10, marginTop: 4 },
+  sectionSubHeader: { fontSize: 13, color: '#6B7280', marginBottom: 12, marginTop: -6 },
+  runnerSectionHeader: { marginTop: 24 },
+
+  runnerCard: {
+    flexDirection: 'row', gap: 14, backgroundColor: '#FFFFFF', borderRadius: 18, padding: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    borderLeftWidth: 3, borderLeftColor: '#FF5C5C',
+  },
+  runnerLeft: { justifyContent: 'flex-start', paddingTop: 2 },
+  runnerAvatarBox: {
+    width: 52, height: 52, borderRadius: 26, backgroundColor: '#FF5C5C',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  runnerAvatarText: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
+  runnerBody: { flex: 1 },
+  runnerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
+  runnerName: { fontSize: 17, fontWeight: '800', color: '#1A1A1A' },
+  runnerAvailBadge: { backgroundColor: '#DCFCE7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  runnerAvailText: { fontSize: 10, fontWeight: '800', color: '#16A34A', letterSpacing: 0.5 },
+  runnerVehicle: { fontSize: 13, color: '#6B7280', marginBottom: 6 },
+  runnerStatsRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 8 },
+  runnerStar: { fontSize: 12, fontWeight: '700', color: '#F59E0B' },
+  runnerSep: { fontSize: 12, color: '#D1D5DB' },
+  runnerStat: { fontSize: 12, color: '#6B7280' },
+  runnerEta: { fontSize: 12, color: '#6B7280' },
+  runnerBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  runnerPrice: { fontSize: 14, fontWeight: '800', color: '#FF5C5C' },
+  runnerRadius: { fontSize: 12, color: '#9CA3AF' },
 
   // Shared empty state
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 20 },
