@@ -74,6 +74,7 @@ export default function AdminDashboard() {
   const NAV_CARDS = [
     { label: 'Manage Hosts', icon: '👥', route: '/(admin)/manage-hosts' },
     { label: 'Create Host Profile', icon: '➕', route: '/(admin)/create-host' },
+    { label: 'Host Bank Details', icon: '🏦', route: '/(admin)/host-payouts' },
     { label: 'View Bookings', icon: '📋', route: '/(admin)/bookings' },
     { label: 'Revenue', icon: '📊', route: '/(admin)/revenue' },
   ];

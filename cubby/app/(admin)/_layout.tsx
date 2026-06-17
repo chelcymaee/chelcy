@@ -9,6 +9,7 @@ export default function AdminLayout() {
       <Stack.Screen name="manage-hosts" />
       <Stack.Screen name="bookings" />
       <Stack.Screen name="revenue" />
+      <Stack.Screen name="host-payouts" />
     </Stack>
   );
 }
