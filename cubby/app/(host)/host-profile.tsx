@@ -23,7 +23,7 @@ export default function HostProfile() {
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
   const [type, setType] = useState('home');
-  const [pricePerBag, setPricePerBag] = useState('60');
+  const [pricePerBag, setPricePerBag] = useState('100');
   const [maxBags, setMaxBags] = useState('4');
   const [fromTime, setFromTime] = useState('08:00');
   const [untilTime, setUntilTime] = useState('20:00');
@@ -55,6 +55,11 @@ export default function HostProfile() {
   }
 
   async function save() {
+    const price = parseInt(pricePerBag);
+    if (isNaN(price) || price < 100 || price > 300) {
+      Alert.alert('Invalid price', 'Price must be between R100 and R300 per bag per day.');
+      return;
+    }
     const data = { displayName, bio, location, type, pricePerBag, maxBags, fromTime, untilTime, days, isActive };
     await AsyncStorage.setItem('cubby_host_profile', JSON.stringify(data));
     setSaved(true);
@@ -125,7 +130,7 @@ export default function HostProfile() {
         />
 
         {/* Pricing */}
-        <Text style={styles.sectionTitle}>Price per bag per day (ZAR)</Text>
+        <Text style={styles.sectionTitle}>Price per bag per day (R100–R300)</Text>
         <View style={styles.priceRow}>
           <Text style={styles.pricePrefix}>R</Text>
           <TextInput

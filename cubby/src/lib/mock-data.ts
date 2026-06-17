@@ -1,6 +1,6 @@
 import { Host, Booking, Review } from '../types';
 
-export const MOCK_HOSTS: Host[] = [
+export const MOCK_HOSTS: Host[] = [/*
   {
     id: 'host-1',
     user_id: 'user-1',
@@ -169,7 +169,7 @@ export const MOCK_HOSTS: Host[] = [
     is_active: true,
     created_at: '2024-01-01T00:00:00Z',
   },
-];
+*/];
 
 export interface Runner {
   id: string;
@@ -184,44 +184,7 @@ export interface Runner {
   is_active: boolean;
 }
 
-export const MOCK_RUNNERS: Runner[] = [
-  {
-    id: 'runner-1',
-    name: 'Sipho M.',
-    vehicle: 'Toyota Corolla',
-    location_name: 'Sea Point',
-    rating: 4.9,
-    review_count: 38,
-    price_per_bag: 50,
-    delivery_radius_km: 10,
-    eta_minutes: 8,
-    is_active: true,
-  },
-  {
-    id: 'runner-2',
-    name: 'Aisha K.',
-    vehicle: 'VW Polo',
-    location_name: 'City Bowl',
-    rating: 4.8,
-    review_count: 22,
-    price_per_bag: 45,
-    delivery_radius_km: 8,
-    eta_minutes: 12,
-    is_active: true,
-  },
-  {
-    id: 'runner-3',
-    name: 'Luca B.',
-    vehicle: 'Ford EcoSport',
-    location_name: 'Green Point',
-    rating: 5.0,
-    review_count: 15,
-    price_per_bag: 55,
-    delivery_radius_km: 12,
-    eta_minutes: 6,
-    is_active: true,
-  },
-];
+export const MOCK_RUNNERS: Runner[] = [];
 
 export const MOCK_REVIEWS: Review[] = [];
 export const MOCK_BOOKINGS: Booking[] = [];
