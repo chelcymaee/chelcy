@@ -4,8 +4,9 @@ import {
   StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
-import { supabase } from '../../src/lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 type Role = 'traveller' | 'host' | 'both' | 'runner';
 
@@ -21,32 +22,34 @@ export default function Signup() {
       Alert.alert('Please fill in all fields');
       return;
     }
+    if (password.length < 6) {
+      Alert.alert('Password must be at least 6 characters');
+      return;
+    }
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) {
-        Alert.alert('Sign up failed', error.message);
-        return;
-      }
-      const user = data.user;
-      if (user) {
-        const { error: profileError } = await supabase.from('profiles').insert({
-          id: user.id,
-          email,
-          full_name: fullName,
-          role,
-        });
-        if (profileError) {
-          console.warn('Profile insert error:', profileError.message);
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) { Alert.alert('Sign up failed', error.message); return; }
+        const user = data.user;
+        if (user) {
+          await supabase.from('profiles').insert({ id: user.id, email, full_name: fullName, role });
         }
-      }
-      if (role === 'host' || role === 'both') {
-        router.replace('/(host)/bank-details');
-      } else if (role === 'runner') {
-        router.replace('/(runner)/dashboard');
       } else {
-        router.replace('/(traveller)/explore');
+        // Local auth — save account to device
+        const existing = await AsyncStorage.getItem('cubby_local_user');
+        if (existing && JSON.parse(existing).email === email) {
+          Alert.alert('Account exists', 'An account with this email already exists. Please sign in.');
+          return;
+        }
+        const user = { email, password, fullName, role, id: Date.now().toString() };
+        await AsyncStorage.setItem('cubby_local_user', JSON.stringify(user));
+        await AsyncStorage.setItem('cubby_session', JSON.stringify(user));
+        await AsyncStorage.setItem('cubby_traveller_profile', JSON.stringify({ name: fullName, avatarUri: null }));
       }
+      if (role === 'host' || role === 'both') router.replace('/(host)/bank-details');
+      else if (role === 'runner') router.replace('/(runner)/dashboard');
+      else router.replace('/(traveller)/explore');
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Something went wrong');
     } finally {

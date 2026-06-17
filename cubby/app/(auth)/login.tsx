@@ -4,8 +4,9 @@ import {
   StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
-import { supabase } from '../../src/lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -19,33 +20,40 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        Alert.alert('Sign in failed', error.message);
-        return;
-      }
-      const user = data.user;
-      let role = 'traveller';
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-        if (profile?.role) role = profile.role;
-      }
-      if (role === 'host' || role === 'both') {
-        router.replace('/(host)/bank-details');
-      } else if (role === 'runner') {
-        router.replace('/(runner)/dashboard');
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) { Alert.alert('Sign in failed', error.message); return; }
+        const user = data.user;
+        let role = 'traveller';
+        if (user) {
+          const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+          if (profile?.role) role = profile.role;
+        }
+        navigateByRole(role);
       } else {
-        router.replace('/(traveller)/explore');
+        // Local auth — check stored account
+        const stored = await AsyncStorage.getItem('cubby_local_user');
+        if (stored) {
+          const user = JSON.parse(stored);
+          if (user.email === email && user.password === password) {
+            await AsyncStorage.setItem('cubby_session', JSON.stringify(user));
+            navigateByRole(user.role ?? 'traveller');
+            return;
+          }
+        }
+        Alert.alert('Sign in failed', 'No account found. Please sign up first.');
       }
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Something went wrong');
     } finally {
       setLoading(false);
     }
+  }
+
+  function navigateByRole(role: string) {
+    if (role === 'host' || role === 'both') router.replace('/(host)/dashboard');
+    else if (role === 'runner') router.replace('/(runner)/dashboard');
+    else router.replace('/(traveller)/explore');
   }
 
   return (
