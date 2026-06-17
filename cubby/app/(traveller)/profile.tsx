@@ -77,8 +77,37 @@ export default function Profile() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.heading}>Profile</Text>
+          <Text style={styles.heading}>Account</Text>
         </View>
+
+        {/* Become a Host card */}
+        <TouchableOpacity
+          style={styles.becomeHostCard}
+          onPress={() => router.push('/(host)/bank-details')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.becomeHostLeft}>
+            <Text style={styles.becomeHostEmoji}>🏠</Text>
+            <View>
+              <Text style={styles.becomeHostTitle}>Become a Cubby Host</Text>
+              <Text style={styles.becomeHostSub}>Earn money storing bags for travellers</Text>
+            </View>
+          </View>
+          <Text style={styles.becomeHostArrow}>›</Text>
+        </TouchableOpacity>
+
+        {/* Switch to Host Dashboard */}
+        <TouchableOpacity
+          style={styles.switchBanner}
+          onPress={() => router.replace('/(host)/dashboard')}
+          activeOpacity={0.85}
+        >
+          <View>
+            <Text style={styles.switchBannerTitle}>Switch to Host Dashboard 🏠</Text>
+            <Text style={styles.switchBannerSub}>Manage your listing and earnings</Text>
+          </View>
+          <Text style={styles.switchBannerArrow}>›</Text>
+        </TouchableOpacity>
 
         <View style={styles.profileCard}>
           <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
@@ -141,15 +170,6 @@ export default function Profile() {
             <Text style={styles.statLabel}>Total spent</Text>
           </View>
         </View>
-
-        {/* Mode switcher */}
-        <TouchableOpacity style={styles.switchBanner} onPress={() => router.replace('/(host)/dashboard')} activeOpacity={0.85}>
-          <View>
-            <Text style={styles.switchBannerTitle}>Switch to Host mode 🏠</Text>
-            <Text style={styles.switchBannerSub}>Manage your listing and earnings</Text>
-          </View>
-          <Text style={styles.switchBannerArrow}>›</Text>
-        </TouchableOpacity>
 
         <View style={styles.menu}>
           {MENU_ITEMS.map((item, idx) => (
@@ -254,12 +274,22 @@ const styles = StyleSheet.create({
   },
   signOutText: { fontSize: 16, fontWeight: '700', color: Colors.error },
   version: { textAlign: 'center', color: Colors.textLight, fontSize: 12, marginBottom: 8 },
+  becomeHostCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#FF5C5C', marginHorizontal: 20, borderRadius: 16,
+    padding: 16, marginBottom: 12,
+  },
+  becomeHostLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  becomeHostEmoji: { fontSize: 28 },
+  becomeHostTitle: { fontSize: 16, fontWeight: '800', color: '#FFFFFF', marginBottom: 2 },
+  becomeHostSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+  becomeHostArrow: { fontSize: 24, color: '#FFFFFF' },
   switchBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.primary, marginHorizontal: 20, borderRadius: 16,
+    backgroundColor: '#111827', marginHorizontal: 20, borderRadius: 16,
     padding: 16, marginBottom: 16,
   },
-  switchBannerTitle: { fontSize: 16, fontWeight: '800', color: Colors.white },
-  switchBannerSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-  switchBannerArrow: { fontSize: 24, color: Colors.white },
+  switchBannerTitle: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+  switchBannerSub: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  switchBannerArrow: { fontSize: 24, color: '#FFFFFF' },
 });

@@ -12,22 +12,22 @@ export default function TravellerLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.white,
-          borderTopColor: Colors.border,
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#F0F0F0',
           borderTopWidth: 1,
           height: 84,
           paddingBottom: 20,
           paddingTop: 10,
         },
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textLight,
+        tabBarActiveTintColor: '#FF5C5C',
+        tabBarInactiveTintColor: '#6B7280',
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
-      <Tabs.Screen name="explore" options={{ title: 'Explore', tabBarIcon: ({ focused }) => <Icon emoji="🗺️" focused={focused} /> }} />
+      <Tabs.Screen name="explore" options={{ title: 'Search', tabBarIcon: ({ focused }) => <Icon emoji="🔍" focused={focused} /> }} />
       <Tabs.Screen name="bookings" options={{ title: 'Bookings', tabBarIcon: ({ focused }) => <Icon emoji="🎟️" focused={focused} /> }} />
-      <Tabs.Screen name="messages" options={{ title: 'Messages', tabBarIcon: ({ focused }) => <Icon emoji="💬" focused={focused} /> }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ focused }) => <Icon emoji="👤" focused={focused} /> }} />
+      <Tabs.Screen name="profile" options={{ title: 'Account', tabBarIcon: ({ focused }) => <Icon emoji="👤" focused={focused} /> }} />
+      <Tabs.Screen name="messages" options={{ href: null }} />
       <Tabs.Screen name="host-detail" options={{ href: null }} />
       <Tabs.Screen name="booking" options={{ href: null }} />
       <Tabs.Screen name="chat" options={{ href: null }} />
