@@ -1,12 +1,34 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { MOCK_HOSTS, MOCK_REVIEWS } from '../../src/lib/mock-data';
+
+const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const TODAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
+
+const HOW_IT_WORKS = [
+  {
+    title: 'Book online only',
+    desc: 'You must book and pay online through Cubby to be covered by our guarantee.',
+  },
+  {
+    title: 'Get your booking details',
+    desc: 'Your PIN code and full address will be shown in your account.',
+  },
+  {
+    title: 'Show your PIN at the storage location',
+    desc: 'Present your PIN on arrival so the host can store your bags safely.',
+  },
+  {
+    title: 'Enjoy your day luggage-free!',
+    desc: 'Return before closing time to collect your bags.',
+  },
+];
 
 export default function HostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,72 +48,108 @@ export default function HostDetail() {
 
   if (!host) return null;
 
-  const typeEmoji: Record<string, string> = {
-    cafe: '☕', hotel: '🏨', hostel: '🛏️', guesthouse: '🏡', airbnb: '🔑', tour_operator: '🗺️', home: '🏠', other: '📦',
-  };
-  const typeLabel: Record<string, string> = {
-    cafe: 'Café', hotel: 'Hotel', hostel: 'Hostel', guesthouse: 'Guesthouse',
-    airbnb: 'Airbnb Host', tour_operator: 'Tour Operator', home: 'Private Home', other: 'Other',
-  };
-
+  const isOpen = host.available_days.includes(TODAY_ABBR);
   const total = host.price_per_bag_per_day * bagCount;
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero */}
-        <View style={styles.hero}>
-          <Text style={styles.heroEmoji}>{typeEmoji[host.business_type]}</Text>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backBtnText}>←</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Back link */}
+        <TouchableOpacity style={styles.backLink} onPress={() => router.back()}>
+          <Text style={styles.backLinkText}>← Back to results</Text>
+        </TouchableOpacity>
 
         <View style={styles.body}>
-          {/* Name + type */}
-          <View style={styles.nameRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{host.display_name}</Text>
-              <Text style={styles.type}>{typeLabel[host.business_type]} · {host.location_name}</Text>
+          {/* Icon + name block */}
+          <View style={styles.headerBlock}>
+            <View style={styles.iconBox}>
+              <Text style={styles.iconEmoji}>🧳</Text>
             </View>
-            <View style={styles.ratingBox}>
-              <Text style={styles.ratingNum}>{host.rating.toFixed(1)}</Text>
+            <Text style={styles.storageLabel}>STORAGE IN</Text>
+            <Text style={styles.hostName}>{host.display_name}</Text>
+            <Text style={styles.locationName}>{host.location_name}</Text>
+
+            {/* Rating row */}
+            <View style={styles.ratingRow}>
               <Text style={styles.ratingStar}>★</Text>
+              <Text style={styles.ratingText}>{host.rating.toFixed(1)}</Text>
+              <Text style={styles.ratingCount}>({host.review_count})</Text>
+              <Text style={styles.ratingDot}>·</Text>
+              <Text style={styles.responseRate}>{host.response_rate}% response</Text>
+              {isOpen && (
+                <View style={styles.openBadge}>
+                  <Text style={styles.openBadgeText}>OPEN</Text>
+                </View>
+              )}
             </View>
           </View>
 
-          {/* Stats chips */}
-          <View style={styles.chipsRow}>
-            <View style={styles.chip}>
-              <Text style={styles.chipLabel}>Reviews</Text>
-              <Text style={styles.chipValue}>{host.review_count}</Text>
-            </View>
-            <View style={styles.chip}>
-              <Text style={styles.chipLabel}>Response</Text>
-              <Text style={styles.chipValue}>{host.response_rate}%</Text>
-            </View>
-            <View style={styles.chip}>
-              <Text style={styles.chipLabel}>Max bags</Text>
-              <Text style={styles.chipValue}>{host.max_bags}</Text>
-            </View>
-            <View style={styles.chip}>
-              <Text style={styles.chipLabel}>Price/bag</Text>
-              <Text style={styles.chipValue}>R{host.price_per_bag_per_day}</Text>
-            </View>
+          <View style={styles.divider} />
+
+          {/* Address warning */}
+          <View style={styles.addressWarning}>
+            <Text style={styles.addressWarningText}>ⓘ  Full address shared after booking confirmation</Text>
           </View>
 
-          {/* About */}
-          <Text style={styles.sectionTitle}>About this host</Text>
-          <Text style={styles.bio}>{host.bio}</Text>
+          <View style={styles.divider} />
 
-          {/* Hours */}
+          {/* Bag tip card */}
+          <View style={styles.bagTipCard}>
+            <Text style={styles.bagTipText}>🧳  Choose the number of bags carefully to speed up your drop-off.</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Trust card */}
+          <View style={styles.trustCard}>
+            <Text style={styles.trustTitle}>🛡️  Each bag is protected up to R2,000!</Text>
+            <Text style={styles.trustSub}>Only when booking online with Cubby.</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* How Cubby works */}
+          <Text style={styles.sectionTitle}>How Cubby works</Text>
+          <View style={styles.stepsCard}>
+            {HOW_IT_WORKS.map((step, i) => (
+              <View key={i} style={[styles.stepRow, i < HOW_IT_WORKS.length - 1 && styles.stepRowBorder]}>
+                <View style={styles.stepNum}>
+                  <Text style={styles.stepNumText}>{i + 1}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.stepTitle}>{step.title}</Text>
+                  <Text style={styles.stepDesc}>{step.desc}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Opening hours */}
           <Text style={styles.sectionTitle}>Opening hours</Text>
-          <View style={styles.hoursBox}>
-            <Text style={styles.hoursTime}>{host.available_from} – {host.available_until}</Text>
-            <Text style={styles.hoursDays}>{host.available_days.join(', ')}</Text>
+          <View style={styles.hoursTable}>
+            {ALL_DAYS.map(day => {
+              const isToday = day === TODAY_ABBR;
+              const isAvailable = host.available_days.includes(day);
+              return (
+                <View key={day} style={styles.hoursRow}>
+                  <Text style={[styles.hoursDay, isToday && styles.hoursBold]}>{day}</Text>
+                  {isAvailable ? (
+                    <Text style={[styles.hoursTime, isToday && styles.hoursBold]}>
+                      {host.available_from} – {host.available_until}
+                    </Text>
+                  ) : (
+                    <Text style={styles.hoursClosed}>Closed</Text>
+                  )}
+                </View>
+              );
+            })}
           </View>
 
-          {/* Bag count */}
+          <View style={styles.divider} />
+
+          {/* Bag counter */}
           <Text style={styles.sectionTitle}>How many bags?</Text>
           <View style={styles.counterRow}>
             <TouchableOpacity
@@ -110,9 +168,11 @@ export default function HostDetail() {
             <Text style={styles.counterDesc}>{bagCount === 1 ? 'bag' : 'bags'} · R{total} per day</Text>
           </View>
 
+          <View style={styles.divider} />
+
           {/* Reviews */}
           <View style={styles.reviewsHeader}>
-            <Text style={styles.sectionTitle}>Reviews{reviews.length > 0 ? ` (${reviews.length})` : ''}</Text>
+            <Text style={styles.sectionTitle}>Reviews ({reviews.length})</Text>
             <TouchableOpacity
               style={styles.writeReviewBtn}
               onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostId: id, hostName: host.display_name } })}
@@ -122,46 +182,44 @@ export default function HostDetail() {
           </View>
 
           {reviews.length > 0 && (
-            <>
-              <View style={styles.reviewsList}>
-                {reviews.map(r => (
-                  <View key={r.id} style={styles.review}>
-                    <View style={styles.reviewHeader}>
-                      <View style={styles.reviewAvatar}>
-                        <Text style={{ fontSize: 16 }}>👤</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.reviewName}>{r.reviewer_name}</Text>
-                        <View style={{ flexDirection: 'row', gap: 2 }}>
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Text key={i} style={{ color: i < r.rating ? Colors.star : Colors.border, fontSize: 12 }}>★</Text>
-                          ))}
-                        </View>
-                      </View>
-                      <Text style={styles.reviewDate}>{r.created_at.slice(0, 7)}</Text>
+            <View style={styles.reviewsList}>
+              {reviews.map(r => (
+                <View key={r.id} style={styles.review}>
+                  <View style={styles.reviewHeaderRow}>
+                    <View style={styles.reviewAvatar}>
+                      <Text style={{ fontSize: 16 }}>👤</Text>
                     </View>
-                    <Text style={styles.reviewComment}>{r.comment}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.reviewName}>{r.reviewer_name}</Text>
+                      <View style={{ flexDirection: 'row', gap: 2 }}>
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Text key={i} style={{ color: i < r.rating ? Colors.star : Colors.border, fontSize: 12 }}>★</Text>
+                        ))}
+                      </View>
+                    </View>
+                    <Text style={styles.reviewDate}>{r.created_at.slice(0, 7)}</Text>
                   </View>
-                ))}
-              </View>
-            </>
+                  <Text style={styles.reviewComment}>{r.comment}</Text>
+                </View>
+              ))}
+            </View>
           )}
 
-          <View style={{ height: 100 }} />
+          <View style={{ height: 110 }} />
         </View>
       </ScrollView>
 
-      {/* Book CTA */}
-      <View style={styles.bookBar}>
+      {/* Sticky footer CTA */}
+      <View style={styles.stickyFooter}>
         <View>
-          <Text style={styles.bookPrice}>R{total} <Text style={styles.bookPriceSub}>/day · {bagCount} bag{bagCount > 1 ? 's' : ''}</Text></Text>
+          <Text style={styles.footerPrice}>R{total}<Text style={styles.footerPriceSub}> /bag/day</Text></Text>
         </View>
         <TouchableOpacity
-          style={styles.bookBtn}
+          style={styles.footerBtn}
           onPress={() => router.push({ pathname: '/(traveller)/booking', params: { hostId: id, bagCount: String(bagCount) } })}
           activeOpacity={0.85}
         >
-          <Text style={styles.bookBtnText}>Book now</Text>
+          <Text style={styles.footerBtnText}>Select no. of bags →</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -169,125 +227,168 @@ export default function HostDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  hero: {
-    height: 220,
-    backgroundColor: '#D4EDE4',
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
+
+  backLink: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 4 },
+  backLinkText: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
+
+  body: { paddingHorizontal: 20 },
+
+  /* Header block */
+  headerBlock: { alignItems: 'center', paddingVertical: 20 },
+  iconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    backgroundColor: '#FFF0F0',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
   },
-  heroEmoji: { fontSize: 80 },
-  backBtn: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  iconEmoji: { fontSize: 36 },
+  storageLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: 4,
   },
-  backBtnText: { fontSize: 20, color: Colors.textPrimary },
-  body: { padding: 20 },
-  nameRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
-  name: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
-  type: { fontSize: 14, color: Colors.textSecondary, marginTop: 2 },
-  ratingBox: {
-    backgroundColor: Colors.primary,
+  hostName: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', marginBottom: 4 },
+  locationName: { fontSize: 14, color: '#6B7280', marginBottom: 10 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ratingStar: { color: '#FFD93D', fontSize: 14 },
+  ratingText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
+  ratingCount: { fontSize: 13, color: '#6B7280' },
+  ratingDot: { fontSize: 13, color: '#6B7280' },
+  responseRate: { fontSize: 13, color: '#6B7280' },
+  openBadge: {
+    backgroundColor: '#6BCB77',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 6,
+  },
+  openBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
+
+  divider: { height: 8, backgroundColor: '#F0EAEA', marginHorizontal: -20, marginVertical: 12 },
+
+  /* Address warning */
+  addressWarning: { paddingVertical: 4 },
+  addressWarningText: { fontSize: 13, color: '#F59E0B', lineHeight: 20 },
+
+  /* Bag tip card */
+  bagTipCard: {
+    backgroundColor: '#EFF6FF',
     borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
+    padding: 14,
   },
-  ratingNum: { fontSize: 16, fontWeight: '800', color: Colors.white },
-  ratingStar: { fontSize: 14, color: Colors.star },
-  chipsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
-  chip: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
+  bagTipText: { fontSize: 13, color: '#1D4ED8', lineHeight: 20 },
+
+  /* Trust card */
+  trustCard: {
     borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  chipLabel: { fontSize: 10, color: Colors.textLight, marginBottom: 2 },
-  chipValue: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginBottom: 10, marginTop: 4 },
-  bio: { fontSize: 15, color: Colors.textSecondary, lineHeight: 22, marginBottom: 20 },
-  hoursBox: {
-    backgroundColor: Colors.white,
-    borderRadius: 14,
+    borderColor: '#F0EAEA',
+    borderRadius: 12,
     padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
   },
-  hoursTime: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  hoursDays: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
-  counterRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 24 },
+  trustTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 },
+  trustSub: { fontSize: 13, color: '#6B7280' },
+
+  /* Section title */
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 },
+
+  /* How it works */
+  stepsCard: {
+    borderWidth: 1,
+    borderColor: '#F0EAEA',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14 },
+  stepRowBorder: { borderBottomWidth: 1, borderBottomColor: '#F0EAEA' },
+  stepNum: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#FFF0F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumText: { fontSize: 15, fontWeight: '700', color: '#FF5C5C' },
+  stepTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 2 },
+  stepDesc: { fontSize: 13, color: '#6B7280', lineHeight: 18 },
+
+  /* Opening hours */
+  hoursTable: { gap: 8 },
+  hoursRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  hoursDay: { fontSize: 14, color: '#1A1A1A' },
+  hoursTime: { fontSize: 14, color: '#1A1A1A' },
+  hoursBold: { fontWeight: '700' },
+  hoursClosed: { fontSize: 14, color: '#6B7280' },
+
+  /* Bag counter */
+  counterRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 8 },
   counterBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#FF5C5C',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  counterBtnText: { fontSize: 22, color: Colors.white, fontWeight: '700' },
-  counterVal: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, minWidth: 30, textAlign: 'center' },
-  counterDesc: { fontSize: 14, color: Colors.textSecondary },
-  reviewsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, marginTop: 4 },
-  writeReviewBtn: { backgroundColor: Colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
-  writeReviewBtnText: { fontSize: 13, fontWeight: '700', color: Colors.white },
+  counterBtnText: { fontSize: 22, color: '#FFFFFF', fontWeight: '700' },
+  counterVal: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', minWidth: 30, textAlign: 'center' },
+  counterDesc: { fontSize: 14, color: '#6B7280' },
+
+  /* Reviews */
+  reviewsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  writeReviewBtn: { backgroundColor: '#FF5C5C', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+  writeReviewBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
   reviewsList: { gap: 12 },
   review: {
-    backgroundColor: Colors.white,
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#F0EAEA',
   },
-  reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   reviewAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.border,
+    backgroundColor: '#F0EAEA',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  reviewName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  reviewDate: { fontSize: 12, color: Colors.textLight },
-  reviewComment: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
-  bookBar: {
+  reviewName: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
+  reviewDate: { fontSize: 12, color: '#6B7280' },
+  reviewComment: { fontSize: 14, color: '#6B7280', lineHeight: 20 },
+
+  /* Sticky footer */
+  stickyFooter: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.white,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    padding: 20,
-    paddingBottom: 34,
+    borderTopColor: '#F0EAEA',
+    padding: 16,
+    paddingBottom: 30,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  bookPrice: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
-  bookPriceSub: { fontSize: 14, fontWeight: '400', color: Colors.textSecondary },
-  bookBtn: {
-    backgroundColor: Colors.accent,
+  footerPrice: { fontSize: 22, fontWeight: '800', color: '#1A1A1A' },
+  footerPriceSub: { fontSize: 14, fontWeight: '400', color: '#6B7280' },
+  footerBtn: {
+    backgroundColor: '#FF5C5C',
     borderRadius: 14,
-    paddingHorizontal: 28,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
-  bookBtnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  footerBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 });
