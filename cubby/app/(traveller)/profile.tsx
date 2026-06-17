@@ -1,4 +1,7 @@
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Image, TextInput } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
+  Alert, Image, TextInput, Modal, KeyboardAvoidingView, Platform,
+} from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useState, useEffect } from 'react';
@@ -42,23 +45,38 @@ function MenuRow({ item, isLast }: { item: MenuItem; isLast: boolean }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function Profile() {
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [name, setName] = useState('Chelcy');
-  const [editingName, setEditingName] = useState(false);
-  const [draftName, setDraftName] = useState('');
+  const [firstName, setFirstName] = useState('Chelcy');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [editModalVisible, setEditModalVisible] = useState(false);
+
+  // Draft state for modal
+  const [draftFirstName, setDraftFirstName] = useState('');
+  const [draftLastName, setDraftLastName] = useState('');
+  const [draftPhone, setDraftPhone] = useState('');
+
+  const EMAIL = 'chelcymae1@gmail.com';
 
   useEffect(() => {
     AsyncStorage.getItem('cubby_traveller_profile').then(raw => {
       if (!raw) return;
       try {
         const data = JSON.parse(raw);
-        if (data.name) setName(data.name);
+        if (data.firstName) setFirstName(data.firstName);
+        if (data.lastName) setLastName(data.lastName);
+        // Legacy support for old 'name' key
+        if (!data.firstName && data.name) setFirstName(data.name);
         if (data.avatarUri) setAvatar(data.avatarUri);
+        if (data.phone) setPhone(data.phone);
       } catch {}
     });
   }, []);
 
-  async function saveProfile(newName: string, avatarUri: string | null) {
-    await AsyncStorage.setItem('cubby_traveller_profile', JSON.stringify({ name: newName, avatarUri }));
+  async function saveProfile(fn: string, ln: string, ph: string, avatarUri: string | null) {
+    await AsyncStorage.setItem(
+      'cubby_traveller_profile',
+      JSON.stringify({ firstName: fn, lastName: ln, phone: ph, avatarUri }),
+    );
   }
 
   async function pickImage() {
@@ -76,20 +94,26 @@ export default function Profile() {
     if (!result.canceled) {
       const uri = result.assets[0].uri;
       setAvatar(uri);
-      await saveProfile(name, uri);
+      await saveProfile(firstName, lastName, phone, uri);
     }
   }
 
-  function handleEditPress() {
-    setDraftName(name);
-    setEditingName(true);
+  function openEditModal() {
+    setDraftFirstName(firstName);
+    setDraftLastName(lastName);
+    setDraftPhone(phone);
+    setEditModalVisible(true);
   }
 
-  async function handleSaveName() {
-    const trimmed = draftName.trim() || name;
-    setName(trimmed);
-    setEditingName(false);
-    await saveProfile(trimmed, avatar);
+  async function handleSave() {
+    const fn = draftFirstName.trim() || firstName;
+    const ln = draftLastName.trim();
+    const ph = draftPhone.trim();
+    setFirstName(fn);
+    setLastName(ln);
+    setPhone(ph);
+    setEditModalVisible(false);
+    await saveProfile(fn, ln, ph, avatar);
   }
 
   function handleSignOut() {
@@ -106,6 +130,8 @@ export default function Profile() {
     ]);
   }
 
+  const displayName = [firstName, lastName].filter(Boolean).join(' ');
+
   const SECTIONS: MenuSection[] = [
     {
       title: 'Hosting',
@@ -120,6 +146,7 @@ export default function Profile() {
       items: [
         { icon: '💳', label: 'Payment methods', onPress: () => router.push('/(traveller)/payment-details') },
         { icon: '🔔', label: 'Notifications', onPress: () => router.push('/(traveller)/notifications') },
+        { icon: '🌐', label: 'Language', onPress: () => router.push('/(traveller)/language') },
         { icon: '✅', label: 'Get verified ✅', onPress: () => router.push('/(traveller)/verification'), highlight: true },
       ],
     },
@@ -143,43 +170,45 @@ export default function Profile() {
         </View>
 
         {/* Profile row */}
-        <TouchableOpacity style={styles.profileRow} activeOpacity={0.85} onPress={pickImage}>
-          <View style={styles.avatarContainer}>
-            {avatar ? (
-              <Image source={{ uri: avatar }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarEmoji}>👤</Text>
+        <View style={styles.profileCard}>
+          <TouchableOpacity style={styles.profileRow} activeOpacity={0.85} onPress={pickImage}>
+            <View style={styles.avatarContainer}>
+              {avatar ? (
+                <Image source={{ uri: avatar }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarEmoji}>👤</Text>
+                </View>
+              )}
+              <View style={styles.avatarEditBadge}>
+                <Text style={styles.avatarEditText}>📷</Text>
               </View>
-            )}
-            <View style={styles.avatarEditBadge}>
-              <Text style={styles.avatarEditText}>📷</Text>
             </View>
-          </View>
-          <View style={{ flex: 1 }}>
-            {editingName ? (
-              <TextInput
-                style={styles.nameInput}
-                value={draftName}
-                onChangeText={setDraftName}
-                autoFocus
-                onSubmitEditing={handleSaveName}
-              />
-            ) : (
-              <Text style={styles.profileName}>{name}</Text>
-            )}
-            <Text style={styles.profileEmail}>chelcymae1@gmail.com</Text>
-          </View>
-          {editingName ? (
-            <TouchableOpacity style={styles.editChip} onPress={handleSaveName}>
-              <Text style={styles.editChipText}>Save</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.editChip} onPress={handleEditPress}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.profileName}>{displayName}</Text>
+              <Text style={styles.profileEmail}>{EMAIL}</Text>
+            </View>
+            <TouchableOpacity style={styles.editChip} onPress={openEditModal}>
               <Text style={styles.editChipText}>Edit ›</Text>
             </TouchableOpacity>
-          )}
-        </TouchableOpacity>
+          </TouchableOpacity>
+
+          {/* Info rows */}
+          <View style={styles.infoRows}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Name</Text>
+              <Text style={styles.infoValue}>{displayName || '—'}</Text>
+            </View>
+            <View style={[styles.infoRow, { borderTopWidth: 1, borderTopColor: '#F0EAEA' }]}>
+              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoValue}>{EMAIL}</Text>
+            </View>
+            <View style={[styles.infoRow, { borderTopWidth: 1, borderTopColor: '#F0EAEA' }]}>
+              <Text style={styles.infoLabel}>Phone</Text>
+              <Text style={styles.infoValue}>{phone || '—'}</Text>
+            </View>
+          </View>
+        </View>
 
         {/* Become a Host banner */}
         <TouchableOpacity
@@ -218,6 +247,91 @@ export default function Profile() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setEditModalVisible(false)}
+          />
+          <View style={styles.modalSheet}>
+            {/* Handle */}
+            <View style={styles.modalHandle} />
+
+            {/* Modal header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit</Text>
+              <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSave}>
+                <Text style={styles.modalSaveBtnText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>Change your personal information.</Text>
+
+            {/* First name */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>First name</Text>
+              <TextInput
+                style={styles.textInput}
+                value={draftFirstName}
+                onChangeText={setDraftFirstName}
+                placeholder="First name"
+                placeholderTextColor="#C0C0C0"
+              />
+            </View>
+
+            {/* Last name */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Last name</Text>
+              <TextInput
+                style={styles.textInput}
+                value={draftLastName}
+                onChangeText={setDraftLastName}
+                placeholder="Last name"
+                placeholderTextColor="#C0C0C0"
+              />
+            </View>
+
+            {/* Phone */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Phone</Text>
+              <View style={styles.phoneRow}>
+                <View style={styles.phonePrefix}>
+                  <Text style={styles.phonePrefixText}>🇿🇦 +27</Text>
+                </View>
+                <TextInput
+                  style={[styles.textInput, { flex: 1, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }]}
+                  value={draftPhone}
+                  onChangeText={setDraftPhone}
+                  placeholder="81 234 5678"
+                  placeholderTextColor="#C0C0C0"
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </View>
+
+            {/* Email (locked) */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <View style={[styles.textInput, styles.lockedInput]}>
+                <Text style={styles.lockedInputText}>{EMAIL}</Text>
+                <Text style={styles.lockIcon}>🔒</Text>
+              </View>
+              <Text style={styles.lockedNote}>Your email is locked to this account.</Text>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -228,43 +342,81 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
 
-  // Profile row
+  // Profile card
+  profileCard: {
+    backgroundColor: Colors.white,
+    marginHorizontal: 20,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 16,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
   profileRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.white, marginHorizontal: 20, borderRadius: 18,
-    padding: 16, borderWidth: 1, borderColor: Colors.border, marginBottom: 16, marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
   },
   avatarContainer: { position: 'relative' },
   avatarImage: { width: 56, height: 56, borderRadius: 28 },
   avatar: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#F0EAEA', alignItems: 'center', justifyContent: 'center',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F0EAEA',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarEmoji: { fontSize: 28 },
   avatarEditBadge: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: Colors.white,
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.white,
   },
   avatarEditText: { fontSize: 9 },
   profileName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-  nameInput: {
-    fontSize: 17, fontWeight: '700', color: Colors.textPrimary,
-    borderBottomWidth: 1.5, borderBottomColor: Colors.primary, minWidth: 100,
-  },
   profileEmail: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
   editChip: {
-    borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 6,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   editChipText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
 
+  // Info rows
+  infoRows: { borderTopWidth: 1, borderTopColor: '#F0EAEA' },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  infoLabel: { fontSize: 14, color: Colors.textSecondary },
+  infoValue: { fontSize: 14, color: Colors.textPrimary, fontWeight: '500', flexShrink: 1, textAlign: 'right' },
+
   // Become a host
   becomeHostCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#FF5C5C', marginHorizontal: 20, borderRadius: 16,
-    padding: 16, marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FF5C5C',
+    marginHorizontal: 20,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 8,
   },
   becomeHostEmoji: { fontSize: 26 },
   becomeHostTitle: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
@@ -273,21 +425,33 @@ const styles = StyleSheet.create({
 
   // Section header
   sectionHeader: {
-    fontSize: 13, fontWeight: '700', color: '#6B7280',
-    textTransform: 'uppercase', letterSpacing: 0.5,
-    paddingHorizontal: 20, marginTop: 24, marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 8,
   },
 
   // Menu section
   menuSection: {
-    backgroundColor: Colors.white, marginHorizontal: 20,
-    borderRadius: 16, overflow: 'hidden',
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.white,
+    marginHorizontal: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   menuRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingHorizontal: 20, height: 56,
-    borderBottomWidth: 1, borderBottomColor: '#F0EAEA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 20,
+    height: 56,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0EAEA',
   },
   menuRowIcon: { fontSize: 20, width: 26 },
   menuRowLabel: { flex: 1, fontSize: 15, color: Colors.textPrimary },
@@ -295,11 +459,86 @@ const styles = StyleSheet.create({
   menuRowChevron: { fontSize: 20, color: Colors.textSecondary },
 
   // Divider + sign out
-  divider: { height: 1, backgroundColor: Colors.border, marginHorizontal: 20, marginTop: 28, marginBottom: 4 },
-  signOutRow: {
-    paddingHorizontal: 20, paddingVertical: 18, alignItems: 'center',
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginHorizontal: 20,
+    marginTop: 28,
+    marginBottom: 4,
   },
+  signOutRow: { paddingHorizontal: 20, paddingVertical: 18, alignItems: 'center' },
   signOutText: { fontSize: 16, fontWeight: '700', color: Colors.error },
   deleteRow: { paddingHorizontal: 20, paddingVertical: 10, alignItems: 'center' },
   deleteText: { fontSize: 13, color: Colors.textLight },
+
+  // Modal
+  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalSheet: {
+    backgroundColor: '#FAFAFA',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 48,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
+  modalSaveBtn: {
+    backgroundColor: '#FF5C5C',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  modalSaveBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  modalSubtitle: { fontSize: 14, color: Colors.textSecondary, marginBottom: 24 },
+
+  // Inputs
+  inputGroup: { marginBottom: 16 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6 },
+  textInput: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: Colors.textPrimary,
+  },
+  phoneRow: { flexDirection: 'row' },
+  phonePrefix: {
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRightWidth: 0,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    justifyContent: 'center',
+  },
+  phonePrefixText: { fontSize: 15, color: Colors.textPrimary, fontWeight: '600' },
+  lockedInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  lockedInputText: { flex: 1, fontSize: 16, color: Colors.textSecondary },
+  lockIcon: { fontSize: 16 },
+  lockedNote: { fontSize: 12, color: Colors.textSecondary, marginTop: 6 },
 });
