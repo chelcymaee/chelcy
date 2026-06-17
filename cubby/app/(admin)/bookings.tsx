@@ -1,201 +1,99 @@
-import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-} from 'react-native';
-import { router } from 'expo-router';
 import { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, FlatList } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 
-interface Booking {
-  id: string;
-  travellerName?: string;
-  hostName?: string;
-  checkIn?: string;
-  checkOut?: string;
-  bags?: number;
-  totalPrice?: number;
-  status: string;
-}
-
-type Filter = 'all' | 'active' | 'completed';
-
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  active: { bg: '#DCFCE7', text: '#16A34A' },
-  completed: { bg: '#EFF6FF', text: '#2563EB' },
-  cancelled: { bg: '#FEF2F2', text: '#DC2626' },
-  pending: { bg: '#FFFBEB', text: '#D97706' },
+const STATUS_COLOR: Record<string, string> = {
+  pending: '#F59E0B', confirmed: '#3B82F6', active: '#10B981',
+  completed: '#6B7280', cancelled: '#EF4444',
 };
 
-export default function Bookings() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [filter, setFilter] = useState<Filter>('all');
+export default function AdminBookings() {
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [tab, setTab] = useState<'all' | 'active' | 'completed'>('all');
 
-  useFocusEffect(
-    useCallback(() => {
-      loadBookings();
-    }, [])
-  );
-
-  async function loadBookings() {
-    try {
-      const raw = await AsyncStorage.getItem('cubby_bookings');
+  useFocusEffect(useCallback(() => {
+    AsyncStorage.getItem('cubby_bookings').then(raw => {
       setBookings(raw ? JSON.parse(raw) : []);
-    } catch {}
-  }
+    });
+  }, []));
 
-  const filtered = bookings.filter(b => {
-    if (filter === 'all') return true;
-    return b.status === filter;
-  });
-
-  const FILTERS: { key: Filter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'active', label: 'Active' },
-    { key: 'completed', label: 'Completed' },
-  ];
+  const filtered = tab === 'all' ? bookings
+    : tab === 'active' ? bookings.filter(b => ['pending','confirmed','active'].includes(b.status))
+    : bookings.filter(b => b.status === 'completed');
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.backLink}>← Back</Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.heading}>All Bookings</Text>
+      </View>
+
+      <View style={styles.tabs}>
+        {(['all','active','completed'] as const).map(t => (
+          <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
+            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t.charAt(0).toUpperCase() + t.slice(1)}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Bookings</Text>
-        </View>
+        ))}
+      </View>
 
-        <View style={styles.filterRow}>
-          {FILTERS.map(f => (
-            <TouchableOpacity
-              key={f.key}
-              style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
-              onPress={() => setFilter(f.key)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {filtered.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>📦</Text>
-            <Text style={styles.emptyText}>No bookings found.</Text>
-          </View>
-        ) : (
-          <View style={styles.list}>
-            {filtered.map(booking => {
-              const statusStyle = STATUS_COLORS[booking.status] || STATUS_COLORS['pending'];
-              return (
-                <View key={booking.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.travellerName}>{booking.travellerName || 'Unknown traveller'}</Text>
-                      <Text style={styles.hostName}>@ {booking.hostName || 'Unknown host'}</Text>
-                    </View>
-                    <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
-                      <Text style={[styles.badgeText, { color: statusStyle.text }]}>
-                        {booking.status}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.cardDetails}>
-                    {booking.checkIn && (
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Check-in</Text>
-                        <Text style={styles.detailValue}>{booking.checkIn}</Text>
-                      </View>
-                    )}
-                    {booking.checkOut && (
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Check-out</Text>
-                        <Text style={styles.detailValue}>{booking.checkOut}</Text>
-                      </View>
-                    )}
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Bags</Text>
-                      <Text style={styles.detailValue}>{booking.bags ?? '—'}</Text>
-                    </View>
-                    <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
-                      <Text style={styles.detailLabel}>Total</Text>
-                      <Text style={[styles.detailValue, styles.totalValue]}>
-                        R{(booking.totalPrice ?? 0).toFixed(0)}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={styles.cardTop}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardHost}>{item.host?.display_name ?? item.hostName ?? 'Unknown host'}</Text>
+                <Text style={styles.cardTraveller}>👤 {item.traveller_name ?? 'Traveller'}</Text>
+              </View>
+              <View style={[styles.badge, { backgroundColor: (STATUS_COLOR[item.status] ?? '#6B7280') + '20' }]}>
+                <Text style={[styles.badgeText, { color: STATUS_COLOR[item.status] ?? '#6B7280' }]}>{(item.status ?? '').toUpperCase()}</Text>
+              </View>
+            </View>
+            <View style={styles.cardDetails}>
+              <Text style={styles.detail}>📅 {item.drop_off_date ?? item.date ?? '—'}</Text>
+              <Text style={styles.detail}>🧳 {item.bag_count ?? item.bags ?? '—'} bags</Text>
+              <Text style={styles.detail}>💰 R{item.total_price ?? item.totalPrice ?? '—'}</Text>
+            </View>
           </View>
         )}
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyEmoji}>🎟️</Text>
+            <Text style={styles.emptyTitle}>No bookings yet</Text>
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  backLink: { fontSize: 16, color: Colors.primary, fontWeight: '600', marginBottom: 8 },
-  title: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 10,
-    marginBottom: 16,
-    marginTop: 4,
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-  },
-  filterChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  filterText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
-  filterTextActive: { color: Colors.white },
-  list: { paddingHorizontal: 20, gap: 12 },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 12,
-  },
-  travellerName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  hostName: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  badgeText: { fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
-  cardDetails: { borderTopWidth: 1, borderTopColor: '#F0EAEA' },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0EAEA',
-  },
-  detailLabel: { fontSize: 14, color: Colors.textSecondary },
-  detailValue: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  totalValue: { color: Colors.primary, fontWeight: '800' },
-  emptyState: { alignItems: 'center', paddingTop: 80 },
-  emptyEmoji: { fontSize: 48, marginBottom: 16 },
-  emptyText: { fontSize: 16, color: Colors.textSecondary },
+  backText: { fontSize: 15, color: Colors.primary, fontWeight: '600', marginBottom: 12 },
+  heading: { fontSize: 26, fontWeight: '900', color: '#1A1A1A' },
+  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F0EAEA', backgroundColor: '#fff' },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 14 },
+  tabActive: { borderBottomWidth: 2.5, borderBottomColor: Colors.primary },
+  tabText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+  tabTextActive: { color: Colors.primary, fontWeight: '800' },
+  list: { padding: 16, gap: 12, paddingBottom: 40 },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6 },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
+  cardHost: { fontSize: 16, fontWeight: '800', color: '#1A1A1A' },
+  cardTraveller: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  cardDetails: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
+  detail: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
+  empty: { alignItems: 'center', paddingTop: 80 },
+  emptyEmoji: { fontSize: 48, marginBottom: 12 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
 });

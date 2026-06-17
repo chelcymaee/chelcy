@@ -1,180 +1,96 @@
-import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-} from 'react-native';
-import { router } from 'expo-router';
 import { useState, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from 'expo-router';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
-
-interface Booking {
-  id: string;
-  travellerName?: string;
-  hostName?: string;
-  totalPrice?: number;
-  status: string;
-  checkIn?: string;
-  checkOut?: string;
-}
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Revenue() {
-  const [completedBookings, setCompletedBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => {
+    AsyncStorage.getItem('cubby_bookings').then(raw => {
+      const all = raw ? JSON.parse(raw) : [];
+      setBookings(all.filter((b: any) => b.status === 'completed'));
+    });
+  }, []));
 
-  async function loadData() {
-    try {
-      const raw = await AsyncStorage.getItem('cubby_bookings');
-      const bookings: Booking[] = raw ? JSON.parse(raw) : [];
-      setCompletedBookings(bookings.filter(b => b.status === 'completed'));
-    } catch {}
-  }
-
-  const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.totalPrice ?? 0), 0);
-  const cubbyCut = totalRevenue * 0.3;
-  const hostCut = totalRevenue * 0.7;
+  const total = bookings.reduce((sum, b) => sum + (b.total_price ?? b.totalPrice ?? 0), 0);
+  const cubbyShare = total * 0.3;
+  const hostShare = total * 0.7;
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.backLink}>← Back</Text>
+            <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Revenue</Text>
+          <Text style={styles.heading}>Revenue</Text>
         </View>
 
         <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total Revenue</Text>
-            <Text style={styles.summaryValuePrimary}>R{totalRevenue.toFixed(0)}</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Cubby's 30%</Text>
-            <Text style={styles.summaryValue}>R{cubbyCut.toFixed(0)}</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Hosts' 70%</Text>
-            <Text style={styles.summaryValue}>R{hostCut.toFixed(0)}</Text>
+          <Text style={styles.summaryTitle}>Total Revenue</Text>
+          <Text style={styles.summaryTotal}>R{total.toFixed(2)}</Text>
+          <View style={styles.splitRow}>
+            <View style={styles.splitItem}>
+              <Text style={styles.splitLabel}>Cubby (30%)</Text>
+              <Text style={styles.splitValue}>R{cubbyShare.toFixed(2)}</Text>
+            </View>
+            <View style={styles.splitDivider} />
+            <View style={styles.splitItem}>
+              <Text style={styles.splitLabel}>Hosts (70%)</Text>
+              <Text style={styles.splitValue}>R{hostShare.toFixed(2)}</Text>
+            </View>
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>Completed Bookings</Text>
-
-        {completedBookings.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>📊</Text>
-            <Text style={styles.emptyText}>No completed bookings yet.</Text>
+        <Text style={styles.sectionTitle}>Completed Bookings</Text>
+        {bookings.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyEmoji}>💰</Text>
+            <Text style={styles.emptyTitle}>No completed bookings yet</Text>
           </View>
-        ) : (
-          <View style={styles.list}>
-            {completedBookings.map(booking => {
-              const total = booking.totalPrice ?? 0;
-              return (
-                <View key={booking.id} style={styles.card}>
-                  <View style={styles.cardTop}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.travellerName}>{booking.travellerName || 'Unknown traveller'}</Text>
-                      <Text style={styles.hostName}>@ {booking.hostName || 'Unknown host'}</Text>
-                      {booking.checkIn && (
-                        <Text style={styles.dates}>{booking.checkIn} → {booking.checkOut}</Text>
-                      )}
-                    </View>
-                    <Text style={styles.totalAmount}>R{total.toFixed(0)}</Text>
-                  </View>
-                  <View style={styles.breakdown}>
-                    <View style={styles.breakdownRow}>
-                      <Text style={styles.breakdownLabel}>Cubby (30%)</Text>
-                      <Text style={styles.breakdownValue}>R{(total * 0.3).toFixed(0)}</Text>
-                    </View>
-                    <View style={[styles.breakdownRow, { borderBottomWidth: 0 }]}>
-                      <Text style={styles.breakdownLabel}>Host (70%)</Text>
-                      <Text style={styles.breakdownValue}>R{(total * 0.7).toFixed(0)}</Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        <View style={{ height: 40 }} />
+        ) : bookings.map(b => {
+          const price = b.total_price ?? b.totalPrice ?? 0;
+          return (
+            <View key={b.id} style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowHost}>{b.host?.display_name ?? b.hostName ?? 'Host'}</Text>
+                <Text style={styles.rowDate}>{b.drop_off_date ?? b.date ?? '—'} · {b.bag_count ?? b.bags ?? '—'} bags</Text>
+              </View>
+              <View style={styles.rowAmounts}>
+                <Text style={styles.rowTotal}>R{price}</Text>
+                <Text style={styles.rowSplit}>↳ R{(price * 0.3).toFixed(0)} / R{(price * 0.7).toFixed(0)}</Text>
+              </View>
+            </View>
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  backLink: { fontSize: 16, color: Colors.primary, fontWeight: '600', marginBottom: 8 },
-  title: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
-  summaryCard: {
-    backgroundColor: Colors.white,
-    marginHorizontal: 20,
-    marginTop: 12,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-    overflow: 'hidden',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  summaryDivider: { height: 1, backgroundColor: '#F0EAEA' },
-  summaryLabel: { fontSize: 15, color: Colors.textSecondary, fontWeight: '500' },
-  summaryValuePrimary: { fontSize: 20, fontWeight: '800', color: Colors.primary },
-  summaryValue: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 10,
-  },
-  list: { paddingHorizontal: 20, gap: 12 },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-    overflow: 'hidden',
-  },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 12,
-  },
-  travellerName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  hostName: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-  dates: { fontSize: 12, color: Colors.textLight, marginTop: 4 },
-  totalAmount: { fontSize: 18, fontWeight: '800', color: Colors.primary },
-  breakdown: { borderTopWidth: 1, borderTopColor: '#F0EAEA' },
-  breakdownRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0EAEA',
-  },
-  breakdownLabel: { fontSize: 13, color: Colors.textSecondary },
-  breakdownValue: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  emptyState: { alignItems: 'center', paddingTop: 60 },
-  emptyEmoji: { fontSize: 48, marginBottom: 16 },
-  emptyText: { fontSize: 16, color: Colors.textSecondary },
+  backText: { fontSize: 15, color: Colors.primary, fontWeight: '600', marginBottom: 12 },
+  heading: { fontSize: 26, fontWeight: '900', color: '#1A1A1A' },
+  summaryCard: { margin: 16, backgroundColor: Colors.primary, borderRadius: 20, padding: 24, alignItems: 'center' },
+  summaryTitle: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '700', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  summaryTotal: { fontSize: 42, fontWeight: '900', color: '#fff', marginBottom: 20 },
+  splitRow: { flexDirection: 'row', width: '100%', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14, padding: 16 },
+  splitItem: { flex: 1, alignItems: 'center' },
+  splitDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.3)', marginVertical: 4 },
+  splitLabel: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginBottom: 4, fontWeight: '600' },
+  splitValue: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: '#1A1A1A', paddingHorizontal: 20, marginBottom: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 16, marginBottom: 10, borderRadius: 14, padding: 16 },
+  rowHost: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
+  rowDate: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  rowAmounts: { alignItems: 'flex-end' },
+  rowTotal: { fontSize: 16, fontWeight: '800', color: Colors.primary },
+  rowSplit: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+  empty: { alignItems: 'center', paddingTop: 60 },
+  emptyEmoji: { fontSize: 48, marginBottom: 12 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#6B7280' },
 });
