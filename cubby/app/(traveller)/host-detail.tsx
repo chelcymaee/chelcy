@@ -1,17 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { MOCK_HOSTS, MOCK_REVIEWS } from '../../src/lib/mock-data';
 
 export default function HostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const host = MOCK_HOSTS.find(h => h.id === id);
-  const reviews = MOCK_REVIEWS.filter(r => r.host_id === id);
+  const mockReviews = MOCK_REVIEWS.filter(r => r.host_id === id);
   const [bagCount, setBagCount] = useState(1);
+  const [savedReviews, setSavedReviews] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!id) return;
+    AsyncStorage.getItem(`cubby_reviews_${id}`).then(raw => {
+      if (raw) setSavedReviews(JSON.parse(raw));
+    });
+  }, [id]);
+
+  const reviews = [...savedReviews, ...mockReviews];
 
   if (!host) return null;
 
@@ -100,9 +111,18 @@ export default function HostDetail() {
           </View>
 
           {/* Reviews */}
+          <View style={styles.reviewsHeader}>
+            <Text style={styles.sectionTitle}>Reviews{reviews.length > 0 ? ` (${reviews.length})` : ''}</Text>
+            <TouchableOpacity
+              style={styles.writeReviewBtn}
+              onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostId: id, hostName: host.display_name } })}
+            >
+              <Text style={styles.writeReviewBtnText}>✏️ Write a review</Text>
+            </TouchableOpacity>
+          </View>
+
           {reviews.length > 0 && (
             <>
-              <Text style={styles.sectionTitle}>Recent reviews</Text>
               <View style={styles.reviewsList}>
                 {reviews.map(r => (
                   <View key={r.id} style={styles.review}>
@@ -224,6 +244,9 @@ const styles = StyleSheet.create({
   counterBtnText: { fontSize: 22, color: Colors.white, fontWeight: '700' },
   counterVal: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, minWidth: 30, textAlign: 'center' },
   counterDesc: { fontSize: 14, color: Colors.textSecondary },
+  reviewsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, marginTop: 4 },
+  writeReviewBtn: { backgroundColor: Colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+  writeReviewBtnText: { fontSize: 13, fontWeight: '700', color: Colors.white },
   reviewsList: { gap: 12 },
   review: {
     backgroundColor: Colors.white,

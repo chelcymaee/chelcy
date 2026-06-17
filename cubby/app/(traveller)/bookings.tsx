@@ -79,7 +79,7 @@ function BookingCard({ booking }: { booking: Booking }) {
       {booking.status === 'completed' && (
         <TouchableOpacity
           style={{ margin: 12, marginTop: 0, backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
-          onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostName: booking.host.display_name } })}
+          onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostName: booking.host.display_name, hostId: booking.host_id } })}
         >
           <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.white }}>⭐ Leave a review</Text>
         </TouchableOpacity>

@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 
 const TAGS = ['Great location', 'Friendly host', 'Secure storage', 'Easy to find', 'Quick response', 'Would return'];
 
 export default function Review() {
-  const { hostName } = useLocalSearchParams<{ hostName: string }>();
+  const { hostName, hostId } = useLocalSearchParams<{ hostName: string; hostId: string }>();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -15,11 +16,25 @@ export default function Review() {
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   }
 
-  function submit() {
+  async function submit() {
     if (rating === 0) {
       Alert.alert('Please give a star rating');
       return;
     }
+
+    const key = `cubby_reviews_${hostId ?? hostName}`;
+    const existing = await AsyncStorage.getItem(key);
+    const reviews = existing ? JSON.parse(existing) : [];
+    reviews.unshift({
+      id: Date.now().toString(),
+      reviewer_name: 'You',
+      rating,
+      comment,
+      tags: selectedTags,
+      created_at: new Date().toISOString(),
+    });
+    await AsyncStorage.setItem(key, JSON.stringify(reviews));
+
     Alert.alert('Review submitted! 🙏', 'Thank you — your review helps other travellers.', [
       { text: 'OK', onPress: () => router.replace('/(traveller)/explore') }
     ]);
@@ -27,7 +42,7 @@ export default function Review() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.inner}>
+      <ScrollView contentContainerStyle={styles.inner}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.back}>← Skip for now</Text>
         </TouchableOpacity>
@@ -76,14 +91,14 @@ export default function Review() {
         <TouchableOpacity style={[styles.btn, rating === 0 && styles.btnDisabled]} onPress={submit} disabled={rating === 0}>
           <Text style={styles.btnText}>Submit review</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  inner: { padding: 24, paddingTop: 28, flex: 1 },
+  inner: { padding: 24, paddingTop: 28 },
   back: { fontSize: 15, color: Colors.textSecondary, marginBottom: 24 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, marginBottom: 4 },
   sub: { fontSize: 15, color: Colors.textSecondary, marginBottom: 28 },
