@@ -1,15 +1,9 @@
+import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-  Alert, Switch,
+  View, Text, StyleSheet, SafeAreaView, Switch,
 } from 'react-native';
-import { router } from 'expo-router';
-import React from 'react';
-
-const Btn = ({ onClick, style, children }: { onClick: () => void; style?: any; children: any }) =>
-  React.createElement('button', { onClick, style: { border: 'none', cursor: 'pointer', ...style } }, children);
-import { useState, useEffect, useCallback } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
@@ -23,32 +17,28 @@ interface Host {
 }
 
 const TYPE_EMOJI: Record<string, string> = {
-  café: '☕',
-  hotel: '🏨',
-  hostel: '🛏️',
-  guesthouse: '🏡',
-  airbnb: '🔑',
-  tour_operator: '🗺️',
-  home: '🏠',
-  other: '📍',
+  café: '☕', hotel: '🏨', hostel: '🛏️', guesthouse: '🏡',
+  airbnb: '🔑', tour_operator: '🗺️', home: '🏠', other: '📍',
 };
+
+function Btn({ onClick, style, children }: { onClick: () => void; style?: any; children: any }) {
+  return React.createElement('button', {
+    onClick,
+    style: { border: 'none', cursor: 'pointer', fontFamily: 'inherit', ...style },
+  }, children);
+}
 
 export default function ManageHosts() {
   const [hosts, setHosts] = useState<Host[]>([]);
 
   useFocusEffect(
-    useCallback(() => {
-      loadHosts();
-    }, [])
+    useCallback(() => { loadHosts(); }, [])
   );
 
   async function loadHosts() {
     try {
       if (isSupabaseConfigured) {
-        const { data, error } = await supabase
-          .from('hosts')
-          .select('*')
-          .order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('hosts').select('*').order('created_at', { ascending: false });
         if (!error && data) {
           setHosts(data.map((row: any) => ({
             id: row.id,
@@ -66,49 +56,37 @@ export default function ManageHosts() {
     } catch {}
   }
 
-  async function saveHosts(updated: Host[]) {
-    await AsyncStorage.setItem('cubby_hosts', JSON.stringify(updated));
-    setHosts(updated);
-  }
-
   async function toggleActive(host: Host) {
     if (isSupabaseConfigured) {
-      const { error } = await supabase
-        .from('hosts')
-        .update({ active: !host.active })
-        .eq('id', host.id);
-      if (!error) {
-        setHosts(prev => prev.map(h => h.id === host.id ? { ...h, active: !h.active } : h));
-      }
+      const { error } = await supabase.from('hosts').update({ active: !host.active }).eq('id', host.id);
+      if (!error) setHosts(prev => prev.map(h => h.id === host.id ? { ...h, active: !h.active } : h));
     } else {
       const updated = hosts.map(h => h.id === host.id ? { ...h, active: !h.active } : h);
-      await saveHosts(updated);
+      await AsyncStorage.setItem('cubby_hosts', JSON.stringify(updated));
+      setHosts(updated);
     }
   }
 
   async function deleteHost(id: string) {
     if (isSupabaseConfigured) {
       const { error } = await supabase.from('hosts').delete().eq('id', id);
-      if (!error) {
-        setHosts(prev => prev.filter(h => h.id !== id));
-      }
+      if (!error) setHosts(prev => prev.filter(h => h.id !== id));
     } else {
       const updated = hosts.filter(h => h.id !== id);
-      await saveHosts(updated);
+      await AsyncStorage.setItem('cubby_hosts', JSON.stringify(updated));
+      setHosts(updated);
     }
   }
 
   function confirmDelete(id: string, name: string) {
-    if (window.confirm(`Delete "${name}"? This cannot be undone.`)) {
-      deleteHost(id);
-    }
+    if (window.confirm(`Delete "${name}"? This cannot be undone.`)) deleteHost(id);
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={{ flex: 1, overflowY: 'auto' } as any}>
         <View style={styles.header}>
-          <Btn onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ background: 'none', padding: 0, marginBottom: 8 }}>
+          <Btn onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ background: 'none', padding: '0 0 8px 0' }}>
             <Text style={styles.backLink}>← Back</Text>
           </Btn>
           <Text style={styles.title}>Manage Hosts</Text>
@@ -119,7 +97,9 @@ export default function ManageHosts() {
             <Text style={styles.emptyEmoji}>🏠</Text>
             <Text style={styles.emptyText}>No hosts yet.</Text>
             <Text style={styles.emptySubText}>Create your first host profile.</Text>
-            <Btn onClick={() => router.push('/(admin)/create-host')} style={{ backgroundColor: '#2D6A4F', color: 'white', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: 700 }}>Create Host Profile</Btn>
+            <Btn onClick={() => router.push('/(admin)/create-host')} style={{ backgroundColor: '#2D6A4F', color: 'white', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: 700 }}>
+              Create Host Profile
+            </Btn>
           </View>
         ) : (
           <View style={styles.list}>
@@ -147,10 +127,14 @@ export default function ManageHosts() {
                         onValueChange={() => toggleActive(host)}
                         trackColor={{ false: '#D1D5DB', true: Colors.primary }}
                         thumbColor={Colors.white}
-                        style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
                       />
                     </View>
-                    <Btn onClick={() => confirmDelete(host.id, host.displayName)} style={{ backgroundColor: '#FEF2F2', borderRadius: 8, padding: '6px 10px', fontSize: 13, color: '#DC2626', fontWeight: 600 }}>🗑️ Delete</Btn>
+                    <Btn
+                      onClick={() => confirmDelete(host.id, host.displayName)}
+                      style={{ backgroundColor: '#FEF2F2', borderRadius: 8, padding: '6px 10px', fontSize: 13, color: '#DC2626', fontWeight: 600 }}
+                    >
+                      🗑️ Delete
+                    </Btn>
                   </View>
                 </View>
               </View>
@@ -158,10 +142,15 @@ export default function ManageHosts() {
           </View>
         )}
 
-        <View style={{ height: 80 }} />
+        <View style={{ height: 100 }} />
       </View>
 
-      <Btn onClick={() => router.push('/(admin)/create-host')} style={{ position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#2D6A4F', fontSize: 28, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>+</Btn>
+      <Btn
+        onClick={() => router.push('/(admin)/create-host')}
+        style={{ position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#2D6A4F', fontSize: 28, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+      >
+        +
+      </Btn>
     </SafeAreaView>
   );
 }
@@ -172,79 +161,28 @@ const styles = StyleSheet.create({
   backLink: { fontSize: 16, color: Colors.primary, fontWeight: '600', marginBottom: 8 },
   title: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
   list: { paddingHorizontal: 20, paddingTop: 12, gap: 12 },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-    overflow: 'hidden',
-  },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 16,
-  },
+  card: { backgroundColor: Colors.white, borderRadius: 16, borderWidth: 1, borderColor: '#F0EAEA' },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
   typeEmoji: { fontSize: 28 },
   hostName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   hostLocation: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   badgeActive: { backgroundColor: '#DCFCE7' },
   badgeInactive: { backgroundColor: '#F3F4F6' },
   badgeText: { fontSize: 12, fontWeight: '700' },
   badgeTextActive: { color: '#16A34A' },
   badgeTextInactive: { color: Colors.textSecondary },
   cardBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    paddingTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: '#F0EAEA',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingBottom: 14, paddingTop: 4,
+    borderTopWidth: 1, borderTopColor: '#F0EAEA',
   },
   price: { fontSize: 14, fontWeight: '700', color: Colors.primary },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   toggleLabel: { fontSize: 13, color: Colors.textSecondary },
-  deleteBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#FEF2F2',
-  },
-  deleteBtnText: { fontSize: 13, color: Colors.error, fontWeight: '600' },
   emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
   emptyEmoji: { fontSize: 48, marginBottom: 16 },
   emptyText: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 },
   emptySubText: { fontSize: 14, color: Colors.textSecondary, marginBottom: 24, textAlign: 'center' },
-  emptyBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-  },
-  emptyBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  fabText: { fontSize: 28, color: Colors.white, fontWeight: '400', lineHeight: 32 },
 });
