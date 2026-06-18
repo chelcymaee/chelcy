@@ -36,6 +36,8 @@ export default function CreateHost() {
   const [partnerEmail, setPartnerEmail] = useState('');
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   function toggleDay(day: string) {
     setAvailableDays(prev =>
@@ -44,25 +46,14 @@ export default function CreateHost() {
   }
 
   async function handleSave() {
-    console.log('handleSave called', { displayName, locationName, pricePerBag, maxBags });
-    if (!displayName.trim()) {
-      alert('Display name is required.');
-      return;
-    }
-    if (!locationName.trim()) {
-      alert('Location name is required.');
-      return;
-    }
+    setErrorMsg('');
+    setSuccessMsg('');
+    if (!displayName.trim()) { setErrorMsg('Display name is required.'); return; }
+    if (!locationName.trim()) { setErrorMsg('Location name is required.'); return; }
     const price = parseFloat(pricePerBag);
-    if (isNaN(price) || price < 100 || price > 300) {
-      alert('Price per bag must be between R100 and R300.');
-      return;
-    }
+    if (isNaN(price) || price < 100 || price > 300) { setErrorMsg('Price must be between R100 and R300.'); return; }
     const bags = parseInt(maxBags);
-    if (isNaN(bags) || bags < 1 || bags > 50) {
-      alert('Max bags must be between 1 and 50.');
-      return;
-    }
+    if (isNaN(bags) || bags < 1 || bags > 50) { setErrorMsg('Max bags must be between 1 and 50.'); return; }
 
     setSaving(true);
     try {
@@ -85,11 +76,11 @@ export default function CreateHost() {
         console.log('Supabase result:', { data, error });
         if (error) {
           console.error('Supabase error:', error);
-          alert('Error: ' + error.message);
+          setErrorMsg('Error: ' + error.message);
           return;
         }
-        alert('Host profile created!');
-        router.replace('/(admin)/dashboard');
+        setSuccessMsg('Host profile created! Redirecting...');
+        setTimeout(() => router.replace('/(admin)/dashboard'), 1500);
       } else {
         const raw = await AsyncStorage.getItem('cubby_hosts');
         const hosts = raw ? JSON.parse(raw) : [];
@@ -116,7 +107,7 @@ export default function CreateHost() {
       }
     } catch (e: any) {
       console.error('Caught error:', e);
-      alert('Failed to save: ' + (e?.message ?? 'Unknown error'));
+      setErrorMsg('Failed to save: ' + (e?.message ?? 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -264,12 +255,20 @@ export default function CreateHost() {
             />
           </View>
 
+          {!!errorMsg && (
+            <View style={{ backgroundColor: '#FEE2E2', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+              <Text style={{ color: '#DC2626', fontWeight: '600' }}>{errorMsg}</Text>
+            </View>
+          )}
+          {!!successMsg && (
+            <View style={{ backgroundColor: '#D1FAE5', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+              <Text style={{ color: '#065F46', fontWeight: '600' }}>{successMsg}</Text>
+            </View>
+          )}
+
           <Pressable
             style={({ pressed }) => [styles.saveBtn, (saving || pressed) && styles.saveBtnDisabled]}
-            onPress={() => {
-              console.log('Pressable tapped');
-              handleSave();
-            }}
+            onPress={handleSave}
             disabled={saving}
           >
             <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Create Host Profile'}</Text>
