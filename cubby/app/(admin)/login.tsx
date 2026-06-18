@@ -1,6 +1,6 @@
 import {
-  View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
-  Animated, Alert,
+  View, Text, StyleSheet, SafeAreaView,
+  Animated,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useState, useRef } from 'react';
@@ -73,18 +73,28 @@ export default function AdminLogin() {
           {KEYS.map((row, ri) => (
             <View key={ri} style={styles.keyRow}>
               {row.map((key, ki) => (
-                <TouchableOpacity
+                // @ts-ignore
+                <button
                   key={ki}
-                  style={[styles.key, key === '' && styles.keyEmpty]}
-                  activeOpacity={key === '' ? 1 : 0.7}
-                  onPress={() => {
+                  onClick={() => {
                     if (key === '') return;
                     if (key === '⌫') handleDelete();
                     else handleDigit(key);
                   }}
+                  style={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 36,
+                    backgroundColor: key === '' ? 'transparent' : 'rgba(255,255,255,0.2)',
+                    border: 'none',
+                    cursor: key === '' ? 'default' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
                 >
                   <Text style={[styles.keyText, key === '⌫' && styles.keyDelete]}>{key}</Text>
-                </TouchableOpacity>
+                </button>
               ))}
             </View>
           ))}
@@ -113,15 +123,6 @@ const styles = StyleSheet.create({
   errorText: { color: 'rgba(255,255,255,0.9)', fontSize: 14, marginBottom: 16, fontWeight: '600' },
   keypad: { width: '100%', maxWidth: 280, marginTop: 16 },
   keyRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 12, gap: 20 },
-  key: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  keyEmpty: { backgroundColor: 'transparent' },
   keyText: { fontSize: 24, fontWeight: '600', color: Colors.white },
   keyDelete: { fontSize: 20 },
 });
