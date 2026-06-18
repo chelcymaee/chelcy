@@ -266,13 +266,25 @@ export default function CreateHost() {
             </View>
           )}
 
-          <Pressable
-            style={({ pressed }) => [styles.saveBtn, (saving || pressed) && styles.saveBtnDisabled]}
-            onPress={handleSave}
+          {/* @ts-ignore */}
+          <button
+            onClick={handleSave}
             disabled={saving}
+            style={{
+              backgroundColor: saving ? '#ccc' : '#2D6A4F',
+              color: 'white',
+              border: 'none',
+              borderRadius: 14,
+              padding: '18px',
+              fontSize: 16,
+              fontWeight: 800,
+              width: '100%',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              marginTop: 8,
+            }}
           >
-            <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Create Host Profile'}</Text>
-          </Pressable>
+            {saving ? 'Saving...' : 'Create Host Profile'}
+          </button>
         </View>
       </View>
     </SafeAreaView>
