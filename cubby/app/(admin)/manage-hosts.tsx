@@ -95,21 +95,19 @@ export default function ManageHosts() {
   }
 
   function confirmDelete(id: string, name: string) {
-    Alert.alert('Delete Host', `Are you sure you want to delete "${name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: () => deleteHost(id),
-      },
-    ]);
+    if (window.confirm(`Delete "${name}"? This cannot be undone.`)) {
+      deleteHost(id);
+    }
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <View style={{ flex: 1, overflowY: 'auto' } as any}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
+          {/* @ts-ignore */}
+          <button onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 8 }}>
             <Text style={styles.backLink}>← Back</Text>
-          </TouchableOpacity>
+          </button>
           <Text style={styles.title}>Manage Hosts</Text>
         </View>
 
@@ -118,9 +116,8 @@ export default function ManageHosts() {
             <Text style={styles.emptyEmoji}>🏠</Text>
             <Text style={styles.emptyText}>No hosts yet.</Text>
             <Text style={styles.emptySubText}>Create your first host profile.</Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(admin)/create-host')}>
-              <Text style={styles.emptyBtnText}>Create Host Profile</Text>
-            </TouchableOpacity>
+            {/* @ts-ignore */}
+            <button onClick={() => router.push('/(admin)/create-host')} style={{ backgroundColor: '#2D6A4F', color: 'white', border: 'none', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Create Host Profile</button>
           </View>
         ) : (
           <View style={styles.list}>
@@ -151,13 +148,8 @@ export default function ManageHosts() {
                         style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
                       />
                     </View>
-                    <TouchableOpacity
-                      style={styles.deleteBtn}
-                      onPress={() => confirmDelete(host.id, host.displayName)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.deleteBtnText}>🗑️ Delete</Text>
-                    </TouchableOpacity>
+                    {/* @ts-ignore */}
+                    <button onClick={() => confirmDelete(host.id, host.displayName)} style={{ backgroundColor: '#FEF2F2', border: 'none', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 13, color: '#DC2626', fontWeight: 600 }}>🗑️ Delete</button>
                   </View>
                 </View>
               </View>
@@ -166,11 +158,10 @@ export default function ManageHosts() {
         )}
 
         <View style={{ height: 80 }} />
-      </ScrollView>
+      </View>
 
-      <TouchableOpacity style={styles.fab} onPress={() => router.push('/(admin)/create-host')} activeOpacity={0.85}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+      {/* @ts-ignore */}
+      <button onClick={() => router.push('/(admin)/create-host')} style={{ position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#2D6A4F', border: 'none', cursor: 'pointer', fontSize: 28, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>+</button>
     </SafeAreaView>
   );
 }
