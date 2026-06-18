@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../src/constants/colors';
 
@@ -23,39 +23,56 @@ function LogoPin() {
 }
 
 export default function Welcome() {
+  const pinDrop = useRef(new Animated.Value(-120)).current;
+  const pinOpacity = useRef(new Animated.Value(0)).current;
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     AsyncStorage.getItem('cubby_onboarded').then(val => {
       if (!val) {
         router.replace('/onboarding');
+        return;
       }
+      // Pin drop animation then fade in content
+      Animated.sequence([
+        Animated.parallel([
+          Animated.spring(pinDrop, { toValue: 0, tension: 60, friction: 8, useNativeDriver: true }),
+          Animated.timing(pinOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        ]),
+        Animated.timing(contentOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]).start();
     });
   }, []);
 
   return (
     <View style={styles.container}>
       <View style={styles.topSection}>
-        <LogoPin />
-        <Text style={styles.logoText}>Cubby</Text>
-        <Text style={styles.tagline}>STORE. EXPLORE. <Text style={styles.taglineAccent}>COLLECT.</Text></Text>
+        <Animated.View style={{ transform: [{ translateY: pinDrop }], opacity: pinOpacity }}>
+          <LogoPin />
+        </Animated.View>
+        <Animated.View style={{ opacity: contentOpacity }}>
+          <Text style={styles.logoText}>Cubby</Text>
+          <Text style={styles.tagline}>STORE. EXPLORE. <Text style={styles.taglineAccent}>COLLECT.</Text></Text>
+        </Animated.View>
       </View>
 
-      <View style={styles.pillsRow}>
+      <Animated.View style={[styles.pillsRow, { opacity: contentOpacity }]}>
         <View style={styles.pill}><Text style={styles.pillText}>☕ Cafés</Text></View>
         <View style={styles.pill}><Text style={styles.pillText}>🏨 Hotels</Text></View>
         <View style={styles.pill}><Text style={styles.pillText}>🛏️ Hostels</Text></View>
         <View style={styles.pill}><Text style={styles.pillText}>🔑 Airbnbs</Text></View>
         <View style={styles.pill}><Text style={styles.pillText}>🗺️ Tour Operators</Text></View>
         <View style={styles.pill}><Text style={styles.pillText}>🚗 Bag Runners</Text></View>
-      </View>
+      </Animated.View>
 
-      <View style={styles.ctas}>
+      <Animated.View style={[styles.ctas, { opacity: contentOpacity }]}>
         <TouchableOpacity style={styles.btnPrimary} onPress={() => router.push('/(auth)/signup')} activeOpacity={0.85}>
           <Text style={styles.btnPrimaryText}>Get started — it's free</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.btnSecondary} onPress={() => router.push('/(auth)/login')} activeOpacity={0.85}>
           <Text style={styles.btnSecondaryText}>I already have an account</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       <Text style={styles.location}>📍 Cape Town, South Africa</Text>
     </View>

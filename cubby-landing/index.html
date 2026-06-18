@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cubby — Store. Explore. Collect.</title>
+  <meta name="description" content="Cubby connects travellers with trusted local storage spots in Cape Town — so you can check out early, fly later, and explore freely." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #FF5C5C;
+      --primary-dark: #E04040;
+      --accent: #FFD93D;
+      --accent-alt: #6BCB77;
+      --bg: #FAFAFA;
+      --dark: #1A1A1A;
+      --text: #1A1A1A;
+      --text-muted: #6B7280;
+      --white: #FFFFFF;
+      --card-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08);
+      --card-shadow-hover: 0 4px 16px rgba(0,0,0,0.10), 0 16px 40px rgba(0,0,0,0.12);
+      --radius: 16px;
+      --radius-pill: 999px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* UTILITIES */
+    .container { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+    .section { padding: 96px 0; }
+    .section-sm { padding: 64px 0; }
+
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #FFF5F5; color: var(--primary);
+      font-size: 12px; font-weight: 600; letter-spacing: .5px;
+      padding: 6px 14px; border-radius: var(--radius-pill);
+      border: 1px solid rgba(255,92,92,.2);
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; border-radius: var(--radius-pill);
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      border: 2px solid transparent; text-decoration: none;
+      transition: all .22s ease; white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--primary); color: var(--white);
+      border-color: var(--primary);
+    }
+    .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(255,92,92,.35); }
+    .btn-outline {
+      background: transparent; color: var(--primary);
+      border-color: var(--primary);
+    }
+    .btn-outline:hover { background: var(--primary); color: var(--white); transform: translateY(-1px); }
+    .btn-outline-white {
+      background: transparent; color: var(--white);
+      border-color: rgba(255,255,255,.5);
+    }
+    .btn-outline-white:hover { background: var(--white); color: var(--primary); }
+    .btn-lg { padding: 18px 36px; font-size: 17px; }
+
+    /* FADE-IN ANIMATION */
+    .fade-up {
+      opacity: 0; transform: translateY(32px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+    .fade-up.visible { opacity: 1; transform: translateY(0); }
+    .fade-up.delay-1 { transition-delay: .1s; }
+    .fade-up.delay-2 { transition-delay: .2s; }
+    .fade-up.delay-3 { transition-delay: .3s; }
+    .fade-up.delay-4 { transition-delay: .4s; }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(250,250,250,.92); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+      transition: box-shadow .3s;
+    }
+    nav.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,.08); }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 68px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+    }
+    .logo-icon {
+      width: 36px; height: 36px; position: relative; flex-shrink: 0;
+    }
+    .logo-wordmark {
+      font-size: 22px; font-weight: 800; color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+    .nav-links { display: flex; align-items: center; gap: 20px; }
+    .nav-text-link {
+      font-size: 14px; font-weight: 600; color: var(--text-muted);
+      text-decoration: none; transition: color .2s;
+    }
+    .nav-text-link:hover { color: var(--text); }
+
+    /* HERO */
+    #hero {
+      padding: 80px 0 60px;
+      overflow: hidden; position: relative;
+    }
+    .hero-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 64px; align-items: center;
+    }
+    .hero-eyebrow { margin-bottom: 24px; }
+    .hero-h1 {
+      font-size: clamp(40px, 6vw, 72px);
+      font-weight: 900; line-height: 1.05; letter-spacing: -2px;
+      margin-bottom: 20px;
+    }
+    .hero-h1 span { color: var(--primary); }
+    .hero-sub {
+      font-size: clamp(16px, 2vw, 19px); color: var(--text-muted);
+      line-height: 1.65; max-width: 480px; margin-bottom: 36px;
+    }
+    .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 32px; }
+    .hero-badges { display: flex; gap: 10px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--white); border: 1px solid rgba(0,0,0,.08);
+      border-radius: var(--radius-pill); padding: 7px 16px;
+      font-size: 13px; font-weight: 600; color: var(--text-muted);
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-alt); }
+
+    /* PHONE MOCKUP */
+    .phone-wrap {
+      display: flex; justify-content: center; align-items: center;
+      position: relative;
+    }
+    .phone-float {
+      animation: float 4s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    .phone {
+      width: 260px; height: 520px;
+      background: var(--dark); border-radius: 40px;
+      padding: 14px 10px;
+      box-shadow: 0 32px 80px rgba(0,0,0,.28), 0 0 0 10px rgba(255,255,255,.06);
+      position: relative;
+    }
+    .phone::before {
+      content: ''; position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+      width: 80px; height: 6px; background: #333; border-radius: 3px;
+    }
+    .phone-screen {
+      background: var(--primary); border-radius: 28px;
+      height: 100%; overflow: hidden; padding: 40px 12px 12px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .phone-header {
+      color: var(--white); font-size: 13px; font-weight: 700; margin-bottom: 4px;
+    }
+    .phone-search {
+      background: rgba(255,255,255,.2); border-radius: 10px;
+      padding: 8px 12px; color: rgba(255,255,255,.7);
+      font-size: 11px; margin-bottom: 6px;
+    }
+    .phone-card {
+      background: var(--white); border-radius: 12px; padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .phone-card-name { font-size: 11px; font-weight: 700; color: var(--dark); }
+    .phone-card-meta { font-size: 10px; color: var(--text-muted); display: flex; justify-content: space-between; }
+    .phone-card-price { font-size: 10px; font-weight: 700; color: var(--primary); }
+    .phone-card-stars { color: var(--accent); font-size: 9px; }
+    .phone-map-hint {
+      flex: 1; background: rgba(255,255,255,.15); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,.6); font-size: 10px; font-weight: 600;
+    }
+
+    /* Decorative blob */
+    .blob {
+      position: absolute; border-radius: 50%; filter: blur(60px); pointer-events: none; z-index: -1;
+    }
+    .blob-1 { width: 500px; height: 500px; background: rgba(255,92,92,.08); top: -100px; right: -100px; }
+    .blob-2 { width: 300px; height: 300px; background: rgba(255,217,61,.1); bottom: -80px; left: -80px; }
+
+    /* PROBLEM */
+    #problem { background: var(--dark); }
+    #problem .section-label { color: rgba(255,255,255,.4); font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
+    #problem h2 { color: var(--white); font-size: clamp(32px, 4vw, 52px); font-weight: 900; letter-spacing: -1.5px; margin-bottom: 48px; }
+    #problem h2 span { color: var(--primary); }
+    .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .problem-card {
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius); padding: 32px 28px;
+      transition: background .25s, border-color .25s;
+    }
+    .problem-card:hover { background: rgba(255,92,92,.08); border-color: rgba(255,92,92,.25); }
+    .problem-emoji { font-size: 36px; margin-bottom: 16px; display: block; }
+    .problem-text { color: rgba(255,255,255,.75); font-size: 15px; line-height: 1.7; }
+    .problem-accent { color: var(--primary); font-weight: 700; }
+
+    /* HOW IT WORKS */
+    #how-it-works { background: var(--white); }
+    .section-eyebrow { display: flex; justify-content: center; margin-bottom: 16px; }
+    .section-title { text-align: center; font-size: clamp(28px, 4vw, 48px); font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
+    .section-sub { text-align: center; color: var(--text-muted); font-size: 17px; max-width: 520px; margin: 0 auto 56px; }
+    .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .step-card {
+      background: var(--bg); border-radius: var(--radius); padding: 32px 24px;
+      box-shadow: var(--card-shadow); text-align: center;
+      transition: box-shadow .25s, transform .25s;
+    }
+    .step-card:hover { box-shadow: var(--card-shadow-hover); transform: translateY(-4px); }
+    .step-num {
+      width: 44px; height: 44px; background: var(--primary); color: var(--white);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 800; margin: 0 auto 16px;
+    }
+    .step-emoji { font-size: 28px; margin-bottom: 12px; display: block; }
+    .step-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .step-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+    .step-connector {
+      display: none;
+    }
+
+    /* TRUST */
+    #trust { background: #FFF5F5; }
+    .trust-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+    .trust-card {
+      background: var(--white); border-radius: var(--radius); padding: 28px 20px;
+      text-align: center; box-shadow: var(--card-shadow);
+      transition: box-shadow .25s, transform .25s;
+    }
+    .trust-card:hover { box-shadow: var(--card-shadow-hover); transform: translateY(-3px); }
+    .trust-icon { font-size: 32px; margin-bottom: 12px; display: block; }
+    .trust-label { font-size: 13px; font-weight: 700; line-height: 1.4; }
+
+    /* FOR TRAVELLERS */
+    #travellers { background: var(--bg); }
+    .split-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 80px; align-items: center;
+    }
+    .split-grid.reverse { direction: rtl; }
+    .split-grid.reverse > * { direction: ltr; }
+    .split-content-tag { margin-bottom: 20px; }
+    .split-title { font-size: clamp(26px, 3.5vw, 42px); font-weight: 900; letter-spacing: -1px; margin-bottom: 20px; line-height: 1.15; }
+    .split-desc { color: var(--text-muted); font-size: 16px; margin-bottom: 32px; line-height: 1.7; }
+    .benefit-list { display: flex; flex-direction: column; gap: 14px; }
+    .benefit-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      font-size: 15px; font-weight: 500;
+    }
+    .benefit-check {
+      width: 22px; height: 22px; background: var(--primary); color: var(--white);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; flex-shrink: 0; margin-top: 1px; font-weight: 800;
+    }
+
+    /* Phone mockup 2 (smaller) */
+    .phone-sm {
+      width: 220px; height: 440px;
+      background: var(--dark); border-radius: 36px;
+      padding: 12px 8px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.22);
+      margin: 0 auto;
+    }
+    .phone-sm::before {
+      content: ''; display: block;
+      width: 70px; height: 5px; background: #333;
+      border-radius: 3px; margin: 0 auto 10px;
+    }
+    .phone-sm-screen {
+      background: #F7F7F7; border-radius: 26px;
+      height: calc(100% - 15px); padding: 16px 10px;
+      display: flex; flex-direction: column; gap: 8px; overflow: hidden;
+    }
+    .app-bar {
+      background: var(--primary); color: var(--white);
+      border-radius: 10px; padding: 10px 12px;
+      font-size: 11px; font-weight: 700;
+    }
+    .app-list-item {
+      background: var(--white); border-radius: 10px; padding: 10px 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .app-avatar {
+      width: 30px; height: 30px; background: var(--primary);
+      border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .app-info { flex: 1; }
+    .app-name { font-size: 10px; font-weight: 700; }
+    .app-detail { font-size: 9px; color: var(--text-muted); }
+    .app-price { font-size: 10px; font-weight: 700; color: var(--primary); }
+    .app-confirm {
+      background: var(--primary); color: var(--white);
+      border-radius: 10px; padding: 10px; text-align: center;
+      font-size: 10px; font-weight: 700; margin-top: auto;
+    }
+
+    /* FOR PARTNERS */
+    #partners { background: var(--white); }
+    .calc-card {
+      background: var(--bg); border-radius: var(--radius); padding: 32px;
+      box-shadow: var(--card-shadow); border: 1px solid rgba(0,0,0,.05);
+    }
+    .calc-title { font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 20px; text-transform: uppercase; letter-spacing: .5px; }
+    .calc-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 0; border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+    .calc-row:last-of-type { border-bottom: none; }
+    .calc-label { font-size: 14px; color: var(--text-muted); }
+    .calc-value { font-size: 15px; font-weight: 700; }
+    .calc-total {
+      background: var(--primary); color: var(--white);
+      border-radius: 12px; padding: 20px 24px;
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 20px;
+    }
+    .calc-total-label { font-size: 14px; font-weight: 600; opacity: .85; }
+    .calc-total-value { font-size: 24px; font-weight: 900; }
+
+    /* FUTURE */
+    #future {
+      background: linear-gradient(135deg, #FF5C5C 0%, #E04040 50%, #FF8C5C 100%);
+      position: relative; overflow: hidden;
+    }
+    #future::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 70% 50%, rgba(255,217,61,.15) 0%, transparent 60%);
+    }
+    #future .section-title, #future .section-sub { color: var(--white); }
+    #future .section-sub { opacity: .8; }
+    .future-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .future-card {
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+      border-radius: var(--radius); padding: 28px 22px;
+      backdrop-filter: blur(8px);
+      transition: background .25s, transform .25s;
+    }
+    .future-card:hover { background: rgba(255,255,255,.2); transform: translateY(-4px); }
+    .future-emoji { font-size: 32px; margin-bottom: 14px; display: block; }
+    .future-title { color: var(--white); font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .future-desc { color: rgba(255,255,255,.7); font-size: 13px; line-height: 1.6; }
+    .future-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.15); color: var(--white);
+      font-size: 11px; font-weight: 700; padding: 4px 12px;
+      border-radius: var(--radius-pill); margin-top: 12px;
+      border: 1px solid rgba(255,255,255,.3);
+    }
+
+    /* FORMS */
+    .form-section { padding: 96px 0; }
+    #waitlist { background: var(--bg); }
+    #partner-apply { background: var(--white); }
+    .form-wrap { max-width: 560px; margin: 0 auto; }
+    .form-title { font-size: clamp(26px, 3.5vw, 40px); font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
+    .form-sub { color: var(--text-muted); font-size: 16px; margin-bottom: 36px; line-height: 1.6; }
+    .form-proof {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: var(--text-muted); font-weight: 600;
+      margin-bottom: 32px;
+    }
+    .proof-avatars { display: flex; }
+    .proof-avatar {
+      width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--white);
+      background: var(--primary); margin-left: -8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800; color: var(--white);
+    }
+    .proof-avatar:first-child { margin-left: 0; }
+    .proof-avatar:nth-child(2) { background: #E04040; }
+    .proof-avatar:nth-child(3) { background: #FF8C5C; }
+    form { display: flex; flex-direction: column; gap: 16px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 13px; font-weight: 600; color: var(--text); }
+    input, select {
+      padding: 14px 16px; border: 1.5px solid rgba(0,0,0,.12);
+      border-radius: 12px; font-size: 15px; font-family: 'Inter', sans-serif;
+      background: var(--white); color: var(--text);
+      transition: border-color .2s, box-shadow .2s;
+      appearance: none; -webkit-appearance: none;
+      width: 100%;
+    }
+    input:focus, select:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(255,92,92,.15);
+    }
+    input.error, select.error { border-color: #EF4444; }
+    .field-error { font-size: 12px; color: #EF4444; font-weight: 500; display: none; }
+    .field-error.show { display: block; }
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      pointer-events: none; color: var(--text-muted); font-size: 14px;
+    }
+    .form-submit { margin-top: 4px; }
+    .form-submit .btn { width: 100%; justify-content: center; padding: 18px; font-size: 16px; }
+    .success-msg {
+      display: none; background: #F0FDF4; border: 1.5px solid #6BCB77;
+      border-radius: var(--radius); padding: 24px 28px; text-align: center;
+    }
+    .success-msg.show { display: block; }
+    .success-msg .check { font-size: 40px; margin-bottom: 12px; display: block; }
+    .success-msg h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; color: #166534; }
+    .success-msg p { color: #15803D; font-size: 14px; }
+
+    /* FOOTER */
+    footer { background: var(--dark); padding: 60px 0 40px; }
+    .footer-grid {
+      display: grid; grid-template-columns: 1fr auto auto;
+      gap: 48px; align-items: start; margin-bottom: 48px;
+    }
+    .footer-logo-wordmark { font-size: 20px; font-weight: 800; color: var(--primary); margin-bottom: 8px; display: block; }
+    .footer-tagline { color: rgba(255,255,255,.4); font-size: 14px; margin-bottom: 16px; }
+    .footer-launch-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,92,92,.15); color: var(--primary);
+      font-size: 12px; font-weight: 700; padding: 6px 14px;
+      border-radius: var(--radius-pill); border: 1px solid rgba(255,92,92,.25);
+    }
+    .footer-col-title { color: var(--white); font-size: 13px; font-weight: 700; margin-bottom: 16px; letter-spacing: .5px; }
+    .footer-links { display: flex; flex-direction: column; gap: 10px; }
+    .footer-link { color: rgba(255,255,255,.5); font-size: 14px; text-decoration: none; transition: color .2s; }
+    .footer-link:hover { color: var(--white); }
+    .footer-divider { border: none; border-top: 1px solid rgba(255,255,255,.08); margin-bottom: 24px; }
+    .footer-bottom {
+      display: flex; justify-content: space-between; align-items: center;
+      color: rgba(255,255,255,.3); font-size: 13px;
+    }
+
+    /* SVG LOGO */
+    .logo-svg { width: 36px; height: 36px; }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      .trust-grid { grid-template-columns: repeat(3, 1fr); }
+      .steps-grid { grid-template-columns: repeat(2, 1fr); }
+      .future-grid { grid-template-columns: repeat(2, 1fr); }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      .section { padding: 64px 0; }
+      .hero-grid { grid-template-columns: 1fr; }
+      .phone-wrap { margin-top: 40px; }
+      .problem-grid { grid-template-columns: 1fr; }
+      .split-grid, .split-grid.reverse { grid-template-columns: 1fr; gap: 48px; direction: ltr; }
+      .trust-grid { grid-template-columns: repeat(2, 1fr); }
+      .future-grid { grid-template-columns: 1fr 1fr; }
+      .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+      .footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
+      .form-row { grid-template-columns: 1fr; }
+      .nav-text-link.hide-mobile { display: none; }
+      .hero-sub { max-width: 100%; }
+      .steps-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 480px) {
+      .trust-grid { grid-template-columns: 1fr 1fr; }
+      .future-grid { grid-template-columns: 1fr; }
+      .hero-ctas { flex-direction: column; }
+      .hero-ctas .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a href="#hero" class="logo">
+        <svg class="logo-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Cubby logo">
+          <!-- Location pin -->
+          <path d="M18 2C13.03 2 9 6.03 9 11C9 17.25 18 26 18 26C18 26 27 17.25 27 11C27 6.03 22.97 2 18 2Z" fill="#FF5C5C"/>
+          <circle cx="18" cy="11" r="4" fill="white"/>
+          <!-- Luggage handle -->
+          <rect x="15" y="7" width="6" height="2.5" rx="1.25" fill="#FF5C5C" stroke="white" stroke-width="1"/>
+          <!-- Suitcase body -->
+          <rect x="13" y="28" width="10" height="7" rx="2.5" fill="#FF5C5C"/>
+          <line x1="18" y1="28" x2="18" y2="35" stroke="white" stroke-width="1.2"/>
+          <line x1="13" y1="31.5" x2="23" y2="31.5" stroke="white" stroke-width="1.2"/>
+        </svg>
+        <span class="logo-wordmark">cubby</span>
+      </a>
+      <div class="nav-links">
+        <a href="#partner-apply" class="nav-text-link hide-mobile">Become a Partner</a>
+        <a href="#waitlist" class="btn btn-primary" style="padding: 10px 22px; font-size: 14px;">Join Waitlist</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-content">
+        <div class="hero-eyebrow">
+          <span class="tag">📍 Launching in Cape Town</span>
+        </div>
+        <h1 class="hero-h1">Never drag your<br><span>luggage around</span><br>again.</h1>
+        <p class="hero-sub">Cubby connects travellers with trusted local storage spots — so you can check out early, fly later, and explore freely.</p>
+        <div class="hero-ctas">
+          <a href="#waitlist" class="btn btn-primary btn-lg">Join the waitlist →</a>
+          <a href="#partner-apply" class="btn btn-outline btn-lg">Become a partner</a>
+        </div>
+        <div class="hero-badges">
+          <span class="badge"><span class="dot"></span> Verified partners</span>
+          <span class="badge"><span class="dot"></span> R2,000 coverage</span>
+          <span class="badge"><span class="dot"></span> Cape Town</span>
+        </div>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone-float">
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="phone-header">🗺️ Near you in Cape Town</div>
+              <div class="phone-search">🔍 Search by area or name...</div>
+              <div class="phone-card">
+                <div class="phone-card-name">Sea Point Café</div>
+                <div class="phone-card-meta">
+                  <span class="phone-card-stars">★★★★★</span>
+                  <span class="phone-card-price">R150 / bag</span>
+                </div>
+                <div style="font-size:9px; color: #6BCB77; font-weight:700;">✓ Open now · 2 spots left</div>
+              </div>
+              <div class="phone-card">
+                <div class="phone-card-name">V&A Waterfront Hotel</div>
+                <div class="phone-card-meta">
+                  <span class="phone-card-stars">★★★★★</span>
+                  <span class="phone-card-price">R200 / bag</span>
+                </div>
+                <div style="font-size:9px; color: #6BCB77; font-weight:700;">✓ Open now · 5 spots left</div>
+              </div>
+              <div class="phone-card">
+                <div class="phone-card-name">Gardens Guesthouse</div>
+                <div class="phone-card-meta">
+                  <span class="phone-card-stars">★★★★☆</span>
+                  <span class="phone-card-price">R120 / bag</span>
+                </div>
+                <div style="font-size:9px; color: #6BCB77; font-weight:700;">✓ Open now · 3 spots left</div>
+              </div>
+              <div class="phone-map-hint">📍 View on map</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem" class="section">
+  <div class="container">
+    <div class="section-label fade-up">The problem</div>
+    <h2 class="fade-up">Sound <span>familiar?</span></h2>
+    <div class="problem-grid">
+      <div class="problem-card fade-up delay-1">
+        <span class="problem-emoji">🧳</span>
+        <p class="problem-text"><span class="problem-accent">Checkout at 10am. Flight at 8pm.</span> 10 hours of dragging bags around the city — in the heat, on the train, through every café and museum.</p>
+      </div>
+      <div class="problem-card fade-up delay-2">
+        <span class="problem-emoji">🏨</span>
+        <p class="problem-text">Hotel won't let you check in early. <span class="problem-accent">Lobby storage feels sketchy</span> — no receipt, no security, no accountability.</p>
+      </div>
+      <div class="problem-card fade-up delay-3">
+        <span class="problem-emoji">✈️</span>
+        <p class="problem-text">You want to explore Table Mountain, Camps Bay, the Winelands — <span class="problem-accent">but your bags are slowing you down.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works" class="section">
+  <div class="container">
+    <div class="section-eyebrow fade-up">
+      <span class="tag">Simple as 1-2-3-4</span>
+    </div>
+    <h2 class="section-title fade-up">How to Cubby</h2>
+    <p class="section-sub fade-up">Four steps between you and total freedom.</p>
+    <div class="steps-grid">
+      <div class="step-card fade-up delay-1">
+        <span class="step-emoji">📍</span>
+        <div class="step-num">1</div>
+        <div class="step-title">Find a Cubby</div>
+        <p class="step-desc">Search verified storage spots near you — cafés, hotels, guesthouses, and more.</p>
+      </div>
+      <div class="step-card fade-up delay-2">
+        <span class="step-emoji">🧳</span>
+        <div class="step-num">2</div>
+        <div class="step-title">Drop your bags</div>
+        <p class="step-desc">Show your unique PIN to the host. Bags are checked in and secured instantly.</p>
+      </div>
+      <div class="step-card fade-up delay-3">
+        <span class="step-emoji">🌍</span>
+        <div class="step-num">3</div>
+        <div class="step-title">Explore freely</div>
+        <p class="step-desc">The city is yours. Table Mountain, Camps Bay, the V&A — hands free.</p>
+      </div>
+      <div class="step-card fade-up delay-4">
+        <span class="step-emoji">✅</span>
+        <div class="step-num">4</div>
+        <div class="step-title">Collect later</div>
+        <p class="step-desc">Pick up your bags when you're ready. Show your PIN, done.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<section id="trust" class="section">
+  <div class="container">
+    <div class="section-eyebrow fade-up">
+      <span class="tag">🛡️ Built for peace of mind</span>
+    </div>
+    <h2 class="section-title fade-up">Your bags are safe with us</h2>
+    <p class="section-sub fade-up">Every Cubby partner is verified. Every booking is protected.</p>
+    <div class="trust-grid">
+      <div class="trust-card fade-up delay-1">
+        <span class="trust-icon">🛡️</span>
+        <div class="trust-label">Verified Partners</div>
+      </div>
+      <div class="trust-card fade-up delay-2">
+        <span class="trust-icon">🔒</span>
+        <div class="trust-label">Secure Storage</div>
+      </div>
+      <div class="trust-card fade-up delay-3">
+        <span class="trust-icon">✅</span>
+        <div class="trust-label">Identity Verification</div>
+      </div>
+      <div class="trust-card fade-up delay-4">
+        <span class="trust-icon">💰</span>
+        <div class="trust-label">R2,000 Coverage Per Bag</div>
+      </div>
+      <div class="trust-card fade-up delay-4">
+        <span class="trust-icon">📱</span>
+        <div class="trust-label">QR Check-In &amp; Collection</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOR TRAVELLERS -->
+<section id="travellers" class="section" style="background: var(--white);">
+  <div class="container">
+    <div class="split-grid">
+      <div class="split-content">
+        <div class="split-content-tag">
+          <span class="tag">✈️ For Travellers</span>
+        </div>
+        <h2 class="split-title fade-up">Travel the way you were<br>meant to.</h2>
+        <p class="split-desc fade-up">Stop planning your day around your luggage. With Cubby, drop your bags at a trusted local spot and reclaim your time in Cape Town.</p>
+        <div class="benefit-list fade-up">
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Travel lighter</strong> — no heavy bags weighing down every step</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>More freedom</strong> — visit anywhere, anytime, hands-free</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Trusted locations</strong> — every partner is vetted and reviewed</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Instant booking</strong> — reserve in seconds, no calls needed</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Secure PIN handover</strong> — contactless, accountable, traceable</span></div>
+        </div>
+        <div style="margin-top:32px;">
+          <a href="#waitlist" class="btn btn-primary">Join the waitlist →</a>
+        </div>
+      </div>
+      <div class="phone-wrap fade-up">
+        <div class="phone-sm">
+          <div class="phone-sm-screen">
+            <div class="app-bar">🧳 Booking confirmed!</div>
+            <div class="app-list-item">
+              <div class="app-avatar">☕</div>
+              <div class="app-info">
+                <div class="app-name">Sea Point Café</div>
+                <div class="app-detail">2 bags · 10:00 – 19:00</div>
+              </div>
+              <div class="app-price">R300</div>
+            </div>
+            <div style="background: #F0FDF4; border-radius: 10px; padding: 10px 12px; font-size: 10px; font-weight: 600; color: #15803D;">
+              📍 12 Ocean View Dr, Sea Point
+            </div>
+            <div style="background: white; border-radius: 10px; padding: 12px; text-align: center;">
+              <div style="font-size: 10px; font-weight: 700; margin-bottom: 8px; color: #1A1A1A;">Your collection PIN</div>
+              <div style="font-size: 24px; font-weight: 900; letter-spacing: 8px; color: #FF5C5C;">4729</div>
+              <div style="font-size: 9px; color: #6B7280; margin-top: 6px;">Show this to your host</div>
+            </div>
+            <div class="app-list-item" style="font-size:10px; font-weight:600; color: #6BCB77;">
+              ✅ Coverage active · R2,000 per bag
+            </div>
+            <div class="app-confirm">🌍 Go explore!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOR PARTNERS -->
+<section id="partners" class="section">
+  <div class="container">
+    <div class="split-grid reverse">
+      <div>
+        <div class="calc-card fade-up">
+          <div class="calc-title">💸 Earnings calculator</div>
+          <div class="calc-row">
+            <span class="calc-label">Bags per day</span>
+            <span class="calc-value">5 bags</span>
+          </div>
+          <div class="calc-row">
+            <span class="calc-label">Rate per bag</span>
+            <span class="calc-value">R150</span>
+          </div>
+          <div class="calc-row">
+            <span class="calc-label">Days per month</span>
+            <span class="calc-value">30 days</span>
+          </div>
+          <div class="calc-total">
+            <div>
+              <div class="calc-total-label">Monthly extra income</div>
+              <div style="font-size:12px; opacity:.65; margin-top:2px;">5 bags × R150 × 30 days</div>
+            </div>
+            <div class="calc-total-value">R22,500</div>
+          </div>
+          <p style="font-size:12px; color: var(--text-muted); margin-top:16px; line-height:1.5;">No setup cost. No lock-in. You control your availability and capacity.</p>
+        </div>
+      </div>
+      <div class="split-content">
+        <div class="split-content-tag">
+          <span class="tag">🏪 For Partners</span>
+        </div>
+        <h2 class="split-title fade-up">Turn spare space into<br>extra income.</h2>
+        <p class="split-desc fade-up">Got a café, hotel, guesthouse, or Airbnb in Cape Town? Become a Cubby partner and earn from storage you already have.</p>
+        <div class="benefit-list fade-up">
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Extra income</strong> — earn R100–R250 per bag, every day</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>More foot traffic</strong> — travellers visit, travellers spend</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Easy setup</strong> — onboarding takes less than 10 minutes</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>You're in control</strong> — set your own hours and capacity</span></div>
+        </div>
+        <div style="margin-top:32px;">
+          <a href="#partner-apply" class="btn btn-primary">Apply to become a Cubby partner →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FUTURE VISION -->
+<section id="future" class="section">
+  <div class="container" style="position:relative;">
+    <div class="section-eyebrow fade-up">
+      <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,.2); color:white; font-size:12px; font-weight:700; padding:6px 16px; border-radius:999px; border:1px solid rgba(255,255,255,.3);">🚀 Roadmap</span>
+    </div>
+    <h2 class="section-title fade-up">Just the beginning.</h2>
+    <p class="section-sub fade-up">Storage is where we start. Here's where we're going.</p>
+    <div class="future-grid">
+      <div class="future-card fade-up delay-1">
+        <span class="future-emoji">🚗</span>
+        <div class="future-title">Luggage Runners</div>
+        <div class="future-desc">We collect your bags and deliver them — to your next hotel, a partner, or the airport.</div>
+        <span class="future-pill">Coming soon</span>
+      </div>
+      <div class="future-card fade-up delay-2">
+        <span class="future-emoji">✈️</span>
+        <div class="future-title">Airport Collection</div>
+        <div class="future-desc">Land at Cape Town International and we'll collect your bags straight from arrivals.</div>
+        <span class="future-pill">Coming soon</span>
+      </div>
+      <div class="future-card fade-up delay-3">
+        <span class="future-emoji">🏨</span>
+        <div class="future-title">Hotel-to-Hotel Transfers</div>
+        <div class="future-desc">Moving between hotels? We'll transfer your bags so you explore unencumbered.</div>
+        <span class="future-pill">Coming soon</span>
+      </div>
+      <div class="future-card fade-up delay-4">
+        <span class="future-emoji">🌍</span>
+        <div class="future-title">Beyond Cape Town</div>
+        <div class="future-desc">Joburg, Durban, and beyond — we're building the luggage-free travel network for South Africa.</div>
+        <span class="future-pill">Expanding 2025</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WAITLIST FORM -->
+<section id="waitlist" class="form-section">
+  <div class="container">
+    <div class="form-wrap">
+      <div class="section-eyebrow" style="justify-content:flex-start; margin-bottom:16px;">
+        <span class="tag">✈️ Early access</span>
+      </div>
+      <h2 class="form-title fade-up">Be first in Cape Town.</h2>
+      <p class="form-sub fade-up">Join the waitlist. We'll let you know the moment Cubby launches in your area.</p>
+      <div class="form-proof fade-up">
+        <div class="proof-avatars">
+          <div class="proof-avatar">T</div>
+          <div class="proof-avatar">S</div>
+          <div class="proof-avatar">A</div>
+        </div>
+        <span>Join 500+ travellers already on the waitlist</span>
+      </div>
+
+      <div id="waitlist-success" class="success-msg">
+        <span class="check">🎉</span>
+        <h3>You're on the list!</h3>
+        <p>We'll be in touch the moment Cubby launches in your city. Get ready to explore hands-free.</p>
+      </div>
+
+      <form id="waitlist-form" class="fade-up" novalidate>
+        <div class="form-row">
+          <div class="field">
+            <label for="w-name">Your name</label>
+            <input type="text" id="w-name" name="name" placeholder="Alex Johnson" />
+            <span class="field-error" id="w-name-err">Please enter your name.</span>
+          </div>
+          <div class="field">
+            <label for="w-email">Email address</label>
+            <input type="email" id="w-email" name="email" placeholder="alex@example.com" />
+            <span class="field-error" id="w-email-err">Please enter a valid email.</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="w-city">Your city</label>
+          <div class="select-wrap">
+            <select id="w-city" name="city">
+              <option value="">Select your city...</option>
+              <option value="cape-town">Cape Town</option>
+              <option value="johannesburg">Johannesburg</option>
+              <option value="durban">Durban</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <span class="field-error" id="w-city-err">Please select a city.</span>
+        </div>
+        <div class="form-submit">
+          <button type="submit" class="btn btn-primary btn-lg">Join the waitlist →</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- PARTNER FORM -->
+<section id="partner-apply" class="form-section">
+  <div class="container">
+    <div class="form-wrap">
+      <div class="section-eyebrow" style="justify-content:flex-start; margin-bottom:16px;">
+        <span class="tag">🏪 Partner with us</span>
+      </div>
+      <h2 class="form-title fade-up">Earn extra income with Cubby.</h2>
+      <p class="form-sub fade-up">Offer storage at your business and start earning. Applications take less than 2 minutes.</p>
+
+      <div id="partner-success" class="success-msg">
+        <span class="check">🤝</span>
+        <h3>Application received!</h3>
+        <p>Thanks for applying to become a Cubby partner. Our team will review your application and be in touch within 2 business days.</p>
+      </div>
+
+      <form id="partner-form" class="fade-up" novalidate>
+        <div class="form-row">
+          <div class="field">
+            <label for="p-business">Business name</label>
+            <input type="text" id="p-business" name="business" placeholder="Sea Point Café" />
+            <span class="field-error" id="p-business-err">Please enter your business name.</span>
+          </div>
+          <div class="field">
+            <label for="p-contact">Contact name</label>
+            <input type="text" id="p-contact" name="contact" placeholder="Your full name" />
+            <span class="field-error" id="p-contact-err">Please enter your name.</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="p-type">Business type</label>
+          <div class="select-wrap">
+            <select id="p-type" name="type">
+              <option value="">Select business type...</option>
+              <option value="cafe">Café / Coffee Shop</option>
+              <option value="hotel">Hotel</option>
+              <option value="guesthouse">Guesthouse</option>
+              <option value="airbnb">Airbnb / Short-term Rental</option>
+              <option value="tourism">Tourism Business</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <span class="field-error" id="p-type-err">Please select a business type.</span>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="p-email">Email address</label>
+            <input type="email" id="p-email" name="email" placeholder="hello@yourbusiness.co.za" />
+            <span class="field-error" id="p-email-err">Please enter a valid email.</span>
+          </div>
+          <div class="field">
+            <label for="p-phone">Phone number</label>
+            <input type="tel" id="p-phone" name="phone" placeholder="+27 21 000 0000" />
+            <span class="field-error" id="p-phone-err">Please enter your phone number.</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="p-city">City</label>
+          <div class="select-wrap">
+            <select id="p-city" name="city">
+              <option value="">Select your city...</option>
+              <option value="cape-town">Cape Town</option>
+              <option value="johannesburg">Johannesburg</option>
+              <option value="durban">Durban</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <span class="field-error" id="p-city-err">Please select a city.</span>
+        </div>
+        <div class="form-submit">
+          <button type="submit" class="btn btn-primary btn-lg">Apply to partner →</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <span class="footer-logo-wordmark">cubby</span>
+        <p class="footer-tagline">Store. Explore. Collect.</p>
+        <span class="footer-launch-badge">📍 Currently launching in Cape Town</span>
+      </div>
+      <div>
+        <div class="footer-col-title">Links</div>
+        <div class="footer-links">
+          <a href="#" class="footer-link">Privacy Policy</a>
+          <a href="#" class="footer-link">Terms of Service</a>
+          <a href="mailto:hello@cubbyapp.co.za" class="footer-link">Contact</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Follow us</div>
+        <div class="footer-links">
+          <a href="https://instagram.com/cubbyapp" target="_blank" rel="noopener" class="footer-link">Instagram @cubbyapp</a>
+        </div>
+      </div>
+    </div>
+    <hr class="footer-divider" />
+    <div class="footer-bottom">
+      <span>© 2025 Cubby. Cape Town, South Africa.</span>
+      <span style="color:rgba(255,255,255,.2);">Built with ❤️ for travellers</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Sticky nav shadow
+  const nav = document.getElementById('main-nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  // Intersection Observer for fade-up animations
+  const fadeEls = document.querySelectorAll('.fade-up');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  fadeEls.forEach(el => observer.observe(el));
+
+  // Form validation helpers
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+  function setError(inputId, errId, show) {
+    const input = document.getElementById(inputId);
+    const err = document.getElementById(errId);
+    if (show) {
+      input.classList.add('error');
+      err.classList.add('show');
+    } else {
+      input.classList.remove('error');
+      err.classList.remove('show');
+    }
+    return !show;
+  }
+  function clearErrors(fields) {
+    fields.forEach(([inputId, errId]) => setError(inputId, errId, false));
+  }
+
+  // Waitlist form
+  const waitlistForm = document.getElementById('waitlist-form');
+  waitlistForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('w-name').value.trim();
+    const email = document.getElementById('w-email').value.trim();
+    const city = document.getElementById('w-city').value;
+    let valid = true;
+    valid = setError('w-name', 'w-name-err', !name) && valid;
+    valid = setError('w-email', 'w-email-err', !isValidEmail(email)) && valid;
+    valid = setError('w-city', 'w-city-err', !city) && valid;
+    if (!valid) return;
+
+    // Store in localStorage
+    const existing = JSON.parse(localStorage.getItem('cubby_waitlist') || '[]');
+    existing.push({ name, email, city, ts: Date.now() });
+    localStorage.setItem('cubby_waitlist', JSON.stringify(existing));
+
+    waitlistForm.style.display = 'none';
+    document.getElementById('waitlist-success').classList.add('show');
+    document.getElementById('waitlist-success').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  // Partner form
+  const partnerForm = document.getElementById('partner-form');
+  partnerForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const business = document.getElementById('p-business').value.trim();
+    const contact = document.getElementById('p-contact').value.trim();
+    const type = document.getElementById('p-type').value;
+    const email = document.getElementById('p-email').value.trim();
+    const phone = document.getElementById('p-phone').value.trim();
+    const city = document.getElementById('p-city').value;
+    let valid = true;
+    valid = setError('p-business', 'p-business-err', !business) && valid;
+    valid = setError('p-contact', 'p-contact-err', !contact) && valid;
+    valid = setError('p-type', 'p-type-err', !type) && valid;
+    valid = setError('p-email', 'p-email-err', !isValidEmail(email)) && valid;
+    valid = setError('p-phone', 'p-phone-err', !phone) && valid;
+    valid = setError('p-city', 'p-city-err', !city) && valid;
+    if (!valid) return;
+
+    // Store in localStorage
+    const existing = JSON.parse(localStorage.getItem('cubby_partners') || '[]');
+    existing.push({ business, contact, type, email, phone, city, ts: Date.now() });
+    localStorage.setItem('cubby_partners', JSON.stringify(existing));
+
+    partnerForm.style.display = 'none';
+    document.getElementById('partner-success').classList.add('show');
+    document.getElementById('partner-success').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  // Live validation clear on input
+  ['w-name', 'w-email', 'w-city'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => el.classList.remove('error'));
+    el.addEventListener('change', () => el.classList.remove('error'));
+  });
+  ['p-business', 'p-contact', 'p-type', 'p-email', 'p-phone', 'p-city'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => el.classList.remove('error'));
+    el.addEventListener('change', () => el.classList.remove('error'));
+  });
+</script>
+</body>
+</html>

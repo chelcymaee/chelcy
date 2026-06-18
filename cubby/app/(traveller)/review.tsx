@@ -43,7 +43,7 @@ export default function Review() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.inner}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
           <Text style={styles.back}>← Skip for now</Text>
         </TouchableOpacity>
 

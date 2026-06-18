@@ -6,7 +6,7 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
-import { MOCK_HOSTS, MOCK_REVIEWS } from '../../src/lib/mock-data';
+import { MOCK_REVIEWS } from '../../src/lib/mock-data';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TODAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -30,15 +30,39 @@ const HOW_IT_WORKS = [
   },
 ];
 
+function normalizeHost(raw: any) {
+  return {
+    id: raw.id,
+    display_name: raw.display_name ?? raw.displayName ?? '',
+    bio: raw.bio ?? '',
+    business_type: raw.business_type ?? raw.businessType ?? 'other',
+    location_name: raw.location_name ?? raw.locationName ?? '',
+    price_per_bag_per_day: raw.price_per_bag_per_day ?? raw.pricePerBag ?? 100,
+    rating: raw.rating ?? 0,
+    review_count: raw.review_count ?? 0,
+    response_rate: raw.response_rate ?? raw.responseRate ?? 100,
+    available_from: raw.available_from ?? raw.availableFrom ?? '08:00',
+    available_until: raw.available_until ?? raw.availableUntil ?? '20:00',
+    available_days: raw.available_days ?? raw.availableDays ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    max_bags: raw.max_bags ?? raw.maxBags ?? 10,
+  };
+}
+
 export default function HostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const host = MOCK_HOSTS.find(h => h.id === id);
+  const [host, setHost] = useState<any>(null);
   const mockReviews = MOCK_REVIEWS.filter(r => r.host_id === id);
   const [bagCount, setBagCount] = useState(1);
   const [savedReviews, setSavedReviews] = useState<any[]>([]);
 
   useEffect(() => {
     if (!id) return;
+    AsyncStorage.getItem('cubby_hosts').then(raw => {
+      if (raw) {
+        const found = JSON.parse(raw).find((h: any) => h.id === id);
+        if (found) setHost(normalizeHost(found));
+      }
+    });
     AsyncStorage.getItem(`cubby_reviews_${id}`).then(raw => {
       if (raw) setSavedReviews(JSON.parse(raw));
     });
@@ -46,7 +70,16 @@ export default function HostDetail() {
 
   const reviews = [...savedReviews, ...mockReviews];
 
-  if (!host) return null;
+  if (!host) return (
+    <SafeAreaView style={styles.container}>
+      <TouchableOpacity style={styles.backLink} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
+        <Text style={styles.backLinkText}>← Back to results</Text>
+      </TouchableOpacity>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: Colors.textSecondary }}>Loading…</Text>
+      </View>
+    </SafeAreaView>
+  );
 
   const isOpen = host.available_days.includes(TODAY_ABBR);
   const total = host.price_per_bag_per_day * bagCount;
@@ -55,7 +88,7 @@ export default function HostDetail() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Back link */}
-        <TouchableOpacity style={styles.backLink} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backLink} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
           <Text style={styles.backLinkText}>← Back to results</Text>
         </TouchableOpacity>
 

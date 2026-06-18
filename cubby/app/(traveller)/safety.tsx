@@ -28,7 +28,7 @@ export default function Safety() {
     <SafeAreaView style={styles.container}>
       <ScrollView>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')}>
             <Text style={styles.back}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.heading}>Safety & Trust</Text>

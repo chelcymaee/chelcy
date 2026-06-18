@@ -32,7 +32,7 @@ export default function Language() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')} style={styles.backBtn}>
           <Text style={styles.backText}>← Account</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Language</Text>

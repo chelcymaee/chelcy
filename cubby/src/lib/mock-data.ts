@@ -1,6 +1,6 @@
 import { Host, Booking, Review } from '../types';
 
-export const MOCK_HOSTS: Host[] = [
+export const MOCK_HOSTS: Host[] = [/*
   {
     id: 'host-1',
     user_id: 'user-1',
@@ -169,7 +169,22 @@ export const MOCK_HOSTS: Host[] = [
     is_active: true,
     created_at: '2024-01-01T00:00:00Z',
   },
-];
+*/];
+
+export interface Runner {
+  id: string;
+  name: string;
+  vehicle: string;
+  location_name: string;
+  rating: number;
+  review_count: number;
+  price_per_bag: number;
+  delivery_radius_km: number;
+  eta_minutes: number;
+  is_active: boolean;
+}
+
+export const MOCK_RUNNERS: Runner[] = [];
 
 export const MOCK_REVIEWS: Review[] = [];
 export const MOCK_BOOKINGS: Booking[] = [];

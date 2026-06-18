@@ -61,7 +61,7 @@ export default function Verification() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.inner}>
-        <TouchableOpacity style={styles.back} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 

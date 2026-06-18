@@ -1,10 +1,8 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
-import { useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 async function completeOnboarding() {
   await AsyncStorage.setItem('cubby_onboarded', 'true');
@@ -14,7 +12,7 @@ async function completeOnboarding() {
 // ─── Slide 1: Got bags? Cubby it! ─────────────────────────────────────────────
 function Slide1() {
   return (
-    <View style={[slideStyles.slide, { width: SCREEN_WIDTH }]}>
+    <View style={slideStyles.slide}>
       <View style={slideStyles.illustrationBg}>
         <Text style={slideStyles.illustrationEmojis}>🧳👜🎒</Text>
       </View>
@@ -40,7 +38,7 @@ function Slide2() {
     { num: '③', text: 'Get your PIN and explore the city, bag-free!' },
   ];
   return (
-    <View style={[slideStyles.slide, { width: SCREEN_WIDTH }]}>
+    <View style={slideStyles.slide}>
       <View style={slideStyles.illustrationBg}>
         <Text style={slideStyles.illustrationEmojis}>📍🧳✅</Text>
       </View>
@@ -66,7 +64,7 @@ function Slide3() {
     { name: 'James', location: 'Sea Point', comment: 'Brilliant app. Stored our bags while we explored!' },
   ];
   return (
-    <View style={[slideStyles.slide, { width: SCREEN_WIDTH }]}>
+    <View style={slideStyles.slide}>
       <View style={slideStyles.content}>
         <Text style={[slideStyles.heading, { marginTop: 32 }]}>{'What people\nare saying'}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={slideStyles.reviewsScroll} contentContainerStyle={slideStyles.reviewsContent}>
@@ -101,7 +99,7 @@ function Slide3() {
 // ─── Slide 4: Less Bags, More Fun ─────────────────────────────────────────────
 function Slide4() {
   return (
-    <View style={[slideStyles.slide, { width: SCREEN_WIDTH }]}>
+    <View style={slideStyles.slide}>
       <View style={slideStyles.illustrationBgBlue}>
         <Text style={slideStyles.illustrationEmojis}>🌍✈️🎉</Text>
       </View>
@@ -120,48 +118,38 @@ const SLIDES = [Slide1, Slide2, Slide3, Slide4];
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Onboarding() {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   function handleContinue() {
     if (currentIndex < SLIDES.length - 1) {
-      const next = currentIndex + 1;
-      flatListRef.current?.scrollToIndex({ index: next, animated: true });
-      setCurrentIndex(next);
+      Animated.sequence([
+        Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+      setTimeout(() => setCurrentIndex(i => i + 1), 150);
     } else {
       completeOnboarding();
     }
   }
 
+  const SlideComponent = SLIDES[currentIndex];
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Skip button */}
       <TouchableOpacity style={styles.skipBtn} onPress={completeOnboarding}>
         <Text style={styles.skipText}>Skip</Text>
       </TouchableOpacity>
 
-      {/* Slides */}
-      <FlatList
-        ref={flatListRef}
-        data={SLIDES}
-        keyExtractor={(_, i) => String(i)}
-        renderItem={({ item: SlideComponent }) => <SlideComponent />}
-        horizontal
-        pagingEnabled
-        scrollEnabled={false}
-        showsHorizontalScrollIndicator={false}
-        style={{ flex: 1 }}
-      />
+      <Animated.View style={[{ flex: 1 }, { opacity: fadeAnim }]}>
+        <SlideComponent />
+      </Animated.View>
 
-      {/* Bottom area */}
       <View style={styles.bottom}>
-        {/* Dots */}
         <View style={styles.dotsRow}>
           {SLIDES.map((_, i) => (
             <View key={i} style={[styles.dot, i === currentIndex && styles.dotActive]} />
           ))}
         </View>
-
-        {/* Continue / Get started button */}
         <TouchableOpacity style={styles.continueBtn} onPress={handleContinue} activeOpacity={0.85}>
           <Text style={styles.continueBtnText}>
             {currentIndex === SLIDES.length - 1 ? 'Get started →' : 'Continue →'}
