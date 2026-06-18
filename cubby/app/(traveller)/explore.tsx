@@ -6,6 +6,7 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { MOCK_RUNNERS, Runner } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
 
@@ -367,14 +368,29 @@ export default function Explore() {
   const [hosts, setHosts] = useState<Host[]>([]);
 
   useFocusEffect(useCallback(() => {
-    AsyncStorage.getItem('cubby_hosts').then(raw => {
-      if (raw) {
-        const all = JSON.parse(raw).map(normalizeHost);
-        setHosts(all.filter((h: Host) => h.is_active));
+    async function loadHosts() {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase
+          .from('hosts')
+          .select('*')
+          .eq('active', true)
+          .order('created_at', { ascending: false });
+        if (!error && data) {
+          setHosts(data.map(normalizeHost));
+        } else {
+          setHosts([]);
+        }
       } else {
-        setHosts([]);
+        const raw = await AsyncStorage.getItem('cubby_hosts');
+        if (raw) {
+          const all = JSON.parse(raw).map(normalizeHost);
+          setHosts(all.filter((h: Host) => h.is_active));
+        } else {
+          setHosts([]);
+        }
       }
-    });
+    }
+    loadHosts();
   }, []));
 
   if (step === 'results') {

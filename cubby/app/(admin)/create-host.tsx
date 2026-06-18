@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 type BusinessType = 'café' | 'hotel' | 'hostel' | 'guesthouse' | 'airbnb' | 'tour_operator' | 'home' | 'other';
 
@@ -64,28 +65,51 @@ export default function CreateHost() {
 
     setSaving(true);
     try {
-      const raw = await AsyncStorage.getItem('cubby_hosts');
-      const hosts = raw ? JSON.parse(raw) : [];
-      const newHost = {
-        id: Date.now().toString(),
-        displayName: displayName.trim(),
-        bio: bio.trim(),
-        locationName: locationName.trim(),
-        businessType,
-        pricePerBag: price,
-        maxBags: bags,
-        availableFrom: availableFrom.trim(),
-        availableUntil: availableUntil.trim(),
-        availableDays,
-        partnerEmail: partnerEmail.trim(),
-        active,
-        createdAt: new Date().toISOString(),
-      };
-      hosts.push(newHost);
-      await AsyncStorage.setItem('cubby_hosts', JSON.stringify(hosts));
-      Alert.alert('Success', 'Host profile created!', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.from('hosts').insert({
+          display_name: displayName.trim(),
+          bio: bio.trim(),
+          location_name: locationName.trim(),
+          business_type: businessType,
+          price_per_bag: parseInt(pricePerBag),
+          max_bags: parseInt(maxBags),
+          available_from: availableFrom.trim(),
+          available_until: availableUntil.trim(),
+          available_days: availableDays,
+          partner_email: partnerEmail.trim(),
+          active: false,
+        });
+        if (error) {
+          Alert.alert('Error', error.message);
+          return;
+        }
+        Alert.alert('Success', 'Host profile created!', [
+          { text: 'OK', onPress: () => router.replace('/(admin)/dashboard') },
+        ]);
+      } else {
+        const raw = await AsyncStorage.getItem('cubby_hosts');
+        const hosts = raw ? JSON.parse(raw) : [];
+        const newHost = {
+          id: Date.now().toString(),
+          displayName: displayName.trim(),
+          bio: bio.trim(),
+          locationName: locationName.trim(),
+          businessType,
+          pricePerBag: price,
+          maxBags: bags,
+          availableFrom: availableFrom.trim(),
+          availableUntil: availableUntil.trim(),
+          availableDays,
+          partnerEmail: partnerEmail.trim(),
+          active,
+          createdAt: new Date().toISOString(),
+        };
+        hosts.push(newHost);
+        await AsyncStorage.setItem('cubby_hosts', JSON.stringify(hosts));
+        Alert.alert('Success', 'Host profile created!', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      }
     } catch {
       Alert.alert('Error', 'Failed to save host profile.');
     } finally {

@@ -6,6 +6,7 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { MOCK_REVIEWS } from '../../src/lib/mock-data';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -57,12 +58,25 @@ export default function HostDetail() {
 
   useEffect(() => {
     if (!id) return;
-    AsyncStorage.getItem('cubby_hosts').then(raw => {
-      if (raw) {
-        const found = JSON.parse(raw).find((h: any) => h.id === id);
-        if (found) setHost(normalizeHost(found));
+    async function loadHost() {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase
+          .from('hosts')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (!error && data) {
+          setHost(normalizeHost(data));
+        }
+      } else {
+        const raw = await AsyncStorage.getItem('cubby_hosts');
+        if (raw) {
+          const found = JSON.parse(raw).find((h: any) => h.id === id);
+          if (found) setHost(normalizeHost(found));
+        }
       }
-    });
+    }
+    loadHost();
     AsyncStorage.getItem(`cubby_reviews_${id}`).then(raw => {
       if (raw) setSavedReviews(JSON.parse(raw));
     });

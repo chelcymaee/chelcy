@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 interface Host {
   id: string;
@@ -39,8 +40,25 @@ export default function ManageHosts() {
 
   async function loadHosts() {
     try {
-      const raw = await AsyncStorage.getItem('cubby_hosts');
-      setHosts(raw ? JSON.parse(raw) : []);
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase
+          .from('hosts')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!error && data) {
+          setHosts(data.map((row: any) => ({
+            id: row.id,
+            displayName: row.display_name,
+            locationName: row.location_name,
+            businessType: row.business_type,
+            pricePerBag: row.price_per_bag,
+            active: row.active ?? row.is_active ?? false,
+          })));
+        }
+      } else {
+        const raw = await AsyncStorage.getItem('cubby_hosts');
+        setHosts(raw ? JSON.parse(raw) : []);
+      }
     } catch {}
   }
 
@@ -49,19 +67,38 @@ export default function ManageHosts() {
     setHosts(updated);
   }
 
-  async function toggleActive(id: string) {
-    const updated = hosts.map(h => h.id === id ? { ...h, active: !h.active } : h);
-    await saveHosts(updated);
+  async function toggleActive(host: Host) {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase
+        .from('hosts')
+        .update({ active: !host.active })
+        .eq('id', host.id);
+      if (!error) {
+        setHosts(prev => prev.map(h => h.id === host.id ? { ...h, active: !h.active } : h));
+      }
+    } else {
+      const updated = hosts.map(h => h.id === host.id ? { ...h, active: !h.active } : h);
+      await saveHosts(updated);
+    }
+  }
+
+  async function deleteHost(id: string) {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('hosts').delete().eq('id', id);
+      if (!error) {
+        setHosts(prev => prev.filter(h => h.id !== id));
+      }
+    } else {
+      const updated = hosts.filter(h => h.id !== id);
+      await saveHosts(updated);
+    }
   }
 
   function confirmDelete(id: string, name: string) {
     Alert.alert('Delete Host', `Are you sure you want to delete "${name}"?`, [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          const updated = hosts.filter(h => h.id !== id);
-          await saveHosts(updated);
-        },
+        text: 'Delete', style: 'destructive', onPress: () => deleteHost(id),
       },
     ]);
   }
@@ -108,7 +145,7 @@ export default function ManageHosts() {
                       <Text style={styles.toggleLabel}>Active</Text>
                       <Switch
                         value={host.active}
-                        onValueChange={() => toggleActive(host.id)}
+                        onValueChange={() => toggleActive(host)}
                         trackColor={{ false: '#D1D5DB', true: Colors.primary }}
                         thumbColor={Colors.white}
                         style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}

@@ -6,6 +6,7 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 const SA_BANKS = [
   'Absa', 'Capitec', 'FNB', 'Nedbank', 'Standard Bank',
@@ -55,10 +56,39 @@ export default function HostPayouts() {
   }, []));
 
   async function loadData() {
-    const hostsRaw = await AsyncStorage.getItem('cubby_hosts');
-    const detailsRaw = await AsyncStorage.getItem('cubby_host_bank_details');
-    if (hostsRaw) setHosts(JSON.parse(hostsRaw));
-    if (detailsRaw) setBankDetails(JSON.parse(detailsRaw));
+    if (isSupabaseConfigured) {
+      const { data: hostsData } = await supabase.from('hosts').select('*').order('created_at', { ascending: false });
+      if (hostsData) {
+        setHosts(hostsData.map((row: any) => ({
+          id: row.id,
+          displayName: row.display_name,
+          locationName: row.location_name,
+          businessType: row.business_type,
+        })));
+      }
+      const { data: bankData } = await supabase.from('host_bank_details').select('*');
+      if (bankData) {
+        const map: Record<string, BankDetails> = {};
+        for (const row of bankData) {
+          map[row.host_id] = {
+            hostId: row.host_id,
+            hostName: row.host_name ?? '',
+            accountHolder: row.account_holder,
+            bank: row.bank,
+            accountNumber: row.account_number,
+            accountType: row.account_type,
+            branchCode: row.branch_code,
+            updatedAt: row.updated_at ?? '',
+          };
+        }
+        setBankDetails(map);
+      }
+    } else {
+      const hostsRaw = await AsyncStorage.getItem('cubby_hosts');
+      const detailsRaw = await AsyncStorage.getItem('cubby_host_bank_details');
+      if (hostsRaw) setHosts(JSON.parse(hostsRaw));
+      if (detailsRaw) setBankDetails(JSON.parse(detailsRaw));
+    }
   }
 
   function openEdit(host: Host) {
@@ -86,17 +116,41 @@ export default function HostPayouts() {
     setSaving(true);
     try {
       const host = hosts.find(h => h.id === editingHostId);
-      const updated = {
-        ...bankDetails,
-        [editingHostId!]: {
-          hostId: editingHostId!,
-          hostName: host?.displayName ?? '',
-          ...form,
-          updatedAt: new Date().toISOString(),
-        },
-      };
-      await AsyncStorage.setItem('cubby_host_bank_details', JSON.stringify(updated));
-      setBankDetails(updated);
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.from('host_bank_details').upsert({
+          host_id: editingHostId!,
+          account_holder: form.accountHolder,
+          bank: form.bank,
+          account_number: form.accountNumber,
+          account_type: form.accountType,
+          branch_code: form.branchCode,
+        }, { onConflict: 'host_id' });
+        if (error) {
+          Alert.alert('Error', error.message);
+          return;
+        }
+        setBankDetails(prev => ({
+          ...prev,
+          [editingHostId!]: {
+            hostId: editingHostId!,
+            hostName: host?.displayName ?? '',
+            ...form,
+            updatedAt: new Date().toISOString(),
+          },
+        }));
+      } else {
+        const updated = {
+          ...bankDetails,
+          [editingHostId!]: {
+            hostId: editingHostId!,
+            hostName: host?.displayName ?? '',
+            ...form,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+        await AsyncStorage.setItem('cubby_host_bank_details', JSON.stringify(updated));
+        setBankDetails(updated);
+      }
       setEditingHostId(null);
       Alert.alert('Saved', 'Bank details saved successfully.');
     } finally {
