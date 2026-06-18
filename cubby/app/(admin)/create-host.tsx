@@ -1,6 +1,6 @@
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-  TextInput, Alert, Switch,
+  TextInput, Alert, Switch, Pressable, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -126,9 +126,9 @@ export default function CreateHost() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
+          <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
             <Text style={styles.backLink}>← Back</Text>
-          </TouchableOpacity>
+          </Pressable>
           <Text style={styles.title}>Create Host Profile</Text>
         </View>
 
@@ -264,25 +264,16 @@ export default function CreateHost() {
             />
           </View>
 
-          <TouchableOpacity
-            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-            onPress={handleSave}
-            activeOpacity={0.8}
+          <Pressable
+            style={({ pressed }) => [styles.saveBtn, (saving || pressed) && styles.saveBtnDisabled]}
+            onPress={() => {
+              console.log('Pressable tapped');
+              handleSave();
+            }}
             disabled={saving}
           >
             <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Create Host Profile'}</Text>
-          </TouchableOpacity>
-
-          {/* Web fallback button */}
-          <View style={{ marginTop: 8 }}>
-            <Text
-              style={[styles.saveBtn, { textAlign: 'center', paddingVertical: 18, color: Colors.white, fontSize: 16, fontWeight: '800', borderRadius: 14, overflow: 'hidden' }]}
-              // @ts-ignore
-              onClick={handleSave}
-            >
-              {saving ? 'Saving...' : 'Tap here if button above not working'}
-            </Text>
-          </View>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
