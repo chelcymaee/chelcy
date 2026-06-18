@@ -66,19 +66,22 @@ export default function CreateHost() {
     setSaving(true);
     try {
       if (isSupabaseConfigured) {
-        const { error } = await supabase.from('hosts').insert({
+        const payload = {
           display_name: displayName.trim(),
           bio: bio.trim(),
           location_name: locationName.trim(),
           business_type: businessType,
           price_per_bag: parseInt(pricePerBag),
           max_bags: parseInt(maxBags),
-          available_from: availableFrom.trim(),
-          available_until: availableUntil.trim(),
+          available_from: availableFrom.trim() || '08:00',
+          available_until: availableUntil.trim() || '20:00',
           available_days: availableDays,
           partner_email: partnerEmail.trim(),
           active: false,
-        });
+        };
+        console.log('Inserting host:', payload);
+        const { data, error } = await supabase.from('hosts').insert(payload).select();
+        console.log('Supabase result:', { data, error });
         if (error) {
           Alert.alert('Error', error.message);
           return;
