@@ -99,7 +99,7 @@ export default function AdminDashboard() {
             // @ts-ignore
             <button
               key={card.label}
-              onClick={() => router.push(card.route as any)}
+              onClick={() => router.replace(card.route as any)}
               style={{ background: 'none', border: '1px solid #F0EAEA', borderRadius: 16, padding: 20, flex: 1, minWidth: '44%', cursor: 'pointer', backgroundColor: '#FFFFFF', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
             >
               <Text style={styles.navCardIcon}>{card.icon}</Text>
