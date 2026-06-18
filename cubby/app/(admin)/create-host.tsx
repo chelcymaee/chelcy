@@ -44,22 +44,23 @@ export default function CreateHost() {
   }
 
   async function handleSave() {
+    console.log('handleSave called', { displayName, locationName, pricePerBag, maxBags });
     if (!displayName.trim()) {
-      Alert.alert('Validation', 'Display name is required.');
+      alert('Display name is required.');
       return;
     }
     if (!locationName.trim()) {
-      Alert.alert('Validation', 'Location name is required.');
+      alert('Location name is required.');
       return;
     }
     const price = parseFloat(pricePerBag);
     if (isNaN(price) || price < 100 || price > 300) {
-      Alert.alert('Validation', 'Price per bag must be between R100 and R300.');
+      alert('Price per bag must be between R100 and R300.');
       return;
     }
     const bags = parseInt(maxBags);
     if (isNaN(bags) || bags < 1 || bags > 50) {
-      Alert.alert('Validation', 'Max bags must be between 1 and 50.');
+      alert('Max bags must be between 1 and 50.');
       return;
     }
 
@@ -83,12 +84,12 @@ export default function CreateHost() {
         const { data, error } = await supabase.from('hosts').insert(payload).select();
         console.log('Supabase result:', { data, error });
         if (error) {
-          Alert.alert('Error', error.message);
+          console.error('Supabase error:', error);
+          alert('Error: ' + error.message);
           return;
         }
-        Alert.alert('Success', 'Host profile created!', [
-          { text: 'OK', onPress: () => router.replace('/(admin)/dashboard') },
-        ]);
+        alert('Host profile created!');
+        router.replace('/(admin)/dashboard');
       } else {
         const raw = await AsyncStorage.getItem('cubby_hosts');
         const hosts = raw ? JSON.parse(raw) : [];
@@ -113,8 +114,9 @@ export default function CreateHost() {
           { text: 'OK', onPress: () => router.back() },
         ]);
       }
-    } catch {
-      Alert.alert('Error', 'Failed to save host profile.');
+    } catch (e: any) {
+      console.error('Caught error:', e);
+      alert('Failed to save: ' + (e?.message ?? 'Unknown error'));
     } finally {
       setSaving(false);
     }
