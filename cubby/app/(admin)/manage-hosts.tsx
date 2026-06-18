@@ -3,6 +3,10 @@ import {
   Alert, Switch,
 } from 'react-native';
 import { router } from 'expo-router';
+import React from 'react';
+
+const Btn = ({ onClick, style, children }: { onClick: () => void; style?: any; children: any }) =>
+  React.createElement('button', { onClick, style: { border: 'none', cursor: 'pointer', ...style } }, children);
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
@@ -104,10 +108,9 @@ export default function ManageHosts() {
     <SafeAreaView style={styles.container}>
       <View style={{ flex: 1, overflowY: 'auto' } as any}>
         <View style={styles.header}>
-          {/* @ts-ignore */}
-          <button onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 8 }}>
+          <Btn onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ background: 'none', padding: 0, marginBottom: 8 }}>
             <Text style={styles.backLink}>← Back</Text>
-          </button>
+          </Btn>
           <Text style={styles.title}>Manage Hosts</Text>
         </View>
 
@@ -116,8 +119,7 @@ export default function ManageHosts() {
             <Text style={styles.emptyEmoji}>🏠</Text>
             <Text style={styles.emptyText}>No hosts yet.</Text>
             <Text style={styles.emptySubText}>Create your first host profile.</Text>
-            {/* @ts-ignore */}
-            <button onClick={() => router.push('/(admin)/create-host')} style={{ backgroundColor: '#2D6A4F', color: 'white', border: 'none', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Create Host Profile</button>
+            <Btn onClick={() => router.push('/(admin)/create-host')} style={{ backgroundColor: '#2D6A4F', color: 'white', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: 700 }}>Create Host Profile</Btn>
           </View>
         ) : (
           <View style={styles.list}>
@@ -148,8 +150,7 @@ export default function ManageHosts() {
                         style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
                       />
                     </View>
-                    {/* @ts-ignore */}
-                    <button onClick={() => confirmDelete(host.id, host.displayName)} style={{ backgroundColor: '#FEF2F2', border: 'none', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 13, color: '#DC2626', fontWeight: 600 }}>🗑️ Delete</button>
+                    <Btn onClick={() => confirmDelete(host.id, host.displayName)} style={{ backgroundColor: '#FEF2F2', borderRadius: 8, padding: '6px 10px', fontSize: 13, color: '#DC2626', fontWeight: 600 }}>🗑️ Delete</Btn>
                   </View>
                 </View>
               </View>
@@ -160,8 +161,7 @@ export default function ManageHosts() {
         <View style={{ height: 80 }} />
       </View>
 
-      {/* @ts-ignore */}
-      <button onClick={() => router.push('/(admin)/create-host')} style={{ position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#2D6A4F', border: 'none', cursor: 'pointer', fontSize: 28, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>+</button>
+      <Btn onClick={() => router.push('/(admin)/create-host')} style={{ position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#2D6A4F', fontSize: 28, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>+</Btn>
     </SafeAreaView>
   );
 }
