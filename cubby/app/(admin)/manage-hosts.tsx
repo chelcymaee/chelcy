@@ -70,7 +70,7 @@ export default function ManageHosts() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
             <Text style={styles.backLink}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Manage Hosts</Text>

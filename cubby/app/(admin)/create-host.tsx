@@ -97,7 +97,7 @@ export default function CreateHost() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
             <Text style={styles.backLink}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Create Host Profile</Text>

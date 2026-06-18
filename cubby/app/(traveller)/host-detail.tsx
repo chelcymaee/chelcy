@@ -72,7 +72,7 @@ export default function HostDetail() {
 
   if (!host) return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity style={styles.backLink} onPress={() => router.back()}>
+      <TouchableOpacity style={styles.backLink} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
         <Text style={styles.backLinkText}>← Back to results</Text>
       </TouchableOpacity>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -88,7 +88,7 @@ export default function HostDetail() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Back link */}
-        <TouchableOpacity style={styles.backLink} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backLink} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
           <Text style={styles.backLinkText}>← Back to results</Text>
         </TouchableOpacity>
 
