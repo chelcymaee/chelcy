@@ -115,7 +115,14 @@ export default function CreateHost() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={{ flex: 1, overflowY: 'auto' } as any}>
+      {!!successMsg && (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.white }}>
+          <Text style={{ fontSize: 64, marginBottom: 16 }}>✅</Text>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8 }}>Host Saved!</Text>
+          <Text style={{ fontSize: 16, color: Colors.textSecondary }}>Redirecting to dashboard...</Text>
+        </View>
+      )}
+      {!successMsg && <View style={{ flex: 1, overflowY: 'auto' } as any}>
         <View style={styles.header}>
           <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
             <Text style={styles.backLink}>← Back</Text>
@@ -286,7 +293,7 @@ export default function CreateHost() {
             {saving ? 'Saving...' : 'Create Host Profile'}
           </button>
         </View>
-      </View>
+      </View>}
     </SafeAreaView>
   );
 }
