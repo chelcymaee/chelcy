@@ -272,6 +272,17 @@ export default function CreateHost() {
           >
             <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Create Host Profile'}</Text>
           </TouchableOpacity>
+
+          {/* Web fallback button */}
+          <View style={{ marginTop: 8 }}>
+            <Text
+              style={[styles.saveBtn, { textAlign: 'center', paddingVertical: 18, color: Colors.white, fontSize: 16, fontWeight: '800', borderRadius: 14, overflow: 'hidden' }]}
+              // @ts-ignore
+              onClick={handleSave}
+            >
+              {saving ? 'Saving...' : 'Tap here if button above not working'}
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
