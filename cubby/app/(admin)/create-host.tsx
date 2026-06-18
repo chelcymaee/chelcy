@@ -115,7 +115,7 @@ export default function CreateHost() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <View style={{ flex: 1, overflowY: 'auto' } as any}>
         <View style={styles.header}>
           <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
             <Text style={styles.backLink}>← Back</Text>
@@ -274,7 +274,7 @@ export default function CreateHost() {
             <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Create Host Profile'}</Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
