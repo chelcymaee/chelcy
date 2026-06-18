@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, FlatList } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
@@ -26,17 +26,19 @@ export default function AdminBookings() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
+        {/* @ts-ignore */}
+        <button onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
           <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
+        </button>
         <Text style={styles.heading}>All Bookings</Text>
       </View>
 
       <View style={styles.tabs}>
         {(['all','active','completed'] as const).map(t => (
-          <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
+          // @ts-ignore
+          <button key={t} onClick={() => setTab(t)} style={{ flex: 1, background: 'none', border: 'none', borderBottom: tab === t ? '2.5px solid #2D6A4F' : '2.5px solid transparent', cursor: 'pointer', padding: '14px 0' }}>
             <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t.charAt(0).toUpperCase() + t.slice(1)}</Text>
-          </TouchableOpacity>
+          </button>
         ))}
       </View>
 
@@ -80,9 +82,7 @@ const styles = StyleSheet.create({
   backText: { fontSize: 15, color: Colors.primary, fontWeight: '600', marginBottom: 12 },
   heading: { fontSize: 26, fontWeight: '900', color: '#1A1A1A' },
   tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F0EAEA', backgroundColor: '#fff' },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 14 },
-  tabActive: { borderBottomWidth: 2.5, borderBottomColor: Colors.primary },
-  tabText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+  tabText: { fontSize: 14, fontWeight: '600', color: '#6B7280', textAlign: 'center' },
   tabTextActive: { color: Colors.primary, fontWeight: '800' },
   list: { padding: 16, gap: 12, paddingBottom: 40 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6 },

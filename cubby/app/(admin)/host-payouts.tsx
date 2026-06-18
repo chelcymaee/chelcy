@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, TextInput, Alert, Modal,
+  View, Text, StyleSheet, SafeAreaView,
+  TextInput, Modal,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -110,7 +110,7 @@ export default function HostPayouts() {
 
   async function save() {
     if (!form.accountHolder.trim() || !form.bank || !form.accountNumber.trim()) {
-      Alert.alert('Missing info', 'Please fill in account holder, bank and account number.');
+      alert('Please fill in account holder, bank and account number.');
       return;
     }
     setSaving(true);
@@ -126,7 +126,7 @@ export default function HostPayouts() {
           branch_code: form.branchCode,
         }, { onConflict: 'host_id' });
         if (error) {
-          Alert.alert('Error', error.message);
+          alert(error.message);
           return;
         }
         setBankDetails(prev => ({
@@ -152,33 +152,31 @@ export default function HostPayouts() {
         setBankDetails(updated);
       }
       setEditingHostId(null);
-      Alert.alert('Saved', 'Bank details saved successfully.');
+      alert('Bank details saved successfully.');
     } finally {
       setSaving(false);
     }
   }
 
   async function deleteDetails(hostId: string) {
-    Alert.alert('Remove bank details', 'Remove banking details for this host?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: async () => {
-        const updated = { ...bankDetails };
-        delete updated[hostId];
-        await AsyncStorage.setItem('cubby_host_bank_details', JSON.stringify(updated));
-        setBankDetails(updated);
-      }},
-    ]);
+    if (window.confirm('Remove banking details for this host?')) {
+      const updated = { ...bankDetails };
+      delete updated[hostId];
+      await AsyncStorage.setItem('cubby_host_bank_details', JSON.stringify(updated));
+      setBankDetails(updated);
+    }
   }
 
   const editingHost = hosts.find(h => h.id === editingHostId);
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <View style={{ flex: 1, overflowY: 'auto' } as any}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
+          {/* @ts-ignore */}
+          <button onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
             <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
+          </button>
           <Text style={styles.heading}>Host Bank Details</Text>
           <Text style={styles.subheading}>Payout bank accounts for your Cubby partners</Text>
         </View>
@@ -204,9 +202,10 @@ export default function HostPayouts() {
             <Text style={styles.emptyEmoji}>🏦</Text>
             <Text style={styles.emptyTitle}>No hosts yet</Text>
             <Text style={styles.emptySub}>Create host profiles first, then add their bank details here.</Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(admin)/create-host')}>
+            {/* @ts-ignore */}
+            <button onClick={() => router.push('/(admin)/create-host')} style={{ backgroundColor: '#2D6A4F', borderRadius: 14, paddingLeft: 28, paddingRight: 28, paddingTop: 14, paddingBottom: 14, border: 'none', cursor: 'pointer' }}>
               <Text style={styles.emptyBtnText}>Create Host Profile</Text>
-            </TouchableOpacity>
+            </button>
           </View>
         ) : (
           <View style={styles.list}>
@@ -242,13 +241,15 @@ export default function HostPayouts() {
                   )}
 
                   <View style={styles.cardActions}>
-                    <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(host)} activeOpacity={0.8}>
+                    {/* @ts-ignore */}
+                    <button onClick={() => openEdit(host)} style={{ flex: 1, backgroundColor: '#2D6A4F', borderRadius: 12, paddingTop: 12, paddingBottom: 12, border: 'none', cursor: 'pointer' }}>
                       <Text style={styles.editBtnText}>{details ? 'Edit details' : 'Add bank details'}</Text>
-                    </TouchableOpacity>
+                    </button>
                     {details && (
-                      <TouchableOpacity style={styles.removeBtn} onPress={() => deleteDetails(host.id)} activeOpacity={0.8}>
+                      // @ts-ignore
+                      <button onClick={() => deleteDetails(host.id)} style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 12, paddingBottom: 12, borderRadius: 12, border: '1.5px solid #F0EAEA', background: 'none', cursor: 'pointer' }}>
                         <Text style={styles.removeBtnText}>Remove</Text>
-                      </TouchableOpacity>
+                      </button>
                     )}
                   </View>
                 </View>
@@ -258,7 +259,7 @@ export default function HostPayouts() {
         )}
 
         <View style={{ height: 40 }} />
-      </ScrollView>
+      </View>
 
       {/* Edit modal */}
       <Modal visible={!!editingHostId} animationType="slide" transparent onRequestClose={() => setEditingHostId(null)}>
@@ -271,10 +272,11 @@ export default function HostPayouts() {
             <TextInput style={styles.input} value={form.accountHolder} onChangeText={v => setForm(f => ({ ...f, accountHolder: v }))} placeholder="Full name on account" placeholderTextColor="#9CA3AF" />
 
             <Text style={styles.label}>Bank</Text>
-            <TouchableOpacity style={styles.bankSelector} onPress={() => setShowBankPicker(true)} activeOpacity={0.8}>
+            {/* @ts-ignore */}
+            <button onClick={() => setShowBankPicker(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FAFAFA', borderRadius: 12, border: '1.5px solid #F0EAEA', paddingLeft: 14, paddingRight: 14, paddingTop: 13, paddingBottom: 13, cursor: 'pointer', display: 'flex', width: '100%' }}>
               <Text style={[styles.bankSelectorText, !form.bank && { color: '#9CA3AF' }]}>{form.bank || 'Select bank…'}</Text>
               <Text style={styles.bankArrow}>▾</Text>
-            </TouchableOpacity>
+            </button>
 
             {form.branchCode ? (
               <Text style={styles.branchCodeHint}>Branch code: {form.branchCode}</Text>
@@ -286,24 +288,26 @@ export default function HostPayouts() {
             <Text style={styles.label}>Account Type</Text>
             <View style={styles.typeRow}>
               {['Cheque', 'Savings'].map(t => (
-                <TouchableOpacity
+                // @ts-ignore
+                <button
                   key={t}
-                  style={[styles.typeChip, form.accountType === t && styles.typeChipActive]}
-                  onPress={() => setForm(f => ({ ...f, accountType: t }))}
-                  activeOpacity={0.8}
+                  onClick={() => setForm(f => ({ ...f, accountType: t }))}
+                  style={{ paddingLeft: 20, paddingRight: 20, paddingTop: 10, paddingBottom: 10, borderRadius: 20, border: form.accountType === t ? '1.5px solid #2D6A4F' : '1.5px solid #F0EAEA', backgroundColor: form.accountType === t ? '#FFF0F0' : '#fff', cursor: 'pointer' }}
                 >
                   <Text style={[styles.typeChipText, form.accountType === t && styles.typeChipTextActive]}>{t}</Text>
-                </TouchableOpacity>
+                </button>
               ))}
             </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditingHostId(null)} activeOpacity={0.8}>
+              {/* @ts-ignore */}
+              <button onClick={() => setEditingHostId(null)} style={{ flex: 1, border: '1.5px solid #F0EAEA', borderRadius: 14, paddingTop: 16, paddingBottom: 16, background: 'none', cursor: 'pointer' }}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={save} disabled={saving} activeOpacity={0.85}>
+              </button>
+              {/* @ts-ignore */}
+              <button onClick={save} disabled={saving} style={{ flex: 1, backgroundColor: '#2D6A4F', borderRadius: 14, paddingTop: 16, paddingBottom: 16, border: 'none', cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
                 <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save details'}</Text>
-              </TouchableOpacity>
+              </button>
             </View>
           </View>
         </View>
@@ -315,14 +319,15 @@ export default function HostPayouts() {
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Select Bank</Text>
-            <ScrollView>
+            <View style={{ overflowY: 'auto', maxHeight: 400 } as any}>
               {SA_BANKS.map(bank => (
-                <TouchableOpacity key={bank} style={styles.bankOption} onPress={() => selectBank(bank)} activeOpacity={0.8}>
+                // @ts-ignore
+                <button key={bank} onClick={() => selectBank(bank)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, paddingBottom: 16, borderBottom: '1px solid #F0EAEA', background: 'none', border: 'none', borderBottom: '1px solid #F0EAEA', cursor: 'pointer', display: 'flex', width: '100%' }}>
                   <Text style={styles.bankOptionText}>{bank}</Text>
                   {BRANCH_CODES[bank] && <Text style={styles.bankOptionCode}>{BRANCH_CODES[bank]}</Text>}
-                </TouchableOpacity>
+                </button>
               ))}
-            </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
@@ -358,16 +363,13 @@ const styles = StyleSheet.create({
   detailRow: { fontSize: 13, color: '#1A1A1A', fontWeight: '500' },
   noDetails: { fontSize: 13, color: '#9CA3AF', marginBottom: 14, fontStyle: 'italic' },
   cardActions: { flexDirection: 'row', gap: 10 },
-  editBtn: { flex: 1, backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  editBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  removeBtn: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderColor: '#F0EAEA' },
+  editBtnText: { fontSize: 14, fontWeight: '700', color: '#fff', textAlign: 'center' },
   removeBtnText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
 
   empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 48, marginBottom: 14 },
   emptyTitle: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', marginBottom: 6 },
   emptySub: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 24 },
-  emptyBtn: { backgroundColor: Colors.primary, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 },
   emptyBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
@@ -376,22 +378,16 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', marginBottom: 20 },
   label: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', marginBottom: 8, marginTop: 14 },
   input: { backgroundColor: '#FAFAFA', borderRadius: 12, borderWidth: 1.5, borderColor: '#F0EAEA', paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: '#1A1A1A' },
-  bankSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FAFAFA', borderRadius: 12, borderWidth: 1.5, borderColor: '#F0EAEA', paddingHorizontal: 14, paddingVertical: 13 },
   bankSelectorText: { fontSize: 15, color: '#1A1A1A', fontWeight: '500' },
   bankArrow: { fontSize: 14, color: '#6B7280' },
   branchCodeHint: { fontSize: 12, color: '#6B7280', marginTop: 6, fontWeight: '500' },
   typeRow: { flexDirection: 'row', gap: 10 },
-  typeChip: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: '#F0EAEA', backgroundColor: '#fff' },
-  typeChipActive: { borderColor: Colors.primary, backgroundColor: '#FFF0F0' },
   typeChipText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
   typeChipTextActive: { color: Colors.primary },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 24 },
-  cancelBtn: { flex: 1, borderWidth: 1.5, borderColor: '#F0EAEA', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
-  cancelBtnText: { fontSize: 15, fontWeight: '700', color: '#6B7280' },
-  saveBtn: { flex: 1, backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
-  saveBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  cancelBtnText: { fontSize: 15, fontWeight: '700', color: '#6B7280', textAlign: 'center' },
+  saveBtnText: { fontSize: 15, fontWeight: '700', color: '#fff', textAlign: 'center' },
 
-  bankOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F0EAEA' },
   bankOptionText: { fontSize: 16, color: '#1A1A1A', fontWeight: '500' },
   bankOptionCode: { fontSize: 13, color: '#6B7280' },
 });

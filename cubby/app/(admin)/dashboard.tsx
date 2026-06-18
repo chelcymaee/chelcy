@@ -1,5 +1,5 @@
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert,
+  View, Text, StyleSheet, SafeAreaView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -53,15 +53,10 @@ export default function AdminDashboard() {
   }
 
   async function handleSignOut() {
-    Alert.alert('Sign out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out', style: 'destructive', onPress: async () => {
-          await AsyncStorage.removeItem('cubby_admin_session');
-          router.replace('/(admin)/login');
-        },
-      },
-    ]);
+    if (window.confirm('Are you sure you want to sign out?')) {
+      await AsyncStorage.removeItem('cubby_admin_session');
+      router.replace('/(admin)/login');
+    }
   }
 
   const STATS = [
@@ -81,7 +76,7 @@ export default function AdminDashboard() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <View style={{ flex: 1, overflowY: 'auto' } as any}>
         <View style={styles.header}>
           <Text style={styles.logo}>Cubby</Text>
           <Text style={styles.headerTitle}>Admin Dashboard</Text>
@@ -101,24 +96,28 @@ export default function AdminDashboard() {
         <Text style={styles.sectionLabel}>Quick Actions</Text>
         <View style={styles.navGrid}>
           {NAV_CARDS.map(card => (
-            <TouchableOpacity
+            // @ts-ignore
+            <button
               key={card.label}
-              style={styles.navCard}
-              activeOpacity={0.75}
-              onPress={() => router.push(card.route as any)}
+              onClick={() => router.push(card.route as any)}
+              style={{ background: 'none', border: '1px solid #F0EAEA', borderRadius: 16, padding: 20, flex: 1, minWidth: '44%', cursor: 'pointer', backgroundColor: '#FFFFFF', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
             >
               <Text style={styles.navCardIcon}>{card.icon}</Text>
               <Text style={styles.navCardLabel}>{card.label}</Text>
-            </TouchableOpacity>
+            </button>
           ))}
         </View>
 
-        <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
+        {/* @ts-ignore */}
+        <button
+          onClick={handleSignOut}
+          style={{ margin: 20, marginTop: 32, backgroundColor: '#FFFFFF', borderRadius: 14, paddingTop: 16, paddingBottom: 16, border: '1px solid #F0EAEA', cursor: 'pointer', width: 'calc(100% - 40px)' }}
+        >
           <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+        </button>
 
         <View style={{ height: 40 }} />
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -178,27 +177,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     gap: 12,
   },
-  navCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 20,
-    flex: 1,
-    minWidth: '44%',
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-    alignItems: 'center',
-  },
   navCardIcon: { fontSize: 32, marginBottom: 10 },
   navCardLabel: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center' },
-  signOutBtn: {
-    margin: 20,
-    marginTop: 32,
-    backgroundColor: Colors.white,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-  },
-  signOutText: { fontSize: 16, fontWeight: '700', color: Colors.error },
+  signOutText: { fontSize: 16, fontWeight: '700', color: Colors.error, textAlign: 'center' },
 });

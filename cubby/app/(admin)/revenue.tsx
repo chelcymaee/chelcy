@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -20,11 +20,12 @@ export default function Revenue() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <View style={{ flex: 1, overflowY: 'auto' } as any}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
+          {/* @ts-ignore */}
+          <button onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
             <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
+          </button>
           <Text style={styles.heading}>Revenue</Text>
         </View>
 
@@ -65,7 +66,7 @@ export default function Revenue() {
             </View>
           );
         })}
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
