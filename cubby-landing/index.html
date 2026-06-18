@@ -1015,6 +1015,10 @@
     fields.forEach(([inputId, errId]) => setError(inputId, errId, false));
   }
 
+  function encodeFormData(data) {
+    return Object.keys(data).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(data[k])).join('&');
+  }
+
   // Waitlist form
   const waitlistForm = document.getElementById('waitlist-form');
   waitlistForm.addEventListener('submit', (e) => {
@@ -1028,14 +1032,18 @@
     valid = setError('w-city', 'w-city-err', !city) && valid;
     if (!valid) return;
 
-    // Store in localStorage
-    const existing = JSON.parse(localStorage.getItem('cubby_waitlist') || '[]');
-    existing.push({ name, email, city, ts: Date.now() });
-    localStorage.setItem('cubby_waitlist', JSON.stringify(existing));
-
-    waitlistForm.style.display = 'none';
-    document.getElementById('waitlist-success').classList.add('show');
-    document.getElementById('waitlist-success').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: encodeFormData({ 'form-name': 'waitlist', name, email, city }),
+    }).then(() => {
+      waitlistForm.style.display = 'none';
+      document.getElementById('waitlist-success').classList.add('show');
+      document.getElementById('waitlist-success').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }).catch(() => {
+      waitlistForm.style.display = 'none';
+      document.getElementById('waitlist-success').classList.add('show');
+    });
   });
 
   // Partner form
@@ -1057,14 +1065,18 @@
     valid = setError('p-city', 'p-city-err', !city) && valid;
     if (!valid) return;
 
-    // Store in localStorage
-    const existing = JSON.parse(localStorage.getItem('cubby_partners') || '[]');
-    existing.push({ business, contact, type, email, phone, city, ts: Date.now() });
-    localStorage.setItem('cubby_partners', JSON.stringify(existing));
-
-    partnerForm.style.display = 'none';
-    document.getElementById('partner-success').classList.add('show');
-    document.getElementById('partner-success').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: encodeFormData({ 'form-name': 'partner', business, contact, type, email, phone, city }),
+    }).then(() => {
+      partnerForm.style.display = 'none';
+      document.getElementById('partner-success').classList.add('show');
+      document.getElementById('partner-success').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }).catch(() => {
+      partnerForm.style.display = 'none';
+      document.getElementById('partner-success').classList.add('show');
+    });
   });
 
   // Live validation clear on input
