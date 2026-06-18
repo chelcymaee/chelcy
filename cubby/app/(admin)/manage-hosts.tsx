@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, Switch,
 } from 'react-native';
@@ -67,6 +67,22 @@ export default function ManageHosts() {
     }
   }
 
+  useEffect(() => {
+    const timers: any[] = [];
+    hosts.forEach(host => {
+      const t = setTimeout(() => {
+        const btn = document.getElementById(`del-${host.id}`);
+        if (btn) {
+          btn.onclick = () => {
+            if (window.confirm(`Delete "${host.displayName}"?`)) deleteHost(host.id);
+          };
+        }
+      }, 100);
+      timers.push(t);
+    });
+    return () => timers.forEach(clearTimeout);
+  }, [hosts]);
+
   async function deleteHost(id: string) {
     if (isSupabaseConfigured) {
       const { error } = await supabase.from('hosts').delete().eq('id', id);
@@ -129,12 +145,10 @@ export default function ManageHosts() {
                         thumbColor={Colors.white}
                       />
                     </View>
-                    <Btn
-                      onClick={() => confirmDelete(host.id, host.displayName)}
-                      style={{ backgroundColor: '#FEF2F2', borderRadius: 8, padding: '6px 10px', fontSize: 13, color: '#DC2626', fontWeight: 600 }}
-                    >
-                      🗑️ Delete
-                    </Btn>
+                    {React.createElement('button', {
+                      id: `del-${host.id}`,
+                      style: { backgroundColor: '#FEF2F2', border: 'none', borderRadius: 8, padding: '6px 10px', fontSize: 13, color: '#DC2626', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+                    }, '🗑️ Delete')}
                   </View>
                 </View>
               </View>
