@@ -36,6 +36,7 @@ Code is fully implemented and committed on `claude/eloquent-goodall-7h3lro`. Whe
 - [ ] Avatar upload to Supabase Storage not implemented
 - [ ] Payment deep link return on web (PWA) needs separate handling (current fix is native-only)
 - [ ] Admin should use proper Supabase auth with a dedicated admin role (current PIN approach is web-only and basic)
+- [ ] Admin view for partner applications — list pending applications and allow approve/reject (reads via service-role Edge Function)
 
 ## ✅ Completed
 

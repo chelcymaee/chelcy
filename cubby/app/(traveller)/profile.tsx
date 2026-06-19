@@ -220,6 +220,7 @@ export default function Profile() {
     {
       title: 'Information',
       items: [
+        { icon: '🤝', label: 'Become a partner', onPress: () => router.push('/(traveller)/partner-apply') },
         { icon: '❓', label: 'How it works', onPress: () => router.push('/(traveller)/support') },
         { icon: '💬', label: 'FAQ', onPress: () => router.push('/(traveller)/support') },
         { icon: '🛡️', label: 'Safety & trust', onPress: () => router.push('/(traveller)/safety') },

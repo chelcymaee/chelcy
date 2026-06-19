@@ -165,7 +165,10 @@ CREATE TABLE IF NOT EXISTS partner_applications (
   email TEXT NOT NULL,
   phone TEXT,
   business_name TEXT,
+  business_type TEXT,
   location TEXT,
+  storage_capacity INTEGER,
+  available_hours TEXT,
   message TEXT,
   status TEXT DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT NOW()
