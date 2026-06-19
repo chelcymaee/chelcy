@@ -1,11 +1,6 @@
-import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-  TextInput, Alert, Switch, Pressable, Platform,
-} from 'react-native';
-import { router } from 'expo-router';
 import { useState } from 'react';
+import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 type BusinessType = 'café' | 'hotel' | 'hostel' | 'guesthouse' | 'airbnb' | 'tour_operator' | 'home' | 'other';
@@ -71,11 +66,8 @@ export default function CreateHost() {
           partner_email: partnerEmail.trim(),
           active: false,
         };
-        console.log('Inserting host:', payload);
         const { data, error } = await supabase.from('hosts').insert(payload).select();
-        console.log('Supabase result:', { data, error });
         if (error) {
-          console.error('Supabase error:', error);
           setErrorMsg('Error: ' + error.message);
           return;
         }
@@ -101,281 +93,179 @@ export default function CreateHost() {
         };
         hosts.push(newHost);
         await AsyncStorage.setItem('cubby_hosts', JSON.stringify(hosts));
-        Alert.alert('Success', 'Host profile created!', [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        setSuccessMsg('Host profile created!');
+        setTimeout(() => router.replace('/(admin)/dashboard'), 1500);
       }
     } catch (e: any) {
-      console.error('Caught error:', e);
       setErrorMsg('Failed to save: ' + (e?.message ?? 'Unknown error'));
     } finally {
       setSaving(false);
     }
   }
 
+  const s: any = {
+    page: {
+      minHeight: '100vh',
+      backgroundColor: '#FAF9F6',
+      fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+      overflowY: 'auto',
+    },
+    header: { padding: '16px 20px 8px' },
+    backLink: { background: 'none', border: 'none', fontSize: 16, color: '#2D6A4F', fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 8, display: 'block' },
+    title: { fontSize: 24, fontWeight: 800, color: '#1a1a1a', margin: '4px 0 0' },
+    form: { padding: '16px 20px 40px' },
+    fieldGroup: { marginBottom: 20 },
+    label: { fontSize: 13, fontWeight: 600, color: '#6B7280', marginBottom: 8, display: 'block' },
+    input: {
+      backgroundColor: '#fff', borderRadius: 12, border: '1px solid #F0EAEA',
+      padding: '14px 16px', fontSize: 15, color: '#1a1a1a', width: '100%',
+      boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit',
+    },
+    textarea: {
+      backgroundColor: '#fff', borderRadius: 12, border: '1px solid #F0EAEA',
+      padding: '14px 16px', fontSize: 15, color: '#1a1a1a', width: '100%',
+      boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit',
+      height: 100, resize: 'vertical',
+    },
+    typeGrid: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+    typeChip: (active: boolean) => ({
+      display: 'flex', alignItems: 'center', gap: 6,
+      padding: '8px 12px', borderRadius: 10, cursor: 'pointer',
+      backgroundColor: active ? '#2D6A4F' : '#fff',
+      border: active ? '1px solid #2D6A4F' : '1px solid #F0EAEA',
+      color: active ? '#fff' : '#6B7280',
+      fontWeight: 600, fontSize: 13,
+    }),
+    daysRow: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+    dayChip: (selected: boolean) => ({
+      padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
+      backgroundColor: selected ? '#2D6A4F' : '#fff',
+      border: selected ? '1px solid #2D6A4F' : '1px solid #F0EAEA',
+      color: selected ? '#fff' : '#6B7280',
+      fontWeight: 600, fontSize: 13,
+    }),
+    activeRow: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: '#fff', borderRadius: 12, border: '1px solid #F0EAEA',
+      padding: '14px 16px', marginBottom: 28,
+    },
+    activeLabel: { fontSize: 15, fontWeight: 600, color: '#1a1a1a' },
+    activeBtn: (on: boolean) => ({
+      backgroundColor: on ? '#2D6A4F' : '#D1D5DB',
+      border: 'none', borderRadius: 20, padding: '6px 18px',
+      color: 'white', fontWeight: 700, cursor: 'pointer', fontSize: 13,
+    }),
+    errorBox: { backgroundColor: '#FEE2E2', borderRadius: 10, padding: '12px 16px', marginBottom: 12, color: '#DC2626', fontWeight: 600 },
+    successBox: { backgroundColor: '#D1FAE5', borderRadius: 10, padding: '12px 16px', marginBottom: 12, color: '#065F46', fontWeight: 600 },
+    saveBtn: (disabled: boolean) => ({
+      backgroundColor: disabled ? '#ccc' : '#2D6A4F',
+      color: 'white', border: 'none', borderRadius: 14,
+      padding: '18px', fontSize: 16, fontWeight: 800,
+      width: '100%', cursor: disabled ? 'not-allowed' : 'pointer', marginTop: 8,
+    }),
+    successScreen: {
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      justifyContent: 'center', minHeight: '100vh', backgroundColor: '#fff',
+    },
+  };
+
+  if (successMsg && !errorMsg) {
+    return (
+      <div style={s.successScreen}>
+        <span style={{ fontSize: 64, marginBottom: 16 }}>✅</span>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1a1a1a', margin: '0 0 8px' }}>Host Saved!</h2>
+        <p style={{ fontSize: 16, color: '#6B7280', margin: 0 }}>Redirecting to dashboard...</p>
+      </div>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      {!!successMsg && (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.white }}>
-          <Text style={{ fontSize: 64, marginBottom: 16 }}>✅</Text>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8 }}>Host Saved!</Text>
-          <Text style={{ fontSize: 16, color: Colors.textSecondary }}>Redirecting to dashboard...</Text>
-        </View>
-      )}
-      {!successMsg && <View style={{ flex: 1, overflowY: 'auto' } as any}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
-            <Text style={styles.backLink}>← Back</Text>
-          </Pressable>
-          <Text style={styles.title}>Create Host Profile</Text>
-        </View>
+    <div style={s.page}>
+      <div style={s.header}>
+        <button style={s.backLink} onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
+          ← Back
+        </button>
+        <h1 style={s.title}>Create Host Profile</h1>
+      </div>
 
-        <View style={styles.form}>
-          <Field label="Display Name *">
-            <TextInput
-              style={styles.input}
-              value={displayName}
-              onChangeText={setDisplayName}
-              placeholder="e.g. The Coffee Corner"
-              placeholderTextColor="#C0C0C0"
-            />
-          </Field>
+      <div style={s.form}>
+        <div style={s.fieldGroup}>
+          <label style={s.label}>Display Name *</label>
+          <input style={s.input} value={displayName} onChange={e => setDisplayName((e.target as any).value)} placeholder="e.g. The Coffee Corner" />
+        </div>
 
-          <Field label="Bio">
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={bio}
-              onChangeText={setBio}
-              placeholder="A short description of the hosting spot..."
-              placeholderTextColor="#C0C0C0"
-              multiline
-              numberOfLines={4}
-            />
-          </Field>
+        <div style={s.fieldGroup}>
+          <label style={s.label}>Bio</label>
+          <textarea style={s.textarea} value={bio} onChange={e => setBio((e.target as any).value)} placeholder="A short description of the hosting spot..." />
+        </div>
 
-          <Field label="Location Name *">
-            <TextInput
-              style={styles.input}
-              value={locationName}
-              onChangeText={setLocationName}
-              placeholder="e.g. Cape Town City Bowl"
-              placeholderTextColor="#C0C0C0"
-            />
-          </Field>
+        <div style={s.fieldGroup}>
+          <label style={s.label}>Location Name *</label>
+          <input style={s.input} value={locationName} onChange={e => setLocationName((e.target as any).value)} placeholder="e.g. Cape Town City Bowl" />
+        </div>
 
-          <Field label="Business Type">
-            <View style={styles.typeGrid}>
-              {BUSINESS_TYPES.map(bt => (
-                <TouchableOpacity
-                  key={bt.value}
-                  style={[styles.typeChip, businessType === bt.value && styles.typeChipActive]}
-                  onPress={() => setBusinessType(bt.value)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.typeEmoji}>{bt.emoji}</Text>
-                  <Text style={[styles.typeLabel, businessType === bt.value && styles.typeLabelActive]}>
-                    {bt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Field>
+        <div style={s.fieldGroup}>
+          <label style={s.label}>Business Type</label>
+          <div style={s.typeGrid}>
+            {BUSINESS_TYPES.map(bt => (
+              <button key={bt.value} style={s.typeChip(businessType === bt.value)} onClick={() => setBusinessType(bt.value)}>
+                <span>{bt.emoji}</span>
+                <span>{bt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
-          <Field label="Price per Bag per Day (R100–R300) *">
-            <TextInput
-              style={styles.input}
-              value={pricePerBag}
-              onChangeText={setPricePerBag}
-              placeholder="e.g. 150"
-              placeholderTextColor="#C0C0C0"
-              keyboardType="numeric"
-            />
-          </Field>
+        <div style={s.fieldGroup}>
+          <label style={s.label}>Price per Bag per Day (R100–R300) *</label>
+          <input style={s.input} type="number" value={pricePerBag} onChange={e => setPricePerBag((e.target as any).value)} placeholder="e.g. 150" />
+        </div>
 
-          <Field label="Max Bags (1–50) *">
-            <TextInput
-              style={styles.input}
-              value={maxBags}
-              onChangeText={setMaxBags}
-              placeholder="e.g. 10"
-              placeholderTextColor="#C0C0C0"
-              keyboardType="numeric"
-            />
-          </Field>
+        <div style={s.fieldGroup}>
+          <label style={s.label}>Max Bags (1–50) *</label>
+          <input style={s.input} type="number" value={maxBags} onChange={e => setMaxBags((e.target as any).value)} placeholder="e.g. 10" />
+        </div>
 
-          <Field label="Available From">
-            <TextInput
-              style={styles.input}
-              value={availableFrom}
-              onChangeText={setAvailableFrom}
-              placeholder="e.g. 08:00"
-              placeholderTextColor="#C0C0C0"
-            />
-          </Field>
+        <div style={s.fieldGroup}>
+          <label style={s.label}>Available From</label>
+          <input style={s.input} value={availableFrom} onChange={e => setAvailableFrom((e.target as any).value)} placeholder="e.g. 08:00" />
+        </div>
 
-          <Field label="Available Until">
-            <TextInput
-              style={styles.input}
-              value={availableUntil}
-              onChangeText={setAvailableUntil}
-              placeholder="e.g. 18:00"
-              placeholderTextColor="#C0C0C0"
-            />
-          </Field>
+        <div style={s.fieldGroup}>
+          <label style={s.label}>Available Until</label>
+          <input style={s.input} value={availableUntil} onChange={e => setAvailableUntil((e.target as any).value)} placeholder="e.g. 18:00" />
+        </div>
 
-          <Field label="Available Days">
-            <View style={styles.daysRow}>
-              {DAYS.map(day => (
-                <TouchableOpacity
-                  key={day}
-                  style={[styles.dayChip, availableDays.includes(day) && styles.dayChipActive]}
-                  onPress={() => toggleDay(day)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.dayLabel, availableDays.includes(day) && styles.dayLabelActive]}>
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Field>
+        <div style={s.fieldGroup}>
+          <label style={s.label}>Available Days</label>
+          <div style={s.daysRow}>
+            {DAYS.map(day => (
+              <button key={day} style={s.dayChip(availableDays.includes(day))} onClick={() => toggleDay(day)}>
+                {day}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          <Field label="Partner Email">
-            <TextInput
-              style={styles.input}
-              value={partnerEmail}
-              onChangeText={setPartnerEmail}
-              placeholder="partner@example.com"
-              placeholderTextColor="#C0C0C0"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </Field>
+        <div style={s.fieldGroup}>
+          <label style={s.label}>Partner Email</label>
+          <input style={s.input} type="email" value={partnerEmail} onChange={e => setPartnerEmail((e.target as any).value)} placeholder="partner@example.com" />
+        </div>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Active</Text>
-            <Switch
-              value={active}
-              onValueChange={setActive}
-              trackColor={{ false: '#D1D5DB', true: Colors.primary }}
-              thumbColor={Colors.white}
-            />
-          </View>
-
-          {!!errorMsg && (
-            <View style={{ backgroundColor: '#FEE2E2', borderRadius: 10, padding: 12, marginBottom: 12 }}>
-              <Text style={{ color: '#DC2626', fontWeight: '600' }}>{errorMsg}</Text>
-            </View>
-          )}
-          {!!successMsg && (
-            <View style={{ backgroundColor: '#D1FAE5', borderRadius: 10, padding: 12, marginBottom: 12 }}>
-              <Text style={{ color: '#065F46', fontWeight: '600' }}>{successMsg}</Text>
-            </View>
-          )}
-
-          {/* @ts-ignore */}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{
-              backgroundColor: saving ? '#ccc' : '#2D6A4F',
-              color: 'white',
-              border: 'none',
-              borderRadius: 14,
-              padding: '18px',
-              fontSize: 16,
-              fontWeight: 800,
-              width: '100%',
-              cursor: saving ? 'not-allowed' : 'pointer',
-              marginTop: 8,
-            }}
-          >
-            {saving ? 'Saving...' : 'Create Host Profile'}
+        <div style={s.activeRow}>
+          <span style={s.activeLabel}>Active</span>
+          <button style={s.activeBtn(active)} onClick={() => setActive(v => !v)}>
+            {active ? 'Active' : 'Inactive'}
           </button>
-        </View>
-      </View>}
-    </SafeAreaView>
+        </div>
+
+        {!!errorMsg && <div style={s.errorBox}>{errorMsg}</div>}
+        {!!successMsg && <div style={s.successBox}>{successMsg}</div>}
+
+        <button onClick={handleSave} disabled={saving} style={s.saveBtn(saving)}>
+          {saving ? 'Saving...' : 'Create Host Profile'}
+        </button>
+      </div>
+    </div>
   );
 }
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View style={fieldStyles.group}>
-      <Text style={fieldStyles.label}>{label}</Text>
-      {children}
-    </View>
-  );
-}
-
-const fieldStyles = StyleSheet.create({
-  group: { marginBottom: 20 },
-  label: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 8 },
-});
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  backLink: { fontSize: 16, color: Colors.primary, fontWeight: '600', marginBottom: 8 },
-  title: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
-  form: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
-  input: {
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: Colors.textPrimary,
-  },
-  textArea: { height: 100, textAlignVertical: 'top' },
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  typeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-  },
-  typeChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  typeEmoji: { fontSize: 16 },
-  typeLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
-  typeLabelActive: { color: Colors.white },
-  daysRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  dayChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-  },
-  dayChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  dayLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
-  dayLabelActive: { color: Colors.white },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 28,
-  },
-  switchLabel: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-  saveBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { fontSize: 16, fontWeight: '800', color: Colors.white },
-});

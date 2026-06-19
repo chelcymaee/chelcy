@@ -1,7 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
-import { Colors } from '../../src/constants/colors';
+import { useFocusEffect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Revenue() {
@@ -19,79 +17,94 @@ export default function Revenue() {
   const hostShare = total * 0.7;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={{ flex: 1, overflowY: 'auto' } as any}>
-        <View style={styles.header}>
-          {/* @ts-ignore */}
-          <button onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <Text style={styles.backText}>← Back</Text>
-          </button>
-          <Text style={styles.heading}>Revenue</Text>
-        </View>
+    <div style={{ minHeight: '100vh', backgroundColor: '#FAF9F6', fontFamily: 'system-ui, sans-serif', overflowY: 'auto' }}>
+      <div style={{ padding: '16px 20px 8px' }}>
+        <button
+          onClick={() => router.replace('/(admin)/dashboard')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 12, display: 'block' }}
+        >
+          <span style={{ fontSize: 15, color: '#2D6A4F', fontWeight: 600 }}>← Back</span>
+        </button>
+        <h1 style={{ fontSize: 26, fontWeight: 900, color: '#1A1A1A', margin: 0 }}>Revenue</h1>
+      </div>
 
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Total Revenue</Text>
-          <Text style={styles.summaryTotal}>R{total.toFixed(2)}</Text>
-          <View style={styles.splitRow}>
-            <View style={styles.splitItem}>
-              <Text style={styles.splitLabel}>Cubby (30%)</Text>
-              <Text style={styles.splitValue}>R{cubbyShare.toFixed(2)}</Text>
-            </View>
-            <View style={styles.splitDivider} />
-            <View style={styles.splitItem}>
-              <Text style={styles.splitLabel}>Hosts (70%)</Text>
-              <Text style={styles.splitValue}>R{hostShare.toFixed(2)}</Text>
-            </View>
-          </View>
-        </View>
+      <div
+        style={{
+          margin: 16,
+          backgroundColor: '#2D6A4F',
+          borderRadius: 20,
+          padding: 24,
+          textAlign: 'center',
+        }}
+      >
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          Total Revenue
+        </p>
+        <p style={{ fontSize: 42, fontWeight: 900, color: '#fff', margin: '0 0 20px' }}>
+          R{total.toFixed(2)}
+        </p>
+        <div
+          style={{
+            display: 'flex',
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            borderRadius: 14,
+            padding: 16,
+          }}
+        >
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: 600, margin: '0 0 4px' }}>Cubby (30%)</p>
+            <p style={{ fontSize: 20, fontWeight: 800, color: '#fff', margin: 0 }}>R{cubbyShare.toFixed(2)}</p>
+          </div>
+          <div style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.3)', margin: '4px 0' }} />
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: 600, margin: '0 0 4px' }}>Hosts (70%)</p>
+            <p style={{ fontSize: 20, fontWeight: 800, color: '#fff', margin: 0 }}>R{hostShare.toFixed(2)}</p>
+          </div>
+        </div>
+      </div>
 
-        <Text style={styles.sectionTitle}>Completed Bookings</Text>
-        {bookings.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>💰</Text>
-            <Text style={styles.emptyTitle}>No completed bookings yet</Text>
-          </View>
-        ) : bookings.map(b => {
-          const price = b.total_price ?? b.totalPrice ?? 0;
-          return (
-            <View key={b.id} style={styles.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowHost}>{b.host?.display_name ?? b.hostName ?? 'Host'}</Text>
-                <Text style={styles.rowDate}>{b.drop_off_date ?? b.date ?? '—'} · {b.bag_count ?? b.bags ?? '—'} bags</Text>
-              </View>
-              <View style={styles.rowAmounts}>
-                <Text style={styles.rowTotal}>R{price}</Text>
-                <Text style={styles.rowSplit}>↳ R{(price * 0.3).toFixed(0)} / R{(price * 0.7).toFixed(0)}</Text>
-              </View>
-            </View>
-          );
-        })}
-      </View>
-    </SafeAreaView>
+      <h3 style={{ fontSize: 15, fontWeight: 800, color: '#1A1A1A', margin: '0 20px 12px' }}>Completed Bookings</h3>
+
+      {bookings.length === 0 ? (
+        <div style={{ textAlign: 'center', paddingTop: 60 }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>💰</div>
+          <p style={{ fontSize: 16, fontWeight: 700, color: '#6B7280', margin: 0 }}>No completed bookings yet</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '0 16px 40px' }}>
+          {bookings.map(b => {
+            const price = b.total_price ?? b.totalPrice ?? 0;
+            return (
+              <div
+                key={b.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  backgroundColor: '#fff',
+                  borderRadius: 14,
+                  padding: 16,
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
+                    {b.host?.display_name ?? b.hostName ?? 'Host'}
+                  </p>
+                  <p style={{ fontSize: 12, color: '#6B7280', margin: '2px 0 0' }}>
+                    {b.drop_off_date ?? b.date ?? '—'} · {b.bag_count ?? b.bags ?? '—'} bags
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: 16, fontWeight: 800, color: '#2D6A4F', margin: 0 }}>R{price}</p>
+                  <p style={{ fontSize: 11, color: '#9CA3AF', margin: '2px 0 0' }}>
+                    ↳ R{(price * 0.3).toFixed(0)} / R{(price * 0.7).toFixed(0)}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  backText: { fontSize: 15, color: Colors.primary, fontWeight: '600', marginBottom: 12 },
-  heading: { fontSize: 26, fontWeight: '900', color: '#1A1A1A' },
-  summaryCard: { margin: 16, backgroundColor: Colors.primary, borderRadius: 20, padding: 24, alignItems: 'center' },
-  summaryTitle: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '700', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-  summaryTotal: { fontSize: 42, fontWeight: '900', color: '#fff', marginBottom: 20 },
-  splitRow: { flexDirection: 'row', width: '100%', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14, padding: 16 },
-  splitItem: { flex: 1, alignItems: 'center' },
-  splitDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.3)', marginVertical: 4 },
-  splitLabel: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginBottom: 4, fontWeight: '600' },
-  splitValue: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: '#1A1A1A', paddingHorizontal: 20, marginBottom: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 16, marginBottom: 10, borderRadius: 14, padding: 16 },
-  rowHost: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
-  rowDate: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  rowAmounts: { alignItems: 'flex-end' },
-  rowTotal: { fontSize: 16, fontWeight: '800', color: Colors.primary },
-  rowSplit: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
-  empty: { alignItems: 'center', paddingTop: 60 },
-  emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#6B7280' },
-});

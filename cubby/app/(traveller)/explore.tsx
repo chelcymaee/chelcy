@@ -23,7 +23,6 @@ const typeEmoji: Record<string, string> = {
 
 function todayLabel() {
   const now = new Date();
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `Today, ${now.getDate()} ${months[now.getMonth()]}`;
 }
@@ -37,23 +36,34 @@ function TimePickerModal({
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
+        // @ts-ignore
+        onClick={onClose}
+      >
         <View style={styles.modalSheet}>
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle}>{title}</Text>
           <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
-            {TIME_SLOTS.map(slot => (
-              <TouchableOpacity
-                key={slot}
-                style={[styles.timeSlotRow, selected === slot && styles.timeSlotRowActive]}
-                onPress={() => { onSelect(slot); onClose(); }}
-              >
-                <Text style={[styles.timeSlotText, selected === slot && styles.timeSlotTextActive]}>
-                  {slot}
-                </Text>
-                {selected === slot && <Text style={styles.timeSlotCheck}>✓</Text>}
-              </TouchableOpacity>
-            ))}
+            {TIME_SLOTS.map(slot => {
+              const fn = () => { onSelect(slot); onClose(); };
+              return (
+                <TouchableOpacity
+                  key={slot}
+                  style={[styles.timeSlotRow, selected === slot && styles.timeSlotRowActive]}
+                  onPress={fn}
+                  // @ts-ignore
+                  onClick={fn}
+                >
+                  <Text style={[styles.timeSlotText, selected === slot && styles.timeSlotTextActive]}>
+                    {slot}
+                  </Text>
+                  {selected === slot && <Text style={styles.timeSlotCheck}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
       </TouchableOpacity>
@@ -72,7 +82,13 @@ function LocationModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
+        // @ts-ignore
+        onClick={onClose}
+      >
         <View style={[styles.modalSheet, { paddingBottom: 32 }]}>
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle}>Where to?</Text>
@@ -87,12 +103,21 @@ function LocationModal({
               placeholderTextColor="#9CA3AF"
             />
           </View>
-          {suggestions.map(s => (
-            <TouchableOpacity key={s} style={styles.suggestionRow} onPress={() => { onSelect(s); onClose(); }}>
-              <Text style={styles.suggestionIcon}>🔍</Text>
-              <Text style={styles.suggestionText}>{s}</Text>
-            </TouchableOpacity>
-          ))}
+          {suggestions.map(s => {
+            const fn = () => { onSelect(s); onClose(); };
+            return (
+              <TouchableOpacity
+                key={s}
+                style={styles.suggestionRow}
+                onPress={fn}
+                // @ts-ignore
+                onClick={fn}
+              >
+                <Text style={styles.suggestionIcon}>🔍</Text>
+                <Text style={styles.suggestionText}>{s}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </TouchableOpacity>
     </Modal>
@@ -102,7 +127,13 @@ function LocationModal({
 // ─── Results Host Card ────────────────────────────────────────────────────────
 function ResultCard({ host, index, onPress }: { host: Host; index: number; onPress: () => void }) {
   return (
-    <TouchableOpacity style={styles.resultCard} onPress={onPress} activeOpacity={0.92}>
+    <TouchableOpacity
+      style={styles.resultCard}
+      onPress={onPress}
+      // @ts-ignore
+      onClick={onPress}
+      activeOpacity={0.92}
+    >
       <View style={styles.resultCardLeft}>
         <View style={styles.resultEmojiBox}>
           <Text style={styles.resultEmoji}>{typeEmoji[host.business_type] ?? '📦'}</Text>
@@ -146,6 +177,10 @@ function SearchScreen({
   const [showDropOff, setShowDropOff] = useState(false);
   const [showPickUp, setShowPickUp] = useState(false);
 
+  const openLocation = () => setShowLocation(true);
+  const openDropOff = () => setShowDropOff(true);
+  const openPickUp = () => setShowPickUp(true);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.searchScroll} showsVerticalScrollIndicator={false}>
@@ -153,7 +188,13 @@ function SearchScreen({
 
         {/* Where */}
         <Text style={styles.sectionLabel}>Where?</Text>
-        <TouchableOpacity style={styles.locationCard} onPress={() => setShowLocation(true)} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.locationCard}
+          onPress={openLocation}
+          // @ts-ignore
+          onClick={openLocation}
+          activeOpacity={0.85}
+        >
           <Text style={styles.locationCardPin}>📍</Text>
           <Text style={styles.locationCardText} numberOfLines={1}>{location}</Text>
           <Text style={styles.locationCardGps}>⊕</Text>
@@ -170,7 +211,13 @@ function SearchScreen({
         <View style={styles.timesRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.timeLabel}>Drop-off Time</Text>
-            <TouchableOpacity style={styles.timeSelector} onPress={() => setShowDropOff(true)} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.timeSelector}
+              onPress={openDropOff}
+              // @ts-ignore
+              onClick={openDropOff}
+              activeOpacity={0.85}
+            >
               <Text style={styles.timeSelectorText}>{dropOff}</Text>
               <Text style={styles.timeSelectorArrow}>▾</Text>
             </TouchableOpacity>
@@ -178,14 +225,26 @@ function SearchScreen({
           <View style={styles.timeArrowBetween}><Text style={styles.timeArrowBetweenText}>→</Text></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.timeLabel}>Pick-up Time</Text>
-            <TouchableOpacity style={styles.timeSelector} onPress={() => setShowPickUp(true)} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.timeSelector}
+              onPress={openPickUp}
+              // @ts-ignore
+              onClick={openPickUp}
+              activeOpacity={0.85}
+            >
               <Text style={styles.timeSelectorText}>{pickUp}</Text>
               <Text style={styles.timeSelectorArrow}>▾</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <TouchableOpacity style={styles.seeResultsBtn} onPress={onSearch} activeOpacity={0.88}>
+        <TouchableOpacity
+          style={styles.seeResultsBtn}
+          onPress={onSearch}
+          // @ts-ignore
+          onClick={onSearch}
+          activeOpacity={0.88}
+        >
           <Text style={styles.seeResultsBtnText}>See results →</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -261,11 +320,18 @@ function ResultsScreen({
     ? require('../../src/components/HostMap').default
     : null;
 
+  const toggleMap = () => setShowMap(v => !v);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Top bar */}
       <View style={styles.resultsTopBar}>
-        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={onBack}
+          // @ts-ignore
+          onClick={onBack}
+          style={styles.backBtn}
+        >
           <Text style={styles.backBtnText}>‹</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -291,14 +357,22 @@ function ResultsScreen({
         <ScrollView contentContainerStyle={styles.resultsList} showsVerticalScrollIndicator={false}>
           {/* Storage spots */}
           <Text style={styles.sectionHeader}>📦 Storage spots near you</Text>
-          {hosts.map((item, index) => (
-            <ResultCard
-              key={item.id}
-              host={item}
-              index={index}
-              onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id } })}
-            />
-          ))}
+          {hosts.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyEmoji}>📦</Text>
+              <Text style={styles.emptyTitle}>No storage spots near you yet.</Text>
+              <Text style={styles.emptyText}>We're growing fast — check back soon!</Text>
+            </View>
+          ) : (
+            hosts.map((item, index) => (
+              <ResultCard
+                key={item.id}
+                host={item}
+                index={index}
+                onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id } })}
+              />
+            ))
+          )}
 
           {/* Bag Runners */}
           <View style={styles.runnerSectionHeader}>
@@ -308,14 +382,6 @@ function ResultsScreen({
           {MOCK_RUNNERS.map(runner => (
             <RunnerCard key={runner.id} runner={runner} />
           ))}
-
-          {hosts.length === 0 && (
-            <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🔍</Text>
-              <Text style={styles.emptyTitle}>No spots found</Text>
-              <Text style={styles.emptyText}>Try a different location or time.</Text>
-            </View>
-          )}
         </ScrollView>
       )}
 
@@ -323,7 +389,9 @@ function ResultsScreen({
       {Platform.OS !== 'web' && (
         <TouchableOpacity
           style={[styles.mapToggleBar, { paddingBottom: insets.bottom + 8 }]}
-          onPress={() => setShowMap(v => !v)}
+          onPress={toggleMap}
+          // @ts-ignore
+          onClick={toggleMap}
           activeOpacity={0.88}
         >
           <Text style={styles.mapToggleText}>
