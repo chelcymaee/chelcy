@@ -20,6 +20,7 @@ const TYPE_EMOJI: Record<string, string> = {
 export default function ManageHosts() {
   const [hosts, setHosts] = useState<Host[]>([]);
   const [msg, setMsg] = useState('');
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => { loadHosts(); }, []));
 
@@ -52,16 +53,16 @@ export default function ManageHosts() {
     }
   }
 
-  async function deleteHost(id: string, name: string) {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  async function deleteHost(id: string) {
     if (isSupabaseConfigured) {
       const { error } = await supabase.from('hosts').delete().eq('id', id);
-      if (error) { setMsg('Error: ' + error.message); return; }
+      if (error) { setMsg('Error: ' + error.message); setConfirmId(null); return; }
     } else {
       const updated = hosts.filter(h => h.id !== id);
       await AsyncStorage.setItem('cubby_hosts', JSON.stringify(updated));
     }
     setMsg('Host deleted.');
+    setConfirmId(null);
     setHosts(prev => prev.filter(h => h.id !== id));
     setTimeout(() => setMsg(''), 2000);
   }
@@ -117,9 +118,15 @@ export default function ManageHosts() {
                 <button style={s.toggleBtn(host.active)} onClick={() => toggleActive(host)}>
                   {host.active ? 'Deactivate' : 'Activate'}
                 </button>
-                <button style={s.deleteBtn} onClick={() => deleteHost(host.id, host.displayName)}>
-                  🗑️ Delete
-                </button>
+                {confirmId === host.id ? (
+                  <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: '#DC2626', fontWeight: 600 }}>Sure?</span>
+                    <button style={{ ...s.deleteBtn, backgroundColor: '#DC2626', color: 'white' }} onClick={() => deleteHost(host.id)}>Yes</button>
+                    <button style={s.deleteBtn} onClick={() => setConfirmId(null)}>No</button>
+                  </span>
+                ) : (
+                  <button style={s.deleteBtn} onClick={() => setConfirmId(host.id)}>🗑️ Delete</button>
+                )}
               </div>
             </div>
           </div>
