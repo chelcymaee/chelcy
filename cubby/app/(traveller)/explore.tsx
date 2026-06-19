@@ -9,6 +9,7 @@ import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { MOCK_RUNNERS, Runner } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
+import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
 
 const TIME_SLOTS = [
   '7am–8am','8am–9am','9am–10am','10am–11am','11am–12pm',
@@ -21,11 +22,6 @@ const typeEmoji: Record<string, string> = {
   airbnb: '🔑', tour_operator: '🗺️', home: '🏠', other: '📦',
 };
 
-function todayLabel() {
-  const now = new Date();
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `Today, ${now.getDate()} ${months[now.getMonth()]}`;
-}
 
 // ─── Time Picker Modal ────────────────────────────────────────────────────────
 function TimePickerModal({
@@ -166,20 +162,24 @@ function SearchScreen({
   location, setLocation,
   dropOff, setDropOff,
   pickUp, setPickUp,
+  selectedDate, setSelectedDate,
   onSearch,
 }: {
   location: string; setLocation: (l: string) => void;
   dropOff: string; setDropOff: (t: string) => void;
   pickUp: string; setPickUp: (t: string) => void;
+  selectedDate: string; setSelectedDate: (d: string) => void;
   onSearch: () => void;
 }) {
   const [showLocation, setShowLocation] = useState(false);
   const [showDropOff, setShowDropOff] = useState(false);
   const [showPickUp, setShowPickUp] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const openLocation = () => setShowLocation(true);
   const openDropOff = () => setShowDropOff(true);
   const openPickUp = () => setShowPickUp(true);
+  const openDatePicker = () => setShowDatePicker(true);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -202,10 +202,17 @@ function SearchScreen({
 
         {/* When */}
         <Text style={styles.sectionLabel}>When?</Text>
-        <View style={styles.dateCard}>
+        <TouchableOpacity
+          style={styles.dateCard}
+          onPress={openDatePicker}
+          // @ts-ignore
+          onClick={openDatePicker}
+          activeOpacity={0.85}
+        >
           <Text style={styles.dateCardIcon}>📅</Text>
-          <Text style={styles.dateCardText}>{todayLabel()}</Text>
-        </View>
+          <Text style={styles.dateCardText}>{formatDateLabel(selectedDate)}</Text>
+          <Text style={styles.dateCardArrow}>▾</Text>
+        </TouchableOpacity>
 
         {/* Times */}
         <View style={styles.timesRow}>
@@ -269,6 +276,12 @@ function SearchScreen({
         onSelect={setPickUp}
         onClose={() => setShowPickUp(false)}
       />
+      <DatePickerModal
+        visible={showDatePicker}
+        selected={selectedDate}
+        onSelect={setSelectedDate}
+        onClose={() => setShowDatePicker(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -306,10 +319,10 @@ function RunnerCard({ runner }: { runner: Runner }) {
 
 // ─── Results Screen ───────────────────────────────────────────────────────────
 function ResultsScreen({
-  hosts, location, dropOff, pickUp,
+  hosts, location, dropOff, pickUp, selectedDate,
   onBack,
 }: {
-  hosts: Host[]; location: string; dropOff: string; pickUp: string;
+  hosts: Host[]; location: string; dropOff: string; pickUp: string; selectedDate: string;
   onBack: () => void;
 }) {
   const [showMap, setShowMap] = useState(false);
@@ -336,7 +349,7 @@ function ResultsScreen({
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.resultsSummary} numberOfLines={1}>
-            {location} · {todayLabel()} · {dropOff} → {pickUp}
+            {location} · {formatDateLabel(selectedDate)} · {dropOff} → {pickUp}
           </Text>
         </View>
       </View>
@@ -349,7 +362,7 @@ function ResultsScreen({
             filtered={hosts}
             style={StyleSheet.absoluteFillObject}
             onPinPress={(id: string) => {
-              router.push({ pathname: '/(traveller)/host-detail', params: { id } });
+              router.push({ pathname: '/(traveller)/host-detail', params: { id, selectedDate } });
             }}
           />
         </View>
@@ -369,7 +382,7 @@ function ResultsScreen({
                 key={item.id}
                 host={item}
                 index={index}
-                onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id } })}
+                onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id, selectedDate } })}
               />
             ))
           )}
@@ -433,6 +446,7 @@ export default function Explore() {
   const [location, setLocation] = useState('Cape Town, South Africa');
   const [dropOff, setDropOff] = useState('9am–10am');
   const [pickUp, setPickUp] = useState('5pm–6pm');
+  const [selectedDate, setSelectedDate] = useState(todayISO());
   const [hosts, setHosts] = useState<Host[]>([]);
 
   useFocusEffect(useCallback(() => {
@@ -468,6 +482,7 @@ export default function Explore() {
         location={location}
         dropOff={dropOff}
         pickUp={pickUp}
+        selectedDate={selectedDate}
         onBack={() => setStep('search')}
       />
     );
@@ -481,6 +496,8 @@ export default function Explore() {
       setDropOff={setDropOff}
       pickUp={pickUp}
       setPickUp={setPickUp}
+      selectedDate={selectedDate}
+      setSelectedDate={setSelectedDate}
       onSearch={() => setStep('results')}
     />
   );
@@ -514,7 +531,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   dateCardIcon: { fontSize: 18 },
-  dateCardText: { fontSize: 16, color: '#1A1A1A', fontWeight: '500' },
+  dateCardText: { fontSize: 16, color: '#1A1A1A', fontWeight: '500', flex: 1 },
+  dateCardArrow: { fontSize: 14, color: '#6B7280' },
 
   timesRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 32 },
   timeLabel: { fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 6 },

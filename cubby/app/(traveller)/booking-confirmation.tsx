@@ -1,11 +1,12 @@
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Share } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import { formatDateLabel, todayISO } from '../../src/components/DatePickerModal';
 
 export default function BookingConfirmation() {
-  const { hostName, dropOff, pickUp, bags, total, pin } = useLocalSearchParams<{
+  const { hostName, dropOff, pickUp, bags, total, pin, date } = useLocalSearchParams<{
     hostName: string; dropOff: string; pickUp: string;
-    bags: string; total: string; pin: string;
+    bags: string; total: string; pin: string; date: string;
   }>();
 
   const pinCode = pin ?? '4821';
@@ -41,6 +42,10 @@ export default function BookingConfirmation() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Host</Text>
             <Text style={styles.summaryValue}>{hostName ?? 'Your host'}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Date</Text>
+            <Text style={styles.summaryValue}>{formatDateLabel(date ?? todayISO())}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Drop-off</Text>

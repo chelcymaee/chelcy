@@ -50,7 +50,7 @@ function normalizeHost(raw: any) {
 }
 
 export default function HostDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, selectedDate } = useLocalSearchParams<{ id: string; selectedDate: string }>();
   const [host, setHost] = useState<any>(null);
   const mockReviews = MOCK_REVIEWS.filter(r => r.host_id === id);
   const [bagCount, setBagCount] = useState(1);
@@ -166,7 +166,7 @@ export default function HostDetail() {
   const increaseBags = () => setBagCount(Math.min(host.max_bags, bagCount + 1));
 
   const goToReview = () => router.push({ pathname: '/(traveller)/review', params: { hostId: id, hostName: host.display_name } });
-  const goToBooking = () => router.push({ pathname: '/(traveller)/booking', params: { hostId: id, bagCount: String(bagCount) } });
+  const goToBooking = () => router.push({ pathname: '/(traveller)/booking', params: { hostId: id, bagCount: String(bagCount), selectedDate: selectedDate ?? '' } });
 
   return (
     <SafeAreaView style={styles.container}>

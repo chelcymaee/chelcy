@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
+import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
 
 const TIME_SLOTS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
@@ -27,11 +28,13 @@ function normalizeHost(raw: any) {
 }
 
 export default function Booking() {
-  const { hostId, bagCount } = useLocalSearchParams<{ hostId: string; bagCount: string }>();
+  const { hostId, bagCount, selectedDate: paramDate } = useLocalSearchParams<{ hostId: string; bagCount: string; selectedDate: string }>();
   const bags = parseInt(bagCount ?? '1');
 
   const [host, setHost] = useState<any>(null);
   const [hostLoading, setHostLoading] = useState(true);
+  const [bookingDate, setBookingDate] = useState(paramDate && paramDate.length === 10 ? paramDate : todayISO());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [dropTime, setDropTime] = useState('09:00');
   const [pickTime, setPickTime] = useState('15:00');
   const [loading, setLoading] = useState(false);
@@ -98,6 +101,16 @@ export default function Booking() {
   const grandTotal = total + platformFee;
   const pin = String(Math.floor(1000 + Math.random() * 9000));
 
+  const isToday = bookingDate === todayISO();
+  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const availableDropSlots = isToday
+    ? TIME_SLOTS.filter(t => {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m > nowMinutes + 30;
+      })
+    : TIME_SLOTS;
+  const availablePickSlots = TIME_SLOTS.filter(t => t > dropTime);
+
   async function handleConfirm() {
     setErrorMsg('');
     setLoading(true);
@@ -111,9 +124,9 @@ export default function Booking() {
           .insert({
             host_id: host.id,
             traveller_id: user?.id,
-            drop_off_date: new Date().toISOString().split('T')[0],
+            drop_off_date: bookingDate,
             drop_off_time: dropTime,
-            pick_up_date: new Date().toISOString().split('T')[0],
+            pick_up_date: bookingDate,
             pick_up_time: pickTime,
             bag_count: bags,
             total_price: grandTotal,
@@ -152,9 +165,9 @@ export default function Booking() {
           id: bookingId,
           hostId: host.id,
           hostName: host.display_name,
-          drop_off_date: new Date().toISOString().split('T')[0],
+          drop_off_date: bookingDate,
           drop_off_time: dropTime,
-          pick_up_date: new Date().toISOString().split('T')[0],
+          pick_up_date: bookingDate,
           pick_up_time: pickTime,
           bag_count: bags,
           total_price: grandTotal,
@@ -177,6 +190,7 @@ export default function Booking() {
             bags: String(bags),
             total: String(grandTotal),
             pin,
+            date: bookingDate,
           },
         });
       }
@@ -215,14 +229,25 @@ export default function Booking() {
         </View>
 
         <Text style={styles.sectionTitle}>Date</Text>
-        <View style={styles.dateBox}>
-          <Text style={styles.dateText}>📅 Today — {new Date().toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.dateBox}
+          onPress={() => setShowDatePicker(true)}
+          // @ts-ignore
+          onClick={() => setShowDatePicker(true)}
+        >
+          <Text style={styles.dateText}>📅 {formatDateLabel(bookingDate)}</Text>
+          <Text style={styles.dateChangeHint}>Change</Text>
+        </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Drop-off time</Text>
+        {availableDropSlots.length === 0 ? (
+          <View style={styles.noSlotsBox}>
+            <Text style={styles.noSlotsText}>No more drop-off slots today. Please pick a future date.</Text>
+          </View>
+        ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.timeRow}>
-            {TIME_SLOTS.map(t => (
+            {availableDropSlots.map(t => (
               <TouchableOpacity
                 key={t}
                 style={[styles.timeChip, dropTime === t && styles.timeChipActive]}
@@ -235,11 +260,12 @@ export default function Booking() {
             ))}
           </View>
         </ScrollView>
+        )}
 
         <Text style={styles.sectionTitle}>Pick-up time</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.timeRow}>
-            {TIME_SLOTS.filter(t => t > dropTime).map(t => (
+            {availablePickSlots.map(t => (
               <TouchableOpacity
                 key={t}
                 style={[styles.timeChip, pickTime === t && styles.timeChipActive]}
@@ -299,6 +325,13 @@ export default function Booking() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      <DatePickerModal
+        visible={showDatePicker}
+        selected={bookingDate}
+        onSelect={setBookingDate}
+        onClose={() => setShowDatePicker(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -316,8 +349,11 @@ const styles = StyleSheet.create({
   hostCardName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
   hostCardLocation: { fontSize: 13, color: Colors.textSecondary },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 10, marginTop: 16 },
-  dateBox: { backgroundColor: Colors.white, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.border },
+  dateBox: { backgroundColor: Colors.white, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dateText: { fontSize: 14, color: Colors.textPrimary },
+  dateChangeHint: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
+  noSlotsBox: { backgroundColor: '#FEF3C7', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#FDE68A' },
+  noSlotsText: { fontSize: 13, color: '#92400E' },
   timeRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
   timeChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
   timeChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
