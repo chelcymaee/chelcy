@@ -1,6 +1,6 @@
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-  Alert, Image, TextInput, Modal, KeyboardAvoidingView, Platform,
+  Image, TextInput, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -32,6 +32,8 @@ function MenuRow({ item, isLast }: { item: MenuItem; isLast: boolean }) {
       style={[styles.menuRow, isLast && { borderBottomWidth: 0 }]}
       onPress={item.onPress}
       activeOpacity={0.7}
+      // @ts-ignore
+      onClick={item.onPress}
     >
       <Text style={styles.menuRowIcon}>{item.icon}</Text>
       <Text style={[styles.menuRowLabel, item.highlight && styles.menuRowLabelHighlight]}>
@@ -49,6 +51,8 @@ export default function Profile() {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Draft state for modal
   const [draftFirstName, setDraftFirstName] = useState('');
@@ -82,7 +86,7 @@ export default function Profile() {
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow access to your photos to add a profile picture.');
+      // Permission denied — silently fail on web or show no-op
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -117,17 +121,11 @@ export default function Profile() {
   }
 
   function handleSignOut() {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => router.replace('/') },
-    ]);
+    setConfirmSignOut(true);
   }
 
   function handleDeleteAccount() {
-    Alert.alert('Delete account', 'This action cannot be undone. Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => {} },
-    ]);
+    setConfirmDelete(true);
   }
 
   const displayName = [firstName, lastName].filter(Boolean).join(' ');
@@ -238,12 +236,48 @@ export default function Profile() {
 
         {/* Sign out / Delete */}
         <View style={styles.divider} />
-        <TouchableOpacity style={styles.signOutRow} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign out</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.deleteRow} onPress={handleDeleteAccount}>
-          <Text style={styles.deleteText}>Delete account</Text>
-        </TouchableOpacity>
+        {confirmSignOut ? (
+          <View style={{ paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FEF2F2', marginHorizontal: 20, borderRadius: 14, marginBottom: 8 }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#DC2626', marginBottom: 12, textAlign: 'center' }}>Sure you want to sign out?</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {/* @ts-ignore */}
+              <TouchableOpacity style={{ flex: 1, backgroundColor: '#DC2626', borderRadius: 10, padding: 12, alignItems: 'center' }} onPress={() => router.replace('/')} onClick={() => router.replace('/')}>
+                <Text style={{ color: 'white', fontWeight: '700' }}>Sign out</Text>
+              </TouchableOpacity>
+              {/* @ts-ignore */}
+              <TouchableOpacity style={{ flex: 1, backgroundColor: 'white', borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }} onPress={() => setConfirmSignOut(false)} onClick={() => setConfirmSignOut(false)}>
+                <Text style={{ color: '#6B7280', fontWeight: '700' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.signOutRow} onPress={handleSignOut}
+            // @ts-ignore
+            onClick={handleSignOut}>
+            <Text style={styles.signOutText}>Sign out</Text>
+          </TouchableOpacity>
+        )}
+        {confirmDelete ? (
+          <View style={{ paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FEF2F2', marginHorizontal: 20, borderRadius: 14, marginBottom: 8 }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#DC2626', marginBottom: 12, textAlign: 'center' }}>Delete account? This cannot be undone.</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {/* @ts-ignore */}
+              <TouchableOpacity style={{ flex: 1, backgroundColor: '#DC2626', borderRadius: 10, padding: 12, alignItems: 'center' }} onPress={() => setConfirmDelete(false)} onClick={() => setConfirmDelete(false)}>
+                <Text style={{ color: 'white', fontWeight: '700' }}>Delete</Text>
+              </TouchableOpacity>
+              {/* @ts-ignore */}
+              <TouchableOpacity style={{ flex: 1, backgroundColor: 'white', borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }} onPress={() => setConfirmDelete(false)} onClick={() => setConfirmDelete(false)}>
+                <Text style={{ color: '#6B7280', fontWeight: '700' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.deleteRow} onPress={handleDeleteAccount}
+            // @ts-ignore
+            onClick={handleDeleteAccount}>
+            <Text style={styles.deleteText}>Delete account</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity onPress={() => router.push('/(admin)/login')}>
           <Text style={{ color: 'rgba(0,0,0,0.08)', fontSize: 11, textAlign: 'center', marginTop: 20 }}>v1.0.0</Text>

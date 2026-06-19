@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
@@ -11,14 +11,17 @@ export default function Review() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [reviewError, setReviewError] = useState('');
+  const [reviewSuccess, setReviewSuccess] = useState(false);
 
   function toggleTag(tag: string) {
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   }
 
   async function submit() {
+    setReviewError('');
     if (rating === 0) {
-      Alert.alert('Please give a star rating');
+      setReviewError('Please give a star rating.');
       return;
     }
 
@@ -34,18 +37,25 @@ export default function Review() {
       created_at: new Date().toISOString(),
     });
     await AsyncStorage.setItem(key, JSON.stringify(reviews));
-
-    Alert.alert('Review submitted! 🙏', 'Thank you — your review helps other travellers.', [
-      { text: 'OK', onPress: () => router.replace('/(traveller)/explore') }
-    ]);
+    setReviewSuccess(true);
+    setTimeout(() => router.replace('/(traveller)/explore'), 2000);
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.inner}>
-        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}
+          // @ts-ignore
+          onClick={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
           <Text style={styles.back}>← Skip for now</Text>
         </TouchableOpacity>
+
+        {reviewSuccess && (
+          <View style={{ backgroundColor: '#D1FAE5', borderRadius: 12, padding: 16, marginBottom: 16, alignItems: 'center' }}>
+            <Text style={{ fontSize: 24, marginBottom: 4 }}>🙏</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#065F46' }}>Review submitted! Thank you.</Text>
+          </View>
+        )}
 
         <Text style={styles.heading}>How was your experience?</Text>
         <Text style={styles.sub}>Reviewing {hostName ?? 'your host'}</Text>

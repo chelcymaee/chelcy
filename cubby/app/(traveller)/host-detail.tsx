@@ -84,9 +84,16 @@ export default function HostDetail() {
 
   const reviews = [...savedReviews, ...mockReviews];
 
+  const goBack = () => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore');
+
   if (!host) return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity style={styles.backLink} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
+      <TouchableOpacity
+        style={styles.backLink}
+        onPress={goBack}
+        // @ts-ignore
+        onClick={goBack}
+      >
         <Text style={styles.backLinkText}>← Back to results</Text>
       </TouchableOpacity>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -98,11 +105,22 @@ export default function HostDetail() {
   const isOpen = host.available_days.includes(TODAY_ABBR);
   const total = host.price_per_bag_per_day * bagCount;
 
+  const decreaseBags = () => setBagCount(Math.max(1, bagCount - 1));
+  const increaseBags = () => setBagCount(Math.min(host.max_bags, bagCount + 1));
+
+  const goToReview = () => router.push({ pathname: '/(traveller)/review', params: { hostId: id, hostName: host.display_name } });
+  const goToBooking = () => router.push({ pathname: '/(traveller)/booking', params: { hostId: id, bagCount: String(bagCount) } });
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Back link */}
-        <TouchableOpacity style={styles.backLink} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
+        <TouchableOpacity
+          style={styles.backLink}
+          onPress={goBack}
+          // @ts-ignore
+          onClick={goBack}
+        >
           <Text style={styles.backLinkText}>← Back to results</Text>
         </TouchableOpacity>
 
@@ -201,14 +219,18 @@ export default function HostDetail() {
           <View style={styles.counterRow}>
             <TouchableOpacity
               style={styles.counterBtn}
-              onPress={() => setBagCount(Math.max(1, bagCount - 1))}
+              onPress={decreaseBags}
+              // @ts-ignore
+              onClick={decreaseBags}
             >
               <Text style={styles.counterBtnText}>−</Text>
             </TouchableOpacity>
             <Text style={styles.counterVal}>{bagCount}</Text>
             <TouchableOpacity
               style={styles.counterBtn}
-              onPress={() => setBagCount(Math.min(host.max_bags, bagCount + 1))}
+              onPress={increaseBags}
+              // @ts-ignore
+              onClick={increaseBags}
             >
               <Text style={styles.counterBtnText}>+</Text>
             </TouchableOpacity>
@@ -222,7 +244,9 @@ export default function HostDetail() {
             <Text style={styles.sectionTitle}>Reviews ({reviews.length})</Text>
             <TouchableOpacity
               style={styles.writeReviewBtn}
-              onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostId: id, hostName: host.display_name } })}
+              onPress={goToReview}
+              // @ts-ignore
+              onClick={goToReview}
             >
               <Text style={styles.writeReviewBtnText}>✏️ Write a review</Text>
             </TouchableOpacity>
@@ -263,7 +287,9 @@ export default function HostDetail() {
         </View>
         <TouchableOpacity
           style={styles.footerBtn}
-          onPress={() => router.push({ pathname: '/(traveller)/booking', params: { hostId: id, bagCount: String(bagCount) } })}
+          onPress={goToBooking}
+          // @ts-ignore
+          onClick={goToBooking}
           activeOpacity={0.85}
         >
           <Text style={styles.footerBtnText}>Select no. of bags →</Text>
