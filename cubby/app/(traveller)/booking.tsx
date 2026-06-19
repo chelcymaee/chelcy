@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Alert, Linking,
+  TouchableOpacity, Linking,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
@@ -21,6 +21,8 @@ export default function Booking() {
   const [dropTime, setDropTime] = useState('09:00');
   const [pickTime, setPickTime] = useState('15:00');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   if (!host) return null;
 
@@ -29,6 +31,8 @@ export default function Booking() {
   const grandTotal = total + platformFee;
 
   async function handleConfirm() {
+    setErrorMsg('');
+    setSuccessMsg('');
     setLoading(true);
     try {
       if (isSupabaseConfigured) {
@@ -55,14 +59,14 @@ export default function Booking() {
           .single();
 
         if (bookingError || !booking) {
-          Alert.alert('Error', 'Could not create booking. Please try again.');
+          setErrorMsg('Could not create booking. Please try again.');
           return;
         }
 
         const { data, error } = await supabase.functions.invoke('create-payment', {
           body: {
             bookingId: booking.id,
-            amount: grandTotal * 100, // send in cents
+            amount: grandTotal * 100,
             bagCount: bags,
             hostName: host.display_name,
             travellerId: user?.id,
@@ -71,35 +75,27 @@ export default function Booking() {
         });
 
         if (error || !data?.redirectUrl) {
-          Alert.alert('Payment Error', 'Could not start payment. Please try again.');
+          setErrorMsg('Could not start payment. Please try again.');
           return;
         }
 
-        // Open the Peach Payments checkout in the browser
         await Linking.openURL(data.redirectUrl);
       } else {
-        // Supabase not yet configured — demo mode
-        Alert.alert(
-          'Coming Soon',
-          'Payment processing will be available once Cubby goes live. Your booking has been saved.',
-          [
-            {
-              text: 'OK',
-              onPress: () =>
-                router.replace({
-                  pathname: '/(traveller)/booking-confirmation',
-                  params: {
-                    hostName: host.display_name,
-                    dropOff: dropTime,
-                    pickUp: pickTime,
-                    bags: String(bags),
-                    total: String(grandTotal),
-                    pin: String(Math.floor(1000 + Math.random() * 9000)),
-                  },
-                }),
+        // Demo mode — show success message then navigate
+        setSuccessMsg('Payment processing will be available once Cubby goes live. Your booking has been saved.');
+        setTimeout(() => {
+          router.replace({
+            pathname: '/(traveller)/booking-confirmation',
+            params: {
+              hostName: host.display_name,
+              dropOff: dropTime,
+              pickUp: pickTime,
+              bags: String(bags),
+              total: String(grandTotal),
+              pin: String(Math.floor(1000 + Math.random() * 9000)),
             },
-          ],
-        );
+          });
+        }, 2000);
       }
     } finally {
       setLoading(false);
@@ -110,9 +106,21 @@ export default function Booking() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
+        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}
+          // @ts-ignore
+          onClick={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
+        {!!errorMsg && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerText}>⚠️ {errorMsg}</Text>
+          </View>
+        )}
+        {!!successMsg && (
+          <View style={styles.successBanner}>
+            <Text style={styles.successBannerText}>✓ {successMsg}</Text>
+          </View>
+        )}
         <Text style={styles.heading}>Confirm booking</Text>
 
         {/* Host summary */}
@@ -141,6 +149,8 @@ export default function Booking() {
                 key={t}
                 style={[styles.timeChip, dropTime === t && styles.timeChipActive]}
                 onPress={() => setDropTime(t)}
+                // @ts-ignore
+                onClick={() => setDropTime(t)}
               >
                 <Text style={[styles.timeText, dropTime === t && styles.timeTextActive]}>{t}</Text>
               </TouchableOpacity>
@@ -157,6 +167,8 @@ export default function Booking() {
                 key={t}
                 style={[styles.timeChip, pickTime === t && styles.timeChipActive]}
                 onPress={() => setPickTime(t)}
+                // @ts-ignore
+                onClick={() => setPickTime(t)}
               >
                 <Text style={[styles.timeText, pickTime === t && styles.timeTextActive]}>{t}</Text>
               </TouchableOpacity>
@@ -206,6 +218,8 @@ export default function Booking() {
           onPress={handleConfirm}
           disabled={loading}
           activeOpacity={0.85}
+          // @ts-ignore
+          onClick={handleConfirm}
         >
           <Text style={styles.confirmText}>
             {loading ? 'Booking…' : `Pay R${grandTotal} & confirm`}
@@ -222,6 +236,24 @@ const styles = StyleSheet.create({
   back: { marginBottom: 16 },
   backText: { fontSize: 16, color: Colors.primary, fontWeight: '600' },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, marginBottom: 20 },
+  errorBanner: {
+    backgroundColor: '#FEE2E2',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorBannerText: { fontSize: 14, color: '#B91C1C', fontWeight: '600' },
+  successBanner: {
+    backgroundColor: '#DCFCE7',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  successBannerText: { fontSize: 14, color: '#15803D', fontWeight: '600' },
   hostCard: {
     flexDirection: 'row',
     alignItems: 'center',
