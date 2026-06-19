@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Linking,
+  TouchableOpacity, Platform,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
@@ -157,7 +159,44 @@ export default function Booking() {
           return;
         }
 
-        await Linking.openURL(data.redirectUrl);
+        // Open hosted payment page in an in-app browser that auto-closes on deep link return
+        if (Platform.OS === 'web') {
+          // On web, open in same tab — the payment-result page redirects back via JS
+          window.location.href = data.redirectUrl;
+          return;
+        }
+
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.redirectUrl,
+          'cubby://payment-result',
+        );
+
+        if (result.type === 'success') {
+          const parsed = Linking.parse(result.url);
+          const status = parsed.queryParams?.status as string | undefined;
+          if (status === 'success') {
+            router.replace({
+              pathname: '/(traveller)/booking-confirmation',
+              params: {
+                hostName: host.display_name,
+                dropOff: dropTime,
+                pickUp: pickTime,
+                bags: String(bags),
+                total: String(grandTotal),
+                pin,
+                date: bookingDate,
+              },
+            });
+          } else if (status === 'pending') {
+            setErrorMsg('Payment is processing. Check your bookings tab in a few minutes.');
+          } else {
+            setErrorMsg('Payment was not completed. Please try again.');
+          }
+        } else if (result.type === 'cancel') {
+          setErrorMsg('Payment was cancelled.');
+        } else {
+          setErrorMsg('Payment failed. Please try again.');
+        }
       } else {
         // Demo mode: save booking to AsyncStorage then go to confirmation
         const bookingId = `booking-${Date.now()}`;

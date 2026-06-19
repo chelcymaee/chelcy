@@ -40,6 +40,8 @@ export default function TravellerLayout() {
       <Tabs.Screen name="booking-confirmation" options={{ href: null }} />
       <Tabs.Screen name="review" options={{ href: null }} />
       <Tabs.Screen name="language" options={{ href: null }} />
+      <Tabs.Screen name="payment-success" options={{ href: null }} />
+      <Tabs.Screen name="payment-failed" options={{ href: null }} />
     </Tabs>
   );
 }

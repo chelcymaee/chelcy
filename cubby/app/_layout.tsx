@@ -1,10 +1,39 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
 import { Colors } from '../src/constants/colors';
 import { AuthProvider } from '../src/lib/auth-context';
 
+// Handle cubby://payment-result deep links when the app was backgrounded during payment
+function usePaymentDeepLink() {
+  useEffect(() => {
+    function handleUrl(event: { url: string }) {
+      const parsed = Linking.parse(event.url);
+      if (parsed.path === 'payment-result') {
+        const status = parsed.queryParams?.status as string | undefined;
+        if (status === 'success') {
+          router.replace('/(traveller)/payment-success');
+        } else {
+          router.replace('/(traveller)/payment-failed');
+        }
+      }
+    }
+
+    // Handle deep link if the app was opened from a cold start
+    Linking.getInitialURL().then(url => {
+      if (url) handleUrl({ url });
+    });
+
+    const sub = Linking.addEventListener('url', handleUrl);
+    return () => sub.remove();
+  }, []);
+}
+
 export default function RootLayout() {
+  usePaymentDeepLink();
+
   return (
     <AuthProvider>
       <StatusBar style="light" />
