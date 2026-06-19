@@ -24,6 +24,8 @@ const STATUS_LABEL: Record<string, string> = {
 export default function Bookings() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => {
     loadBookings();
@@ -46,6 +48,30 @@ export default function Bookings() {
       setBookings(raw ? JSON.parse(raw) : []);
     } catch {
       setBookings([]);
+    }
+  }
+
+  async function cancelBooking(bookingId: string) {
+    setCancellingId(bookingId);
+    try {
+      if (isSupabaseConfigured) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId).eq('traveller_id', user.id);
+        }
+      }
+      // Update AsyncStorage too
+      const raw = await AsyncStorage.getItem('cubby_bookings');
+      if (raw) {
+        const all = JSON.parse(raw).map((b: any) =>
+          b.id === bookingId ? { ...b, status: 'cancelled' } : b
+        );
+        await AsyncStorage.setItem('cubby_bookings', JSON.stringify(all));
+      }
+      await loadBookings();
+    } finally {
+      setCancellingId(null);
+      setConfirmCancelId(null);
     }
   }
 
@@ -173,6 +199,42 @@ export default function Bookings() {
                     <Text style={styles.reviewBtnText}>✏️ Leave a review</Text>
                   </TouchableOpacity>
                 )}
+
+                {['pending', 'confirmed'].includes(status) && (
+                  confirmCancelId === booking.id ? (
+                    <View style={{ gap: 8 }}>
+                      <Text style={{ fontSize: 13, color: '#DC2626', fontWeight: '600', textAlign: 'center' }}>Cancel this booking?</Text>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity
+                          style={{ flex: 1, backgroundColor: '#DC2626', borderRadius: 10, padding: 10, alignItems: 'center', opacity: cancellingId === booking.id ? 0.6 : 1 }}
+                          onPress={() => cancelBooking(booking.id)}
+                          // @ts-ignore
+                          onClick={() => cancelBooking(booking.id)}
+                          disabled={cancellingId === booking.id}
+                        >
+                          <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>{cancellingId === booking.id ? 'Cancelling…' : 'Yes, cancel'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{ flex: 1, backgroundColor: 'white', borderRadius: 10, padding: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}
+                          onPress={() => setConfirmCancelId(null)}
+                          // @ts-ignore
+                          onClick={() => setConfirmCancelId(null)}
+                        >
+                          <Text style={{ color: '#6B7280', fontWeight: '700', fontSize: 13 }}>Keep</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.cancelBtn}
+                      onPress={() => setConfirmCancelId(booking.id)}
+                      // @ts-ignore
+                      onClick={() => setConfirmCancelId(booking.id)}
+                    >
+                      <Text style={styles.cancelBtnText}>Cancel booking</Text>
+                    </TouchableOpacity>
+                  )
+                )}
               </View>
             );
           })
@@ -226,4 +288,6 @@ const styles = StyleSheet.create({
   pinHint: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
   reviewBtn: { borderWidth: 1.5, borderColor: '#FF5C5C', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
   reviewBtnText: { fontSize: 14, fontWeight: '700', color: '#FF5C5C' },
+  cancelBtn: { borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  cancelBtnText: { fontSize: 14, fontWeight: '700', color: '#DC2626' },
 });

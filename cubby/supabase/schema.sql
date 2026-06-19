@@ -121,3 +121,33 @@ ALTER TABLE bookings
   ADD COLUMN IF NOT EXISTS cubby_amount DECIMAL(10,2),
   ADD COLUMN IF NOT EXISTS payout_status TEXT DEFAULT 'pending',
   ADD COLUMN IF NOT EXISTS payout_id TEXT;
+
+-- Saved spots (travellers bookmarking hosts)
+CREATE TABLE IF NOT EXISTS saved_spots (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  host_id UUID REFERENCES hosts(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, host_id)
+);
+ALTER TABLE saved_spots ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own saved spots" ON saved_spots FOR ALL USING (auth.uid() = user_id);
+
+-- Partner applications
+CREATE TABLE IF NOT EXISTS partner_applications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  business_name TEXT,
+  location TEXT,
+  message TEXT,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE partner_applications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can submit a partner application" ON partner_applications FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins can view all applications" ON partner_applications FOR SELECT USING (true);
+
+-- Allow travellers to update their own bookings (needed for cancellation)
+CREATE POLICY "Travellers can update own bookings" ON bookings FOR UPDATE USING (auth.uid() = traveller_id);

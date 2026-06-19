@@ -55,6 +55,8 @@ export default function HostDetail() {
   const mockReviews = MOCK_REVIEWS.filter(r => r.host_id === id);
   const [bagCount, setBagCount] = useState(1);
   const [savedReviews, setSavedReviews] = useState<any[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingSpot, setSavingSpot] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -80,7 +82,51 @@ export default function HostDetail() {
     AsyncStorage.getItem(`cubby_reviews_${id}`).then(raw => {
       if (raw) setSavedReviews(JSON.parse(raw));
     });
+    // Check if saved
+    checkSaved();
   }, [id]);
+
+  async function checkSaved() {
+    if (!id) return;
+    if (isSupabaseConfigured) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from('saved_spots').select('id').eq('user_id', user.id).eq('host_id', id).single();
+        setIsSaved(!!data);
+        return;
+      }
+    }
+    const raw = await AsyncStorage.getItem('cubby_saved_spots');
+    const saved: string[] = raw ? JSON.parse(raw) : [];
+    setIsSaved(saved.includes(id));
+  }
+
+  async function toggleSave() {
+    if (!id) return;
+    setSavingSpot(true);
+    try {
+      if (isSupabaseConfigured) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          if (isSaved) {
+            await supabase.from('saved_spots').delete().eq('user_id', user.id).eq('host_id', id);
+          } else {
+            await supabase.from('saved_spots').insert({ user_id: user.id, host_id: id });
+          }
+          setIsSaved(!isSaved);
+          return;
+        }
+      }
+      // AsyncStorage fallback
+      const raw = await AsyncStorage.getItem('cubby_saved_spots');
+      const saved: string[] = raw ? JSON.parse(raw) : [];
+      const next = isSaved ? saved.filter(s => s !== id) : [...saved, id];
+      await AsyncStorage.setItem('cubby_saved_spots', JSON.stringify(next));
+      setIsSaved(!isSaved);
+    } finally {
+      setSavingSpot(false);
+    }
+  }
 
   const reviews = [...savedReviews, ...mockReviews];
 
@@ -134,7 +180,18 @@ export default function HostDetail() {
             <Text style={styles.hostName}>{host.display_name}</Text>
             <Text style={styles.locationName}>{host.location_name}</Text>
 
-            {/* Rating row */}
+            {/* Save button */}
+            <TouchableOpacity
+              onPress={toggleSave}
+              // @ts-ignore
+              onClick={toggleSave}
+              disabled={savingSpot}
+              style={{ marginBottom: 8 }}
+            >
+              <Text style={{ fontSize: 24 }}>{isSaved ? '❤️' : '🤍'}</Text>
+            </TouchableOpacity>
+
+          {/* Rating row */}
             <View style={styles.ratingRow}>
               <Text style={styles.ratingStar}>★</Text>
               <Text style={styles.ratingText}>{host.rating.toFixed(1)}</Text>

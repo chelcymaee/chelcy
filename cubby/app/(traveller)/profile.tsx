@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MenuItem {
@@ -47,40 +48,77 @@ function MenuRow({ item, isLast }: { item: MenuItem; isLast: boolean }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function Profile() {
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [firstName, setFirstName] = useState('Chelcy');
+  const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
 
   // Draft state for modal
   const [draftFirstName, setDraftFirstName] = useState('');
   const [draftLastName, setDraftLastName] = useState('');
   const [draftPhone, setDraftPhone] = useState('');
 
-  const EMAIL = 'chelcymae1@gmail.com';
-
   useEffect(() => {
-    AsyncStorage.getItem('cubby_traveller_profile').then(raw => {
-      if (!raw) return;
-      try {
-        const data = JSON.parse(raw);
-        if (data.firstName) setFirstName(data.firstName);
-        if (data.lastName) setLastName(data.lastName);
-        // Legacy support for old 'name' key
-        if (!data.firstName && data.name) setFirstName(data.name);
-        if (data.avatarUri) setAvatar(data.avatarUri);
-        if (data.phone) setPhone(data.phone);
-      } catch {}
-    });
+    loadProfile();
   }, []);
 
+  async function loadProfile() {
+    if (isSupabaseConfigured) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setEmail(user.email ?? '');
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        if (profile) {
+          const parts = (profile.full_name ?? '').split(' ');
+          setFirstName(parts[0] ?? '');
+          setLastName(parts.slice(1).join(' '));
+          setPhone(profile.phone ?? '');
+          if (profile.avatar_url) setAvatar(profile.avatar_url);
+          return;
+        }
+      }
+    }
+    // Fallback: AsyncStorage
+    const raw = await AsyncStorage.getItem('cubby_traveller_profile');
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      if (data.firstName) setFirstName(data.firstName);
+      if (data.lastName) setLastName(data.lastName);
+      if (!data.firstName && data.name) setFirstName(data.name);
+      if (data.avatarUri) setAvatar(data.avatarUri);
+      if (data.phone) setPhone(data.phone);
+      if (data.email) setEmail(data.email);
+    } catch {}
+  }
+
   async function saveProfile(fn: string, ln: string, ph: string, avatarUri: string | null) {
-    await AsyncStorage.setItem(
-      'cubby_traveller_profile',
-      JSON.stringify({ firstName: fn, lastName: ln, phone: ph, avatarUri }),
-    );
+    setSavingProfile(true);
+    try {
+      if (isSupabaseConfigured) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('profiles').upsert({
+            id: user.id,
+            email: user.email ?? '',
+            full_name: [fn, ln].filter(Boolean).join(' '),
+            phone: ph,
+          });
+        }
+      }
+      await AsyncStorage.setItem(
+        'cubby_traveller_profile',
+        JSON.stringify({ firstName: fn, lastName: ln, phone: ph, avatarUri }),
+      );
+    } finally {
+      setSavingProfile(false);
+    }
   }
 
   async function pickImage() {
@@ -124,8 +162,39 @@ export default function Profile() {
     setConfirmSignOut(true);
   }
 
+  async function doSignOut() {
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut();
+    }
+    await AsyncStorage.removeItem('cubby_traveller_profile');
+    router.replace('/');
+  }
+
   function handleDeleteAccount() {
     setConfirmDelete(true);
+    setDeleteError('');
+  }
+
+  async function doDeleteAccount() {
+    setDeletingAccount(true);
+    setDeleteError('');
+    try {
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.functions.invoke('delete-user-account', { body: {} });
+        if (error) {
+          setDeleteError('Could not delete account. Please contact support.');
+          return;
+        }
+        await supabase.auth.signOut();
+      }
+      await AsyncStorage.clear();
+      router.replace('/');
+    } catch {
+      setDeleteError('Something went wrong. Please try again.');
+    } finally {
+      setDeletingAccount(false);
+      setConfirmDelete(false);
+    }
   }
 
   const displayName = [firstName, lastName].filter(Boolean).join(' ');
@@ -184,7 +253,7 @@ export default function Profile() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.profileName}>{displayName}</Text>
-              <Text style={styles.profileEmail}>{EMAIL}</Text>
+              <Text style={styles.profileEmail}>{email}</Text>
             </View>
             <TouchableOpacity style={styles.editChip} onPress={openEditModal}>
               <Text style={styles.editChipText}>Edit ›</Text>
@@ -199,7 +268,7 @@ export default function Profile() {
             </View>
             <View style={[styles.infoRow, { borderTopWidth: 1, borderTopColor: '#F0EAEA' }]}>
               <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{EMAIL}</Text>
+              <Text style={styles.infoValue}>{email}</Text>
             </View>
             <View style={[styles.infoRow, { borderTopWidth: 1, borderTopColor: '#F0EAEA' }]}>
               <Text style={styles.infoLabel}>Phone</Text>
@@ -241,7 +310,7 @@ export default function Profile() {
             <Text style={{ fontSize: 14, fontWeight: '600', color: '#DC2626', marginBottom: 12, textAlign: 'center' }}>Sure you want to sign out?</Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               {/* @ts-ignore */}
-              <TouchableOpacity style={{ flex: 1, backgroundColor: '#DC2626', borderRadius: 10, padding: 12, alignItems: 'center' }} onPress={() => router.replace('/')} onClick={() => router.replace('/')}>
+              <TouchableOpacity style={{ flex: 1, backgroundColor: '#DC2626', borderRadius: 10, padding: 12, alignItems: 'center' }} onPress={doSignOut} onClick={doSignOut}>
                 <Text style={{ color: 'white', fontWeight: '700' }}>Sign out</Text>
               </TouchableOpacity>
               {/* @ts-ignore */}
@@ -260,10 +329,11 @@ export default function Profile() {
         {confirmDelete ? (
           <View style={{ paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FEF2F2', marginHorizontal: 20, borderRadius: 14, marginBottom: 8 }}>
             <Text style={{ fontSize: 14, fontWeight: '600', color: '#DC2626', marginBottom: 12, textAlign: 'center' }}>Delete account? This cannot be undone.</Text>
+            {!!deleteError && <Text style={{ fontSize: 13, color: '#DC2626', textAlign: 'center', marginBottom: 8 }}>{deleteError}</Text>}
             <View style={{ flexDirection: 'row', gap: 10 }}>
               {/* @ts-ignore */}
-              <TouchableOpacity style={{ flex: 1, backgroundColor: '#DC2626', borderRadius: 10, padding: 12, alignItems: 'center' }} onPress={() => setConfirmDelete(false)} onClick={() => setConfirmDelete(false)}>
-                <Text style={{ color: 'white', fontWeight: '700' }}>Delete</Text>
+              <TouchableOpacity style={{ flex: 1, backgroundColor: '#DC2626', borderRadius: 10, padding: 12, alignItems: 'center', opacity: deletingAccount ? 0.6 : 1 }} onPress={doDeleteAccount} onClick={doDeleteAccount} disabled={deletingAccount}>
+                <Text style={{ color: 'white', fontWeight: '700' }}>{deletingAccount ? 'Deleting…' : 'Yes, delete'}</Text>
               </TouchableOpacity>
               {/* @ts-ignore */}
               <TouchableOpacity style={{ flex: 1, backgroundColor: 'white', borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }} onPress={() => setConfirmDelete(false)} onClick={() => setConfirmDelete(false)}>
@@ -309,8 +379,10 @@ export default function Profile() {
             {/* Modal header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit</Text>
-              <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSave}>
-                <Text style={styles.modalSaveBtnText}>Save</Text>
+              <TouchableOpacity style={[styles.modalSaveBtn, savingProfile && { opacity: 0.6 }]} onPress={handleSave}
+                // @ts-ignore
+                onClick={handleSave} disabled={savingProfile}>
+                <Text style={styles.modalSaveBtnText}>{savingProfile ? 'Saving…' : 'Save'}</Text>
               </TouchableOpacity>
             </View>
 
@@ -362,7 +434,7 @@ export default function Profile() {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email</Text>
               <View style={[styles.textInput, styles.lockedInput]}>
-                <Text style={styles.lockedInputText}>{EMAIL}</Text>
+                <Text style={styles.lockedInputText}>{email}</Text>
                 <Text style={styles.lockIcon}>🔒</Text>
               </View>
               <Text style={styles.lockedNote}>Your email is locked to this account.</Text>
