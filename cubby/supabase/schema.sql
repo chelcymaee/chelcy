@@ -171,3 +171,7 @@ CREATE POLICY "Admins can view all applications" ON partner_applications FOR SEL
 
 -- Allow travellers to update their own bookings (needed for cancellation)
 CREATE POLICY "Travellers can update own bookings" ON bookings FOR UPDATE USING (auth.uid() = traveller_id);
+
+-- Allow hosts to update bookings for their own listing (accept / decline / complete)
+CREATE POLICY "Hosts can update bookings for their listing" ON bookings FOR UPDATE
+  USING (host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid()));

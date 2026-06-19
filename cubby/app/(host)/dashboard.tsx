@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
@@ -14,30 +14,58 @@ type Booking = {
   status: string;
 };
 
-const INITIAL_BOOKINGS: Booking[] = [
-  {
-    id: '1',
-    traveller: 'Sarah T.',
-    bags: 2,
-    dropOff: '09:00',
-    pickUp: '15:00',
-    total: 160,
-    status: 'confirmed',
-  },
-  {
-    id: '2',
-    traveller: 'James M.',
-    bags: 1,
-    dropOff: '10:30',
-    pickUp: '18:00',
-    total: 80,
-    status: 'pending',
-  },
+const DEMO_BOOKINGS: Booking[] = [
+  { id: 'demo-1', traveller: 'Sarah T.', bags: 2, dropOff: '09:00', pickUp: '15:00', total: 160, status: 'confirmed' },
+  { id: 'demo-2', traveller: 'James M.', bags: 1, dropOff: '10:30', pickUp: '18:00', total: 80, status: 'pending' },
 ];
 
 export default function Dashboard() {
-  const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
+  const [bookings, setBookings] = useState<Booking[]>(DEMO_BOOKINGS);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  useFocusEffect(useCallback(() => {
+    loadTodayBookings();
+  }, []));
+
+  async function loadTodayBookings() {
+    if (!isSupabaseConfigured) return; // keep demo data
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: hostRow } = await supabase.from('hosts').select('id').eq('user_id', user.id).single();
+    if (!hostRow) return;
+    const today = new Date().toISOString().split('T')[0];
+    const { data } = await supabase
+      .from('bookings')
+      .select('id, bag_count, drop_off_time, pick_up_time, total_price, status, profiles:traveller_id(full_name, email)')
+      .eq('host_id', hostRow.id)
+      .eq('drop_off_date', today)
+      .in('status', ['pending', 'confirmed', 'active'])
+      .order('drop_off_time');
+    if (data) {
+      setBookings(data.map((b: any) => ({
+        id: b.id,
+        traveller: b.profiles?.full_name?.trim() || b.profiles?.email?.split('@')[0] || 'Traveller',
+        bags: b.bag_count,
+        dropOff: b.drop_off_time,
+        pickUp: b.pick_up_time,
+        total: b.total_price,
+        status: b.status,
+      })));
+    }
+  }
+
+  async function updateBookingStatus(bookingId: string, newStatus: string) {
+    setActionId(bookingId);
+    try {
+      if (isSupabaseConfigured) {
+        await supabase.from('bookings').update({ status: newStatus }).eq('id', bookingId);
+      }
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+    } finally {
+      setActionId(null);
+    }
+  }
 
   async function handleComplete(booking: Booking) {
     setCompletingId(booking.id);
@@ -186,10 +214,22 @@ export default function Dashboard() {
 
               {b.status === 'pending' && (
                 <View style={styles.actionRow}>
-                  <TouchableOpacity style={styles.acceptBtn}>
-                    <Text style={styles.acceptBtnText}>✓ Accept</Text>
+                  <TouchableOpacity
+                    style={[styles.acceptBtn, actionId === b.id && { opacity: 0.6 }]}
+                    onPress={() => updateBookingStatus(b.id, 'confirmed')}
+                    // @ts-ignore
+                    onClick={() => updateBookingStatus(b.id, 'confirmed')}
+                    disabled={actionId === b.id}
+                  >
+                    <Text style={styles.acceptBtnText}>{actionId === b.id ? '…' : '✓ Accept'}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.declineBtn}>
+                  <TouchableOpacity
+                    style={[styles.declineBtn, actionId === b.id && { opacity: 0.6 }]}
+                    onPress={() => updateBookingStatus(b.id, 'cancelled')}
+                    // @ts-ignore
+                    onClick={() => updateBookingStatus(b.id, 'cancelled')}
+                    disabled={actionId === b.id}
+                  >
                     <Text style={styles.declineBtnText}>✕ Decline</Text>
                   </TouchableOpacity>
                 </View>
