@@ -197,3 +197,38 @@ CREATE POLICY "Hosts can update bookings for their listing" ON bookings FOR UPDA
 
 -- Fix 2: partner_applications — drop the open SELECT policy
 -- DROP POLICY IF EXISTS "Admins can view all applications" ON partner_applications;
+
+-- -------------------------------------------------------------------------
+-- Avatar storage — run these in Supabase SQL editor / Storage dashboard
+-- -------------------------------------------------------------------------
+-- 1. Create the bucket (Supabase dashboard → Storage → New bucket):
+--      Name: avatars
+--      Public: true
+--      Allowed MIME types: image/jpeg, image/png, image/webp, image/gif
+--      Max file size: 5 MB
+--
+-- 2. Storage RLS policies (run in SQL editor):
+--
+-- INSERT: authenticated users can upload to their own folder
+-- CREATE POLICY "Users can upload own avatar"
+--   ON storage.objects FOR INSERT
+--   TO authenticated
+--   WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+--
+-- UPDATE: authenticated users can replace their own avatar
+-- CREATE POLICY "Users can update own avatar"
+--   ON storage.objects FOR UPDATE
+--   TO authenticated
+--   USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+--
+-- SELECT: anyone can read avatars (bucket is public)
+-- CREATE POLICY "Anyone can read avatars"
+--   ON storage.objects FOR SELECT
+--   TO public
+--   USING (bucket_id = 'avatars');
+--
+-- DELETE: users can delete their own avatar
+-- CREATE POLICY "Users can delete own avatar"
+--   ON storage.objects FOR DELETE
+--   TO authenticated
+--   USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);

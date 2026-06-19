@@ -1,10 +1,10 @@
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-  Image, TextInput, Modal, KeyboardAvoidingView, Platform,
+  Image, TextInput, Modal, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
@@ -58,6 +58,9 @@ export default function Profile() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarToast, setAvatarToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Draft state for modal
   const [draftFirstName, setDraftFirstName] = useState('');
@@ -98,7 +101,13 @@ export default function Profile() {
     } catch {}
   }
 
-  async function saveProfile(fn: string, ln: string, ph: string, avatarUri: string | null) {
+  function showToast(msg: string, ok: boolean) {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setAvatarToast({ msg, ok });
+    toastTimer.current = setTimeout(() => setAvatarToast(null), 3500);
+  }
+
+  async function saveProfile(fn: string, ln: string, ph: string, avatarUrl: string | null) {
     setSavingProfile(true);
     try {
       if (isSupabaseConfigured) {
@@ -109,12 +118,13 @@ export default function Profile() {
             email: user.email ?? '',
             full_name: [fn, ln].filter(Boolean).join(' '),
             phone: ph,
+            ...(avatarUrl !== undefined ? { avatar_url: avatarUrl } : {}),
           });
         }
       }
       await AsyncStorage.setItem(
         'cubby_traveller_profile',
-        JSON.stringify({ firstName: fn, lastName: ln, phone: ph, avatarUri }),
+        JSON.stringify({ firstName: fn, lastName: ln, phone: ph, avatarUri: avatarUrl }),
       );
     } finally {
       setSavingProfile(false);
@@ -123,20 +133,77 @@ export default function Profile() {
 
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      // Permission denied — silently fail on web or show no-op
-      return;
-    }
+    if (status !== 'granted') return;
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
-    if (!result.canceled) {
-      const uri = result.assets[0].uri;
-      setAvatar(uri);
-      await saveProfile(firstName, lastName, phone, uri);
+    if (result.canceled) return;
+
+    const localUri = result.assets[0].uri;
+    // Show local preview immediately (optimistic)
+    setAvatar(localUri);
+
+    if (!isSupabaseConfigured) {
+      // Demo mode: persist local URI only
+      await AsyncStorage.setItem(
+        'cubby_traveller_profile',
+        JSON.stringify({ firstName, lastName, phone, avatarUri: localUri }),
+      );
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Fetch blob from local URI (works on both native and web)
+      const response = await fetch(localUri);
+      const blob = await response.blob();
+      const ext = localUri.split('.').pop()?.split('?')[0]?.toLowerCase() ?? 'jpg';
+      const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+      const safeExt = allowedExts.includes(ext) ? ext : 'jpg';
+      const filePath = `${user.id}/avatar.${safeExt}`;
+      const contentType = blob.type || `image/${safeExt === 'jpg' ? 'jpeg' : safeExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, blob, { upsert: true, contentType });
+
+      if (uploadError) throw uploadError;
+
+      // Get stable public URL (cache-busted with timestamp so UI refreshes)
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+      const publicUrlWithBust = `${publicUrl}?t=${Date.now()}`;
+
+      // Persist public URL to profiles table
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: user.id,
+        email: user.email ?? '',
+        full_name: [firstName, lastName].filter(Boolean).join(' '),
+        phone,
+        avatar_url: publicUrl,
+      });
+      if (profileError) throw profileError;
+
+      setAvatar(publicUrlWithBust);
+      // Update AsyncStorage fallback with public URL so it persists across reinstall
+      await AsyncStorage.setItem(
+        'cubby_traveller_profile',
+        JSON.stringify({ firstName, lastName, phone, avatarUri: publicUrl }),
+      );
+      showToast('Photo updated!', true);
+    } catch {
+      // Keep local URI as optimistic preview; surface error
+      showToast('Upload failed — photo not saved to cloud.', false);
+    } finally {
+      setUploadingAvatar(false);
     }
   }
 
@@ -155,6 +222,7 @@ export default function Profile() {
     setLastName(ln);
     setPhone(ph);
     setEditModalVisible(false);
+    // Pass undefined for avatarUrl so saveProfile doesn't overwrite the stored avatar_url
     await saveProfile(fn, ln, ph, avatar);
   }
 
@@ -237,9 +305,23 @@ export default function Profile() {
           <Text style={styles.heading}>Account</Text>
         </View>
 
+        {/* Avatar upload toast */}
+        {!!avatarToast && (
+          <View style={[styles.toast, avatarToast.ok ? styles.toastOk : styles.toastErr]}>
+            <Text style={styles.toastText}>{avatarToast.ok ? '✅' : '⚠️'} {avatarToast.msg}</Text>
+          </View>
+        )}
+
         {/* Profile row */}
         <View style={styles.profileCard}>
-          <TouchableOpacity style={styles.profileRow} activeOpacity={0.85} onPress={pickImage}>
+          <TouchableOpacity
+            style={styles.profileRow}
+            activeOpacity={0.85}
+            onPress={uploadingAvatar ? undefined : pickImage}
+            // @ts-ignore
+            onClick={uploadingAvatar ? undefined : pickImage}
+            disabled={uploadingAvatar}
+          >
             <View style={styles.avatarContainer}>
               {avatar ? (
                 <Image source={{ uri: avatar }} style={styles.avatarImage} />
@@ -248,9 +330,15 @@ export default function Profile() {
                   <Text style={styles.avatarEmoji}>👤</Text>
                 </View>
               )}
-              <View style={styles.avatarEditBadge}>
-                <Text style={styles.avatarEditText}>📷</Text>
-              </View>
+              {uploadingAvatar ? (
+                <View style={styles.avatarUploadOverlay}>
+                  <ActivityIndicator size="small" color="#fff" />
+                </View>
+              ) : (
+                <View style={styles.avatarEditBadge}>
+                  <Text style={styles.avatarEditText}>📷</Text>
+                </View>
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.profileName}>{displayName}</Text>
@@ -495,6 +583,29 @@ const styles = StyleSheet.create({
     borderColor: Colors.white,
   },
   avatarEditText: { fontSize: 9 },
+  avatarUploadOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Toast
+  toast: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  toastOk: { backgroundColor: '#D1FAE5', borderWidth: 1, borderColor: '#6EE7B7' },
+  toastErr: { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FECACA' },
+  toastText: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
   profileName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
   profileEmail: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
   editChip: {
