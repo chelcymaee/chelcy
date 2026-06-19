@@ -29,11 +29,18 @@ Code is fully implemented and committed on `claude/eloquent-goodall-7h3lro`. Whe
 
 ---
 
-## 🟡 Other known gaps (from technical audit)
+## 🟡 Other known gaps
 
-- [ ] `host_bank_details` RLS is `USING (true)` — bank account numbers readable by any authenticated user (P0 security)
-- [ ] Admin PIN `'2604'` hardcoded in source — move to env var or Supabase config
 - [ ] PIN generated both client-side (`booking.tsx`) and server-side (`payment-webhook`) — deduplicate
 - [ ] Host dashboard earnings are hardcoded (R1,240, 14 bookings, 4.9 rating) — wire to real data
 - [ ] Avatar upload to Supabase Storage not implemented
 - [ ] Payment deep link return on web (PWA) needs separate handling (current fix is native-only)
+- [ ] Admin should use proper Supabase auth with a dedicated admin role (current PIN approach is web-only and basic)
+
+## ✅ Completed
+
+- [x] `host_bank_details` RLS fixed — host-scoped only; admin reads via service-role Edge Function
+- [x] `partner_applications` public SELECT removed
+- [x] Admin PIN moved to `EXPO_PUBLIC_ADMIN_PIN` env var; 5-attempt lockout (15 min); 8-hour session expiry
+- [x] `payment-details.tsx` card form removed; replaced with Peach Payments placeholder
+- [x] `cubby_payment_details` AsyncStorage key purged on app start

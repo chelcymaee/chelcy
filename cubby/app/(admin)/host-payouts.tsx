@@ -3,6 +3,23 @@ import { useFocusEffect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
+const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+
+async function adminFetch(method: string, path: string, body?: object) {
+  const url = `${SUPABASE_URL}/functions/v1/admin-bank-details${path}`;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-secret': ADMIN_SECRET,
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return res.json();
+}
+
 const SA_BANKS = [
   'Absa', 'Capitec', 'FNB', 'Nedbank', 'Standard Bank',
   'African Bank', 'Discovery Bank', 'Investec', 'TymeBank', 'Other',
@@ -66,6 +83,7 @@ export default function HostPayouts() {
 
   async function loadData() {
     if (isSupabaseConfigured) {
+      // Hosts are publicly readable — fetch directly
       const { data: hostsData } = await supabase.from('hosts').select('*').order('created_at', { ascending: false });
       if (hostsData) {
         setHosts(hostsData.map((row: any) => ({
@@ -75,15 +93,16 @@ export default function HostPayouts() {
           businessType: row.business_type,
         })));
       }
-      const { data: bankData } = await supabase.from('host_bank_details').select('*');
-      if (bankData) {
+      // Bank details go through the admin edge function (service role)
+      const result = await adminFetch('GET', '');
+      if (result.data) {
         const map: Record<string, BankDetails> = {};
-        for (const row of bankData) {
+        for (const row of result.data) {
           map[row.host_id] = {
             hostId: row.host_id,
-            hostName: row.host_name ?? '',
+            hostName: row.hosts?.display_name ?? '',
             accountHolder: row.account_holder,
-            bank: row.bank,
+            bank: row.bank_name,
             accountNumber: row.account_number,
             accountType: row.account_type,
             branchCode: row.branch_code,
@@ -127,16 +146,16 @@ export default function HostPayouts() {
     try {
       const host = hosts.find(h => h.id === editingHostId);
       if (isSupabaseConfigured) {
-        const { error } = await supabase.from('host_bank_details').upsert({
+        const result = await adminFetch('POST', '', {
           host_id: editingHostId!,
           account_holder: form.accountHolder,
-          bank: form.bank,
+          bank_name: form.bank,
           account_number: form.accountNumber,
           account_type: form.accountType,
           branch_code: form.branchCode,
-        }, { onConflict: 'host_id' });
-        if (error) {
-          showError(error.message);
+        });
+        if (result.error) {
+          showError(result.error);
           return;
         }
         setBankDetails(prev => ({
@@ -172,7 +191,7 @@ export default function HostPayouts() {
     const updated = { ...bankDetails };
     delete updated[hostId];
     if (isSupabaseConfigured) {
-      await supabase.from('host_bank_details').delete().eq('host_id', hostId);
+      await adminFetch('DELETE', `?hostId=${hostId}`);
     } else {
       await AsyncStorage.setItem('cubby_host_bank_details', JSON.stringify(updated));
     }

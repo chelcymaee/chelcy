@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../src/constants/colors';
 import { AuthProvider } from '../src/lib/auth-context';
 
@@ -20,6 +21,9 @@ function usePaymentDeepLink() {
         }
       }
     }
+
+    // Purge any legacy card data stored before the security sprint
+    AsyncStorage.removeItem('cubby_payment_details');
 
     // Handle deep link if the app was opened from a cold start
     Linking.getInitialURL().then(url => {

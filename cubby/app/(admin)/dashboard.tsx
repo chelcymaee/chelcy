@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { checkAdminSession, clearAdminSession } from '../../src/lib/admin-auth';
 
 interface Host {
   id: string;
@@ -26,10 +27,8 @@ export default function AdminDashboard() {
   }, []);
 
   async function checkAuth() {
-    const session = await AsyncStorage.getItem('cubby_admin_session');
-    if (!session) {
-      router.replace('/(admin)/login');
-    }
+    const valid = await checkAdminSession();
+    if (!valid) router.replace('/(admin)/login');
   }
 
   async function loadStats() {
@@ -50,7 +49,7 @@ export default function AdminDashboard() {
   }
 
   async function handleSignOut() {
-    await AsyncStorage.removeItem('cubby_admin_session');
+    await clearAdminSession();
     router.replace('/(admin)/login');
   }
 

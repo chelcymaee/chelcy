@@ -132,7 +132,12 @@ CREATE TABLE IF NOT EXISTS host_bank_details (
 );
 
 ALTER TABLE host_bank_details ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage bank details" ON host_bank_details FOR ALL USING (true);
+-- Hosts can only manage bank details for their own listing.
+-- Admin reads go through the admin-bank-details Edge Function (service role).
+CREATE POLICY "Hosts can manage own bank details" ON host_bank_details
+  FOR ALL USING (
+    host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid())
+  );
 
 -- Payment & payout columns on bookings
 ALTER TABLE bookings
@@ -166,8 +171,9 @@ CREATE TABLE IF NOT EXISTS partner_applications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE partner_applications ENABLE ROW LEVEL SECURITY;
+-- Public INSERT: anyone can submit a partner application (no auth required)
 CREATE POLICY "Anyone can submit a partner application" ON partner_applications FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admins can view all applications" ON partner_applications FOR SELECT USING (true);
+-- No public SELECT: admin reads go through service-role Edge Functions only
 
 -- Allow travellers to update their own bookings (needed for cancellation)
 CREATE POLICY "Travellers can update own bookings" ON bookings FOR UPDATE USING (auth.uid() = traveller_id);
@@ -175,3 +181,16 @@ CREATE POLICY "Travellers can update own bookings" ON bookings FOR UPDATE USING 
 -- Allow hosts to update bookings for their own listing (accept / decline / complete)
 CREATE POLICY "Hosts can update bookings for their listing" ON bookings FOR UPDATE
   USING (host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid()));
+
+-- -------------------------------------------------------------------------
+-- Security sprint migrations (run these in Supabase SQL editor if the DB
+-- already exists — the CREATE TABLE above won't re-run on an existing DB)
+-- -------------------------------------------------------------------------
+
+-- Fix 1: host_bank_details — drop the open-to-all policy, replace with owner-only
+-- DROP POLICY IF EXISTS "Admins can manage bank details" ON host_bank_details;
+-- CREATE POLICY "Hosts can manage own bank details" ON host_bank_details
+--   FOR ALL USING (host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid()));
+
+-- Fix 2: partner_applications — drop the open SELECT policy
+-- DROP POLICY IF EXISTS "Admins can view all applications" ON partner_applications;
