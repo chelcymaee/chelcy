@@ -1,61 +1,136 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
+  TextInput, ScrollView,
+} from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 const TAGS = ['Great location', 'Friendly host', 'Secure storage', 'Easy to find', 'Quick response', 'Would return'];
 
+const RATING_LABELS = ['', 'Poor experience', 'Not great', 'It was okay', 'Really good!', 'Outstanding! 🎉'];
+
 export default function Review() {
-  const { hostName, hostId } = useLocalSearchParams<{ hostName: string; hostId: string }>();
+  const { hostName, hostId, bookingId } = useLocalSearchParams<{
+    hostName: string; hostId: string; bookingId: string;
+  }>();
+
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [reviewError, setReviewError] = useState('');
-  const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   function toggleTag(tag: string) {
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   }
 
   async function submit() {
-    setReviewError('');
-    if (rating === 0) {
-      setReviewError('Please give a star rating.');
-      return;
-    }
+    setError('');
+    if (rating === 0) { setError('Please select a star rating.'); return; }
 
-    const key = `cubby_reviews_${hostId ?? hostName}`;
-    const existing = await AsyncStorage.getItem(key);
-    const reviews = existing ? JSON.parse(existing) : [];
-    reviews.unshift({
-      id: Date.now().toString(),
-      reviewer_name: 'You',
-      rating,
-      comment,
-      tags: selectedTags,
-      created_at: new Date().toISOString(),
-    });
-    await AsyncStorage.setItem(key, JSON.stringify(reviews));
-    setReviewSuccess(true);
-    setTimeout(() => router.replace('/(traveller)/explore'), 2000);
+    setSubmitting(true);
+    try {
+      if (isSupabaseConfigured) {
+        // Get the authenticated user for reviewer_id and name
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setError('You need to be signed in to leave a review.'); return; }
+
+        // Fetch reviewer display name from profiles table
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+        const reviewerName = profile?.full_name?.trim() || user.email?.split('@')[0] || 'Anonymous';
+
+        // If we have a bookingId, check for duplicate (UNIQUE constraint on booking_id catches this
+        // at DB level too, but show a friendly message here)
+        if (bookingId) {
+          const { data: existing } = await supabase
+            .from('reviews')
+            .select('id')
+            .eq('booking_id', bookingId)
+            .maybeSingle();
+          if (existing) {
+            setError('You have already reviewed this booking.');
+            return;
+          }
+        }
+
+        const reviewRow: Record<string, any> = {
+          reviewer_id: user.id,
+          host_id: hostId,
+          reviewer_name: reviewerName,
+          rating,
+          comment: comment.trim() || null,
+          tags: selectedTags,
+        };
+        if (bookingId) reviewRow.booking_id = bookingId;
+
+        const { error: insertError } = await supabase.from('reviews').insert(reviewRow);
+
+        if (insertError) {
+          // Unique violation = already reviewed
+          if (insertError.code === '23505') {
+            setError('You have already reviewed this booking.');
+          } else {
+            setError('Could not submit review. Please try again.');
+          }
+          return;
+        }
+
+        // rating + review_count are updated automatically by DB trigger
+        setSuccess(true);
+        setTimeout(() => router.replace('/(traveller)/bookings'), 2000);
+        return;
+      }
+
+      // Demo/offline mode — AsyncStorage only
+      const key = `cubby_reviews_${hostId ?? hostName}`;
+      const existing = await AsyncStorage.getItem(key);
+      const reviews = existing ? JSON.parse(existing) : [];
+      reviews.unshift({
+        id: Date.now().toString(),
+        reviewer_name: 'You',
+        rating,
+        comment: comment.trim() || null,
+        tags: selectedTags,
+        created_at: new Date().toISOString(),
+      });
+      await AsyncStorage.setItem(key, JSON.stringify(reviews));
+      setSuccess(true);
+      setTimeout(() => router.replace('/(traveller)/bookings'), 2000);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const goBack = () => router.canGoBack() ? router.back() : router.replace('/(traveller)/bookings');
+
+  if (success) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.successScreen}>
+          <Text style={styles.successEmoji}>🙏</Text>
+          <Text style={styles.successTitle}>Thank you!</Text>
+          <Text style={styles.successSub}>Your review helps other travellers find great storage.</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.inner}>
-        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}
+      <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity onPress={goBack}
           // @ts-ignore
-          onClick={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
+          onClick={goBack}>
           <Text style={styles.back}>← Skip for now</Text>
         </TouchableOpacity>
-
-        {reviewSuccess && (
-          <View style={{ backgroundColor: '#D1FAE5', borderRadius: 12, padding: 16, marginBottom: 16, alignItems: 'center' }}>
-            <Text style={{ fontSize: 24, marginBottom: 4 }}>🙏</Text>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#065F46' }}>Review submitted! Thank you.</Text>
-          </View>
-        )}
 
         <Text style={styles.heading}>How was your experience?</Text>
         <Text style={styles.sub}>Reviewing {hostName ?? 'your host'}</Text>
@@ -70,18 +145,18 @@ export default function Review() {
             </TouchableOpacity>
           ))}
         </View>
-        <Text style={styles.ratingLabel}>
-          {rating === 0 ? 'Tap to rate' : rating === 5 ? 'Outstanding! 🎉' : rating === 4 ? 'Really good!' : rating === 3 ? 'It was okay' : rating === 2 ? 'Not great' : 'Poor experience'}
-        </Text>
+        <Text style={styles.ratingLabel}>{rating === 0 ? 'Tap to rate' : RATING_LABELS[rating]}</Text>
 
         {/* Quick tags */}
-        <Text style={styles.sectionLabel}>What stood out?</Text>
+        <Text style={styles.sectionLabel}>What stood out? (optional)</Text>
         <View style={styles.tagsRow}>
           {TAGS.map(tag => (
             <TouchableOpacity
               key={tag}
               style={[styles.tag, selectedTags.includes(tag) && styles.tagActive]}
               onPress={() => toggleTag(tag)}
+              // @ts-ignore
+              onClick={() => toggleTag(tag)}
             >
               <Text style={[styles.tagText, selectedTags.includes(tag) && styles.tagTextActive]}>{tag}</Text>
             </TouchableOpacity>
@@ -100,12 +175,20 @@ export default function Review() {
           numberOfLines={4}
         />
 
-        {!!reviewError && <Text style={{ color: '#DC2626', fontWeight: '600', marginBottom: 12, textAlign: 'center' }}>{reviewError}</Text>}
-        <TouchableOpacity style={[styles.btn, rating === 0 && styles.btnDisabled]} onPress={submit}
+        {!!error && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={[styles.btn, (rating === 0 || submitting) && styles.btnDisabled]}
+          onPress={submit}
           // @ts-ignore
           onClick={submit}
-          disabled={rating === 0}>
-          <Text style={styles.btnText}>Submit review</Text>
+          disabled={rating === 0 || submitting}
+        >
+          <Text style={styles.btnText}>{submitting ? 'Submitting…' : 'Submit review'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -136,7 +219,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 15, color: Colors.textPrimary, height: 110, textAlignVertical: 'top', marginBottom: 24,
   },
+  errorBanner: {
+    backgroundColor: '#FEE2E2', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#FECACA', marginBottom: 16,
+  },
+  errorText: { fontSize: 14, color: '#B91C1C', fontWeight: '600', textAlign: 'center' },
   btn: { backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
   btnDisabled: { opacity: 0.4 },
   btnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  successScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  successEmoji: { fontSize: 64, marginBottom: 20 },
+  successTitle: { fontSize: 28, fontWeight: '900', color: Colors.textPrimary, marginBottom: 10 },
+  successSub: { fontSize: 16, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
 });

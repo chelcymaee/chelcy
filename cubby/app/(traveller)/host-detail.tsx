@@ -78,10 +78,21 @@ export default function HostDetail() {
         }
       }
     }
-    loadHost();
-    AsyncStorage.getItem(`cubby_reviews_${id}`).then(raw => {
+    async function loadReviews() {
+      if (isSupabaseConfigured) {
+        const { data } = await supabase
+          .from('reviews')
+          .select('id, reviewer_name, rating, comment, tags, created_at')
+          .eq('host_id', id)
+          .order('created_at', { ascending: false });
+        if (data && data.length > 0) { setSavedReviews(data); return; }
+      }
+      // Fallback: AsyncStorage (demo mode reviews)
+      const raw = await AsyncStorage.getItem(`cubby_reviews_${id}`);
       if (raw) setSavedReviews(JSON.parse(raw));
-    });
+    }
+    loadHost();
+    loadReviews();
     // Check if saved
     checkSaved();
   }, [id]);

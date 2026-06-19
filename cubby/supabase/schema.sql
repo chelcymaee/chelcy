@@ -81,7 +81,7 @@ create policy "Hosts can view bookings for their listing" on bookings for select
 -- Reviews
 create table if not exists reviews (
   id uuid default gen_random_uuid() primary key,
-  booking_id uuid references bookings(id) on delete cascade not null,
+  booking_id uuid references bookings(id) on delete cascade not null unique, -- one review per booking
   reviewer_id uuid references auth.users(id) on delete cascade not null,
   host_id uuid references hosts(id) not null,
   reviewer_name text not null,
@@ -93,6 +93,26 @@ create table if not exists reviews (
 alter table reviews enable row level security;
 create policy "Reviews are publicly viewable" on reviews for select using (true);
 create policy "Travellers can create reviews" on reviews for insert with check (auth.uid() = reviewer_id);
+
+-- Function: recalculate host rating + review_count after any review insert/delete
+create or replace function recalculate_host_rating()
+returns trigger language plpgsql security definer as $$
+declare
+  target_host_id uuid;
+begin
+  target_host_id := coalesce(new.host_id, old.host_id);
+  update hosts
+  set
+    rating       = (select coalesce(round(avg(rating)::numeric, 1), 0) from reviews where host_id = target_host_id),
+    review_count = (select count(*) from reviews where host_id = target_host_id)
+  where id = target_host_id;
+  return new;
+end;
+$$;
+
+create trigger trg_recalculate_host_rating
+after insert or delete on reviews
+for each row execute function recalculate_host_rating();
 
 -- -------------------------------------------------------------------------
 -- Payment & payout additions

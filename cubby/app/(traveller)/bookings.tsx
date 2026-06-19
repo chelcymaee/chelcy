@@ -192,9 +192,9 @@ export default function Bookings() {
                 {status === 'completed' && (
                   <TouchableOpacity
                     style={styles.reviewBtn}
-                    onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName } })}
+                    onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName, bookingId: booking.id } })}
                     // @ts-ignore
-                    onClick={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName } })}
+                    onClick={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName, bookingId: booking.id } })}
                   >
                     <Text style={styles.reviewBtnText}>✏️ Leave a review</Text>
                   </TouchableOpacity>
