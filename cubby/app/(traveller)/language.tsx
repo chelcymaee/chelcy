@@ -32,7 +32,9 @@ export default function Language() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')} style={styles.backBtn}
+          // @ts-ignore
+          onClick={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')}>
           <Text style={styles.backText}>← Account</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Language</Text>
@@ -47,6 +49,8 @@ export default function Language() {
               style={[styles.row, idx === LANGUAGES.length - 1 && { borderBottomWidth: 0 }]}
               onPress={() => handleSelect(lang)}
               activeOpacity={0.7}
+              // @ts-ignore
+              onClick={() => handleSelect(lang)}
             >
               <Text style={styles.langLabel}>{lang}</Text>
               <View style={[styles.radio, selected === lang && styles.radioSelected]}>

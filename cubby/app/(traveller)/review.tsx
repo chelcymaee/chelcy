@@ -63,7 +63,9 @@ export default function Review() {
         {/* Stars */}
         <View style={styles.starsRow}>
           {[1, 2, 3, 4, 5].map(s => (
-            <TouchableOpacity key={s} onPress={() => setRating(s)}>
+            <TouchableOpacity key={s} onPress={() => setRating(s)}
+              // @ts-ignore
+              onClick={() => setRating(s)}>
               <Text style={[styles.star, s <= rating && styles.starActive]}>★</Text>
             </TouchableOpacity>
           ))}
@@ -98,7 +100,11 @@ export default function Review() {
           numberOfLines={4}
         />
 
-        <TouchableOpacity style={[styles.btn, rating === 0 && styles.btnDisabled]} onPress={submit} disabled={rating === 0}>
+        {!!reviewError && <Text style={{ color: '#DC2626', fontWeight: '600', marginBottom: 12, textAlign: 'center' }}>{reviewError}</Text>}
+        <TouchableOpacity style={[styles.btn, rating === 0 && styles.btnDisabled]} onPress={submit}
+          // @ts-ignore
+          onClick={submit}
+          disabled={rating === 0}>
           <Text style={styles.btnText}>Submit review</Text>
         </TouchableOpacity>
       </ScrollView>
