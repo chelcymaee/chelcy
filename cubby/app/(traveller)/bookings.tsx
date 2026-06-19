@@ -1,19 +1,19 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
+import { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { useFocusEffect, router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { Colors } from '../../src/constants/colors';
-import { MOCK_BOOKINGS } from '../../src/lib/mock-data';
-import { Booking } from '../../src/types';
 
-const STATUS_COLOR: Record<Booking['status'], string> = {
-  pending: Colors.warning,
-  confirmed: Colors.info,
-  active: Colors.success,
-  completed: Colors.textSecondary,
-  cancelled: Colors.error,
+const STATUS_COLOR: Record<string, string> = {
+  pending: '#F59E0B',
+  confirmed: '#3B82F6',
+  active: '#10B981',
+  completed: '#6B7280',
+  cancelled: '#EF4444',
 };
 
-const STATUS_LABEL: Record<Booking['status'], string> = {
+const STATUS_LABEL: Record<string, string> = {
   pending: 'Pending',
   confirmed: 'Confirmed',
   active: 'Active',
@@ -21,86 +21,37 @@ const STATUS_LABEL: Record<Booking['status'], string> = {
   cancelled: 'Cancelled',
 };
 
-const ACTIVE_STATUSES: Booking['status'][] = ['pending', 'confirmed', 'active'];
-const ARCHIVED_STATUSES: Booking['status'][] = ['completed', 'cancelled'];
-
-function BookingCard({ booking }: { booking: Booking }) {
-  const typeEmoji: Record<string, string> = {
-    cafe: '☕', home: '🏠', shop: '🛍️', guesthouse: '🏨', other: '📦',
-  };
-
-  return (
-    <View style={styles.card}>
-      {/* Top */}
-      <View style={styles.cardTop}>
-        <View style={styles.cardTopLeft}>
-          <Text style={styles.cardEmoji}>{typeEmoji[booking.host.business_type] ?? '📦'}</Text>
-          <View>
-            <Text style={styles.cardName}>{booking.host.display_name}</Text>
-            <Text style={styles.cardLocation}>{booking.host.location_name}</Text>
-          </View>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: STATUS_COLOR[booking.status] + '20' }]}>
-          <Text style={[styles.statusText, { color: STATUS_COLOR[booking.status] }]}>
-            {STATUS_LABEL[booking.status]}
-          </Text>
-        </View>
-      </View>
-
-      {/* Details */}
-      <View style={styles.details}>
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>Drop-off</Text>
-          <Text style={styles.detailValue}>{booking.drop_off_time}</Text>
-        </View>
-        <View style={styles.detailDivider} />
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>Pick-up</Text>
-          <Text style={styles.detailValue}>{booking.pick_up_time}</Text>
-        </View>
-        <View style={styles.detailDivider} />
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>Bags</Text>
-          <Text style={styles.detailValue}>{booking.bag_count}</Text>
-        </View>
-        <View style={styles.detailDivider} />
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>Total</Text>
-          <Text style={styles.detailValue}>R{booking.total_price}</Text>
-        </View>
-      </View>
-
-      {/* PIN code for confirmed/active */}
-      {(booking.status === 'confirmed' || booking.status === 'active') && (
-        <View style={styles.pinBox}>
-          <Text style={styles.pinLabel}>Your drop-off PIN</Text>
-          <Text style={styles.pinCode}>{booking.pin_code}</Text>
-          <Text style={styles.pinHint}>Show this to your host on arrival</Text>
-        </View>
-      )}
-
-      {/* Leave a review for completed bookings */}
-      {booking.status === 'completed' && (
-        <TouchableOpacity
-          style={styles.reviewBtn}
-          onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostName: booking.host.display_name, hostId: booking.host_id } })}
-        >
-          <Text style={styles.reviewBtnText}>⭐ Leave a review</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Date */}
-      <Text style={styles.date}>{booking.drop_off_date}</Text>
-    </View>
-  );
-}
-
 export default function Bookings() {
-  const [tab, setTab] = useState<'active' | 'archived'>('active');
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
 
-  const activeBookings = MOCK_BOOKINGS.filter(b => ACTIVE_STATUSES.includes(b.status));
-  const archivedBookings = MOCK_BOOKINGS.filter(b => ARCHIVED_STATUSES.includes(b.status));
-  const displayed = tab === 'active' ? activeBookings : archivedBookings;
+  useFocusEffect(useCallback(() => {
+    loadBookings();
+  }, []));
+
+  async function loadBookings() {
+    try {
+      if (isSupabaseConfigured) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data } = await supabase
+            .from('bookings')
+            .select('*, hosts(display_name, location_name)')
+            .eq('traveller_id', user.id)
+            .order('created_at', { ascending: false });
+          if (data) { setBookings(data); return; }
+        }
+      }
+      const raw = await AsyncStorage.getItem('cubby_bookings');
+      setBookings(raw ? JSON.parse(raw) : []);
+    } catch {
+      setBookings([]);
+    }
+  }
+
+  const upcoming = bookings.filter(b => ['pending', 'confirmed', 'active'].includes(b.status ?? 'confirmed'));
+  const past = bookings.filter(b => ['completed', 'cancelled'].includes(b.status ?? ''));
+  const shown = tab === 'upcoming' ? upcoming : past;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -108,52 +59,126 @@ export default function Bookings() {
         <Text style={styles.heading}>My Bookings</Text>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabBar}>
         <TouchableOpacity
-          style={[styles.tab, tab === 'active' && styles.tabActive]}
-          onPress={() => setTab('active')}
-          activeOpacity={0.75}
+          style={[styles.tab, tab === 'upcoming' && styles.tabActive]}
+          onPress={() => setTab('upcoming')}
+          // @ts-ignore
+          onClick={() => setTab('upcoming')}
         >
-          <Text style={[styles.tabText, tab === 'active' && styles.tabTextActive]}>Active</Text>
-          {tab === 'active' && <View style={styles.tabUnderline} />}
+          <Text style={[styles.tabText, tab === 'upcoming' && styles.tabTextActive]}>
+            Upcoming{upcoming.length > 0 ? ` (${upcoming.length})` : ''}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, tab === 'archived' && styles.tabActive]}
-          onPress={() => setTab('archived')}
-          activeOpacity={0.75}
+          style={[styles.tab, tab === 'past' && styles.tabActive]}
+          onPress={() => setTab('past')}
+          // @ts-ignore
+          onClick={() => setTab('past')}
         >
-          <Text style={[styles.tabText, tab === 'archived' && styles.tabTextActive]}>Archived</Text>
-          {tab === 'archived' && <View style={styles.tabUnderline} />}
+          <Text style={[styles.tabText, tab === 'past' && styles.tabTextActive]}>
+            Past{past.length > 0 ? ` (${past.length})` : ''}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={displayed}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => <BookingCard booking={item} />}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          tab === 'active' ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🎟️</Text>
-              <Text style={styles.emptyTitle}>You don't have any active bookings</Text>
+      <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+        {shown.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyEmoji}>🎟️</Text>
+            <Text style={styles.emptyTitle}>
+              {tab === 'upcoming' ? 'No upcoming bookings' : 'No past bookings'}
+            </Text>
+            <Text style={styles.emptySub}>
+              {tab === 'upcoming'
+                ? 'Find a storage spot and book it to see it here.'
+                : 'Your completed bookings will appear here.'}
+            </Text>
+            {tab === 'upcoming' && (
               <TouchableOpacity
-                style={styles.emptyBtn}
-                onPress={() => router.push('/(traveller)/explore')}
+                style={styles.exploreBtn}
+                onPress={() => router.replace('/(traveller)/explore')}
+                // @ts-ignore
+                onClick={() => router.replace('/(traveller)/explore')}
               >
-                <Text style={styles.emptyBtnText}>Find a host to store your bags</Text>
+                <Text style={styles.exploreBtnText}>Find storage →</Text>
               </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>📦</Text>
-              <Text style={styles.emptyTitle}>No past bookings yet</Text>
-            </View>
-          )
-        }
-      />
+            )}
+          </View>
+        ) : (
+          shown.map(booking => {
+            const status = booking.status ?? 'confirmed';
+            const statusColor = STATUS_COLOR[status] ?? '#6B7280';
+            const hostName = booking.hosts?.display_name ?? booking.hostName ?? booking.host?.display_name ?? 'Your host';
+            const locationName = booking.hosts?.location_name ?? booking.locationName ?? '';
+            const date = booking.drop_off_date ?? booking.date ?? '';
+            const dropOff = booking.drop_off_time ?? booking.dropOff ?? '';
+            const pickUp = booking.pick_up_time ?? booking.pickUp ?? '';
+            const bags = booking.bag_count ?? booking.bags ?? 1;
+            const total = booking.total_price ?? booking.totalPrice ?? 0;
+            const pinCode = booking.pin_code ?? booking.pin ?? '';
+
+            return (
+              <View key={booking.id} style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardHost}>{hostName}</Text>
+                    {!!locationName && <Text style={styles.cardLocation}>📍 {locationName}</Text>}
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+                    <Text style={[styles.statusText, { color: statusColor }]}>
+                      {STATUS_LABEL[status] ?? status}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.cardDetails}>
+                  {!!date && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailIcon}>📅</Text>
+                      <Text style={styles.detailText}>{date}</Text>
+                    </View>
+                  )}
+                  {(!!dropOff || !!pickUp) && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailIcon}>🕐</Text>
+                      <Text style={styles.detailText}>{dropOff}{dropOff && pickUp ? ' → ' : ''}{pickUp}</Text>
+                    </View>
+                  )}
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailIcon}>🎒</Text>
+                    <Text style={styles.detailText}>{bags} bag{Number(bags) !== 1 ? 's' : ''}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailIcon}>💰</Text>
+                    <Text style={styles.detailText}>R{total}</Text>
+                  </View>
+                </View>
+
+                {!!pinCode && status !== 'completed' && status !== 'cancelled' && (
+                  <View style={styles.pinCard}>
+                    <Text style={styles.pinLabel}>Your drop-off PIN</Text>
+                    <Text style={styles.pinCode}>{pinCode}</Text>
+                    <Text style={styles.pinHint}>Show this to your host on arrival</Text>
+                  </View>
+                )}
+
+                {status === 'completed' && (
+                  <TouchableOpacity
+                    style={styles.reviewBtn}
+                    onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName } })}
+                    // @ts-ignore
+                    onClick={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName } })}
+                  >
+                    <Text style={styles.reviewBtnText}>✏️ Leave a review</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })
+        )}
+        <View style={{ height: 40 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -162,75 +187,43 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
-
-  // Tabs
   tabBar: {
-    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border,
-    backgroundColor: Colors.white,
-  },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 14, position: 'relative' },
-  tabActive: {},
-  tabText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
-  tabTextActive: { color: '#FF5C5C', fontWeight: '700' },
-  tabUnderline: {
-    position: 'absolute', bottom: 0, left: '20%', right: '20%',
-    height: 2.5, backgroundColor: '#FF5C5C', borderRadius: 2,
-  },
-
-  list: { padding: 20, gap: 16, paddingBottom: 40 },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: 18,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-  },
-  cardTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    backgroundColor: Colors.white,
   },
-  cardTopLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  cardEmoji: { fontSize: 28 },
-  cardName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  cardLocation: { fontSize: 13, color: Colors.textSecondary },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  statusText: { fontSize: 12, fontWeight: '700' },
-  details: { flexDirection: 'row', padding: 16 },
-  detailItem: { flex: 1, alignItems: 'center' },
-  detailLabel: { fontSize: 11, color: Colors.textLight, marginBottom: 4 },
-  detailValue: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  detailDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
-  pinBox: {
-    backgroundColor: Colors.primary,
-    margin: 12,
-    marginTop: 0,
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
-  },
-  pinLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 4 },
-  pinCode: { fontSize: 36, fontWeight: '900', color: Colors.white, letterSpacing: 8 },
-  pinHint: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 6 },
-  reviewBtn: {
-    margin: 12, marginTop: 0, backgroundColor: Colors.accent,
-    borderRadius: 12, paddingVertical: 12, alignItems: 'center',
-  },
-  reviewBtnText: { fontSize: 14, fontWeight: '700', color: Colors.white },
-  date: { fontSize: 12, color: Colors.textLight, textAlign: 'center', paddingBottom: 14 },
-  empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyEmoji: { fontSize: 52, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 24, textAlign: 'center' },
-  emptyBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingHorizontal: 24,
+  tab: {
+    flex: 1,
     paddingVertical: 14,
+    alignItems: 'center',
+    borderBottomWidth: 2.5,
+    borderBottomColor: 'transparent',
   },
-  emptyBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
+  tabActive: { borderBottomColor: '#FF5C5C' },
+  tabText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
+  tabTextActive: { color: '#FF5C5C', fontWeight: '800' },
+  list: { padding: 16, gap: 16 },
+  empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 20 },
+  emptyEmoji: { fontSize: 56, marginBottom: 16 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8, textAlign: 'center' },
+  emptySub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  exploreBtn: { backgroundColor: '#FF5C5C', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28 },
+  exploreBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  card: { backgroundColor: Colors.white, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 12 },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  cardHost: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
+  cardLocation: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  statusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  statusText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  cardDetails: { gap: 6 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  detailIcon: { fontSize: 14, width: 20 },
+  detailText: { fontSize: 14, color: Colors.textSecondary },
+  pinCard: { backgroundColor: Colors.primary, borderRadius: 14, padding: 14, alignItems: 'center' },
+  pinLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
+  pinCode: { fontSize: 36, fontWeight: '900', color: '#fff', letterSpacing: 8, marginBottom: 4 },
+  pinHint: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
+  reviewBtn: { borderWidth: 1.5, borderColor: '#FF5C5C', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  reviewBtnText: { fontSize: 14, fontWeight: '700', color: '#FF5C5C' },
 });

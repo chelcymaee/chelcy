@@ -1,46 +1,111 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, Linking,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
-import { MOCK_HOSTS } from '../../src/lib/mock-data';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { MOCK_HOSTS } from '../../src/lib/mock-data';
 
 const TIME_SLOTS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
   '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
 ];
 
+function normalizeHost(raw: any) {
+  return {
+    id: raw.id,
+    display_name: raw.display_name ?? raw.displayName ?? '',
+    business_type: raw.business_type ?? raw.businessType ?? 'other',
+    location_name: raw.location_name ?? raw.locationName ?? '',
+    price_per_bag_per_day: raw.price_per_bag_per_day ?? raw.pricePerBag ?? 100,
+    available_from: raw.available_from ?? raw.availableFrom ?? '08:00',
+    available_until: raw.available_until ?? raw.availableUntil ?? '20:00',
+  };
+}
+
 export default function Booking() {
   const { hostId, bagCount } = useLocalSearchParams<{ hostId: string; bagCount: string }>();
-  const host = MOCK_HOSTS.find(h => h.id === hostId);
   const bags = parseInt(bagCount ?? '1');
 
+  const [host, setHost] = useState<any>(null);
+  const [hostLoading, setHostLoading] = useState(true);
   const [dropTime, setDropTime] = useState('09:00');
   const [pickTime, setPickTime] = useState('15:00');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
 
-  if (!host) return null;
+  // Load host from AsyncStorage or Supabase — NOT from empty MOCK_HOSTS
+  useEffect(() => {
+    async function loadHost() {
+      if (!hostId) { setHostLoading(false); return; }
+      try {
+        if (isSupabaseConfigured) {
+          const { data } = await supabase.from('hosts').select('*').eq('id', hostId).single();
+          if (data) { setHost(normalizeHost(data)); setHostLoading(false); return; }
+        }
+        // Try AsyncStorage (admin-created hosts)
+        const raw = await AsyncStorage.getItem('cubby_hosts');
+        if (raw) {
+          const found = JSON.parse(raw).find((h: any) => h.id === hostId);
+          if (found) { setHost(normalizeHost(found)); setHostLoading(false); return; }
+        }
+        // Fallback to mock data
+        const mock = MOCK_HOSTS.find(h => h.id === hostId);
+        if (mock) setHost(normalizeHost(mock));
+      } catch {}
+      setHostLoading(false);
+    }
+    loadHost();
+  }, [hostId]);
+
+  if (hostLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: Colors.textSecondary, fontSize: 16 }}>Loading…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!host) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>😕</Text>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8 }}>Host not found</Text>
+          <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginBottom: 24 }}>
+            We couldn't load this host's details. Please go back and try again.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 24 }}
+            onPress={() => router.replace('/(traveller)/explore')}
+            // @ts-ignore
+            onClick={() => router.replace('/(traveller)/explore')}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Back to explore</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const total = host.price_per_bag_per_day * bags;
   const platformFee = Math.round(total * 0.1);
   const grandTotal = total + platformFee;
+  const pin = String(Math.floor(1000 + Math.random() * 9000));
 
   async function handleConfirm() {
     setErrorMsg('');
-    setSuccessMsg('');
     setLoading(true);
     try {
       if (isSupabaseConfigured) {
-        // Get logged-in user's email
         const { data: { user } } = await supabase.auth.getUser();
         const travellerEmail = user?.email ?? '';
 
-        // Create a pending booking record first so we have an ID
         const { data: booking, error: bookingError } = await supabase
           .from('bookings')
           .insert({
@@ -53,7 +118,7 @@ export default function Booking() {
             bag_count: bags,
             total_price: grandTotal,
             status: 'pending',
-            pin_code: String(Math.floor(1000 + Math.random() * 9000)),
+            pin_code: pin,
           })
           .select('id')
           .single();
@@ -81,70 +146,83 @@ export default function Booking() {
 
         await Linking.openURL(data.redirectUrl);
       } else {
-        // Demo mode — show success message then navigate
-        setSuccessMsg('Payment processing will be available once Cubby goes live. Your booking has been saved.');
-        setTimeout(() => {
-          router.replace({
-            pathname: '/(traveller)/booking-confirmation',
-            params: {
-              hostName: host.display_name,
-              dropOff: dropTime,
-              pickUp: pickTime,
-              bags: String(bags),
-              total: String(grandTotal),
-              pin: String(Math.floor(1000 + Math.random() * 9000)),
-            },
-          });
-        }, 2000);
+        // Demo mode: save booking to AsyncStorage then go to confirmation
+        const bookingId = `booking-${Date.now()}`;
+        const newBooking = {
+          id: bookingId,
+          hostId: host.id,
+          hostName: host.display_name,
+          drop_off_date: new Date().toISOString().split('T')[0],
+          drop_off_time: dropTime,
+          pick_up_date: new Date().toISOString().split('T')[0],
+          pick_up_time: pickTime,
+          bag_count: bags,
+          total_price: grandTotal,
+          status: 'confirmed',
+          pin_code: pin,
+          created_at: new Date().toISOString(),
+        };
+
+        // Save to AsyncStorage so it appears in bookings list
+        const existingRaw = await AsyncStorage.getItem('cubby_bookings');
+        const existing = existingRaw ? JSON.parse(existingRaw) : [];
+        await AsyncStorage.setItem('cubby_bookings', JSON.stringify([newBooking, ...existing]));
+
+        router.replace({
+          pathname: '/(traveller)/booking-confirmation',
+          params: {
+            hostName: host.display_name,
+            dropOff: dropTime,
+            pickUp: pickTime,
+            bags: String(bags),
+            total: String(grandTotal),
+            pin,
+          },
+        });
       }
     } finally {
       setLoading(false);
     }
   }
 
+  const goBack = () => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore');
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}
+        <TouchableOpacity style={styles.back} onPress={goBack}
           // @ts-ignore
-          onClick={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
+          onClick={goBack}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
+
         {!!errorMsg && (
           <View style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>⚠️ {errorMsg}</Text>
           </View>
         )}
-        {!!successMsg && (
-          <View style={styles.successBanner}>
-            <Text style={styles.successBannerText}>✓ {successMsg}</Text>
-          </View>
-        )}
+
         <Text style={styles.heading}>Confirm booking</Text>
 
-        {/* Host summary */}
         <View style={styles.hostCard}>
           <Text style={styles.hostCardEmoji}>
-            {host.business_type === 'cafe' ? '☕' : host.business_type === 'home' ? '🏠' : '🛍️'}
+            {host.business_type === 'café' || host.business_type === 'cafe' ? '☕' : host.business_type === 'home' ? '🏠' : host.business_type === 'hotel' ? '🏨' : '🛍️'}
           </Text>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.hostCardName}>{host.display_name}</Text>
             <Text style={styles.hostCardLocation}>{host.location_name}</Text>
           </View>
         </View>
 
-        {/* Date — today only for demo */}
         <Text style={styles.sectionTitle}>Date</Text>
         <View style={styles.dateBox}>
           <Text style={styles.dateText}>📅 Today — {new Date().toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
         </View>
 
-        {/* Drop-off time */}
         <Text style={styles.sectionTitle}>Drop-off time</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.timeRow}>
-            {TIME_SLOTS.filter(t => t >= host.available_from && t <= host.available_until).map(t => (
+            {TIME_SLOTS.map(t => (
               <TouchableOpacity
                 key={t}
                 style={[styles.timeChip, dropTime === t && styles.timeChipActive]}
@@ -158,11 +236,10 @@ export default function Booking() {
           </View>
         </ScrollView>
 
-        {/* Pick-up time */}
         <Text style={styles.sectionTitle}>Pick-up time</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.timeRow}>
-            {TIME_SLOTS.filter(t => t > dropTime && t <= host.available_until).map(t => (
+            {TIME_SLOTS.filter(t => t > dropTime).map(t => (
               <TouchableOpacity
                 key={t}
                 style={[styles.timeChip, pickTime === t && styles.timeChipActive]}
@@ -176,13 +253,11 @@ export default function Booking() {
           </View>
         </ScrollView>
 
-        {/* Bag count */}
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>🎒 Bags</Text>
           <Text style={styles.summaryValue}>{bags}</Text>
         </View>
 
-        {/* Price breakdown */}
         <Text style={styles.sectionTitle}>Price breakdown</Text>
         <View style={styles.priceBox}>
           <View style={styles.priceRow}>
@@ -200,7 +275,6 @@ export default function Booking() {
           </View>
         </View>
 
-        {/* Trust note */}
         <View style={styles.trustNote}>
           <Text style={styles.trustIcon}>🔒</Text>
           <Text style={styles.trustText}>
@@ -211,7 +285,6 @@ export default function Booking() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Confirm bar */}
       <View style={styles.confirmBar}>
         <TouchableOpacity
           style={[styles.confirmBtn, loading && styles.confirmBtnDisabled]}
@@ -236,108 +309,35 @@ const styles = StyleSheet.create({
   back: { marginBottom: 16 },
   backText: { fontSize: 16, color: Colors.primary, fontWeight: '600' },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, marginBottom: 20 },
-  errorBanner: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
+  errorBanner: { backgroundColor: '#FEE2E2', borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#FECACA' },
   errorBannerText: { fontSize: 14, color: '#B91C1C', fontWeight: '600' },
-  successBanner: {
-    backgroundColor: '#DCFCE7',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-  },
-  successBannerText: { fontSize: 14, color: '#15803D', fontWeight: '600' },
-  hostCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: Colors.white,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
+  hostCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.white, borderRadius: 14, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: Colors.border },
   hostCardEmoji: { fontSize: 32 },
   hostCardName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
   hostCardLocation: { fontSize: 13, color: Colors.textSecondary },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 10, marginTop: 16 },
-  dateBox: {
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
+  dateBox: { backgroundColor: Colors.white, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.border },
   dateText: { fontSize: 14, color: Colors.textPrimary },
   timeRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
-  timeChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-  },
+  timeChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
   timeChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   timeText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   timeTextActive: { color: Colors.white },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: Colors.white, borderRadius: 12, padding: 14, marginTop: 16, borderWidth: 1, borderColor: Colors.border },
   summaryLabel: { fontSize: 15, color: Colors.textPrimary },
   summaryValue: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  priceBox: {
-    backgroundColor: Colors.white,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 10,
-  },
+  priceBox: { backgroundColor: Colors.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 10 },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between' },
   priceLabel: { fontSize: 15, color: Colors.textSecondary },
   priceValue: { fontSize: 15, color: Colors.textPrimary },
   priceDivider: { height: 1, backgroundColor: Colors.border },
   priceTotalLabel: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
   priceTotalValue: { fontSize: 16, fontWeight: '800', color: Colors.primary },
-  trustNote: {
-    flexDirection: 'row',
-    gap: 10,
-    backgroundColor: '#EFF9F5',
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 20,
-  },
+  trustNote: { flexDirection: 'row', gap: 10, backgroundColor: '#EFF9F5', borderRadius: 12, padding: 14, marginTop: 20 },
   trustIcon: { fontSize: 18 },
   trustText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
-  confirmBar: {
-    padding: 20,
-    paddingBottom: 34,
-    backgroundColor: Colors.white,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  confirmBtn: {
-    backgroundColor: Colors.accent,
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
+  confirmBar: { padding: 20, paddingBottom: 34, backgroundColor: Colors.white, borderTopWidth: 1, borderTopColor: Colors.border },
+  confirmBtn: { backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 18, alignItems: 'center' },
   confirmBtnDisabled: { opacity: 0.6 },
   confirmText: { fontSize: 17, fontWeight: '700', color: Colors.white },
 });

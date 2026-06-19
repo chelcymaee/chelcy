@@ -85,15 +85,21 @@ export default function BookingConfirmation() {
         </View>
 
         {/* Actions */}
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => router.replace('/(traveller)/bookings')}>
+        <TouchableOpacity style={styles.primaryBtn} onPress={() => router.replace('/(traveller)/bookings')}
+          // @ts-ignore
+          onClick={() => router.replace('/(traveller)/bookings')}>
           <Text style={styles.primaryBtnText}>View my bookings</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryBtn} onPress={shareBooking}>
+        <TouchableOpacity style={styles.secondaryBtn} onPress={shareBooking}
+          // @ts-ignore
+          onClick={shareBooking}>
           <Text style={styles.secondaryBtnText}>📤 Share Cubby with a friend</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.ghostBtn} onPress={() => router.replace('/(traveller)/explore')}>
+        <TouchableOpacity style={styles.ghostBtn} onPress={() => router.replace('/(traveller)/explore')}
+          // @ts-ignore
+          onClick={() => router.replace('/(traveller)/explore')}>
           <Text style={styles.ghostBtnText}>Back to explore</Text>
         </TouchableOpacity>
 
