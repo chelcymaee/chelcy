@@ -31,11 +31,21 @@ export default function Signup() {
     setLoading(true);
     try {
       if (isSupabaseConfigured) {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName, role } },
+        });
         if (error) { setErrorMsg(error.message); return; }
+        // Profile row is created by the on_auth_user_created trigger in Supabase.
+        // If the session is already active (email confirmation disabled), also try
+        // an upsert so it works in both configurations.
         const user = data.user;
-        if (user) {
-          await supabase.from('profiles').insert({ id: user.id, email, full_name: fullName, role });
+        if (user && data.session) {
+          await supabase.from('profiles').upsert(
+            { id: user.id, email, full_name: fullName, role },
+            { onConflict: 'id', ignoreDuplicates: true },
+          );
         }
       } else {
         // Local auth — save account to device
