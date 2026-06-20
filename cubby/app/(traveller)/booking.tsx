@@ -41,6 +41,8 @@ export default function Booking() {
   const [pickTime, setPickTime] = useState('15:00');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  // PIN generated once per booking screen mount — stable across re-renders
+  const [pin] = useState(() => String(Math.floor(1000 + Math.random() * 9000)));
 
   // Load host from AsyncStorage or Supabase — NOT from empty MOCK_HOSTS
   useEffect(() => {
@@ -101,7 +103,6 @@ export default function Booking() {
   const total = host.price_per_bag_per_day * bags;
   const platformFee = Math.round(total * 0.1);
   const grandTotal = total + platformFee;
-  const pin = String(Math.floor(1000 + Math.random() * 9000));
 
   const isToday = bookingDate === todayISO();
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
