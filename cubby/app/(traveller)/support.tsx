@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, TextInput, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, TextInput, Linking } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 
@@ -16,22 +16,27 @@ export default function Support() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
 
   function sendMessage() {
+    setFormError(''); setFormSuccess('');
     if (!subject || !message) {
-      Alert.alert('Please fill in both fields');
+      setFormError('Please fill in both fields.');
       return;
     }
-    Alert.alert('Message sent!', 'Our support team will get back to you within 24 hours.', [
-      { text: 'OK', onPress: () => { setSubject(''); setMessage(''); } }
-    ]);
+    setSubject(''); setMessage('');
+    setFormSuccess('Message sent! Our support team will get back to you within 24 hours.');
+    setTimeout(() => setFormSuccess(''), 4000);
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')}>
+          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')}
+            // @ts-ignore
+            onClick={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')}>
             <Text style={styles.back}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.heading}>Help & Support</Text>
@@ -87,7 +92,11 @@ export default function Support() {
             multiline
             numberOfLines={5}
           />
-          <TouchableOpacity style={styles.btn} onPress={sendMessage}>
+          {!!formError && <Text style={{ color: '#DC2626', fontWeight: '600', marginTop: 8 }}>{formError}</Text>}
+          {!!formSuccess && <Text style={{ color: '#065F46', fontWeight: '600', marginTop: 8 }}>{formSuccess}</Text>}
+          <TouchableOpacity style={styles.btn} onPress={sendMessage}
+            // @ts-ignore
+            onClick={sendMessage}>
             <Text style={styles.btnText}>Send message</Text>
           </TouchableOpacity>
         </View>

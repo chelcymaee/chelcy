@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, TextInput, Switch, Alert,
+  TouchableOpacity, TextInput, Switch,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TYPES = [
@@ -29,26 +30,61 @@ export default function HostProfile() {
   const [untilTime, setUntilTime] = useState('20:00');
   const [days, setDays] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
   const [isActive, setIsActive] = useState(true);
-  const [saved, setSaved] = useState(false);
+
+  const [loading, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
+  const [priceError, setPriceError] = useState('');
+
+  const showToast = useCallback((msg: string, error = false) => {
+    setToast({ msg, error });
+    setTimeout(() => setToast(null), 2500);
+  }, []);
 
   useEffect(() => {
-    AsyncStorage.getItem('cubby_host_profile').then(raw => {
-      if (!raw) return;
-      try {
-        const data = JSON.parse(raw);
-        if (data.displayName !== undefined) setDisplayName(data.displayName);
-        if (data.bio !== undefined) setBio(data.bio);
-        if (data.location !== undefined) setLocation(data.location);
-        if (data.type !== undefined) setType(data.type);
-        if (data.pricePerBag !== undefined) setPricePerBag(data.pricePerBag);
-        if (data.maxBags !== undefined) setMaxBags(data.maxBags);
-        if (data.fromTime !== undefined) setFromTime(data.fromTime);
-        if (data.untilTime !== undefined) setUntilTime(data.untilTime);
-        if (data.days !== undefined) setDays(data.days);
-        if (data.isActive !== undefined) setIsActive(data.isActive);
-      } catch {}
-    });
+    loadProfile();
   }, []);
+
+  async function loadProfile() {
+    if (isSupabaseConfigured) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data, error } = await supabase
+          .from('hosts')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        if (!error && data) {
+          setDisplayName(data.display_name ?? 'My Cubby Spot');
+          setBio(data.bio ?? '');
+          setLocation(data.location_name ?? '');
+          setType(data.business_type ?? 'home');
+          setPricePerBag(String(data.price_per_bag_per_day ?? 100));
+          setMaxBags(String(data.max_bags ?? 4));
+          setFromTime(data.available_from ?? '08:00');
+          setUntilTime(data.available_until ?? '20:00');
+          setDays(data.available_days ?? DAYS);
+          setIsActive(data.is_active ?? true);
+          return;
+        }
+      }
+    }
+    // Fallback: AsyncStorage
+    const raw = await AsyncStorage.getItem('cubby_host_profile');
+    if (!raw) return;
+    try {
+      const d = JSON.parse(raw);
+      if (d.displayName !== undefined) setDisplayName(d.displayName);
+      if (d.bio !== undefined) setBio(d.bio);
+      if (d.location !== undefined) setLocation(d.location);
+      if (d.type !== undefined) setType(d.type);
+      if (d.pricePerBag !== undefined) setPricePerBag(d.pricePerBag);
+      if (d.maxBags !== undefined) setMaxBags(d.maxBags);
+      if (d.fromTime !== undefined) setFromTime(d.fromTime);
+      if (d.untilTime !== undefined) setUntilTime(d.untilTime);
+      if (d.days !== undefined) setDays(d.days);
+      if (d.isActive !== undefined) setIsActive(d.isActive);
+    } catch {}
+  }
 
   function toggleDay(d: string) {
     setDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
@@ -56,19 +92,73 @@ export default function HostProfile() {
 
   async function save() {
     const price = parseInt(pricePerBag);
-    if (isNaN(price) || price < 100 || price > 300) {
-      Alert.alert('Invalid price', 'Price must be between R100 and R300 per bag per day.');
+    if (isNaN(price) || price < 10 || price > 1000) {
+      setPriceError('Price must be between R10 and R1,000 per bag per day.');
       return;
     }
-    const data = { displayName, bio, location, type, pricePerBag, maxBags, fromTime, untilTime, days, isActive };
-    await AsyncStorage.setItem('cubby_host_profile', JSON.stringify(data));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    Alert.alert('Saved!', 'Your host profile has been saved.');
+    setPriceError('');
+
+    const bags = Math.max(1, Math.min(50, parseInt(maxBags) || 4));
+
+    setSaving(true);
+    try {
+      if (isSupabaseConfigured) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error } = await supabase
+            .from('hosts')
+            .update({
+              display_name: displayName.trim(),
+              bio: bio.trim(),
+              location_name: location.trim(),
+              business_type: type,
+              price_per_bag_per_day: price,
+              max_bags: bags,
+              available_from: fromTime,
+              available_until: untilTime,
+              available_days: days,
+              is_active: isActive,
+            })
+            .eq('user_id', user.id);
+
+          if (error) {
+            showToast('Could not save. Please try again.', true);
+            return;
+          }
+
+          // Cache locally so offline reads are also fresh
+          await AsyncStorage.setItem('cubby_host_profile', JSON.stringify({
+            displayName: displayName.trim(), bio: bio.trim(), location: location.trim(),
+            type, pricePerBag: String(price), maxBags: String(bags),
+            fromTime, untilTime, days, isActive,
+          }));
+
+          showToast('Listing updated ✓');
+          return;
+        }
+      }
+
+      // Demo mode: AsyncStorage only
+      await AsyncStorage.setItem('cubby_host_profile', JSON.stringify({
+        displayName: displayName.trim(), bio: bio.trim(), location: location.trim(),
+        type, pricePerBag: String(price), maxBags: String(bags),
+        fromTime, untilTime, days, isActive,
+      }));
+      showToast('Listing updated ✓');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Toast */}
+      {toast && (
+        <View style={[styles.toast, toast.error && styles.toastError]}>
+          <Text style={styles.toastText}>{toast.msg}</Text>
+        </View>
+      )}
+
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.heading}>My Host Profile</Text>
@@ -97,6 +187,8 @@ export default function HostProfile() {
                 key={t.value}
                 style={[styles.typeChip, type === t.value && styles.typeChipActive]}
                 onPress={() => setType(t.value)}
+                // @ts-ignore
+                onClick={() => setType(t.value)}
               >
                 <Text style={styles.typeEmoji}>{t.emoji}</Text>
                 <Text style={[styles.typeLabel, type === t.value && styles.typeLabelActive]}>{t.label}</Text>
@@ -107,7 +199,13 @@ export default function HostProfile() {
 
         {/* Basic info */}
         <Text style={styles.sectionTitle}>Display name</Text>
-        <TextInput style={styles.input} value={displayName} onChangeText={setDisplayName} />
+        <TextInput
+          style={styles.input}
+          value={displayName}
+          onChangeText={setDisplayName}
+          placeholder="e.g. Sea Point Café & Co"
+          placeholderTextColor={Colors.textLight}
+        />
 
         <Text style={styles.sectionTitle}>Location</Text>
         <TextInput
@@ -130,36 +228,51 @@ export default function HostProfile() {
         />
 
         {/* Pricing */}
-        <Text style={styles.sectionTitle}>Price per bag per day (R100–R300)</Text>
+        <Text style={styles.sectionTitle}>Price per bag per day</Text>
         <View style={styles.priceRow}>
           <Text style={styles.pricePrefix}>R</Text>
           <TextInput
-            style={[styles.input, styles.priceInput]}
+            style={[styles.input, styles.priceInput, !!priceError && styles.inputError]}
             value={pricePerBag}
-            onChangeText={setPricePerBag}
+            onChangeText={v => { setPricePerBag(v); setPriceError(''); }}
             keyboardType="numeric"
           />
         </View>
+        {!!priceError && <Text style={styles.errorText}>{priceError}</Text>}
 
         <Text style={styles.sectionTitle}>Max bags you can take</Text>
-        <TextInput
-          style={[styles.input, { width: 100 }]}
-          value={maxBags}
-          onChangeText={setMaxBags}
-          keyboardType="numeric"
-        />
+        <View style={styles.counterRow}>
+          <TouchableOpacity
+            style={styles.counterBtn}
+            onPress={() => setMaxBags(String(Math.max(1, (parseInt(maxBags) || 1) - 1)))}
+            // @ts-ignore
+            onClick={() => setMaxBags(String(Math.max(1, (parseInt(maxBags) || 1) - 1)))}
+          >
+            <Text style={styles.counterBtnText}>−</Text>
+          </TouchableOpacity>
+          <Text style={styles.counterVal}>{maxBags}</Text>
+          <TouchableOpacity
+            style={styles.counterBtn}
+            onPress={() => setMaxBags(String(Math.min(50, (parseInt(maxBags) || 1) + 1)))}
+            // @ts-ignore
+            onClick={() => setMaxBags(String(Math.min(50, (parseInt(maxBags) || 1) + 1)))}
+          >
+            <Text style={styles.counterBtnText}>+</Text>
+          </TouchableOpacity>
+          <Text style={styles.counterLabel}>bags max</Text>
+        </View>
 
         {/* Hours */}
         <Text style={styles.sectionTitle}>Available hours</Text>
         <View style={styles.hoursRow}>
           <View style={styles.hoursField}>
             <Text style={styles.hoursLabel}>From</Text>
-            <TextInput style={styles.hoursInput} value={fromTime} onChangeText={setFromTime} />
+            <TextInput style={styles.hoursInput} value={fromTime} onChangeText={setFromTime} placeholder="08:00" placeholderTextColor={Colors.textLight} />
           </View>
           <Text style={styles.hoursDash}>–</Text>
           <View style={styles.hoursField}>
             <Text style={styles.hoursLabel}>Until</Text>
-            <TextInput style={styles.hoursInput} value={untilTime} onChangeText={setUntilTime} />
+            <TextInput style={styles.hoursInput} value={untilTime} onChangeText={setUntilTime} placeholder="20:00" placeholderTextColor={Colors.textLight} />
           </View>
         </View>
 
@@ -171,6 +284,8 @@ export default function HostProfile() {
               key={d}
               style={[styles.dayChip, days.includes(d) && styles.dayChipActive]}
               onPress={() => toggleDay(d)}
+              // @ts-ignore
+              onClick={() => toggleDay(d)}
             >
               <Text style={[styles.dayText, days.includes(d) && styles.dayTextActive]}>{d}</Text>
             </TouchableOpacity>
@@ -186,8 +301,15 @@ export default function HostProfile() {
         </TouchableOpacity>
 
         {/* Save */}
-        <TouchableOpacity style={styles.saveBtn} onPress={save} activeOpacity={0.85}>
-          <Text style={styles.saveBtnText}>{saved ? 'Saved!' : 'Save profile'}</Text>
+        <TouchableOpacity
+          style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
+          onPress={save}
+          // @ts-ignore
+          onClick={save}
+          activeOpacity={0.85}
+          disabled={loading}
+        >
+          <Text style={styles.saveBtnText}>{loading ? 'Saving…' : 'Save listing'}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
@@ -198,6 +320,20 @@ export default function HostProfile() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  toast: {
+    position: 'absolute',
+    top: 16,
+    left: 24,
+    right: 24,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    zIndex: 100,
+    alignItems: 'center',
+  },
+  toastError: { backgroundColor: '#DC2626' },
+  toastText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   header: { padding: 20, paddingTop: 8 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
   activeCard: {
@@ -217,13 +353,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, paddingHorizontal: 20, marginBottom: 10 },
   typeRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20 },
   typeChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
+    backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center',
   },
   typeChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   typeEmoji: { fontSize: 20, marginBottom: 2 },
@@ -241,57 +372,48 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
   },
+  inputError: { borderColor: '#DC2626' },
   textArea: { height: 100, textAlignVertical: 'top' },
+  errorText: { fontSize: 13, color: '#DC2626', marginHorizontal: 20, marginTop: -14, marginBottom: 16 },
   priceRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 20 },
   pricePrefix: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginRight: 4 },
-  priceInput: { width: 100, marginLeft: 0 },
+  priceInput: { width: 120, marginLeft: 0 },
+  counterRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, marginBottom: 24 },
+  counterBtn: {
+    width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  counterBtnText: { fontSize: 22, color: Colors.white, fontWeight: '700', lineHeight: 26 },
+  counterVal: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, minWidth: 32, textAlign: 'center' },
+  counterLabel: { fontSize: 14, color: Colors.textSecondary },
   hoursRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 12, marginBottom: 20 },
   hoursField: { flex: 1 },
   hoursLabel: { fontSize: 12, color: Colors.textSecondary, marginBottom: 6 },
   hoursInput: {
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: Colors.textPrimary,
-    textAlign: 'center',
+    backgroundColor: Colors.white, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.textPrimary, textAlign: 'center',
   },
   hoursDash: { fontSize: 20, color: Colors.textLight, marginTop: 18 },
   daysRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 20, marginBottom: 24 },
   dayChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border,
   },
   dayChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   dayText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
   dayTextActive: { color: Colors.white },
   photosPlaceholder: {
-    marginHorizontal: 20,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: Colors.border,
-    borderStyle: 'dashed',
-    padding: 28,
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-    marginBottom: 24,
+    marginHorizontal: 20, borderRadius: 16, borderWidth: 2,
+    borderColor: Colors.border, borderStyle: 'dashed', padding: 28,
+    alignItems: 'center', backgroundColor: Colors.white, marginBottom: 24,
   },
   photosIcon: { fontSize: 36, marginBottom: 8 },
   photosText: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   photosSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4, textAlign: 'center' },
   saveBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginHorizontal: 20,
+    backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18,
+    alignItems: 'center', marginHorizontal: 20,
   },
+  saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
 });

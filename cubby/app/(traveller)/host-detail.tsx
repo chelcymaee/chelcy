@@ -6,6 +6,7 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { MOCK_REVIEWS } from '../../src/lib/mock-data';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -49,30 +50,107 @@ function normalizeHost(raw: any) {
 }
 
 export default function HostDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, selectedDate } = useLocalSearchParams<{ id: string; selectedDate: string }>();
   const [host, setHost] = useState<any>(null);
   const mockReviews = MOCK_REVIEWS.filter(r => r.host_id === id);
   const [bagCount, setBagCount] = useState(1);
   const [savedReviews, setSavedReviews] = useState<any[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingSpot, setSavingSpot] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    AsyncStorage.getItem('cubby_hosts').then(raw => {
-      if (raw) {
-        const found = JSON.parse(raw).find((h: any) => h.id === id);
-        if (found) setHost(normalizeHost(found));
+    async function loadHost() {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase
+          .from('hosts')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (!error && data) {
+          setHost(normalizeHost(data));
+        }
+      } else {
+        const raw = await AsyncStorage.getItem('cubby_hosts');
+        if (raw) {
+          const found = JSON.parse(raw).find((h: any) => h.id === id);
+          if (found) setHost(normalizeHost(found));
+        }
       }
-    });
-    AsyncStorage.getItem(`cubby_reviews_${id}`).then(raw => {
+    }
+    async function loadReviews() {
+      if (isSupabaseConfigured) {
+        const { data } = await supabase
+          .from('reviews')
+          .select('id, reviewer_name, rating, comment, tags, created_at')
+          .eq('host_id', id)
+          .order('created_at', { ascending: false });
+        if (data && data.length > 0) { setSavedReviews(data); return; }
+      }
+      // Fallback: AsyncStorage (demo mode reviews)
+      const raw = await AsyncStorage.getItem(`cubby_reviews_${id}`);
       if (raw) setSavedReviews(JSON.parse(raw));
-    });
+    }
+    loadHost();
+    loadReviews();
+    // Check if saved
+    checkSaved();
   }, [id]);
+
+  async function checkSaved() {
+    if (!id) return;
+    if (isSupabaseConfigured) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from('saved_spots').select('id').eq('user_id', user.id).eq('host_id', id).single();
+        setIsSaved(!!data);
+        return;
+      }
+    }
+    const raw = await AsyncStorage.getItem('cubby_saved_spots');
+    const saved: string[] = raw ? JSON.parse(raw) : [];
+    setIsSaved(saved.includes(id));
+  }
+
+  async function toggleSave() {
+    if (!id) return;
+    setSavingSpot(true);
+    try {
+      if (isSupabaseConfigured) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          if (isSaved) {
+            await supabase.from('saved_spots').delete().eq('user_id', user.id).eq('host_id', id);
+          } else {
+            await supabase.from('saved_spots').insert({ user_id: user.id, host_id: id });
+          }
+          setIsSaved(!isSaved);
+          return;
+        }
+      }
+      // AsyncStorage fallback
+      const raw = await AsyncStorage.getItem('cubby_saved_spots');
+      const saved: string[] = raw ? JSON.parse(raw) : [];
+      const next = isSaved ? saved.filter(s => s !== id) : [...saved, id];
+      await AsyncStorage.setItem('cubby_saved_spots', JSON.stringify(next));
+      setIsSaved(!isSaved);
+    } finally {
+      setSavingSpot(false);
+    }
+  }
 
   const reviews = [...savedReviews, ...mockReviews];
 
+  const goBack = () => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore');
+
   if (!host) return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity style={styles.backLink} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
+      <TouchableOpacity
+        style={styles.backLink}
+        onPress={goBack}
+        // @ts-ignore
+        onClick={goBack}
+      >
         <Text style={styles.backLinkText}>← Back to results</Text>
       </TouchableOpacity>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -84,11 +162,22 @@ export default function HostDetail() {
   const isOpen = host.available_days.includes(TODAY_ABBR);
   const total = host.price_per_bag_per_day * bagCount;
 
+  const decreaseBags = () => setBagCount(Math.max(1, bagCount - 1));
+  const increaseBags = () => setBagCount(Math.min(host.max_bags, bagCount + 1));
+
+  const goToReview = () => router.push({ pathname: '/(traveller)/review', params: { hostId: id, hostName: host.display_name } });
+  const goToBooking = () => router.push({ pathname: '/(traveller)/booking', params: { hostId: id, bagCount: String(bagCount), selectedDate: selectedDate ?? '' } });
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Back link */}
-        <TouchableOpacity style={styles.backLink} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
+        <TouchableOpacity
+          style={styles.backLink}
+          onPress={goBack}
+          // @ts-ignore
+          onClick={goBack}
+        >
           <Text style={styles.backLinkText}>← Back to results</Text>
         </TouchableOpacity>
 
@@ -102,7 +191,18 @@ export default function HostDetail() {
             <Text style={styles.hostName}>{host.display_name}</Text>
             <Text style={styles.locationName}>{host.location_name}</Text>
 
-            {/* Rating row */}
+            {/* Save button */}
+            <TouchableOpacity
+              onPress={toggleSave}
+              // @ts-ignore
+              onClick={toggleSave}
+              disabled={savingSpot}
+              style={{ marginBottom: 8 }}
+            >
+              <Text style={{ fontSize: 24 }}>{isSaved ? '❤️' : '🤍'}</Text>
+            </TouchableOpacity>
+
+          {/* Rating row */}
             <View style={styles.ratingRow}>
               <Text style={styles.ratingStar}>★</Text>
               <Text style={styles.ratingText}>{host.rating.toFixed(1)}</Text>
@@ -187,14 +287,18 @@ export default function HostDetail() {
           <View style={styles.counterRow}>
             <TouchableOpacity
               style={styles.counterBtn}
-              onPress={() => setBagCount(Math.max(1, bagCount - 1))}
+              onPress={decreaseBags}
+              // @ts-ignore
+              onClick={decreaseBags}
             >
               <Text style={styles.counterBtnText}>−</Text>
             </TouchableOpacity>
             <Text style={styles.counterVal}>{bagCount}</Text>
             <TouchableOpacity
               style={styles.counterBtn}
-              onPress={() => setBagCount(Math.min(host.max_bags, bagCount + 1))}
+              onPress={increaseBags}
+              // @ts-ignore
+              onClick={increaseBags}
             >
               <Text style={styles.counterBtnText}>+</Text>
             </TouchableOpacity>
@@ -208,7 +312,9 @@ export default function HostDetail() {
             <Text style={styles.sectionTitle}>Reviews ({reviews.length})</Text>
             <TouchableOpacity
               style={styles.writeReviewBtn}
-              onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostId: id, hostName: host.display_name } })}
+              onPress={goToReview}
+              // @ts-ignore
+              onClick={goToReview}
             >
               <Text style={styles.writeReviewBtnText}>✏️ Write a review</Text>
             </TouchableOpacity>
@@ -249,7 +355,9 @@ export default function HostDetail() {
         </View>
         <TouchableOpacity
           style={styles.footerBtn}
-          onPress={() => router.push({ pathname: '/(traveller)/booking', params: { hostId: id, bagCount: String(bagCount) } })}
+          onPress={goToBooking}
+          // @ts-ignore
+          onClick={goToBooking}
           activeOpacity={0.85}
         >
           <Text style={styles.footerBtnText}>Select no. of bags →</Text>

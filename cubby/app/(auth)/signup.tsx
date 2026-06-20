@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert,
+  StyleSheet, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,21 +16,23 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<Role>('traveller');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   async function handleSignup() {
     if (!fullName || !email || !password) {
-      Alert.alert('Please fill in all fields');
+      setErrorMsg('Please fill in all fields');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Password must be at least 6 characters');
+      setErrorMsg('Password must be at least 6 characters');
       return;
     }
+    setErrorMsg('');
     setLoading(true);
     try {
       if (isSupabaseConfigured) {
         const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) { Alert.alert('Sign up failed', error.message); return; }
+        if (error) { setErrorMsg(error.message); return; }
         const user = data.user;
         if (user) {
           await supabase.from('profiles').insert({ id: user.id, email, full_name: fullName, role });
@@ -39,7 +41,7 @@ export default function Signup() {
         // Local auth — save account to device
         const existing = await AsyncStorage.getItem('cubby_local_user');
         if (existing && JSON.parse(existing).email === email) {
-          Alert.alert('Account exists', 'An account with this email already exists. Please sign in.');
+          setErrorMsg('An account with this email already exists. Please sign in.');
           return;
         }
         const user = { email, password, fullName, role, id: Date.now().toString() };
@@ -51,7 +53,7 @@ export default function Signup() {
       else if (role === 'runner') router.replace('/(runner)/dashboard');
       else router.replace('/(traveller)/explore');
     } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Something went wrong');
+      setErrorMsg(err?.message ?? 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -70,7 +72,9 @@ export default function Signup() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
-        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(auth)/login')}>
+        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(auth)/login')}
+          // @ts-ignore
+          onClick={() => router.canGoBack() ? router.back() : router.replace('/(auth)/login')}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 
@@ -82,6 +86,12 @@ export default function Signup() {
         <Text style={styles.heading}>Create account</Text>
         <Text style={styles.subheading}>Join Cubby — it only takes a minute</Text>
 
+        {!!errorMsg && (
+          <View style={{ backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+            <Text style={{ color: '#DC2626', fontWeight: '600' }}>{errorMsg}</Text>
+          </View>
+        )}
+
         {/* Role picker */}
         <Text style={styles.label}>I am a…</Text>
         <View style={styles.roleRow}>
@@ -91,6 +101,8 @@ export default function Signup() {
               style={[styles.roleCard, role === opt.value && styles.roleCardActive]}
               onPress={() => setRole(opt.value)}
               activeOpacity={0.8}
+              // @ts-ignore
+              onClick={() => setRole(opt.value)}
             >
               <Text style={styles.roleEmoji}>{opt.emoji}</Text>
               <Text style={[styles.roleLabel, role === opt.value && styles.roleLabelActive]}>
@@ -138,6 +150,8 @@ export default function Signup() {
             onPress={handleSignup}
             disabled={loading}
             activeOpacity={0.85}
+            // @ts-ignore
+            onClick={handleSignup}
           >
             <Text style={styles.btnText}>{loading ? 'Creating account…' : 'Create account'}</Text>
           </TouchableOpacity>

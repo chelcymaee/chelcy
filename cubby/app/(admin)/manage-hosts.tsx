@@ -1,12 +1,7 @@
-import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-  Alert, Switch,
-} from 'react-native';
-import { router } from 'expo-router';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from 'expo-router';
-import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 interface Host {
   id: string;
@@ -18,205 +13,128 @@ interface Host {
 }
 
 const TYPE_EMOJI: Record<string, string> = {
-  café: '☕',
-  hotel: '🏨',
-  hostel: '🛏️',
-  guesthouse: '🏡',
-  airbnb: '🔑',
-  tour_operator: '🗺️',
-  home: '🏠',
-  other: '📍',
+  café: '☕', hotel: '🏨', hostel: '🛏️', guesthouse: '🏡',
+  airbnb: '🔑', tour_operator: '🗺️', home: '🏠', other: '📍',
 };
 
 export default function ManageHosts() {
   const [hosts, setHosts] = useState<Host[]>([]);
+  const [msg, setMsg] = useState('');
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadHosts();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadHosts(); }, []));
 
   async function loadHosts() {
     try {
-      const raw = await AsyncStorage.getItem('cubby_hosts');
-      setHosts(raw ? JSON.parse(raw) : []);
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from('hosts').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          setHosts(data.map((r: any) => ({
+            id: r.id, displayName: r.display_name, locationName: r.location_name,
+            businessType: r.business_type, pricePerBag: r.price_per_bag,
+            active: r.active ?? r.is_active ?? false,
+          })));
+        }
+      } else {
+        const raw = await AsyncStorage.getItem('cubby_hosts');
+        setHosts(raw ? JSON.parse(raw) : []);
+      }
     } catch {}
   }
 
-  async function saveHosts(updated: Host[]) {
-    await AsyncStorage.setItem('cubby_hosts', JSON.stringify(updated));
-    setHosts(updated);
+  async function toggleActive(host: Host) {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('hosts').update({ active: !host.active }).eq('id', host.id);
+      if (!error) setHosts(prev => prev.map(h => h.id === host.id ? { ...h, active: !h.active } : h));
+    } else {
+      const updated = hosts.map(h => h.id === host.id ? { ...h, active: !h.active } : h);
+      await AsyncStorage.setItem('cubby_hosts', JSON.stringify(updated));
+      setHosts(updated);
+    }
   }
 
-  async function toggleActive(id: string) {
-    const updated = hosts.map(h => h.id === id ? { ...h, active: !h.active } : h);
-    await saveHosts(updated);
+  async function deleteHost(id: string) {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('hosts').delete().eq('id', id);
+      if (error) { setMsg('Error: ' + error.message); setConfirmId(null); return; }
+    } else {
+      const updated = hosts.filter(h => h.id !== id);
+      await AsyncStorage.setItem('cubby_hosts', JSON.stringify(updated));
+    }
+    setMsg('Host deleted.');
+    setConfirmId(null);
+    setHosts(prev => prev.filter(h => h.id !== id));
+    setTimeout(() => setMsg(''), 2000);
   }
 
-  function confirmDelete(id: string, name: string) {
-    Alert.alert('Delete Host', `Are you sure you want to delete "${name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          const updated = hosts.filter(h => h.id !== id);
-          await saveHosts(updated);
-        },
-      },
-    ]);
-  }
+  const s: any = {
+    page: { minHeight: '100vh', backgroundColor: '#FAF9F6', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', padding: 20 },
+    header: { display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 },
+    backBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#2D6A4F', fontWeight: 600, padding: 0 },
+    title: { fontSize: 24, fontWeight: 800, color: '#1a1a1a', margin: 0 },
+    msg: { backgroundColor: '#D1FAE5', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#065F46', fontWeight: 600 },
+    card: { backgroundColor: 'white', borderRadius: 16, border: '1px solid #F0EAEA', marginBottom: 12, overflow: 'hidden' },
+    cardTop: { display: 'flex', alignItems: 'center', gap: 12, padding: 16 },
+    cardBottom: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid #F0EAEA' },
+    badge: (active: boolean) => ({ backgroundColor: active ? '#DCFCE7' : '#F3F4F6', color: active ? '#16A34A' : '#6B7280', borderRadius: 8, padding: '4px 10px', fontSize: 12, fontWeight: 700 }),
+    price: { fontSize: 14, fontWeight: 700, color: '#2D6A4F', margin: 0 },
+    actions: { display: 'flex', alignItems: 'center', gap: 16 },
+    toggleBtn: (active: boolean) => ({ backgroundColor: active ? '#2D6A4F' : '#D1D5DB', border: 'none', borderRadius: 20, padding: '6px 16px', color: 'white', fontWeight: 700, cursor: 'pointer', fontSize: 13 }),
+    deleteBtn: { backgroundColor: '#FEF2F2', border: 'none', borderRadius: 8, padding: '6px 12px', color: '#DC2626', fontWeight: 600, cursor: 'pointer', fontSize: 13 },
+    fab: { position: 'fixed' as any, bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#2D6A4F', border: 'none', color: 'white', fontSize: 28, cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    empty: { textAlign: 'center' as any, paddingTop: 80 },
+    createBtn: { backgroundColor: '#2D6A4F', color: 'white', border: 'none', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 16 },
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
-            <Text style={styles.backLink}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Manage Hosts</Text>
-        </View>
+    <div style={s.page}>
+      <div style={s.header}>
+        <button style={s.backBtn} onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>← Back</button>
+        <h1 style={s.title}>Manage Hosts</h1>
+      </div>
 
-        {hosts.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🏠</Text>
-            <Text style={styles.emptyText}>No hosts yet.</Text>
-            <Text style={styles.emptySubText}>Create your first host profile.</Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(admin)/create-host')}>
-              <Text style={styles.emptyBtnText}>Create Host Profile</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.list}>
-            {hosts.map(host => (
-              <View key={host.id} style={styles.card}>
-                <View style={styles.cardTop}>
-                  <Text style={styles.typeEmoji}>{TYPE_EMOJI[host.businessType] || '📍'}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.hostName}>{host.displayName}</Text>
-                    <Text style={styles.hostLocation}>{host.locationName}</Text>
-                  </View>
-                  <View style={[styles.badge, host.active ? styles.badgeActive : styles.badgeInactive]}>
-                    <Text style={[styles.badgeText, host.active ? styles.badgeTextActive : styles.badgeTextInactive]}>
-                      {host.active ? 'Active' : 'Inactive'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.cardBottom}>
-                  <Text style={styles.price}>R{host.pricePerBag}/bag/day</Text>
-                  <View style={styles.actions}>
-                    <View style={styles.toggleRow}>
-                      <Text style={styles.toggleLabel}>Active</Text>
-                      <Switch
-                        value={host.active}
-                        onValueChange={() => toggleActive(host.id)}
-                        trackColor={{ false: '#D1D5DB', true: Colors.primary }}
-                        thumbColor={Colors.white}
-                        style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
-                      />
-                    </View>
-                    <TouchableOpacity
-                      style={styles.deleteBtn}
-                      onPress={() => confirmDelete(host.id, host.displayName)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.deleteBtnText}>🗑️ Delete</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
+      {!!msg && <div style={s.msg}>{msg}</div>}
 
-        <View style={{ height: 80 }} />
-      </ScrollView>
+      {hosts.length === 0 ? (
+        <div style={s.empty}>
+          <div style={{ fontSize: 48 }}>🏠</div>
+          <p style={{ fontSize: 18, fontWeight: 700 }}>No hosts yet.</p>
+          <button style={s.createBtn} onClick={() => router.replace('/(admin)/create-host')}>Create Host Profile</button>
+        </div>
+      ) : (
+        hosts.map(host => (
+          <div key={host.id} style={s.card}>
+            <div style={s.cardTop}>
+              <span style={{ fontSize: 28 }}>{TYPE_EMOJI[host.businessType] || '📍'}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, color: '#1a1a1a' }}>{host.displayName}</div>
+                <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{host.locationName}</div>
+              </div>
+              <span style={s.badge(host.active)}>{host.active ? 'Active' : 'Inactive'}</span>
+            </div>
+            <div style={s.cardBottom}>
+              <p style={s.price}>R{host.pricePerBag}/bag/day</p>
+              <div style={s.actions}>
+                <button style={s.toggleBtn(host.active)} onClick={() => toggleActive(host)}>
+                  {host.active ? 'Deactivate' : 'Activate'}
+                </button>
+                {confirmId === host.id ? (
+                  <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: '#DC2626', fontWeight: 600 }}>Sure?</span>
+                    <button style={{ ...s.deleteBtn, backgroundColor: '#DC2626', color: 'white' }} onClick={() => deleteHost(host.id)}>Yes</button>
+                    <button style={s.deleteBtn} onClick={() => setConfirmId(null)}>No</button>
+                  </span>
+                ) : (
+                  <button style={s.deleteBtn} onClick={() => setConfirmId(host.id)}>🗑️ Delete</button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))
+      )}
 
-      <TouchableOpacity style={styles.fab} onPress={() => router.push('/(admin)/create-host')} activeOpacity={0.85}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
+      <div style={{ height: 100 }} />
+      <button style={s.fab} onClick={() => router.replace('/(admin)/create-host')}>+</button>
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  backLink: { fontSize: 16, color: Colors.primary, fontWeight: '600', marginBottom: 8 },
-  title: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
-  list: { paddingHorizontal: 20, paddingTop: 12, gap: 12 },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-    overflow: 'hidden',
-  },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 16,
-  },
-  typeEmoji: { fontSize: 28 },
-  hostName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  hostLocation: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  badgeActive: { backgroundColor: '#DCFCE7' },
-  badgeInactive: { backgroundColor: '#F3F4F6' },
-  badgeText: { fontSize: 12, fontWeight: '700' },
-  badgeTextActive: { color: '#16A34A' },
-  badgeTextInactive: { color: Colors.textSecondary },
-  cardBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    paddingTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: '#F0EAEA',
-  },
-  price: { fontSize: 14, fontWeight: '700', color: Colors.primary },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  toggleLabel: { fontSize: 13, color: Colors.textSecondary },
-  deleteBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#FEF2F2',
-  },
-  deleteBtnText: { fontSize: 13, color: Colors.error, fontWeight: '600' },
-  emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
-  emptyEmoji: { fontSize: 48, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 },
-  emptySubText: { fontSize: 14, color: Colors.textSecondary, marginBottom: 24, textAlign: 'center' },
-  emptyBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-  },
-  emptyBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  fabText: { fontSize: 28, color: Colors.white, fontWeight: '400', lineHeight: 32 },
-});

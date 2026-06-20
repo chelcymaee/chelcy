@@ -1,10 +1,7 @@
-import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert,
-} from 'react-native';
-import { router } from 'expo-router';
 import { useState, useEffect } from 'react';
+import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '../../src/constants/colors';
+import { checkAdminSession, clearAdminSession } from '../../src/lib/admin-auth';
 
 interface Host {
   id: string;
@@ -22,6 +19,7 @@ export default function AdminDashboard() {
   const [activeBookings, setActiveBookings] = useState(0);
   const [revenueMonth, setRevenueMonth] = useState(0);
   const [pendingApprovals, setPendingApprovals] = useState(0);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -29,10 +27,8 @@ export default function AdminDashboard() {
   }, []);
 
   async function checkAuth() {
-    const session = await AsyncStorage.getItem('cubby_admin_session');
-    if (!session) {
-      router.replace('/(admin)/login');
-    }
+    const valid = await checkAdminSession();
+    if (!valid) router.replace('/(admin)/login');
   }
 
   async function loadStats() {
@@ -53,15 +49,8 @@ export default function AdminDashboard() {
   }
 
   async function handleSignOut() {
-    Alert.alert('Sign out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out', style: 'destructive', onPress: async () => {
-          await AsyncStorage.removeItem('cubby_admin_session');
-          router.replace('/(admin)/login');
-        },
-      },
-    ]);
+    await clearAdminSession();
+    router.replace('/(admin)/login');
   }
 
   const STATS = [
@@ -79,126 +68,113 @@ export default function AdminDashboard() {
     { label: 'Revenue', icon: '📊', route: '/(admin)/revenue' },
   ];
 
+  const s: any = {
+    page: {
+      minHeight: '100vh',
+      backgroundColor: '#FAF9F6',
+      fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+      overflowY: 'auto',
+    },
+    header: { padding: '16px 20px 8px' },
+    logo: { fontSize: 13, fontWeight: 800, color: '#2D6A4F', letterSpacing: 1, textTransform: 'uppercase', margin: 0 },
+    headerTitle: { fontSize: 26, fontWeight: 800, color: '#1a1a1a', margin: '2px 0 0' },
+    sectionLabel: {
+      fontSize: 13, fontWeight: 700, color: '#6B7280',
+      textTransform: 'uppercase', letterSpacing: 0.5,
+      padding: '24px 20px 10px', margin: 0,
+    },
+    statsGrid: {
+      display: 'grid', gridTemplateColumns: '1fr 1fr',
+      gap: 12, padding: '0 12px',
+    },
+    statCard: {
+      backgroundColor: '#fff', borderRadius: 16, padding: 16,
+      border: '1px solid #F0EAEA', display: 'flex',
+      flexDirection: 'column', alignItems: 'center',
+    },
+    statIcon: { fontSize: 28, marginBottom: 8 },
+    statValue: { fontSize: 22, fontWeight: 800, color: '#1a1a1a', margin: 0 },
+    statLabel: { fontSize: 12, color: '#6B7280', marginTop: 4, textAlign: 'center' },
+    navGrid: {
+      display: 'grid', gridTemplateColumns: '1fr 1fr',
+      gap: 12, padding: '0 12px',
+    },
+    navCard: {
+      backgroundColor: '#fff', border: '1px solid #F0EAEA',
+      borderRadius: 16, padding: 20, cursor: 'pointer',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+    },
+    navCardIcon: { fontSize: 32, marginBottom: 10 },
+    navCardLabel: { fontSize: 14, fontWeight: 700, color: '#1a1a1a', textAlign: 'center' },
+    signOutBtn: {
+      margin: '32px 20px 20px',
+      backgroundColor: '#fff', borderRadius: 14,
+      padding: '16px', border: '1px solid #F0EAEA',
+      cursor: 'pointer', width: 'calc(100% - 40px)',
+      fontSize: 16, fontWeight: 700, color: '#DC2626',
+    },
+    confirmBox: {
+      margin: '32px 20px 20px',
+      backgroundColor: '#FEF2F2', borderRadius: 14,
+      padding: '16px', border: '1px solid #FECACA',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+    },
+    confirmText: { fontSize: 14, fontWeight: 600, color: '#DC2626' },
+    confirmYes: {
+      backgroundColor: '#DC2626', color: 'white', border: 'none',
+      borderRadius: 8, padding: '8px 16px', fontWeight: 700, cursor: 'pointer', fontSize: 14,
+    },
+    confirmNo: {
+      backgroundColor: '#fff', color: '#6B7280', border: '1px solid #D1D5DB',
+      borderRadius: 8, padding: '8px 16px', fontWeight: 700, cursor: 'pointer', fontSize: 14,
+    },
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.logo}>Cubby</Text>
-          <Text style={styles.headerTitle}>Admin Dashboard</Text>
-        </View>
+    <div style={s.page}>
+      <div style={s.header}>
+        <p style={s.logo}>Cubby</p>
+        <h1 style={s.headerTitle}>Admin Dashboard</h1>
+      </div>
 
-        <Text style={styles.sectionLabel}>Overview</Text>
-        <View style={styles.statsGrid}>
-          {STATS.map(stat => (
-            <View key={stat.label} style={styles.statCard}>
-              <Text style={styles.statIcon}>{stat.icon}</Text>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
+      <p style={s.sectionLabel}>Overview</p>
+      <div style={s.statsGrid}>
+        {STATS.map(stat => (
+          <div key={stat.label} style={s.statCard}>
+            <span style={s.statIcon}>{stat.icon}</span>
+            <p style={s.statValue}>{stat.value}</p>
+            <p style={s.statLabel}>{stat.label}</p>
+          </div>
+        ))}
+      </div>
 
-        <Text style={styles.sectionLabel}>Quick Actions</Text>
-        <View style={styles.navGrid}>
-          {NAV_CARDS.map(card => (
-            <TouchableOpacity
-              key={card.label}
-              style={styles.navCard}
-              activeOpacity={0.75}
-              onPress={() => router.push(card.route as any)}
-            >
-              <Text style={styles.navCardIcon}>{card.icon}</Text>
-              <Text style={styles.navCardLabel}>{card.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      <p style={s.sectionLabel}>Quick Actions</p>
+      <div style={s.navGrid}>
+        {NAV_CARDS.map(card => (
+          <button
+            key={card.label}
+            onClick={() => router.replace(card.route as any)}
+            style={s.navCard}
+          >
+            <span style={s.navCardIcon}>{card.icon}</span>
+            <span style={s.navCardLabel}>{card.label}</span>
+          </button>
+        ))}
+      </div>
 
-        <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+      {confirmSignOut ? (
+        <div style={s.confirmBox}>
+          <span style={s.confirmText}>Sure you want to sign out?</span>
+          <button style={s.confirmYes} onClick={handleSignOut}>Yes</button>
+          <button style={s.confirmNo} onClick={() => setConfirmSignOut(false)}>No</button>
+        </div>
+      ) : (
+        <button style={s.signOutBtn} onClick={() => setConfirmSignOut(true)}>
+          Sign Out
+        </button>
+      )}
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </SafeAreaView>
+      <div style={{ height: 40 }} />
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  logo: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    marginTop: 2,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 10,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    gap: 12,
-  },
-  statCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    flex: 1,
-    minWidth: '44%',
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-  },
-  statIcon: { fontSize: 28, marginBottom: 8 },
-  statValue: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
-  statLabel: { fontSize: 12, color: Colors.textSecondary, marginTop: 4, textAlign: 'center' },
-  navGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    gap: 12,
-  },
-  navCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 20,
-    flex: 1,
-    minWidth: '44%',
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-    alignItems: 'center',
-  },
-  navCardIcon: { fontSize: 32, marginBottom: 10 },
-  navCardLabel: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center' },
-  signOutBtn: {
-    margin: 20,
-    marginTop: 32,
-    backgroundColor: Colors.white,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-  },
-  signOutText: { fontSize: 16, fontWeight: '700', color: Colors.error },
-});

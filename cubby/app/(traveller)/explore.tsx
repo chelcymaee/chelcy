@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, SafeAreaView, ScrollView, Platform, Modal,
+  StyleSheet, SafeAreaView, ScrollView, Platform, Modal, ActivityIndicator,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { MOCK_RUNNERS, Runner } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
+import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
 
 const TIME_SLOTS = [
   '7am–8am','8am–9am','9am–10am','10am–11am','11am–12pm',
@@ -20,11 +22,67 @@ const typeEmoji: Record<string, string> = {
   airbnb: '🔑', tour_operator: '🗺️', home: '🏠', other: '📦',
 };
 
-function todayLabel() {
-  const now = new Date();
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `Today, ${now.getDate()} ${months[now.getMonth()]}`;
+// ─── Filter Helpers ───────────────────────────────────────────────────────────
+
+// 'YYYY-MM-DD' → 'Mon' | 'Tue' | ... (no timezone shift)
+function isoToDayOfWeek(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(y, m - 1, d).getDay()];
+}
+
+// '9am–10am' → minutes since midnight of the START of the slot
+function slotStartMinutes(slot: string): number {
+  const part = slot.split('–')[0].trim().toLowerCase();
+  const h = parseInt(part, 10);
+  if (part.includes('pm') && h !== 12) return (h + 12) * 60;
+  if (part.includes('am') && h === 12) return 0; // midnight
+  return h * 60;
+}
+
+// 'HH:MM' → minutes since midnight
+function hhmm(t: string): number {
+  const [h, m] = (t ?? '00:00').split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+
+// True when the host's location_name matches the search text.
+// Default city-level strings ('Cape Town, South Africa') return true for all hosts.
+function locationMatches(hostLoc: string, search: string): boolean {
+  if (!search) return true;
+  const stripped = search.toLowerCase()
+    .replace(/,/g, ' ')
+    .replace(/south africa/g, '')
+    .replace(/cape town/g, '')
+    .trim();
+  if (!stripped) return true; // city-level only — no neighbourhood specified
+  const words = stripped.split(/\s+/).filter(w => w.length > 2);
+  if (words.length === 0) return true;
+  const loc = hostLoc.toLowerCase();
+  return words.some(w => loc.includes(w));
+}
+
+interface SearchParams {
+  location: string;
+  bags: number;
+  selectedDate: string;
+  dropOff: string;
+  pickUp: string;
+}
+
+function applyFilters(all: Host[], p: SearchParams): Host[] {
+  const day = isoToDayOfWeek(p.selectedDate);
+  const dropMin = slotStartMinutes(p.dropOff);
+  const pickMin = slotStartMinutes(p.pickUp);
+
+  return all.filter(h => {
+    if (!locationMatches(h.location_name, p.location)) return false;
+    if (h.max_bags < p.bags) return false;
+    const days: string[] = h.available_days ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    if (!days.includes(day)) return false;
+    if (hhmm(h.available_from ?? '00:00') > dropMin) return false;
+    if (hhmm(h.available_until ?? '23:59') < pickMin) return false;
+    return true;
+  });
 }
 
 // ─── Time Picker Modal ────────────────────────────────────────────────────────
@@ -36,23 +94,34 @@ function TimePickerModal({
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
+        // @ts-ignore
+        onClick={onClose}
+      >
         <View style={styles.modalSheet}>
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle}>{title}</Text>
           <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
-            {TIME_SLOTS.map(slot => (
-              <TouchableOpacity
-                key={slot}
-                style={[styles.timeSlotRow, selected === slot && styles.timeSlotRowActive]}
-                onPress={() => { onSelect(slot); onClose(); }}
-              >
-                <Text style={[styles.timeSlotText, selected === slot && styles.timeSlotTextActive]}>
-                  {slot}
-                </Text>
-                {selected === slot && <Text style={styles.timeSlotCheck}>✓</Text>}
-              </TouchableOpacity>
-            ))}
+            {TIME_SLOTS.map(slot => {
+              const fn = () => { onSelect(slot); onClose(); };
+              return (
+                <TouchableOpacity
+                  key={slot}
+                  style={[styles.timeSlotRow, selected === slot && styles.timeSlotRowActive]}
+                  onPress={fn}
+                  // @ts-ignore
+                  onClick={fn}
+                >
+                  <Text style={[styles.timeSlotText, selected === slot && styles.timeSlotTextActive]}>
+                    {slot}
+                  </Text>
+                  {selected === slot && <Text style={styles.timeSlotCheck}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
       </TouchableOpacity>
@@ -71,7 +140,13 @@ function LocationModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
+        // @ts-ignore
+        onClick={onClose}
+      >
         <View style={[styles.modalSheet, { paddingBottom: 32 }]}>
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle}>Where to?</Text>
@@ -86,12 +161,21 @@ function LocationModal({
               placeholderTextColor="#9CA3AF"
             />
           </View>
-          {suggestions.map(s => (
-            <TouchableOpacity key={s} style={styles.suggestionRow} onPress={() => { onSelect(s); onClose(); }}>
-              <Text style={styles.suggestionIcon}>🔍</Text>
-              <Text style={styles.suggestionText}>{s}</Text>
-            </TouchableOpacity>
-          ))}
+          {suggestions.map(s => {
+            const fn = () => { onSelect(s); onClose(); };
+            return (
+              <TouchableOpacity
+                key={s}
+                style={styles.suggestionRow}
+                onPress={fn}
+                // @ts-ignore
+                onClick={fn}
+              >
+                <Text style={styles.suggestionIcon}>🔍</Text>
+                <Text style={styles.suggestionText}>{s}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </TouchableOpacity>
     </Modal>
@@ -101,7 +185,13 @@ function LocationModal({
 // ─── Results Host Card ────────────────────────────────────────────────────────
 function ResultCard({ host, index, onPress }: { host: Host; index: number; onPress: () => void }) {
   return (
-    <TouchableOpacity style={styles.resultCard} onPress={onPress} activeOpacity={0.92}>
+    <TouchableOpacity
+      style={styles.resultCard}
+      onPress={onPress}
+      // @ts-ignore
+      onClick={onPress}
+      activeOpacity={0.92}
+    >
       <View style={styles.resultCardLeft}>
         <View style={styles.resultEmojiBox}>
           <Text style={styles.resultEmoji}>{typeEmoji[host.business_type] ?? '📦'}</Text>
@@ -134,16 +224,26 @@ function SearchScreen({
   location, setLocation,
   dropOff, setDropOff,
   pickUp, setPickUp,
-  onSearch,
+  selectedDate, setSelectedDate,
+  bags, setBags,
+  onSearch, searching,
 }: {
   location: string; setLocation: (l: string) => void;
   dropOff: string; setDropOff: (t: string) => void;
   pickUp: string; setPickUp: (t: string) => void;
-  onSearch: () => void;
+  selectedDate: string; setSelectedDate: (d: string) => void;
+  bags: number; setBags: (n: number) => void;
+  onSearch: () => void; searching: boolean;
 }) {
   const [showLocation, setShowLocation] = useState(false);
   const [showDropOff, setShowDropOff] = useState(false);
   const [showPickUp, setShowPickUp] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const openLocation = () => setShowLocation(true);
+  const openDropOff = () => setShowDropOff(true);
+  const openPickUp = () => setShowPickUp(true);
+  const openDatePicker = () => setShowDatePicker(true);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -152,7 +252,13 @@ function SearchScreen({
 
         {/* Where */}
         <Text style={styles.sectionLabel}>Where?</Text>
-        <TouchableOpacity style={styles.locationCard} onPress={() => setShowLocation(true)} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.locationCard}
+          onPress={openLocation}
+          // @ts-ignore
+          onClick={openLocation}
+          activeOpacity={0.85}
+        >
           <Text style={styles.locationCardPin}>📍</Text>
           <Text style={styles.locationCardText} numberOfLines={1}>{location}</Text>
           <Text style={styles.locationCardGps}>⊕</Text>
@@ -160,16 +266,29 @@ function SearchScreen({
 
         {/* When */}
         <Text style={styles.sectionLabel}>When?</Text>
-        <View style={styles.dateCard}>
+        <TouchableOpacity
+          style={styles.dateCard}
+          onPress={openDatePicker}
+          // @ts-ignore
+          onClick={openDatePicker}
+          activeOpacity={0.85}
+        >
           <Text style={styles.dateCardIcon}>📅</Text>
-          <Text style={styles.dateCardText}>{todayLabel()}</Text>
-        </View>
+          <Text style={styles.dateCardText}>{formatDateLabel(selectedDate)}</Text>
+          <Text style={styles.dateCardArrow}>▾</Text>
+        </TouchableOpacity>
 
         {/* Times */}
         <View style={styles.timesRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.timeLabel}>Drop-off Time</Text>
-            <TouchableOpacity style={styles.timeSelector} onPress={() => setShowDropOff(true)} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.timeSelector}
+              onPress={openDropOff}
+              // @ts-ignore
+              onClick={openDropOff}
+              activeOpacity={0.85}
+            >
               <Text style={styles.timeSelectorText}>{dropOff}</Text>
               <Text style={styles.timeSelectorArrow}>▾</Text>
             </TouchableOpacity>
@@ -177,15 +296,47 @@ function SearchScreen({
           <View style={styles.timeArrowBetween}><Text style={styles.timeArrowBetweenText}>→</Text></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.timeLabel}>Pick-up Time</Text>
-            <TouchableOpacity style={styles.timeSelector} onPress={() => setShowPickUp(true)} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.timeSelector}
+              onPress={openPickUp}
+              // @ts-ignore
+              onClick={openPickUp}
+              activeOpacity={0.85}
+            >
               <Text style={styles.timeSelectorText}>{pickUp}</Text>
               <Text style={styles.timeSelectorArrow}>▾</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <TouchableOpacity style={styles.seeResultsBtn} onPress={onSearch} activeOpacity={0.88}>
-          <Text style={styles.seeResultsBtnText}>See results →</Text>
+        {/* How many bags */}
+        <Text style={styles.sectionLabel}>How many bags?</Text>
+        <View style={styles.bagsRow}>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+            <TouchableOpacity
+              key={n}
+              style={[styles.bagChip, bags === n && styles.bagChipActive]}
+              onPress={() => setBags(n)}
+              // @ts-ignore
+              onClick={() => setBags(n)}
+            >
+              <Text style={[styles.bagChipText, bags === n && styles.bagChipTextActive]}>{n}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.seeResultsBtn, searching && { opacity: 0.7 }]}
+          onPress={searching ? undefined : onSearch}
+          // @ts-ignore
+          onClick={searching ? undefined : onSearch}
+          activeOpacity={0.88}
+          disabled={searching}
+        >
+          {searching
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.seeResultsBtnText}>See results →</Text>
+          }
         </TouchableOpacity>
       </ScrollView>
 
@@ -208,6 +359,12 @@ function SearchScreen({
         selected={pickUp}
         onSelect={setPickUp}
         onClose={() => setShowPickUp(false)}
+      />
+      <DatePickerModal
+        visible={showDatePicker}
+        selected={selectedDate}
+        onSelect={setSelectedDate}
+        onClose={() => setShowDatePicker(false)}
       />
     </SafeAreaView>
   );
@@ -246,10 +403,11 @@ function RunnerCard({ runner }: { runner: Runner }) {
 
 // ─── Results Screen ───────────────────────────────────────────────────────────
 function ResultsScreen({
-  hosts, location, dropOff, pickUp,
+  hosts, location, dropOff, pickUp, selectedDate, bags,
   onBack,
 }: {
   hosts: Host[]; location: string; dropOff: string; pickUp: string;
+  selectedDate: string; bags: number;
   onBack: () => void;
 }) {
   const [showMap, setShowMap] = useState(false);
@@ -260,16 +418,23 @@ function ResultsScreen({
     ? require('../../src/components/HostMap').default
     : null;
 
+  const toggleMap = () => setShowMap(v => !v);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Top bar */}
       <View style={styles.resultsTopBar}>
-        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={onBack}
+          // @ts-ignore
+          onClick={onBack}
+          style={styles.backBtn}
+        >
           <Text style={styles.backBtnText}>‹</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.resultsSummary} numberOfLines={1}>
-            {location} · {todayLabel()} · {dropOff} → {pickUp}
+            {location} · {formatDateLabel(selectedDate)} · {dropOff} → {pickUp} · {bags} bag{bags > 1 ? 's' : ''}
           </Text>
         </View>
       </View>
@@ -282,7 +447,7 @@ function ResultsScreen({
             filtered={hosts}
             style={StyleSheet.absoluteFillObject}
             onPinPress={(id: string) => {
-              router.push({ pathname: '/(traveller)/host-detail', params: { id } });
+              router.push({ pathname: '/(traveller)/host-detail', params: { id, selectedDate } });
             }}
           />
         </View>
@@ -290,14 +455,22 @@ function ResultsScreen({
         <ScrollView contentContainerStyle={styles.resultsList} showsVerticalScrollIndicator={false}>
           {/* Storage spots */}
           <Text style={styles.sectionHeader}>📦 Storage spots near you</Text>
-          {hosts.map((item, index) => (
-            <ResultCard
-              key={item.id}
-              host={item}
-              index={index}
-              onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id } })}
-            />
-          ))}
+          {hosts.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyEmoji}>🔍</Text>
+              <Text style={styles.emptyTitle}>No Cubby spots found for this search.</Text>
+              <Text style={styles.emptyText}>Try a different date, time, or location — we're growing fast!</Text>
+            </View>
+          ) : (
+            hosts.map((item, index) => (
+              <ResultCard
+                key={item.id}
+                host={item}
+                index={index}
+                onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id, selectedDate } })}
+              />
+            ))
+          )}
 
           {/* Bag Runners */}
           <View style={styles.runnerSectionHeader}>
@@ -307,14 +480,6 @@ function ResultsScreen({
           {MOCK_RUNNERS.map(runner => (
             <RunnerCard key={runner.id} runner={runner} />
           ))}
-
-          {hosts.length === 0 && (
-            <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🔍</Text>
-              <Text style={styles.emptyTitle}>No spots found</Text>
-              <Text style={styles.emptyText}>Try a different location or time.</Text>
-            </View>
-          )}
         </ScrollView>
       )}
 
@@ -322,7 +487,9 @@ function ResultsScreen({
       {Platform.OS !== 'web' && (
         <TouchableOpacity
           style={[styles.mapToggleBar, { paddingBottom: insets.bottom + 8 }]}
-          onPress={() => setShowMap(v => !v)}
+          onPress={toggleMap}
+          // @ts-ignore
+          onClick={toggleMap}
           activeOpacity={0.88}
         >
           <Text style={styles.mapToggleText}>
@@ -364,18 +531,61 @@ export default function Explore() {
   const [location, setLocation] = useState('Cape Town, South Africa');
   const [dropOff, setDropOff] = useState('9am–10am');
   const [pickUp, setPickUp] = useState('5pm–6pm');
+  const [selectedDate, setSelectedDate] = useState(todayISO());
+  const [bags, setBags] = useState(1);
   const [hosts, setHosts] = useState<Host[]>([]);
+  const [searching, setSearching] = useState(false);
 
+  // Pre-load all active hosts so back-navigation is instant
   useFocusEffect(useCallback(() => {
-    AsyncStorage.getItem('cubby_hosts').then(raw => {
-      if (raw) {
-        const all = JSON.parse(raw).map(normalizeHost);
-        setHosts(all.filter((h: Host) => h.is_active));
+    // only pre-load when on the search screen (results are fetched on demand)
+    if (step !== 'search') return;
+    prefetchHosts();
+  }, [step]));
+
+  async function prefetchHosts() {
+    if (isSupabaseConfigured) {
+      const { data } = await supabase
+        .from('hosts')
+        .select('*')
+        .eq('is_active', true)
+        .order('rating', { ascending: false });
+      if (data) setHosts(data.map(normalizeHost));
+    } else {
+      const raw = await AsyncStorage.getItem('cubby_hosts');
+      if (raw) setHosts(JSON.parse(raw).map(normalizeHost).filter((h: Host) => h.is_active));
+    }
+  }
+
+  async function handleSearch() {
+    setSearching(true);
+    try {
+      const params: SearchParams = { location, bags, selectedDate, dropOff, pickUp };
+      let allActive: Host[] = [];
+
+      if (isSupabaseConfigured) {
+        // Supabase handles: is_active and min bag capacity
+        const { data } = await supabase
+          .from('hosts')
+          .select('*')
+          .eq('is_active', true)
+          .gte('max_bags', bags)
+          .order('rating', { ascending: false });
+        allActive = (data ?? []).map(normalizeHost);
       } else {
-        setHosts([]);
+        const raw = await AsyncStorage.getItem('cubby_hosts');
+        allActive = raw
+          ? JSON.parse(raw).map(normalizeHost).filter((h: Host) => h.is_active)
+          : [];
       }
-    });
-  }, []));
+
+      // Client-side: location keywords, day of week, time window
+      setHosts(applyFilters(allActive, params));
+      setStep('results');
+    } finally {
+      setSearching(false);
+    }
+  }
 
   if (step === 'results') {
     return (
@@ -384,6 +594,8 @@ export default function Explore() {
         location={location}
         dropOff={dropOff}
         pickUp={pickUp}
+        selectedDate={selectedDate}
+        bags={bags}
         onBack={() => setStep('search')}
       />
     );
@@ -397,7 +609,12 @@ export default function Explore() {
       setDropOff={setDropOff}
       pickUp={pickUp}
       setPickUp={setPickUp}
-      onSearch={() => setStep('results')}
+      selectedDate={selectedDate}
+      setSelectedDate={setSelectedDate}
+      bags={bags}
+      setBags={setBags}
+      onSearch={handleSearch}
+      searching={searching}
     />
   );
 }
@@ -430,7 +647,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   dateCardIcon: { fontSize: 18 },
-  dateCardText: { fontSize: 16, color: '#1A1A1A', fontWeight: '500' },
+  dateCardText: { fontSize: 16, color: '#1A1A1A', fontWeight: '500', flex: 1 },
+  dateCardArrow: { fontSize: 14, color: '#6B7280' },
 
   timesRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 32 },
   timeLabel: { fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 6 },
@@ -444,6 +662,15 @@ const styles = StyleSheet.create({
   timeSelectorArrow: { fontSize: 14, color: '#6B7280' },
   timeArrowBetween: { paddingBottom: 14, paddingHorizontal: 2 },
   timeArrowBetweenText: { fontSize: 18, color: '#9CA3AF' },
+
+  bagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 32 },
+  bagChip: {
+    width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#F0EAEA',
+  },
+  bagChipActive: { backgroundColor: '#FF5C5C', borderColor: '#FF5C5C' },
+  bagChipText: { fontSize: 16, fontWeight: '700', color: '#6B7280' },
+  bagChipTextActive: { color: '#FFFFFF' },
 
   seeResultsBtn: {
     backgroundColor: '#FF5C5C', borderRadius: 18, paddingVertical: 18, alignItems: 'center',

@@ -1,11 +1,7 @@
-import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-  TextInput, Alert, Switch,
-} from 'react-native';
-import { router } from 'expo-router';
 import { useState } from 'react';
+import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 type BusinessType = 'café' | 'hotel' | 'hostel' | 'guesthouse' | 'airbnb' | 'tour_operator' | 'home' | 'other';
 
@@ -33,300 +29,163 @@ export default function CreateHost() {
   const [availableUntil, setAvailableUntil] = useState('');
   const [availableDays, setAvailableDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
   const [partnerEmail, setPartnerEmail] = useState('');
-  const [active, setActive] = useState(true);
+  const [active, setActive] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   function toggleDay(day: string) {
-    setAvailableDays(prev =>
-      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
-    );
+    setAvailableDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   }
 
   async function handleSave() {
-    if (!displayName.trim()) {
-      Alert.alert('Validation', 'Display name is required.');
-      return;
-    }
-    if (!locationName.trim()) {
-      Alert.alert('Validation', 'Location name is required.');
-      return;
-    }
+    setErrorMsg(''); setSuccessMsg('');
+    if (!displayName.trim()) { setErrorMsg('Display name is required.'); return; }
+    if (!locationName.trim()) { setErrorMsg('Location name is required.'); return; }
     const price = parseFloat(pricePerBag);
-    if (isNaN(price) || price < 100 || price > 300) {
-      Alert.alert('Validation', 'Price per bag must be between R100 and R300.');
-      return;
-    }
+    if (isNaN(price) || price < 100 || price > 300) { setErrorMsg('Price must be between R100 and R300.'); return; }
     const bags = parseInt(maxBags);
-    if (isNaN(bags) || bags < 1 || bags > 50) {
-      Alert.alert('Validation', 'Max bags must be between 1 and 50.');
-      return;
-    }
+    if (isNaN(bags) || bags < 1 || bags > 50) { setErrorMsg('Max bags must be between 1 and 50.'); return; }
 
     setSaving(true);
     try {
-      const raw = await AsyncStorage.getItem('cubby_hosts');
-      const hosts = raw ? JSON.parse(raw) : [];
-      const newHost = {
-        id: Date.now().toString(),
-        displayName: displayName.trim(),
-        bio: bio.trim(),
-        locationName: locationName.trim(),
-        businessType,
-        pricePerBag: price,
-        maxBags: bags,
-        availableFrom: availableFrom.trim(),
-        availableUntil: availableUntil.trim(),
-        availableDays,
-        partnerEmail: partnerEmail.trim(),
-        active,
-        createdAt: new Date().toISOString(),
-      };
-      hosts.push(newHost);
-      await AsyncStorage.setItem('cubby_hosts', JSON.stringify(hosts));
-      Alert.alert('Success', 'Host profile created!', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
-    } catch {
-      Alert.alert('Error', 'Failed to save host profile.');
+      if (isSupabaseConfigured) {
+        const payload = {
+          display_name: displayName.trim(), bio: bio.trim(), location_name: locationName.trim(),
+          business_type: businessType, price_per_bag: parseInt(pricePerBag), max_bags: parseInt(maxBags),
+          available_from: availableFrom.trim() || '08:00', available_until: availableUntil.trim() || '20:00',
+          available_days: availableDays, partner_email: partnerEmail.trim(), active: false,
+        };
+        const { error } = await supabase.from('hosts').insert(payload).select();
+        if (error) { setErrorMsg('Error: ' + error.message); return; }
+        setSuccessMsg('Host profile created!');
+        setTimeout(() => router.replace('/(admin)/manage-hosts'), 1500);
+      } else {
+        const raw = await AsyncStorage.getItem('cubby_hosts');
+        const hosts = raw ? JSON.parse(raw) : [];
+        hosts.push({
+          id: Date.now().toString(), displayName: displayName.trim(), bio: bio.trim(),
+          locationName: locationName.trim(), businessType, pricePerBag: price, maxBags: bags,
+          availableFrom: availableFrom.trim() || '08:00', availableUntil: availableUntil.trim() || '20:00',
+          availableDays, partnerEmail: partnerEmail.trim(), active, createdAt: new Date().toISOString(),
+        });
+        await AsyncStorage.setItem('cubby_hosts', JSON.stringify(hosts));
+        setSuccessMsg('Host profile created!');
+        setTimeout(() => router.replace('/(admin)/manage-hosts'), 1500);
+      }
+    } catch (e: any) {
+      setErrorMsg('Failed to save: ' + (e?.message ?? 'Unknown error'));
     } finally {
       setSaving(false);
     }
   }
 
+  const s: any = {
+    page: { minHeight: '100vh', backgroundColor: '#FAF9F6', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
+    header: { padding: '16px 20px 8px' },
+    backBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#2D6A4F', fontWeight: 600, padding: 0, marginBottom: 8, display: 'block' },
+    title: { fontSize: 24, fontWeight: 800, color: '#1a1a1a', margin: 0 },
+    form: { padding: '16px 20px 40px' },
+    fieldLabel: { fontSize: 13, fontWeight: 600, color: '#6B7280', marginBottom: 8, marginTop: 20, display: 'block' },
+    input: { backgroundColor: 'white', borderRadius: 12, border: '1px solid #F0EAEA', padding: '14px 16px', fontSize: 15, color: '#1a1a1a', width: '100%', boxSizing: 'border-box' as any },
+    textarea: { backgroundColor: 'white', borderRadius: 12, border: '1px solid #F0EAEA', padding: '14px 16px', fontSize: 15, color: '#1a1a1a', width: '100%', boxSizing: 'border-box' as any, height: 100, resize: 'vertical' as any },
+    typeGrid: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+    typeChip: (sel: boolean) => ({
+      display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, cursor: 'pointer',
+      backgroundColor: sel ? '#2D6A4F' : 'white', border: sel ? '1px solid #2D6A4F' : '1px solid #F0EAEA',
+      color: sel ? 'white' : '#6B7280', fontWeight: 600, fontSize: 13,
+    }),
+    daysRow: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+    dayChip: (sel: boolean) => ({
+      padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
+      backgroundColor: sel ? '#2D6A4F' : 'white', border: sel ? '1px solid #2D6A4F' : '1px solid #F0EAEA',
+      color: sel ? 'white' : '#6B7280', fontWeight: 600, fontSize: 13,
+    }),
+    switchRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'white', borderRadius: 12, border: '1px solid #F0EAEA', padding: '14px 16px', marginBottom: 28, marginTop: 20 },
+    errorBox: { backgroundColor: '#FEE2E2', borderRadius: 10, padding: '12px 16px', marginBottom: 12, color: '#DC2626', fontWeight: 600 },
+    successBox: { backgroundColor: '#D1FAE5', borderRadius: 10, padding: '12px 16px', marginBottom: 12, color: '#065F46', fontWeight: 600 },
+    saveBtn: (isSaving: boolean) => ({
+      backgroundColor: isSaving ? '#ccc' : '#2D6A4F', color: 'white', border: 'none', borderRadius: 14,
+      padding: '18px', fontSize: 16, fontWeight: 800, width: '100%', cursor: isSaving ? 'not-allowed' : 'pointer', marginTop: 8,
+    }),
+  };
+
+  if (successMsg) {
+    return (
+      <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1a1a1a', margin: '0 0 8px' }}>Host Saved!</h2>
+          <p style={{ fontSize: 16, color: '#6B7280', margin: 0 }}>Redirecting to hosts...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
-            <Text style={styles.backLink}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Create Host Profile</Text>
-        </View>
+    <div style={s.page}>
+      <div style={s.header}>
+        <button style={s.backBtn} onClick={() => router.replace('/(admin)/dashboard')}>← Back</button>
+        <h1 style={s.title}>Create Host Profile</h1>
+      </div>
 
-        <View style={styles.form}>
-          <Field label="Display Name *">
-            <TextInput
-              style={styles.input}
-              value={displayName}
-              onChangeText={setDisplayName}
-              placeholder="e.g. The Coffee Corner"
-              placeholderTextColor="#C0C0C0"
-            />
-          </Field>
+      <div style={s.form}>
+        <label style={s.fieldLabel}>Display Name *</label>
+        <input style={s.input} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="e.g. The Coffee Corner" />
 
-          <Field label="Bio">
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={bio}
-              onChangeText={setBio}
-              placeholder="A short description of the hosting spot..."
-              placeholderTextColor="#C0C0C0"
-              multiline
-              numberOfLines={4}
-            />
-          </Field>
+        <label style={s.fieldLabel}>Bio</label>
+        <textarea style={s.textarea} value={bio} onChange={(e: any) => setBio(e.target.value)} placeholder="A short description of the hosting spot..." />
 
-          <Field label="Location Name *">
-            <TextInput
-              style={styles.input}
-              value={locationName}
-              onChangeText={setLocationName}
-              placeholder="e.g. Cape Town City Bowl"
-              placeholderTextColor="#C0C0C0"
-            />
-          </Field>
+        <label style={s.fieldLabel}>Location Name *</label>
+        <input style={s.input} value={locationName} onChange={e => setLocationName(e.target.value)} placeholder="e.g. Cape Town City Bowl" />
 
-          <Field label="Business Type">
-            <View style={styles.typeGrid}>
-              {BUSINESS_TYPES.map(bt => (
-                <TouchableOpacity
-                  key={bt.value}
-                  style={[styles.typeChip, businessType === bt.value && styles.typeChipActive]}
-                  onPress={() => setBusinessType(bt.value)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.typeEmoji}>{bt.emoji}</Text>
-                  <Text style={[styles.typeLabel, businessType === bt.value && styles.typeLabelActive]}>
-                    {bt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Field>
+        <label style={s.fieldLabel}>Business Type</label>
+        <div style={s.typeGrid}>
+          {BUSINESS_TYPES.map(bt => (
+            <button key={bt.value} style={s.typeChip(businessType === bt.value)} onClick={() => setBusinessType(bt.value)}>
+              <span>{bt.emoji}</span> {bt.label}
+            </button>
+          ))}
+        </div>
 
-          <Field label="Price per Bag per Day (R100–R300) *">
-            <TextInput
-              style={styles.input}
-              value={pricePerBag}
-              onChangeText={setPricePerBag}
-              placeholder="e.g. 150"
-              placeholderTextColor="#C0C0C0"
-              keyboardType="numeric"
-            />
-          </Field>
+        <label style={s.fieldLabel}>Price per Bag per Day (R100–R300) *</label>
+        <input style={s.input} type="number" value={pricePerBag} onChange={e => setPricePerBag(e.target.value)} placeholder="e.g. 150" min="100" max="300" />
 
-          <Field label="Max Bags (1–50) *">
-            <TextInput
-              style={styles.input}
-              value={maxBags}
-              onChangeText={setMaxBags}
-              placeholder="e.g. 10"
-              placeholderTextColor="#C0C0C0"
-              keyboardType="numeric"
-            />
-          </Field>
+        <label style={s.fieldLabel}>Max Bags (1–50) *</label>
+        <input style={s.input} type="number" value={maxBags} onChange={e => setMaxBags(e.target.value)} placeholder="e.g. 10" min="1" max="50" />
 
-          <Field label="Available From">
-            <TextInput
-              style={styles.input}
-              value={availableFrom}
-              onChangeText={setAvailableFrom}
-              placeholder="e.g. 08:00"
-              placeholderTextColor="#C0C0C0"
-            />
-          </Field>
+        <label style={s.fieldLabel}>Available From</label>
+        <input style={s.input} value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} placeholder="e.g. 08:00" />
 
-          <Field label="Available Until">
-            <TextInput
-              style={styles.input}
-              value={availableUntil}
-              onChangeText={setAvailableUntil}
-              placeholder="e.g. 18:00"
-              placeholderTextColor="#C0C0C0"
-            />
-          </Field>
+        <label style={s.fieldLabel}>Available Until</label>
+        <input style={s.input} value={availableUntil} onChange={e => setAvailableUntil(e.target.value)} placeholder="e.g. 18:00" />
 
-          <Field label="Available Days">
-            <View style={styles.daysRow}>
-              {DAYS.map(day => (
-                <TouchableOpacity
-                  key={day}
-                  style={[styles.dayChip, availableDays.includes(day) && styles.dayChipActive]}
-                  onPress={() => toggleDay(day)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.dayLabel, availableDays.includes(day) && styles.dayLabelActive]}>
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Field>
+        <label style={s.fieldLabel}>Available Days</label>
+        <div style={s.daysRow}>
+          {DAYS.map(day => (
+            <button key={day} style={s.dayChip(availableDays.includes(day))} onClick={() => toggleDay(day)}>{day}</button>
+          ))}
+        </div>
 
-          <Field label="Partner Email">
-            <TextInput
-              style={styles.input}
-              value={partnerEmail}
-              onChangeText={setPartnerEmail}
-              placeholder="partner@example.com"
-              placeholderTextColor="#C0C0C0"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </Field>
+        <label style={s.fieldLabel}>Partner Email</label>
+        <input style={s.input} type="email" value={partnerEmail} onChange={e => setPartnerEmail(e.target.value)} placeholder="partner@example.com" />
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Active</Text>
-            <Switch
-              value={active}
-              onValueChange={setActive}
-              trackColor={{ false: '#D1D5DB', true: Colors.primary }}
-              thumbColor={Colors.white}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-            onPress={handleSave}
-            activeOpacity={0.8}
-            disabled={saving}
+        <div style={s.switchRow}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a' }}>Active on launch</span>
+          <button
+            onClick={() => setActive(v => !v)}
+            style={{ width: 50, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer', backgroundColor: active ? '#2D6A4F' : '#D1D5DB', position: 'relative', transition: 'background-color 0.2s' }}
           >
-            <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Create Host Profile'}</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+            <span style={{ position: 'absolute', top: 3, left: active ? 24 : 3, width: 22, height: 22, borderRadius: 11, backgroundColor: 'white', transition: 'left 0.2s', display: 'block' }} />
+          </button>
+        </div>
+
+        {!!errorMsg && <div style={s.errorBox}>{errorMsg}</div>}
+
+        <button onClick={handleSave} disabled={saving} style={s.saveBtn(saving)}>
+          {saving ? 'Saving...' : 'Create Host Profile'}
+        </button>
+      </div>
+    </div>
   );
 }
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View style={fieldStyles.group}>
-      <Text style={fieldStyles.label}>{label}</Text>
-      {children}
-    </View>
-  );
-}
-
-const fieldStyles = StyleSheet.create({
-  group: { marginBottom: 20 },
-  label: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 8 },
-});
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  backLink: { fontSize: 16, color: Colors.primary, fontWeight: '600', marginBottom: 8 },
-  title: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
-  form: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
-  input: {
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: Colors.textPrimary,
-  },
-  textArea: { height: 100, textAlignVertical: 'top' },
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  typeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-  },
-  typeChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  typeEmoji: { fontSize: 16 },
-  typeLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
-  typeLabelActive: { color: Colors.white },
-  daysRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  dayChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-  },
-  dayChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  dayLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
-  dayLabelActive: { color: Colors.white },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F0EAEA',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 28,
-  },
-  switchLabel: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-  saveBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { fontSize: 16, fontWeight: '800', color: Colors.white },
-});

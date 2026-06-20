@@ -1,11 +1,12 @@
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Share } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import { formatDateLabel, todayISO } from '../../src/components/DatePickerModal';
 
 export default function BookingConfirmation() {
-  const { hostName, dropOff, pickUp, bags, total, pin } = useLocalSearchParams<{
+  const { hostName, dropOff, pickUp, bags, total, pin, date } = useLocalSearchParams<{
     hostName: string; dropOff: string; pickUp: string;
-    bags: string; total: string; pin: string;
+    bags: string; total: string; pin: string; date: string;
   }>();
 
   const pinCode = pin ?? '4821';
@@ -41,6 +42,10 @@ export default function BookingConfirmation() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Host</Text>
             <Text style={styles.summaryValue}>{hostName ?? 'Your host'}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Date</Text>
+            <Text style={styles.summaryValue}>{formatDateLabel(date ?? todayISO())}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Drop-off</Text>
@@ -85,15 +90,21 @@ export default function BookingConfirmation() {
         </View>
 
         {/* Actions */}
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => router.replace('/(traveller)/bookings')}>
+        <TouchableOpacity style={styles.primaryBtn} onPress={() => router.replace('/(traveller)/bookings')}
+          // @ts-ignore
+          onClick={() => router.replace('/(traveller)/bookings')}>
           <Text style={styles.primaryBtnText}>View my bookings</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryBtn} onPress={shareBooking}>
+        <TouchableOpacity style={styles.secondaryBtn} onPress={shareBooking}
+          // @ts-ignore
+          onClick={shareBooking}>
           <Text style={styles.secondaryBtnText}>📤 Share Cubby with a friend</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.ghostBtn} onPress={() => router.replace('/(traveller)/explore')}>
+        <TouchableOpacity style={styles.ghostBtn} onPress={() => router.replace('/(traveller)/explore')}
+          // @ts-ignore
+          onClick={() => router.replace('/(traveller)/explore')}>
           <Text style={styles.ghostBtnText}>Back to explore</Text>
         </TouchableOpacity>
 

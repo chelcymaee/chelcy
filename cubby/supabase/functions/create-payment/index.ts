@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { bookingId, amount, bagCount, hostName, travellerId, travellerEmail } = await req.json();
+    const { bookingId, amount, bagCount, hostName, travellerId, travellerEmail, shopperResultUrl } = await req.json();
 
     if (!bookingId || !amount || !travellerEmail) {
       return new Response(
@@ -35,6 +35,10 @@ serve(async (req) => {
     // Format amount as "150.00"
     const formattedAmount = (Number(amount) / 100).toFixed(2);
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const functionsBase = supabaseUrl.replace('https://', 'https://') + '/functions/v1';
+    const resultUrl = shopperResultUrl ?? `${functionsBase}/payment-result?bookingId=${bookingId}`;
+
     const body = new URLSearchParams({
       entityId,
       amount: formattedAmount,
@@ -43,6 +47,7 @@ serve(async (req) => {
       merchantTransactionId: bookingId,
       'customer.email': travellerEmail,
       descriptor: `Cubby Storage - ${hostName}`,
+      shopperResultUrl: resultUrl,
     });
 
     const peachRes = await fetch('https://eu-prod.oppwa.com/v1/checkouts', {
@@ -65,7 +70,8 @@ serve(async (req) => {
     }
 
     const checkoutId = peachData.id;
-    const redirectUrl = `https://eu-prod.oppwa.com/v1/paymentWidgets.js?checkoutId=${checkoutId}`;
+    // paymentPageUrl is the Supabase-hosted HTML page that embeds the Peach widget
+    const paymentPageUrl = `${functionsBase}/payment-page?checkoutId=${checkoutId}&bookingId=${encodeURIComponent(bookingId)}`;
 
     // Save checkout ID to Supabase
     const supabase = createClient(
@@ -84,7 +90,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ checkoutId, redirectUrl }),
+      JSON.stringify({ checkoutId, redirectUrl: paymentPageUrl }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {

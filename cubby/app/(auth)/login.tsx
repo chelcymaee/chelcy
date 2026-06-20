@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert,
+  StyleSheet, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,17 +12,19 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   async function handleLogin() {
     if (!email || !password) {
-      Alert.alert('Please fill in all fields');
+      setErrorMsg('Please fill in all fields');
       return;
     }
+    setErrorMsg('');
     setLoading(true);
     try {
       if (isSupabaseConfigured) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) { Alert.alert('Sign in failed', error.message); return; }
+        if (error) { setErrorMsg(error.message); return; }
         const user = data.user;
         let role = 'traveller';
         if (user) {
@@ -41,10 +43,10 @@ export default function Login() {
             return;
           }
         }
-        Alert.alert('Sign in failed', 'No account found. Please sign up first.');
+        setErrorMsg('No account found. Please sign up first.');
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Something went wrong');
+      setErrorMsg(err?.message ?? 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -63,7 +65,9 @@ export default function Login() {
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
         {/* Header */}
-        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/')}>
+        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
+          // @ts-ignore
+          onClick={() => router.canGoBack() ? router.back() : router.replace('/')}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 
@@ -74,6 +78,12 @@ export default function Login() {
 
         <Text style={styles.heading}>Welcome back</Text>
         <Text style={styles.subheading}>Sign in to your Cubby account</Text>
+
+        {!!errorMsg && (
+          <View style={{ backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+            <Text style={{ color: '#DC2626', fontWeight: '600' }}>{errorMsg}</Text>
+          </View>
+        )}
 
         <View style={styles.form}>
           <Text style={styles.label}>Email</Text>
@@ -103,6 +113,8 @@ export default function Login() {
             onPress={handleLogin}
             disabled={loading}
             activeOpacity={0.85}
+            // @ts-ignore
+            onClick={handleLogin}
           >
             <Text style={styles.btnText}>{loading ? 'Signing in…' : 'Sign in'}</Text>
           </TouchableOpacity>

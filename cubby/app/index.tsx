@@ -74,7 +74,15 @@ export default function Welcome() {
         </TouchableOpacity>
       </Animated.View>
 
-      <Text style={styles.location}>📍 Cape Town, South Africa</Text>
+      <View style={styles.bottomRow}>
+        <Text style={styles.location}>📍 Cape Town, South Africa</Text>
+        <TouchableOpacity onPress={() => router.push('/(traveller)/partner-apply')}
+          // @ts-ignore
+          onClick={() => router.push('/(traveller)/partner-apply')}
+        >
+          <Text style={styles.partnerLink}>Partner with us →</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -125,5 +133,7 @@ const styles = StyleSheet.create({
   btnPrimaryText: { fontSize: 17, fontWeight: '800', color: Colors.primary },
   btnSecondary: { borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)', borderRadius: 18, paddingVertical: 18, alignItems: 'center' },
   btnSecondaryText: { fontSize: 17, fontWeight: '600', color: Colors.white },
+  bottomRow: { alignItems: 'center', gap: 8 },
   location: { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+  partnerLink: { fontSize: 13, color: 'rgba(255,255,255,0.5)', textDecorationLine: 'underline' },
 });

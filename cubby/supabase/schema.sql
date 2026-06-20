@@ -81,7 +81,7 @@ create policy "Hosts can view bookings for their listing" on bookings for select
 -- Reviews
 create table if not exists reviews (
   id uuid default gen_random_uuid() primary key,
-  booking_id uuid references bookings(id) on delete cascade not null,
+  booking_id uuid references bookings(id) on delete cascade not null unique, -- one review per booking
   reviewer_id uuid references auth.users(id) on delete cascade not null,
   host_id uuid references hosts(id) not null,
   reviewer_name text not null,
@@ -93,6 +93,26 @@ create table if not exists reviews (
 alter table reviews enable row level security;
 create policy "Reviews are publicly viewable" on reviews for select using (true);
 create policy "Travellers can create reviews" on reviews for insert with check (auth.uid() = reviewer_id);
+
+-- Function: recalculate host rating + review_count after any review insert/delete
+create or replace function recalculate_host_rating()
+returns trigger language plpgsql security definer as $$
+declare
+  target_host_id uuid;
+begin
+  target_host_id := coalesce(new.host_id, old.host_id);
+  update hosts
+  set
+    rating       = (select coalesce(round(avg(rating)::numeric, 1), 0) from reviews where host_id = target_host_id),
+    review_count = (select count(*) from reviews where host_id = target_host_id)
+  where id = target_host_id;
+  return new;
+end;
+$$;
+
+create trigger trg_recalculate_host_rating
+after insert or delete on reviews
+for each row execute function recalculate_host_rating();
 
 -- -------------------------------------------------------------------------
 -- Payment & payout additions
@@ -112,7 +132,12 @@ CREATE TABLE IF NOT EXISTS host_bank_details (
 );
 
 ALTER TABLE host_bank_details ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage bank details" ON host_bank_details FOR ALL USING (true);
+-- Hosts can only manage bank details for their own listing.
+-- Admin reads go through the admin-bank-details Edge Function (service role).
+CREATE POLICY "Hosts can manage own bank details" ON host_bank_details
+  FOR ALL USING (
+    host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid())
+  );
 
 -- Payment & payout columns on bookings
 ALTER TABLE bookings
@@ -121,3 +146,89 @@ ALTER TABLE bookings
   ADD COLUMN IF NOT EXISTS cubby_amount DECIMAL(10,2),
   ADD COLUMN IF NOT EXISTS payout_status TEXT DEFAULT 'pending',
   ADD COLUMN IF NOT EXISTS payout_id TEXT;
+
+-- Saved spots (travellers bookmarking hosts)
+CREATE TABLE IF NOT EXISTS saved_spots (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  host_id UUID REFERENCES hosts(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, host_id)
+);
+ALTER TABLE saved_spots ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own saved spots" ON saved_spots FOR ALL USING (auth.uid() = user_id);
+
+-- Partner applications
+CREATE TABLE IF NOT EXISTS partner_applications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  business_name TEXT,
+  business_type TEXT,
+  location TEXT,
+  storage_capacity INTEGER,
+  available_hours TEXT,
+  message TEXT,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE partner_applications ENABLE ROW LEVEL SECURITY;
+-- Public INSERT: anyone can submit a partner application (no auth required)
+CREATE POLICY "Anyone can submit a partner application" ON partner_applications FOR INSERT WITH CHECK (true);
+-- No public SELECT: admin reads go through service-role Edge Functions only
+
+-- Allow travellers to update their own bookings (needed for cancellation)
+CREATE POLICY "Travellers can update own bookings" ON bookings FOR UPDATE USING (auth.uid() = traveller_id);
+
+-- Allow hosts to update bookings for their own listing (accept / decline / complete)
+CREATE POLICY "Hosts can update bookings for their listing" ON bookings FOR UPDATE
+  USING (host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid()));
+
+-- -------------------------------------------------------------------------
+-- Security sprint migrations (run these in Supabase SQL editor if the DB
+-- already exists — the CREATE TABLE above won't re-run on an existing DB)
+-- -------------------------------------------------------------------------
+
+-- Fix 1: host_bank_details — drop the open-to-all policy, replace with owner-only
+-- DROP POLICY IF EXISTS "Admins can manage bank details" ON host_bank_details;
+-- CREATE POLICY "Hosts can manage own bank details" ON host_bank_details
+--   FOR ALL USING (host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid()));
+
+-- Fix 2: partner_applications — drop the open SELECT policy
+-- DROP POLICY IF EXISTS "Admins can view all applications" ON partner_applications;
+
+-- -------------------------------------------------------------------------
+-- Avatar storage — run these in Supabase SQL editor / Storage dashboard
+-- -------------------------------------------------------------------------
+-- 1. Create the bucket (Supabase dashboard → Storage → New bucket):
+--      Name: avatars
+--      Public: true
+--      Allowed MIME types: image/jpeg, image/png, image/webp, image/gif
+--      Max file size: 5 MB
+--
+-- 2. Storage RLS policies (run in SQL editor):
+--
+-- INSERT: authenticated users can upload to their own folder
+-- CREATE POLICY "Users can upload own avatar"
+--   ON storage.objects FOR INSERT
+--   TO authenticated
+--   WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+--
+-- UPDATE: authenticated users can replace their own avatar
+-- CREATE POLICY "Users can update own avatar"
+--   ON storage.objects FOR UPDATE
+--   TO authenticated
+--   USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+--
+-- SELECT: anyone can read avatars (bucket is public)
+-- CREATE POLICY "Anyone can read avatars"
+--   ON storage.objects FOR SELECT
+--   TO public
+--   USING (bucket_id = 'avatars');
+--
+-- DELETE: users can delete their own avatar
+-- CREATE POLICY "Users can delete own avatar"
+--   ON storage.objects FOR DELETE
+--   TO authenticated
+--   USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);

@@ -68,17 +68,16 @@ serve(async (req) => {
     );
 
     if (isSuccessCode(resultCode)) {
-      // Payment succeeded — confirm booking and generate PIN
-      const pin = String(Math.floor(1000 + Math.random() * 9000));
-
+      // Payment succeeded — confirm booking. pin_code was set at booking creation and is NOT
+      // changed here; the traveller already has the correct PIN from booking-confirmation.
       const { error } = await supabase
         .from('bookings')
         .update({
           status: 'confirmed',
-          pin_code: pin,
           checkout_id: checkoutId || undefined,
         })
-        .eq('id', bookingId);
+        .eq('id', bookingId)
+        .eq('status', 'pending'); // idempotent: skip if already confirmed
 
       if (error) {
         console.error('Failed to confirm booking:', error);
@@ -88,7 +87,7 @@ serve(async (req) => {
         );
       }
 
-      console.log(`Booking ${bookingId} confirmed, PIN: ${pin}`);
+      console.log(`Booking ${bookingId} confirmed`);
     } else {
       // Payment failed or declined
       const { error } = await supabase
