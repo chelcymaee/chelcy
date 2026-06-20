@@ -37,15 +37,38 @@ export default function Signup() {
           options: { data: { full_name: fullName, role } },
         });
         if (error) { setErrorMsg(error.message); return; }
-        // Profile row is created by the on_auth_user_created trigger in Supabase.
-        // If the session is already active (email confirmation disabled), also try
-        // an upsert so it works in both configurations.
+
         const user = data.user;
-        if (user && data.session) {
-          await supabase.from('profiles').upsert(
-            { id: user.id, email, full_name: fullName, role },
-            { onConflict: 'id', ignoreDuplicates: true },
-          );
+        console.log('[signup] auth.signUp result:', { userId: user?.id, hasSession: !!data.session });
+
+        if (!user) {
+          setErrorMsg('Signup failed — no user returned. Please try again.');
+          return;
+        }
+
+        if (data.session) {
+          // Session is active (email confirmation disabled) — insert profile now.
+          const { error: upsertError } = await supabase
+            .from('profiles')
+            .upsert(
+              { id: user.id, email, full_name: fullName, role },
+              { onConflict: 'id', ignoreDuplicates: true },
+            );
+          if (upsertError) {
+            console.error('[signup] profile upsert failed:', upsertError);
+            // Non-fatal: the DB trigger will create the row. Log and continue.
+          } else {
+            console.log('[signup] profile upsert succeeded for', user.id);
+          }
+        } else {
+          // No session yet — email confirmation is required.
+          // The on_auth_user_created DB trigger will create the profile row.
+          // Inform the user they need to confirm their email.
+          console.log('[signup] no session — email confirmation required. Trigger will create profile.');
+          setErrorMsg('');
+          setLoading(false);
+          alert('Account created! Please check your email and confirm your address before signing in.');
+          return;
         }
       } else {
         // Local auth — save account to device
