@@ -32,6 +32,12 @@ export default function CreateHost() {
   const [active, setActive] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+
+  function log(msg: string) {
+    console.log('[create-host]', msg);
+    setDebugLog(prev => [...prev, msg]);
+  }
   const [successMsg, setSuccessMsg] = useState('');
 
   function toggleDay(day: string) {
@@ -40,20 +46,26 @@ export default function CreateHost() {
 
   async function handleSave() {
     setErrorMsg(''); setSuccessMsg('');
-    if (!displayName.trim()) { setErrorMsg('Display name is required.'); return; }
-    if (!locationName.trim()) { setErrorMsg('Location name is required.'); return; }
-    const price = parseFloat(pricePerBag);
-    if (isNaN(price) || price < 1 || price > 1000) { setErrorMsg('Price must be between R1 and R1000.'); return; }
-    const bags = parseInt(maxBags);
-    if (isNaN(bags) || bags < 1 || bags > 200) { setErrorMsg('Max bags must be between 1 and 200.'); return; }
+    setDebugLog([]);
+    log('Button pressed');
+    log('Supabase mode: ' + (isSupabaseConfigured ? 'ON' : 'OFF'));
 
+    if (!displayName.trim()) { setErrorMsg('Display name is required.'); log('FAIL: no display name'); return; }
+    if (!locationName.trim()) { setErrorMsg('Location name is required.'); log('FAIL: no location name'); return; }
+    const price = parseFloat(pricePerBag);
+    if (isNaN(price) || price < 1 || price > 1000) { setErrorMsg('Price must be between R1 and R1000. Got: ' + pricePerBag); log('FAIL: invalid price: ' + pricePerBag); return; }
+    const bags = parseInt(maxBags);
+    if (isNaN(bags) || bags < 1 || bags > 200) { setErrorMsg('Max bags must be between 1 and 200. Got: ' + maxBags); log('FAIL: invalid bags: ' + maxBags); return; }
+
+    log('Validation passed');
     setSaving(true);
     try {
       if (isSupabaseConfigured) {
-        // hosts.user_id is NOT NULL — use the currently logged-in Supabase user (admin/owner).
+        log('Getting current Supabase user...');
         const { data: { user } } = await supabase.auth.getUser();
+        log('User ID: ' + (user?.id ?? 'NONE — not logged in'));
         if (!user) {
-          setErrorMsg('You must be signed into a Supabase account to create hosts. Please sign up/in first, then return here.');
+          setErrorMsg('Not signed in to Supabase. Go to the traveller app and sign in first, then return here.');
           return;
         }
         const payload = {
@@ -63,13 +75,14 @@ export default function CreateHost() {
           available_from: availableFrom.trim() || '08:00', available_until: availableUntil.trim() || '20:00',
           available_days: availableDays, is_active: active,
         };
-        console.log('[create-host] inserting payload:', payload);
-        const { error } = await supabase.from('hosts').insert(payload).select();
+        log('Inserting into hosts table...');
+        const { data: inserted, error } = await supabase.from('hosts').insert(payload).select();
         if (error) {
-          console.error('[create-host] insert error:', error);
-          setErrorMsg('Error: ' + error.message);
+          log('INSERT ERROR: ' + error.message + ' | code: ' + error.code);
+          setErrorMsg('Supabase error: ' + error.message);
           return;
         }
+        log('Insert success! Row ID: ' + (inserted?.[0]?.id ?? 'unknown'));
         setSuccessMsg('Host profile created!');
         setTimeout(() => router.replace('/(admin)/manage-hosts'), 1500);
       } else {
@@ -198,6 +211,18 @@ export default function CreateHost() {
           {saving ? 'Saving...' : 'Create Host Profile'}
         </button>
       </div>
+
+      {/* DEBUG PANEL — remove before launch */}
+      {debugLog.length > 0 && (
+        <div style={{ margin: '16px 20px', backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12 }}>
+          <div style={{ color: '#00FF88', fontSize: 11, fontFamily: 'monospace', fontWeight: 700, marginBottom: 6 }}>DEBUG LOG</div>
+          {debugLog.map((line, i) => (
+            <div key={i} style={{ color: line.includes('ERROR') || line.includes('FAIL') ? '#FF6B6B' : '#00FF88', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.6 }}>
+              {i + 1}. {line}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Sticky footer: error + save button always visible */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 20px', backgroundColor: '#FAF9F6', borderTop: '1px solid #F0EAEA' }}>

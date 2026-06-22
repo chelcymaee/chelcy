@@ -21,25 +21,35 @@ export default function ManageHosts() {
   const [hosts, setHosts] = useState<Host[]>([]);
   const [msg, setMsg] = useState('');
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState('');
 
   useFocusEffect(useCallback(() => { loadHosts(); }, []));
 
   async function loadHosts() {
     try {
       if (isSupabaseConfigured) {
-        const { data, error } = await supabase.from('hosts').select('*').order('created_at', { ascending: false });
-        if (!error && data) {
+        setDebugInfo('Supabase: ON — querying hosts table...');
+        const { data, error, count } = await supabase.from('hosts').select('*', { count: 'exact' }).order('created_at', { ascending: false });
+        if (error) {
+          setDebugInfo(`Supabase: ON — ERROR: ${error.message} (code: ${error.code})`);
+          return;
+        }
+        setDebugInfo(`Supabase: ON — rows returned: ${data?.length ?? 0} | total count: ${count ?? 'n/a'}`);
+        if (data) {
           setHosts(data.map((r: any) => ({
             id: r.id, displayName: r.display_name, locationName: r.location_name,
             businessType: r.business_type, pricePerBag: r.price_per_bag_per_day,
-            active: r.active ?? r.is_active ?? false,
+            active: r.is_active ?? false,
           })));
         }
       } else {
+        setDebugInfo('Supabase: OFF — loading from AsyncStorage');
         const raw = await AsyncStorage.getItem('cubby_hosts');
         setHosts(raw ? JSON.parse(raw) : []);
       }
-    } catch {}
+    } catch (e: any) {
+      setDebugInfo('Exception: ' + e?.message);
+    }
   }
 
   async function toggleActive(host: Host) {
@@ -96,6 +106,13 @@ export default function ManageHosts() {
       </div>
 
       {!!msg && <div style={s.msg}>{msg}</div>}
+
+      {/* DEBUG PANEL — remove before launch */}
+      {!!debugInfo && (
+        <div style={{ backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12, marginBottom: 12, fontFamily: 'monospace', fontSize: 12, color: debugInfo.includes('ERROR') || debugInfo.includes('Exception') ? '#FF6B6B' : '#00FF88' }}>
+          {debugInfo}
+        </div>
+      )}
 
       {hosts.length === 0 ? (
         <div style={s.empty}>
