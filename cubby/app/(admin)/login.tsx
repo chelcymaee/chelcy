@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { checkAdminSession } from '../../src/lib/admin-auth';
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
@@ -15,6 +16,13 @@ export default function AdminLogin() {
   const [attempts, setAttempts] = useState(0);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [countdown, setCountdown] = useState('');
+
+  // If admin session is already valid, skip login
+  useEffect(() => {
+    checkAdminSession().then(valid => {
+      if (valid) router.replace('/(admin)/dashboard');
+    });
+  }, []);
 
   // Load lockout state on mount
   useEffect(() => {

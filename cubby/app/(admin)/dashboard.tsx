@@ -46,7 +46,7 @@ export default function AdminDashboard() {
 
   async function handleSignOut() {
     await clearAdminSession();
-    router.replace('/(admin)/login');
+    router.replace('/(traveller)/explore');
   }
 
   const STATS = [
@@ -149,7 +149,7 @@ export default function AdminDashboard() {
         {NAV_CARDS.map(card => (
           <button
             key={card.label}
-            onClick={() => router.replace(card.route as any)}
+            onClick={() => router.push(card.route as any)}
             style={s.navCard}
           >
             <span style={s.navCardIcon}>{card.icon}</span>
@@ -160,13 +160,13 @@ export default function AdminDashboard() {
 
       {confirmSignOut ? (
         <div style={s.confirmBox}>
-          <span style={s.confirmText}>Sure you want to sign out?</span>
-          <button style={s.confirmYes} onClick={handleSignOut}>Yes</button>
-          <button style={s.confirmNo} onClick={() => setConfirmSignOut(false)}>No</button>
+          <span style={s.confirmText}>Exit Admin and return to app?</span>
+          <button style={s.confirmYes} onClick={handleSignOut}>Yes, exit</button>
+          <button style={s.confirmNo} onClick={() => setConfirmSignOut(false)}>Stay</button>
         </div>
       ) : (
         <button style={s.signOutBtn} onClick={() => setConfirmSignOut(true)}>
-          Sign Out
+          Exit Admin
         </button>
       )}
 

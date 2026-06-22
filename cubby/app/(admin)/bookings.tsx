@@ -28,7 +28,7 @@ export default function AdminBookings() {
     <div style={{ minHeight: '100vh', backgroundColor: '#FAF9F6', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ padding: '16px 20px 8px' }}>
         <button
-          onClick={() => router.replace('/(admin)/dashboard')}
+          onClick={() => router.back()}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 12, display: 'block' }}
         >
           <span style={{ fontSize: 15, color: '#2D6A4F', fontWeight: 600 }}>← Back</span>

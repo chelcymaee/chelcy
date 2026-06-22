@@ -288,7 +288,7 @@ export default function HostPayouts() {
   return (
     <div style={s.page}>
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
+        <button style={s.backBtn} onClick={() => router.back()}>
           ← Back
         </button>
         <h1 style={s.heading}>Host Bank Details</h1>

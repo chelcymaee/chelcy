@@ -97,7 +97,7 @@ export default function ManageHosts() {
   return (
     <div style={s.page}>
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>← Back</button>
+        <button style={s.backBtn} onClick={() => router.back()}>← Back to Dashboard</button>
         <h1 style={s.title}>Manage Hosts</h1>
       </div>
 
@@ -107,7 +107,7 @@ export default function ManageHosts() {
         <div style={s.empty}>
           <div style={{ fontSize: 48 }}>🏠</div>
           <p style={{ fontSize: 18, fontWeight: 700 }}>No hosts yet.</p>
-          <button style={s.createBtn} onClick={() => router.replace('/(admin)/create-host')}>Create Host Profile</button>
+          <button style={s.createBtn} onClick={() => router.push('/(admin)/create-host')}>Create Host Profile</button>
         </div>
       ) : (
         hosts.map(host => (
@@ -142,7 +142,7 @@ export default function ManageHosts() {
       )}
 
       <div style={{ height: 100 }} />
-      <button style={s.fab} onClick={() => router.replace('/(admin)/create-host')}>+</button>
+      <button style={s.fab} onClick={() => router.push('/(admin)/create-host')}>+</button>
     </div>
   );
 }

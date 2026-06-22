@@ -438,7 +438,9 @@ export default function Profile() {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity onPress={() => router.push('/(admin)/login')}>
+        <TouchableOpacity onPress={() => router.replace('/(admin)/login')}
+          // @ts-ignore
+          onClick={() => router.replace('/(admin)/login')}>
           <Text style={{ color: 'rgba(0,0,0,0.08)', fontSize: 11, textAlign: 'center', marginTop: 20 }}>v1.0.0</Text>
         </TouchableOpacity>
 

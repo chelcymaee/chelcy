@@ -147,7 +147,7 @@ export default function CreateHost() {
   return (
     <div style={s.page}>
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.replace('/(admin)/dashboard')}>← Back</button>
+        <button style={s.backBtn} onClick={() => router.back()}>← Back to Dashboard</button>
         <h1 style={s.title}>Create Host Profile</h1>
       </div>
 
