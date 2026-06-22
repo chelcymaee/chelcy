@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, TextInput, Switch,
+  TouchableOpacity, TextInput, Switch, Image, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
@@ -30,6 +30,10 @@ export default function HostProfile() {
   const [untilTime, setUntilTime] = useState('20:00');
   const [days, setDays] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
   const [isActive, setIsActive] = useState(true);
+
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<any>(null);
 
   const [loading, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
@@ -64,6 +68,7 @@ export default function HostProfile() {
           setUntilTime(data.available_until ?? '20:00');
           setDays(data.available_days ?? DAYS);
           setIsActive(data.is_active ?? true);
+          setPhotos(data.photos ?? []);
           return;
         }
       }
@@ -88,6 +93,46 @@ export default function HostProfile() {
 
   function toggleDay(d: string) {
     setDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+  }
+
+  async function handlePhotoSelect(e: any) {
+    const file: File = e.target.files?.[0];
+    if (!file) return;
+    if (!isSupabaseConfigured) { showToast('Photo upload requires Supabase', true); return; }
+    if (photos.length >= 5) { showToast('Maximum 5 photos allowed', true); return; }
+
+    setUploadingPhoto(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { showToast('Not logged in', true); return; }
+
+      const ext = file.name.split('.').pop();
+      const path = `host-photos/${user.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('host-photos')
+        .upload(path, file, { upsert: false });
+      if (upErr) { showToast('Upload failed: ' + upErr.message, true); return; }
+
+      const { data: { publicUrl } } = supabase.storage.from('host-photos').getPublicUrl(path);
+      const newPhotos = [...photos, publicUrl];
+      setPhotos(newPhotos);
+
+      // persist to host row immediately
+      await supabase.from('hosts').update({ photos: newPhotos }).eq('user_id', user.id);
+      showToast('Photo added ✓');
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function removePhoto(url: string) {
+    const newPhotos = photos.filter(p => p !== url);
+    setPhotos(newPhotos);
+    if (isSupabaseConfigured) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) await supabase.from('hosts').update({ photos: newPhotos }).eq('user_id', user.id);
+    }
   }
 
   async function save() {
@@ -292,13 +337,48 @@ export default function HostProfile() {
           ))}
         </View>
 
-        {/* Photos placeholder */}
+        {/* Photos */}
         <Text style={styles.sectionTitle}>Photos of your storage space</Text>
-        <TouchableOpacity style={styles.photosPlaceholder}>
-          <Text style={styles.photosIcon}>📷</Text>
-          <Text style={styles.photosText}>Add photos</Text>
-          <Text style={styles.photosSub}>Hosts with photos earn 3× more bookings</Text>
-        </TouchableOpacity>
+        {Platform.OS === 'web' && (
+          // @ts-ignore
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handlePhotoSelect}
+          />
+        )}
+        <View style={styles.photosGrid}>
+          {photos.map((uri, i) => (
+            <View key={i} style={styles.photoThumb}>
+              <Image source={{ uri }} style={styles.photoImg} />
+              <TouchableOpacity
+                style={styles.photoRemove}
+                onPress={() => removePhoto(uri)}
+                // @ts-ignore
+                onClick={() => removePhoto(uri)}
+              >
+                <Text style={styles.photoRemoveText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+          {photos.length < 5 && (
+            <TouchableOpacity
+              style={styles.photosPlaceholder}
+              onPress={() => fileInputRef.current?.click()}
+              // @ts-ignore
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPhoto}
+            >
+              <Text style={styles.photosIcon}>{uploadingPhoto ? '⏳' : '📷'}</Text>
+              <Text style={styles.photosText}>{uploadingPhoto ? 'Uploading…' : 'Add photo'}</Text>
+              {photos.length === 0 && (
+                <Text style={styles.photosSub}>Hosts with photos earn 3× more bookings</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Save */}
         <TouchableOpacity
@@ -402,14 +482,26 @@ const styles = StyleSheet.create({
   dayChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   dayText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
   dayTextActive: { color: Colors.white },
-  photosPlaceholder: {
-    marginHorizontal: 20, borderRadius: 16, borderWidth: 2,
-    borderColor: Colors.border, borderStyle: 'dashed', padding: 28,
-    alignItems: 'center', backgroundColor: Colors.white, marginBottom: 24,
+  photosGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+    paddingHorizontal: 20, marginBottom: 24,
   },
-  photosIcon: { fontSize: 36, marginBottom: 8 },
-  photosText: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  photosSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4, textAlign: 'center' },
+  photoThumb: { width: 100, height: 100, borderRadius: 12, overflow: 'hidden', position: 'relative' },
+  photoImg: { width: 100, height: 100 },
+  photoRemove: {
+    position: 'absolute', top: 4, right: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10,
+    width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
+  },
+  photoRemoveText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  photosPlaceholder: {
+    width: 100, height: 100, borderRadius: 12, borderWidth: 2,
+    borderColor: Colors.border, borderStyle: 'dashed',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.white,
+  },
+  photosIcon: { fontSize: 28, marginBottom: 4 },
+  photosText: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center' },
+  photosSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 4, textAlign: 'center', paddingHorizontal: 4 },
   saveBtn: {
     backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18,
     alignItems: 'center', marginHorizontal: 20,
