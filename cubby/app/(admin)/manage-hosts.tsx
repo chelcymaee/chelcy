@@ -31,7 +31,7 @@ export default function ManageHosts() {
         if (!error && data) {
           setHosts(data.map((r: any) => ({
             id: r.id, displayName: r.display_name, locationName: r.location_name,
-            businessType: r.business_type, pricePerBag: r.price_per_bag,
+            businessType: r.business_type, pricePerBag: r.price_per_bag_per_day,
             active: r.active ?? r.is_active ?? false,
           })));
         }
@@ -44,7 +44,7 @@ export default function ManageHosts() {
 
   async function toggleActive(host: Host) {
     if (isSupabaseConfigured) {
-      const { error } = await supabase.from('hosts').update({ active: !host.active }).eq('id', host.id);
+      const { error } = await supabase.from('hosts').update({ is_active: !host.active }).eq('id', host.id);
       if (!error) setHosts(prev => prev.map(h => h.id === host.id ? { ...h, active: !h.active } : h));
     } else {
       const updated = hosts.map(h => h.id === host.id ? { ...h, active: !h.active } : h);
@@ -55,6 +55,8 @@ export default function ManageHosts() {
 
   async function deleteHost(id: string) {
     if (isSupabaseConfigured) {
+      // Delete bookings referencing this host first to satisfy the foreign key constraint
+      await supabase.from('bookings').delete().eq('host_id', id);
       const { error } = await supabase.from('hosts').delete().eq('id', id);
       if (error) { setMsg('Error: ' + error.message); setConfirmId(null); return; }
     } else {
