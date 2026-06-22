@@ -32,11 +32,9 @@ export default function CreateHost() {
   const [active, setActive] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [debugLog, setDebugLog] = useState<string[]>([]);
 
   function log(msg: string) {
     console.log('[create-host]', msg);
-    setDebugLog(prev => [...prev, msg]);
   }
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -46,7 +44,6 @@ export default function CreateHost() {
 
   async function handleSave() {
     setErrorMsg(''); setSuccessMsg('');
-    setDebugLog([]);
     log('Button pressed');
     log('Supabase mode: ' + (isSupabaseConfigured ? 'ON' : 'OFF'));
 
@@ -211,18 +208,6 @@ export default function CreateHost() {
           {saving ? 'Saving...' : 'Create Host Profile'}
         </button>
       </div>
-
-      {/* DEBUG PANEL — remove before launch */}
-      {debugLog.length > 0 && (
-        <div style={{ margin: '16px 20px', backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12 }}>
-          <div style={{ color: '#00FF88', fontSize: 11, fontFamily: 'monospace', fontWeight: 700, marginBottom: 6 }}>DEBUG LOG</div>
-          {debugLog.map((line, i) => (
-            <div key={i} style={{ color: line.includes('ERROR') || line.includes('FAIL') ? '#FF6B6B' : '#00FF88', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.6 }}>
-              {i + 1}. {line}
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Sticky footer: error + save button always visible */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 20px', backgroundColor: '#FAF9F6', borderTop: '1px solid #F0EAEA' }}>
