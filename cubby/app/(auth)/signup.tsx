@@ -61,9 +61,8 @@ export default function Signup() {
             console.log('[signup] profile upsert succeeded for', user.id);
           }
         } else {
-          // No session yet — email confirmation is required.
+          // No session yet — email confirmation is enabled in Supabase.
           // The on_auth_user_created DB trigger will create the profile row.
-          // Inform the user they need to confirm their email.
           console.log('[signup] no session — email confirmation required. Trigger will create profile.');
           setErrorMsg('');
           setLoading(false);
