@@ -81,7 +81,7 @@ export default function CreateHost() {
   }
 
   const s: any = {
-    page: { minHeight: '100vh', backgroundColor: '#FAF9F6', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
+    page: { minHeight: '100vh', backgroundColor: '#FAF9F6', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingBottom: 100 },
     header: { padding: '16px 20px 8px' },
     backBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#2D6A4F', fontWeight: 600, padding: 0, marginBottom: 8, display: 'block' },
     title: { fontSize: 24, fontWeight: 800, color: '#1a1a1a', margin: 0 },
@@ -182,6 +182,13 @@ export default function CreateHost() {
 
         {!!errorMsg && <div style={s.errorBox}>{errorMsg}</div>}
 
+        <button onClick={handleSave} disabled={saving} style={s.saveBtn(saving)}>
+          {saving ? 'Saving...' : 'Create Host Profile'}
+        </button>
+      </div>
+
+      {/* Sticky save button always visible at bottom */}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 20px', backgroundColor: '#FAF9F6', borderTop: '1px solid #F0EAEA' }}>
         <button onClick={handleSave} disabled={saving} style={s.saveBtn(saving)}>
           {saving ? 'Saving...' : 'Create Host Profile'}
         </button>
