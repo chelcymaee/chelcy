@@ -43,21 +43,33 @@ export default function CreateHost() {
     if (!displayName.trim()) { setErrorMsg('Display name is required.'); return; }
     if (!locationName.trim()) { setErrorMsg('Location name is required.'); return; }
     const price = parseFloat(pricePerBag);
-    if (isNaN(price) || price < 100 || price > 300) { setErrorMsg('Price must be between R100 and R300.'); return; }
+    if (isNaN(price) || price < 1 || price > 1000) { setErrorMsg('Price must be between R1 and R1000.'); return; }
     const bags = parseInt(maxBags);
-    if (isNaN(bags) || bags < 1 || bags > 50) { setErrorMsg('Max bags must be between 1 and 50.'); return; }
+    if (isNaN(bags) || bags < 1 || bags > 200) { setErrorMsg('Max bags must be between 1 and 200.'); return; }
 
     setSaving(true);
     try {
       if (isSupabaseConfigured) {
+        // hosts.user_id is NOT NULL — use the currently logged-in Supabase user (admin/owner).
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setErrorMsg('You must be signed into a Supabase account to create hosts. Please sign up/in first, then return here.');
+          return;
+        }
         const payload = {
+          user_id: user.id,
           display_name: displayName.trim(), bio: bio.trim(), location_name: locationName.trim(),
-          business_type: businessType, price_per_bag: parseInt(pricePerBag), max_bags: parseInt(maxBags),
+          business_type: businessType, price_per_bag_per_day: parseInt(pricePerBag), max_bags: parseInt(maxBags),
           available_from: availableFrom.trim() || '08:00', available_until: availableUntil.trim() || '20:00',
-          available_days: availableDays, partner_email: partnerEmail.trim(), active: false,
+          available_days: availableDays, is_active: active,
         };
+        console.log('[create-host] inserting payload:', payload);
         const { error } = await supabase.from('hosts').insert(payload).select();
-        if (error) { setErrorMsg('Error: ' + error.message); return; }
+        if (error) {
+          console.error('[create-host] insert error:', error);
+          setErrorMsg('Error: ' + error.message);
+          return;
+        }
         setSuccessMsg('Host profile created!');
         setTimeout(() => router.replace('/(admin)/manage-hosts'), 1500);
       } else {
@@ -187,10 +199,12 @@ export default function CreateHost() {
         </button>
       </div>
 
-      {/* Sticky save button always visible at bottom */}
+      {/* Sticky footer: error + save button always visible */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 20px', backgroundColor: '#FAF9F6', borderTop: '1px solid #F0EAEA' }}>
+        {!!errorMsg && <div style={{ ...s.errorBox, marginBottom: 8 }}>{errorMsg}</div>}
+        {!!successMsg && <div style={{ ...s.successBox, marginBottom: 8 }}>{successMsg}</div>}
         <button onClick={handleSave} disabled={saving} style={s.saveBtn(saving)}>
-          {saving ? 'Saving...' : 'Create Host Profile'}
+          {saving ? 'Saving…' : 'Create Host Profile'}
         </button>
       </div>
     </div>

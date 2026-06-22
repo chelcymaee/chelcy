@@ -1,18 +1,7 @@
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { checkAdminSession, clearAdminSession } from '../../src/lib/admin-auth';
-
-interface Host {
-  id: string;
-  active: boolean;
-}
-
-interface Booking {
-  id: string;
-  status: string;
-  totalPrice: number;
-}
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 export default function AdminDashboard() {
   const [totalHosts, setTotalHosts] = useState(0);
@@ -32,20 +21,27 @@ export default function AdminDashboard() {
   }
 
   async function loadStats() {
+    if (!isSupabaseConfigured) return;
     try {
-      const hostsRaw = await AsyncStorage.getItem('cubby_hosts');
-      const bookingsRaw = await AsyncStorage.getItem('cubby_bookings');
-      const hosts: Host[] = hostsRaw ? JSON.parse(hostsRaw) : [];
-      const bookings: Booking[] = bookingsRaw ? JSON.parse(bookingsRaw) : [];
+      const [{ count: hostCount }, { data: bookings }, { count: pendingCount }] = await Promise.all([
+        supabase.from('hosts').select('*', { count: 'exact', head: true }),
+        supabase.from('bookings').select('status, total_price'),
+        supabase.from('hosts').select('*', { count: 'exact', head: true }).eq('is_active', false),
+      ]);
 
-      setTotalHosts(hosts.length);
-      setActiveBookings(bookings.filter(b => b.status === 'active').length);
-      setPendingApprovals(hosts.filter(h => !h.active).length);
+      setTotalHosts(hostCount ?? 0);
+      setPendingApprovals(pendingCount ?? 0);
 
-      const completed = bookings.filter(b => b.status === 'completed');
-      const total = completed.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
-      setRevenueMonth(total);
-    } catch {}
+      const active = (bookings ?? []).filter((b: any) => b.status === 'confirmed').length;
+      setActiveBookings(active);
+
+      const revenue = (bookings ?? [])
+        .filter((b: any) => b.status === 'confirmed' || b.status === 'completed')
+        .reduce((sum: number, b: any) => sum + (b.total_price ?? 0), 0);
+      setRevenueMonth(revenue);
+    } catch (e) {
+      console.error('[admin dashboard] loadStats error:', e);
+    }
   }
 
   async function handleSignOut() {
