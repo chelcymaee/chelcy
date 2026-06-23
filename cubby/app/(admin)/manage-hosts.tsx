@@ -140,7 +140,7 @@ export default function ManageHosts() {
   return (
     <div style={s.page}>
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.back()}>← Back to Dashboard</button>
+        <button style={s.backBtn} onClick={() => router.replace('/(admin)/dashboard')}>← Back to Dashboard</button>
         <h1 style={s.title}>Manage Hosts</h1>
       </div>
 

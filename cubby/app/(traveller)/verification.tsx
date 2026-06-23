@@ -50,7 +50,7 @@ export default function Verification() {
             We're reviewing your documents. This usually takes 24–48 hours.
             You'll receive a notification once your blue tick is confirmed.
           </Text>
-          <TouchableOpacity style={styles.btn} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.btn} onPress={() => router.replace('/(traveller)/profile')}>
             <Text style={styles.btnText}>Back to profile</Text>
           </TouchableOpacity>
         </View>
@@ -61,7 +61,7 @@ export default function Verification() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.inner}>
-        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')}>
+        <TouchableOpacity style={styles.back} onPress={() => router.replace('/(traveller)/profile')}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 

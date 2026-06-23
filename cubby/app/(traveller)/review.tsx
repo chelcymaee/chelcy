@@ -109,7 +109,7 @@ export default function Review() {
     }
   }
 
-  const goBack = () => router.canGoBack() ? router.back() : router.replace('/(traveller)/bookings');
+  const goBack = () => router.replace('/(traveller)/bookings');
 
   if (success) {
     return (

@@ -32,7 +32,7 @@ export default function Chat() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
+        <TouchableOpacity onPress={() => router.replace('/(traveller)/messages')}>
           <Text style={styles.back}>←</Text>
         </TouchableOpacity>
         <View>

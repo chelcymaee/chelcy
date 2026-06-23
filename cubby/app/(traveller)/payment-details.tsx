@@ -22,9 +22,9 @@ export default function PaymentDetails() {
         </View>
         <TouchableOpacity
           style={s.btn}
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}
+          onPress={() => router.replace('/(traveller)/profile')}
           // @ts-ignore
-          onClick={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}
+          onClick={() => router.replace('/(traveller)/profile')}
         >
           <Text style={s.btnText}>Back</Text>
         </TouchableOpacity>

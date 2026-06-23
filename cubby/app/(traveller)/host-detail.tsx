@@ -141,7 +141,7 @@ export default function HostDetail() {
 
   const reviews = [...savedReviews, ...mockReviews];
 
-  const goBack = () => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore');
+  const goBack = () => router.replace('/(traveller)/explore');
 
   if (!host) return (
     <SafeAreaView style={styles.container}>

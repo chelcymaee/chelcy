@@ -104,9 +104,9 @@ export default function Signup() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
-        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(auth)/login')}
+        <TouchableOpacity style={styles.back} onPress={() => router.replace('/(auth)/login')}
           // @ts-ignore
-          onClick={() => router.canGoBack() ? router.back() : router.replace('/(auth)/login')}>
+          onClick={() => router.replace('/(auth)/login')}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 

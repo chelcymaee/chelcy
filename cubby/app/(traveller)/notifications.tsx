@@ -45,9 +45,9 @@ export default function Notifications() {
     <SafeAreaView style={styles.container}>
       <ScrollView>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')}
+          <TouchableOpacity onPress={() => router.replace('/(traveller)/profile')}
             // @ts-ignore
-            onClick={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')}>
+            onClick={() => router.replace('/(traveller)/profile')}>
             <Text style={styles.back}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.heading}>Notifications</Text>

@@ -138,9 +138,9 @@ export default function PartnerApply() {
           {/* Header */}
           <TouchableOpacity
             style={s.back}
-            onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}
+            onPress={() => router.replace('/(traveller)/profile')}
             // @ts-ignore
-            onClick={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}
+            onClick={() => router.replace('/(traveller)/profile')}
           >
             <Text style={s.backText}>← Back</Text>
           </TouchableOpacity>

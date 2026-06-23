@@ -239,7 +239,7 @@ export default function Booking() {
     }
   }
 
-  const goBack = () => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore');
+  const goBack = () => router.replace('/(traveller)/explore');
 
   return (
     <SafeAreaView style={styles.container}>

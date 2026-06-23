@@ -65,9 +65,9 @@ export default function Login() {
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
         {/* Header */}
-        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
+        <TouchableOpacity style={styles.back} onPress={() => router.replace('/')}
           // @ts-ignore
-          onClick={() => router.canGoBack() ? router.back() : router.replace('/')}>
+          onClick={() => router.replace('/')}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 
