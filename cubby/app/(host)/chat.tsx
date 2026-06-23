@@ -24,6 +24,7 @@ export default function HostChat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [myId, setMyId] = useState<string | null>(null);
+  const [travellerId, setTravellerId] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
   const channelRef = useRef<any>(null);
 
@@ -37,6 +38,13 @@ export default function HostChat() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.replace('/(host)/messages'); return; }
     setMyId(user.id);
+    // Fetch traveller_id from conversation for profile link
+    const { data: convo } = await supabase
+      .from('conversations')
+      .select('traveller_id')
+      .eq('id', conversationId)
+      .single();
+    if (convo?.traveller_id) setTravellerId(convo.traveller_id);
     await loadMessages(user.id);
     subscribeRealtime(user.id);
     setLoading(false);
@@ -97,10 +105,19 @@ export default function HostChat() {
         >
           <Text style={styles.back}>←</Text>
         </TouchableOpacity>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.headerName}>{travellerName || 'Traveller'}</Text>
           <Text style={styles.headerSub}>Booking conversation</Text>
         </View>
+        {!!travellerId && (
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId, travellerName: travellerName || 'Traveller', fromChat: 'true' } })}
+            // @ts-ignore
+            onClick={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId, travellerName: travellerName || 'Traveller', fromChat: 'true' } })}
+          >
+            <Text style={styles.viewProfileLink}>View profile</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {loading ? (
@@ -162,6 +179,7 @@ const styles = StyleSheet.create({
   back: { fontSize: 24, color: Colors.textPrimary },
   headerName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
   headerSub: { fontSize: 12, color: Colors.textSecondary },
+  viewProfileLink: { fontSize: 13, fontWeight: '600', color: Colors.primary },
   messagesList: { padding: 16, gap: 8, flexGrow: 1 },
   emptyChat: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, paddingHorizontal: 32 },
   emptyChatText: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22 },

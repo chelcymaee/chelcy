@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, ActivityIndicator,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
@@ -18,6 +18,7 @@ type BookingStatus = 'pending' | 'confirmed' | 'active' | 'completed' | 'cancell
 
 interface HostBooking {
   id: string;
+  traveller_id: string;
   traveller_name: string;
   traveller_email: string;
   bag_count: number;
@@ -40,17 +41,17 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 // Demo fallback when Supabase is not configured
 const DEMO_REQUESTS: HostBooking[] = [
   {
-    id: 'demo-1', traveller_name: 'Sarah T.', traveller_email: 'sarah@example.com',
+    id: 'demo-1', traveller_id: 'demo', traveller_name: 'Sarah T.', traveller_email: 'sarah@example.com',
     bag_count: 2, drop_off_date: 'Today', drop_off_time: '09:00', pick_up_time: '15:00',
     total_price: 160, status: 'pending', pin_code: '4821',
   },
   {
-    id: 'demo-2', traveller_name: 'Luca B.', traveller_email: 'luca@example.com',
+    id: 'demo-2', traveller_id: 'demo', traveller_name: 'Luca B.', traveller_email: 'luca@example.com',
     bag_count: 3, drop_off_date: 'Today', drop_off_time: '11:00', pick_up_time: '19:00',
     total_price: 240, status: 'pending', pin_code: '7203',
   },
   {
-    id: 'demo-3', traveller_name: 'Anika R.', traveller_email: 'anika@example.com',
+    id: 'demo-3', traveller_id: 'demo', traveller_name: 'Anika R.', traveller_email: 'anika@example.com',
     bag_count: 1, drop_off_date: 'Yesterday', drop_off_time: '08:30', pick_up_time: '14:00',
     total_price: 80, status: 'confirmed', pin_code: '3391',
   },
@@ -96,6 +97,7 @@ export default function Requests() {
             .from('bookings')
             .select(`
               id,
+              traveller_id,
               bag_count,
               drop_off_date,
               drop_off_time,
@@ -113,6 +115,7 @@ export default function Requests() {
 
           const mapped: HostBooking[] = (data ?? []).map((b: any) => ({
             id: b.id,
+            traveller_id: b.traveller_id ?? '',
             traveller_name: b.profiles?.full_name?.trim() || b.profiles?.email?.split('@')[0] || 'Traveller',
             traveller_email: b.profiles?.email || '',
             bag_count: b.bag_count,
@@ -205,7 +208,13 @@ export default function Requests() {
                     <Text style={{ fontSize: 22 }}>👤</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.name}>{item.traveller_name}</Text>
+                    <TouchableOpacity
+                      onPress={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.traveller_id, travellerName: item.traveller_name } })}
+                      // @ts-ignore
+                      onClick={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.traveller_id, travellerName: item.traveller_name } })}
+                    >
+                      <Text style={styles.name}>{item.traveller_name} <Text style={styles.viewProfile}>View profile →</Text></Text>
+                    </TouchableOpacity>
                     {!!item.traveller_email && (
                       <Text style={styles.email}>{item.traveller_email}</Text>
                     )}
@@ -321,6 +330,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border, alignItems: 'center', justifyContent: 'center',
   },
   name: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  viewProfile: { fontSize: 12, fontWeight: '600', color: Colors.primary },
   email: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
   sub: { fontSize: 13, color: Colors.textSecondary, marginTop: 3 },
   date: { fontSize: 12, color: Colors.textLight, marginTop: 2 },
