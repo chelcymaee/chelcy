@@ -181,7 +181,13 @@ export default function Bookings() {
                   </View>
                 </View>
 
-                {!!pinCode && status !== 'completed' && status !== 'cancelled' && (
+                {status === 'pending' && (
+                  <View style={styles.pendingCard}>
+                    <Text style={styles.pendingText}>⏳ Payment pending — your PIN will appear once payment is confirmed</Text>
+                  </View>
+                )}
+
+                {!!pinCode && status === 'confirmed' && (
                   <View style={styles.pinCard}>
                     <Text style={styles.pinLabel}>Your drop-off PIN</Text>
                     <Text style={styles.pinCode}>{pinCode}</Text>
@@ -282,6 +288,8 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   detailIcon: { fontSize: 14, width: 20 },
   detailText: { fontSize: 14, color: Colors.textSecondary },
+  pendingCard: { backgroundColor: '#FEF3C7', borderRadius: 14, padding: 14 },
+  pendingText: { fontSize: 13, color: '#92400E', fontWeight: '600', textAlign: 'center' },
   pinCard: { backgroundColor: Colors.primary, borderRadius: 14, padding: 14, alignItems: 'center' },
   pinLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
   pinCode: { fontSize: 36, fontWeight: '900', color: '#fff', letterSpacing: 8, marginBottom: 4 },
