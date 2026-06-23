@@ -20,14 +20,14 @@ export default function Support() {
   const [formSuccess, setFormSuccess] = useState('');
 
   function sendMessage() {
-    setFormError(''); setFormSuccess('');
+    setFormError('');
     if (!subject || !message) {
       setFormError('Please fill in both fields.');
       return;
     }
+    const mailto = `mailto:hello@mycubby.co.za?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+    Linking.openURL(mailto);
     setSubject(''); setMessage('');
-    setFormSuccess('Message sent! Our support team will get back to you within 24 hours.');
-    setTimeout(() => setFormSuccess(''), 4000);
   }
 
   return (
@@ -44,15 +44,21 @@ export default function Support() {
 
         {/* Quick contact */}
         <View style={styles.quickRow}>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => Linking.openURL('mailto:hello@cubby.app')}>
+          <TouchableOpacity style={styles.quickBtn} onPress={() => Linking.openURL('mailto:hello@mycubby.co.za')}
+            // @ts-ignore
+            onClick={() => Linking.openURL('mailto:hello@mycubby.co.za')}>
             <Text style={styles.quickEmoji}>📧</Text>
             <Text style={styles.quickLabel}>Email us</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => Linking.openURL('https://wa.me/27000000000')}>
+          <TouchableOpacity style={styles.quickBtn}
+            // @ts-ignore
+            onClick={() => Linking.openURL('https://wa.me/27000000000')}>
             <Text style={styles.quickEmoji}>💬</Text>
             <Text style={styles.quickLabel}>WhatsApp</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => Linking.openURL('tel:+27000000000')}>
+          <TouchableOpacity style={styles.quickBtn}
+            // @ts-ignore
+            onClick={() => Linking.openURL('tel:+27000000000')}>
             <Text style={styles.quickEmoji}>📞</Text>
             <Text style={styles.quickLabel}>Call us</Text>
           </TouchableOpacity>
