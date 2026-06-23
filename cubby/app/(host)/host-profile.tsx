@@ -118,7 +118,7 @@ export default function HostProfile() {
       setPhotos(newPhotos);
 
       // persist to host row immediately
-      await supabase.from('hosts').update({ photos: newPhotos }).eq('user_id', user.id);
+      await supabase.from('hosts').upsert({ user_id: user.id, photos: newPhotos }, { onConflict: 'user_id' });
       showToast('Photo added ✓');
     } finally {
       setUploadingPhoto(false);
@@ -131,7 +131,7 @@ export default function HostProfile() {
     setPhotos(newPhotos);
     if (isSupabaseConfigured) {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) await supabase.from('hosts').update({ photos: newPhotos }).eq('user_id', user.id);
+      if (user) await supabase.from('hosts').upsert({ user_id: user.id, photos: newPhotos }, { onConflict: 'user_id' });
     }
   }
 
@@ -152,7 +152,8 @@ export default function HostProfile() {
         if (user) {
           const { error } = await supabase
             .from('hosts')
-            .update({
+            .upsert({
+              user_id: user.id,
               display_name: displayName.trim(),
               bio: bio.trim(),
               location_name: location.trim(),
@@ -163,8 +164,7 @@ export default function HostProfile() {
               available_until: untilTime,
               available_days: days,
               is_active: isActive,
-            })
-            .eq('user_id', user.id);
+            }, { onConflict: 'user_id' });
 
           if (error) {
             showToast('Could not save. Please try again.', true);
