@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, TextInput, Linking } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, TextInput, Linking, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 
@@ -26,8 +26,13 @@ export default function Support() {
       return;
     }
     const mailto = `mailto:hello@mycubby.co.za?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
-    Linking.openURL(mailto);
+    if (Platform.OS === 'web') {
+      window.open(mailto, '_blank');
+    } else {
+      Linking.openURL(mailto);
+    }
     setSubject(''); setMessage('');
+    setFormSuccess('Opening your email client…');
   }
 
   return (
@@ -44,9 +49,11 @@ export default function Support() {
 
         {/* Quick contact */}
         <View style={styles.quickRow}>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => Linking.openURL('mailto:hello@mycubby.co.za')}
+          <TouchableOpacity
+            style={styles.quickBtn}
+            onPress={() => Platform.OS === 'web' ? window.open('mailto:hello@mycubby.co.za', '_blank') : Linking.openURL('mailto:hello@mycubby.co.za')}
             // @ts-ignore
-            onClick={() => Linking.openURL('mailto:hello@mycubby.co.za')}>
+            onClick={() => window.open('mailto:hello@mycubby.co.za', '_blank')}>
             <Text style={styles.quickEmoji}>📧</Text>
             <Text style={styles.quickLabel}>Email us</Text>
           </TouchableOpacity>
