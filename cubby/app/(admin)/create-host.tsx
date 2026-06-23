@@ -65,8 +65,25 @@ export default function CreateHost() {
           setErrorMsg('Not signed in to Supabase. Go to the traveller app and sign in first, then return here.');
           return;
         }
+        // Look up assigned user by email (optional)
+        let assignedUserId: string | null = null;
+        if (partnerEmail.trim()) {
+          const { data: assignedProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('email', partnerEmail.trim().toLowerCase())
+            .single();
+          if (!assignedProfile) {
+            setErrorMsg(`No account found for ${partnerEmail.trim()}. Ask them to sign up first.`);
+            return;
+          }
+          assignedUserId = assignedProfile.id;
+          log('Assigning to user: ' + assignedUserId);
+        }
+
         const payload = {
-          user_id: user.id,
+          user_id: assignedUserId ?? user.id,
+          assigned_user_id: assignedUserId,
           display_name: displayName.trim(), bio: bio.trim(), location_name: locationName.trim(),
           business_type: businessType, price_per_bag_per_day: parseInt(pricePerBag), max_bags: parseInt(maxBags),
           available_from: availableFrom.trim() || '08:00', available_until: availableUntil.trim() || '20:00',
@@ -80,6 +97,14 @@ export default function CreateHost() {
           return;
         }
         log('Insert success! Row ID: ' + (inserted?.[0]?.id ?? 'unknown'));
+
+        // Approve the assigned user as a host
+        if (assignedUserId) {
+          await supabase.from('profiles')
+            .update({ is_host_approved: true })
+            .eq('id', assignedUserId);
+          log('Host approved for user: ' + assignedUserId);
+        }
         setSuccessMsg('Host profile created!');
         setTimeout(() => router.replace('/(admin)/manage-hosts'), 1500);
       } else {
@@ -189,8 +214,8 @@ export default function CreateHost() {
           ))}
         </div>
 
-        <label style={s.fieldLabel}>Partner Email</label>
-        <input style={s.input} type="email" value={partnerEmail} onChange={e => setPartnerEmail(e.target.value)} placeholder="partner@example.com" />
+        <label style={s.fieldLabel}>Assign to User (Email) — optional</label>
+        <input style={s.input} type="email" value={partnerEmail} onChange={e => setPartnerEmail(e.target.value)} placeholder="host@example.com — must already have a Cubby account" />
 
         <div style={s.switchRow}>
           <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a' }}>Active on launch</span>

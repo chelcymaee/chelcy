@@ -10,6 +10,8 @@ interface Host {
   businessType: string;
   pricePerBag: number;
   active: boolean;
+  assignedUserId: string | null;
+  assignedEmail: string | null;
 }
 
 const TYPE_EMOJI: Record<string, string> = {
@@ -21,6 +23,8 @@ export default function ManageHosts() {
   const [hosts, setHosts] = useState<Host[]>([]);
   const [msg, setMsg] = useState('');
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignEmail, setAssignEmail] = useState('');
 
   useFocusEffect(useCallback(() => { loadHosts(); }, []));
 
@@ -33,10 +37,22 @@ export default function ManageHosts() {
           return;
         }
         if (data) {
+          // Fetch assigned user emails in one query
+          const assignedIds = data.map((r: any) => r.assigned_user_id).filter(Boolean);
+          let emailMap: Record<string, string> = {};
+          if (assignedIds.length > 0) {
+            const { data: profiles } = await supabase
+              .from('profiles')
+              .select('id, email')
+              .in('id', assignedIds);
+            for (const p of profiles ?? []) emailMap[p.id] = p.email;
+          }
           setHosts(data.map((r: any) => ({
             id: r.id, displayName: r.display_name, locationName: r.location_name,
             businessType: r.business_type, pricePerBag: r.price_per_bag_per_day,
             active: r.is_active ?? false,
+            assignedUserId: r.assigned_user_id ?? null,
+            assignedEmail: r.assigned_user_id ? (emailMap[r.assigned_user_id] ?? null) : null,
           })));
         }
       } else {
@@ -57,6 +73,33 @@ export default function ManageHosts() {
       await AsyncStorage.setItem('cubby_hosts', JSON.stringify(updated));
       setHosts(updated);
     }
+  }
+
+  async function assignHost(hostId: string) {
+    if (!assignEmail.trim()) return;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', assignEmail.trim().toLowerCase())
+      .single();
+    if (!profile) { setMsg('No account found for that email.'); setTimeout(() => setMsg(''), 3000); return; }
+
+    const { error } = await supabase
+      .from('hosts')
+      .update({ assigned_user_id: profile.id, user_id: profile.id })
+      .eq('id', hostId);
+    if (error) { setMsg('Error: ' + error.message); return; }
+
+    // Approve the user as a host
+    await supabase.from('profiles').update({ is_host_approved: true }).eq('id', profile.id);
+
+    setHosts(prev => prev.map(h => h.id === hostId
+      ? { ...h, assignedUserId: profile.id, assignedEmail: assignEmail.trim().toLowerCase() }
+      : h));
+    setAssigningId(null);
+    setAssignEmail('');
+    setMsg('Host assigned and user approved ✓');
+    setTimeout(() => setMsg(''), 3000);
   }
 
   async function deleteHost(id: string) {
@@ -117,12 +160,36 @@ export default function ManageHosts() {
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 16, color: '#1a1a1a' }}>{host.displayName}</div>
                 <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{host.locationName}</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>
+                  {host.assignedEmail
+                    ? <span style={{ color: '#2D6A4F', fontWeight: 600 }}>👤 {host.assignedEmail}</span>
+                    : <span style={{ color: '#F59E0B', fontWeight: 600 }}>⚠️ Unassigned</span>
+                  }
+                </div>
               </div>
               <span style={s.badge(host.active)}>{host.active ? 'Active' : 'Inactive'}</span>
             </div>
+
+            {/* Assign user row */}
+            {assigningId === host.id ? (
+              <div style={{ padding: '8px 16px', borderTop: '1px solid #F0EAEA', display: 'flex', gap: 8 }}>
+                <input
+                  style={{ flex: 1, border: '1px solid #D1D5DB', borderRadius: 8, padding: '6px 10px', fontSize: 13 }}
+                  placeholder="user@email.com"
+                  value={assignEmail}
+                  onChange={(e: any) => setAssignEmail(e.target.value)}
+                />
+                <button style={{ ...s.toggleBtn(true), padding: '6px 12px' }} onClick={() => assignHost(host.id)}>Assign</button>
+                <button style={s.deleteBtn} onClick={() => { setAssigningId(null); setAssignEmail(''); }}>Cancel</button>
+              </div>
+            ) : null}
+
             <div style={s.cardBottom}>
               <p style={s.price}>R{host.pricePerBag}/bag/day</p>
               <div style={s.actions}>
+                <button style={{ ...s.deleteBtn, color: '#2D6A4F', backgroundColor: '#F0FDF4' }} onClick={() => { setAssigningId(host.id); setAssignEmail(host.assignedEmail ?? ''); }}>
+                  {host.assignedEmail ? '✏️ Reassign' : '➕ Assign user'}
+                </button>
                 <button style={s.toggleBtn(host.active)} onClick={() => toggleActive(host)}>
                   {host.active ? 'Deactivate' : 'Activate'}
                 </button>

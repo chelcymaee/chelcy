@@ -109,7 +109,7 @@ export default function Dashboard() {
       const { data: host, error: hostErr } = await supabase
         .from('hosts')
         .select('id, display_name, rating, review_count, is_active, response_rate')
-        .eq('user_id', user.id)
+        .eq('assigned_user_id', user.id)
         .single();
 
       if (hostErr || !host) {
@@ -225,7 +225,7 @@ export default function Dashboard() {
       const next = !stats.isActive;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      await supabase.from('hosts').update({ is_active: next }).eq('user_id', user.id);
+      await supabase.from('hosts').update({ is_active: next }).eq('assigned_user_id', user.id);
       setStats(s => ({ ...s, isActive: next }));
     } finally {
       setTogglingStatus(false);

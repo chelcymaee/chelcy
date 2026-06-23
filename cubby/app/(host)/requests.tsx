@@ -82,7 +82,7 @@ export default function Requests() {
           const { data: hostRow } = await supabase
             .from('hosts')
             .select('id')
-            .eq('user_id', user.id)
+            .eq('assigned_user_id', user.id)
             .single();
 
           if (!hostRow) {

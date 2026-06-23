@@ -52,6 +52,7 @@ export default function Profile() {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [isHostApproved, setIsHostApproved] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -83,6 +84,7 @@ export default function Profile() {
           setLastName(parts.slice(1).join(' '));
           setPhone(profile.phone ?? '');
           if (profile.avatar_url) setAvatar(profile.avatar_url);
+          setIsHostApproved(profile.is_host_approved ?? false);
           return;
         }
       }
@@ -268,14 +270,14 @@ export default function Profile() {
   const displayName = [firstName, lastName].filter(Boolean).join(' ');
 
   const SECTIONS: MenuSection[] = [
-    {
+    ...(isHostApproved ? [{
       title: 'Hosting',
       items: [
         { icon: '🏠', label: 'Switch to Host Dashboard', onPress: () => router.replace('/(host)/dashboard') },
         { icon: '📋', label: 'My host listing', onPress: () => router.push('/(host)/host-profile') },
         { icon: '🏦', label: 'Bank details', onPress: () => router.push('/(host)/bank-details') },
       ],
-    },
+    }] : []),
     {
       title: 'General',
       items: [
@@ -366,10 +368,12 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* Become a Host banner */}
-        <TouchableOpacity
+        {/* Become a Host banner — only shown to non-hosts */}
+        {!isHostApproved && <TouchableOpacity
           style={styles.becomeHostCard}
-          onPress={() => router.push('/(host)/bank-details')}
+          onPress={() => router.push('/(traveller)/partner-apply')}
+          // @ts-ignore
+          onClick={() => router.push('/(traveller)/partner-apply')}
           activeOpacity={0.85}
         >
           <Text style={styles.becomeHostEmoji}>🏠</Text>
@@ -378,7 +382,7 @@ export default function Profile() {
             <Text style={styles.becomeHostSub}>Earn money storing bags →</Text>
           </View>
           <Text style={styles.becomeHostArrow}>›</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>}
 
         {/* Menu sections */}
         {SECTIONS.map(section => (
