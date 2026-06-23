@@ -195,6 +195,17 @@ export default function Bookings() {
                   </View>
                 )}
 
+                {['pending', 'confirmed', 'active'].includes(status) && (
+                  <TouchableOpacity
+                    style={styles.messageBtn}
+                    onPress={() => router.push({ pathname: '/(traveller)/chat', params: { bookingId: booking.id, hostName } })}
+                    // @ts-ignore
+                    onClick={() => router.push({ pathname: '/(traveller)/chat', params: { bookingId: booking.id, hostName } })}
+                  >
+                    <Text style={styles.messageBtnText}>💬 Message host</Text>
+                  </TouchableOpacity>
+                )}
+
                 {status === 'completed' && (
                   <TouchableOpacity
                     style={styles.reviewBtn}
@@ -294,6 +305,8 @@ const styles = StyleSheet.create({
   pinLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
   pinCode: { fontSize: 36, fontWeight: '900', color: '#fff', letterSpacing: 8, marginBottom: 4 },
   pinHint: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
+  messageBtn: { borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  messageBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
   reviewBtn: { borderWidth: 1.5, borderColor: '#FF5C5C', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
   reviewBtnText: { fontSize: 14, fontWeight: '700', color: '#FF5C5C' },
   cancelBtn: { borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },

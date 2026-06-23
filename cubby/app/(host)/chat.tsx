@@ -14,14 +14,12 @@ interface Message {
   time: string;
 }
 
-export default function Chat() {
-  const { bookingId, hostName, conversationId: paramConvId } = useLocalSearchParams<{
-    bookingId?: string;
-    hostName?: string;
-    conversationId?: string;
+export default function HostChat() {
+  const { conversationId, travellerName } = useLocalSearchParams<{
+    conversationId: string;
+    travellerName: string;
   }>();
 
-  const [conversationId, setConversationId] = useState<string | null>(paramConvId ?? null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
@@ -35,53 +33,20 @@ export default function Chat() {
   }, []);
 
   async function init() {
-    if (!isSupabaseConfigured) { setLoading(false); return; }
+    if (!isSupabaseConfigured || !conversationId) { setLoading(false); return; }
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.replace('/(traveller)/messages'); return; }
+    if (!user) { router.replace('/(host)/messages'); return; }
     setMyId(user.id);
-
-    let convId = conversationId;
-
-    // Create or find conversation from bookingId
-    if (!convId && bookingId) {
-      const { data: booking } = await supabase
-        .from('bookings')
-        .select('host_id, traveller_id')
-        .eq('id', bookingId)
-        .single();
-
-      if (booking) {
-        const { data: existing } = await supabase
-          .from('conversations')
-          .select('id')
-          .eq('booking_id', bookingId)
-          .single();
-
-        if (existing) {
-          convId = existing.id;
-        } else {
-          const { data: created } = await supabase
-            .from('conversations')
-            .insert({ booking_id: bookingId, traveller_id: booking.traveller_id, host_id: booking.host_id })
-            .select('id')
-            .single();
-          convId = created?.id ?? null;
-        }
-      }
-    }
-
-    if (!convId) { setLoading(false); return; }
-    setConversationId(convId);
-    await loadMessages(convId, user.id);
-    subscribeRealtime(convId, user.id);
+    await loadMessages(user.id);
+    subscribeRealtime(user.id);
     setLoading(false);
   }
 
-  async function loadMessages(convId: string, userId: string) {
+  async function loadMessages(userId: string) {
     const { data } = await supabase
       .from('messages')
       .select('id, body, sender_id, created_at')
-      .eq('conversation_id', convId)
+      .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 
     setMessages((data ?? []).map((m: any) => ({
@@ -93,14 +58,14 @@ export default function Chat() {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
   }
 
-  function subscribeRealtime(convId: string, userId: string) {
+  function subscribeRealtime(userId: string) {
     channelRef.current = supabase
-      .channel(`messages:${convId}`)
+      .channel(`host-messages:${conversationId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
-        filter: `conversation_id=eq.${convId}`,
+        filter: `conversation_id=eq.${conversationId}`,
       }, (payload: any) => {
         const m = payload.new;
         setMessages(prev => [...prev, {
@@ -118,31 +83,23 @@ export default function Chat() {
     if (!input.trim() || !conversationId || !myId) return;
     const body = input.trim();
     setInput('');
-
-    await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      sender_id: myId,
-      body,
-    });
-
-    await supabase.from('conversations')
-      .update({ last_message_at: new Date().toISOString() })
-      .eq('id', conversationId);
+    await supabase.from('messages').insert({ conversation_id: conversationId, sender_id: myId, body });
+    await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.replace('/(traveller)/messages')}
+          onPress={() => router.replace('/(host)/messages')}
           // @ts-ignore
-          onClick={() => router.replace('/(traveller)/messages')}
+          onClick={() => router.replace('/(host)/messages')}
         >
           <Text style={styles.back}>←</Text>
         </TouchableOpacity>
         <View>
-          <Text style={styles.headerName}>{hostName || 'Host'}</Text>
-          <Text style={styles.headerStatus}>🟢 Usually replies quickly</Text>
+          <Text style={styles.headerName}>{travellerName || 'Traveller'}</Text>
+          <Text style={styles.headerSub}>Booking conversation</Text>
         </View>
       </View>
 
@@ -158,7 +115,7 @@ export default function Chat() {
           contentContainerStyle={styles.messagesList}
           ListEmptyComponent={
             <View style={styles.emptyChat}>
-              <Text style={styles.emptyChatText}>Say hello to {hostName || 'your host'} 👋</Text>
+              <Text style={styles.emptyChatText}>No messages yet — the traveller will reach out here 👋</Text>
             </View>
           }
           renderItem={({ item }) => (
@@ -204,10 +161,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border },
   back: { fontSize: 24, color: Colors.textPrimary },
   headerName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-  headerStatus: { fontSize: 12, color: Colors.success },
+  headerSub: { fontSize: 12, color: Colors.textSecondary },
   messagesList: { padding: 16, gap: 8, flexGrow: 1 },
-  emptyChat: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
-  emptyChatText: { fontSize: 16, color: Colors.textSecondary },
+  emptyChat: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, paddingHorizontal: 32 },
+  emptyChatText: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22 },
   bubble: { maxWidth: '75%', borderRadius: 18, padding: 12, marginBottom: 4 },
   bubbleMe: { backgroundColor: Colors.primary, alignSelf: 'flex-end', borderBottomRightRadius: 4 },
   bubbleThem: { backgroundColor: Colors.white, alignSelf: 'flex-start', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: Colors.border },
