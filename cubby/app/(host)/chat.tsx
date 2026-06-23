@@ -25,6 +25,7 @@ export default function HostChat() {
   const [loading, setLoading] = useState(true);
   const [myId, setMyId] = useState<string | null>(null);
   const [travellerId, setTravellerId] = useState<string | null>(null);
+  const [bookingId, setBookingId] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
   const channelRef = useRef<any>(null);
 
@@ -41,10 +42,11 @@ export default function HostChat() {
     // Fetch traveller_id from conversation for profile link
     const { data: convo } = await supabase
       .from('conversations')
-      .select('traveller_id')
+      .select('traveller_id, booking_id')
       .eq('id', conversationId)
       .single();
     if (convo?.traveller_id) setTravellerId(convo.traveller_id);
+    if (convo?.booking_id) setBookingId(convo.booking_id);
     await loadMessages(user.id);
     subscribeRealtime(user.id);
     setLoading(false);
@@ -109,11 +111,11 @@ export default function HostChat() {
           <Text style={styles.headerName}>{travellerName || 'Traveller'}</Text>
           <Text style={styles.headerSub}>Booking conversation</Text>
         </View>
-        {!!travellerId && (
+        {!!travellerId && !!bookingId && (
           <TouchableOpacity
-            onPress={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId, travellerName: travellerName || 'Traveller', fromChat: 'true' } })}
+            onPress={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId, bookingId, returnTo: 'messages' } })}
             // @ts-ignore
-            onClick={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId, travellerName: travellerName || 'Traveller', fromChat: 'true' } })}
+            onClick={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId, bookingId, returnTo: 'messages' } })}
           >
             <Text style={styles.viewProfileLink}>View profile</Text>
           </TouchableOpacity>

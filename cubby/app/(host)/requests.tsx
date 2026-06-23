@@ -208,13 +208,7 @@ export default function Requests() {
                     <Text style={{ fontSize: 22 }}>👤</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <TouchableOpacity
-                      onPress={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.traveller_id, travellerName: item.traveller_name } })}
-                      // @ts-ignore
-                      onClick={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.traveller_id, travellerName: item.traveller_name } })}
-                    >
-                      <Text style={styles.name}>{item.traveller_name} <Text style={styles.viewProfile}>View profile →</Text></Text>
-                    </TouchableOpacity>
+                    <Text style={styles.name}>{item.traveller_name}</Text>
                     {!!item.traveller_email && (
                       <Text style={styles.email}>{item.traveller_email}</Text>
                     )}
@@ -240,6 +234,16 @@ export default function Requests() {
                     <Text style={styles.pinCode}>{item.pin_code}</Text>
                   </View>
                 )}
+
+                {/* View Traveller Profile */}
+                <TouchableOpacity
+                  style={styles.viewProfileBtn}
+                  onPress={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.traveller_id, bookingId: item.id } })}
+                  // @ts-ignore
+                  onClick={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.traveller_id, bookingId: item.id } })}
+                >
+                  <Text style={styles.viewProfileBtnText}>👤 View Traveller Profile</Text>
+                </TouchableOpacity>
 
                 {/* Accept / Decline for pending */}
                 {item.status === 'pending' && (
@@ -330,7 +334,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border, alignItems: 'center', justifyContent: 'center',
   },
   name: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  viewProfile: { fontSize: 12, fontWeight: '600', color: Colors.primary },
+  viewProfileBtn: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  viewProfileBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   email: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
   sub: { fontSize: 13, color: Colors.textSecondary, marginTop: 3 },
   date: { fontSize: 12, color: Colors.textLight, marginTop: 2 },
