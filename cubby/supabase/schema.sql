@@ -232,3 +232,53 @@ CREATE POLICY "Hosts can update bookings for their listing" ON bookings FOR UPDA
 --   ON storage.objects FOR DELETE
 --   TO authenticated
 --   USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- -------------------------------------------------------------------------
+-- Messaging tables
+-- -------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  traveller_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  host_id UUID REFERENCES hosts(id) ON DELETE CASCADE NOT NULL,
+  last_message_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE NOT NULL,
+  sender_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  body TEXT NOT NULL,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- -------------------------------------------------------------------------
+-- Support messages table
+-- -------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS support_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_email TEXT,
+  subject TEXT NOT NULL,
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE support_messages ENABLE ROW LEVEL SECURITY;
+
+-- -------------------------------------------------------------------------
+-- Phase 1: host ownership via assigned_user_id
+-- -------------------------------------------------------------------------
+ALTER TABLE hosts ADD COLUMN IF NOT EXISTS assigned_user_id UUID REFERENCES auth.users(id);
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_host_approved BOOLEAN DEFAULT FALSE;
+
+-- -------------------------------------------------------------------------
+-- RLS FIX: bookings — hosts must be readable by assigned_user_id too
+-- -------------------------------------------------------------------------
+-- (Run the migration SQL block below in Supabase SQL editor)
