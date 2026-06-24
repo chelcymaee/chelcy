@@ -80,6 +80,8 @@ export default function HostLayout() {
       <Tabs.Screen name="messages" options={{ title: 'Messages', tabBarIcon: ({ focused }) => <Icon emoji="💬" focused={focused} /> }} />
       <Tabs.Screen name="host-profile" options={{ title: 'Profile', tabBarIcon: ({ focused }) => <Icon emoji="🏠" focused={focused} /> }} />
       <Tabs.Screen name="bank-details" options={{ href: null }} />
+      <Tabs.Screen name="chat" options={{ href: null }} />
+      <Tabs.Screen name="traveller-profile" options={{ href: null }} />
     </Tabs>
   );
 }

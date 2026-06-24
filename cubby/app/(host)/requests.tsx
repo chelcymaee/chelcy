@@ -104,8 +104,7 @@ export default function Requests() {
               pick_up_time,
               total_price,
               status,
-              pin_code,
-              profiles:traveller_id ( full_name, email )
+              pin_code
             `)
             .eq('host_id', hostRow.id)
             .in('status', ['pending', 'confirmed', 'active'])
@@ -113,11 +112,24 @@ export default function Requests() {
 
           if (error) { showToast('Could not load bookings.', true); return; }
 
-          const mapped: HostBooking[] = (data ?? []).map((b: any) => ({
+          // Fetch traveller names separately (avoids RLS join issue on profiles)
+          const travellerIds = [...new Set((data ?? []).map((b: any) => b.traveller_id).filter(Boolean))];
+          let profileMap: Record<string, { full_name: string; email: string }> = {};
+          if (travellerIds.length > 0) {
+            const { data: profs } = await supabase
+              .from('profiles')
+              .select('id, full_name, email')
+              .in('id', travellerIds);
+            for (const p of profs ?? []) profileMap[p.id] = p;
+          }
+
+          const mapped: HostBooking[] = (data ?? []).map((b: any) => {
+            const prof = profileMap[b.traveller_id];
+            return {
             id: b.id,
             traveller_id: b.traveller_id ?? '',
-            traveller_name: b.profiles?.full_name?.trim() || b.profiles?.email?.split('@')[0] || 'Traveller',
-            traveller_email: b.profiles?.email || '',
+            traveller_name: prof?.full_name?.trim() || prof?.email?.split('@')[0] || 'Traveller',
+            traveller_email: prof?.email || '',
             bag_count: b.bag_count,
             drop_off_date: b.drop_off_date,
             drop_off_time: b.drop_off_time,
@@ -125,7 +137,7 @@ export default function Requests() {
             total_price: b.total_price,
             status: b.status,
             pin_code: b.pin_code,
-          }));
+          };});
           setBookings(mapped);
           return;
         }
