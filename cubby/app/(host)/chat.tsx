@@ -93,8 +93,17 @@ export default function HostChat() {
     if (!input.trim() || !conversationId || !myId) return;
     const body = input.trim();
     setInput('');
-    await supabase.from('messages').insert({ conversation_id: conversationId, sender_id: myId, body });
+
+    const { error } = await supabase.from('messages').insert({ conversation_id: conversationId, sender_id: myId, body });
+
+    if (error) {
+      console.error('Message insert error:', error);
+      setInput(body);
+      return;
+    }
+
     await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
+    await loadMessages(myId);
   }
 
   return (

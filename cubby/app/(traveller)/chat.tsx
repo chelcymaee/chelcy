@@ -119,15 +119,24 @@ export default function Chat() {
     const body = input.trim();
     setInput('');
 
-    await supabase.from('messages').insert({
+    const { error } = await supabase.from('messages').insert({
       conversation_id: conversationId,
       sender_id: myId,
       body,
     });
 
+    if (error) {
+      console.error('Message insert error:', error);
+      setInput(body); // restore input if failed
+      return;
+    }
+
     await supabase.from('conversations')
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', conversationId);
+
+    // Always reload after send — Realtime may not fire on web without replica identity
+    await loadMessages(conversationId, myId);
   }
 
   return (
