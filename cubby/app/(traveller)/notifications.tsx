@@ -1,75 +1,130 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Switch, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
-interface NotifSetting {
+interface Notif {
   id: string;
+  type: string;
   title: string;
-  desc: string;
-  enabled: boolean;
+  body: string;
+  data: Record<string, any>;
+  read_at: string | null;
+  created_at: string;
 }
 
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'Just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+const TYPE_ICON: Record<string, string> = {
+  new_message: '💬',
+  booking_confirmed: '✅',
+  booking_declined: '❌',
+  booking_cancelled: '🚫',
+  booking_completed: '🎉',
+  review_request: '⭐',
+  default: '🔔',
+};
+
 export default function Notifications() {
-  const [settings, setSettings] = useState<NotifSetting[]>([
-    { id: 'bookings', title: 'Booking updates', desc: 'Confirmations, reminders and changes', enabled: true },
-    { id: 'messages', title: 'New messages', desc: 'When a host replies to you', enabled: true },
-    { id: 'promotions', title: 'Deals & promotions', desc: 'Special offers and discounts', enabled: false },
-    { id: 'reminders', title: 'Pick-up reminders', desc: 'Reminder 1 hour before pick-up', enabled: true },
-    { id: 'reviews', title: 'Review requests', desc: 'After a completed booking', enabled: true },
-    { id: 'news', title: 'Cubby news', desc: 'New features and announcements', enabled: false },
-  ]);
+  const [notifs, setNotifs] = useState<Notif[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    AsyncStorage.getItem('cubby_notifications').then(raw => {
-      if (!raw) return;
-      try {
-        const saved: Record<string, boolean> = JSON.parse(raw);
-        setSettings(prev => prev.map(s => saved[s.id] !== undefined ? { ...s, enabled: saved[s.id] } : s));
-      } catch {}
-    });
-  }, []);
+  useFocusEffect(useCallback(() => { load(); }, []));
 
-  function toggle(id: string) {
-    setSettings(prev => {
-      const next = prev.map(s => s.id === id ? { ...s, enabled: !s.enabled } : s);
-      const map: Record<string, boolean> = {};
-      next.forEach(s => { map[s.id] = s.enabled; });
-      AsyncStorage.setItem('cubby_notifications', JSON.stringify(map));
-      return next;
-    });
+  async function load() {
+    setLoading(true);
+    if (!isSupabaseConfigured) { setLoading(false); return; }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+
+      const { data } = await supabase
+        .from('notifications')
+        .select('id, type, title, body, data, read_at, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      setNotifs(data ?? []);
+
+      // Mark all unread as read
+      const unreadIds = (data ?? []).filter(n => !n.read_at).map(n => n.id);
+      if (unreadIds.length > 0) {
+        await supabase
+          .from('notifications')
+          .update({ read_at: new Date().toISOString() })
+          .in('id', unreadIds);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handlePress(n: Notif) {
+    if (n.type === 'new_message' && n.data?.conversation_id) {
+      router.push({ pathname: '/(traveller)/chat', params: { conversationId: n.data.conversation_id } });
+    } else if (n.type?.startsWith('booking')) {
+      router.push('/(traveller)/bookings');
+    }
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.replace('/(traveller)/profile')}
-            // @ts-ignore
-            onClick={() => router.replace('/(traveller)/profile')}>
-            <Text style={styles.back}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.heading}>Notifications</Text>
-        </View>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.replace('/(traveller)/profile')}
+          // @ts-ignore
+          onClick={() => router.replace('/(traveller)/profile')}
+        >
+          <Text style={styles.back}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.heading}>Notifications</Text>
+      </View>
 
-        <View style={styles.list}>
-          {settings.map((s, idx) => (
-            <View key={s.id} style={[styles.item, idx === settings.length - 1 && { borderBottomWidth: 0 }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemTitle}>{s.title}</Text>
-                <Text style={styles.itemDesc}>{s.desc}</Text>
-              </View>
-              <Switch
-                value={s.enabled}
-                onValueChange={() => toggle(s.id)}
-                trackColor={{ false: Colors.border, true: Colors.primary }}
-                thumbColor={Colors.white}
-              />
-            </View>
-          ))}
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={Colors.primary} />
         </View>
-      </ScrollView>
+      ) : (
+        <FlatList
+          data={notifs}
+          keyExtractor={item => item.id}
+          contentContainerStyle={{ flexGrow: 1 }}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.item, !item.read_at && styles.itemUnread]}
+              onPress={() => handlePress(item)}
+              // @ts-ignore
+              onClick={() => handlePress(item)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.icon}>{TYPE_ICON[item.type] ?? TYPE_ICON.default}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.body} numberOfLines={2}>{item.body}</Text>
+                <Text style={styles.time}>{timeAgo(item.created_at)}</Text>
+              </View>
+              {!item.read_at && <View style={styles.dot} />}
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyEmoji}>🔔</Text>
+              <Text style={styles.emptyTitle}>No notifications yet</Text>
+              <Text style={styles.emptyText}>When you receive messages or booking updates, they'll appear here.</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -79,14 +134,19 @@ const styles = StyleSheet.create({
   header: { padding: 20, paddingTop: 8 },
   back: { fontSize: 16, color: Colors.primary, fontWeight: '600', marginBottom: 12 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
-  list: {
-    backgroundColor: Colors.white, marginHorizontal: 20, borderRadius: 18,
-    borderWidth: 1, borderColor: Colors.border, marginTop: 8, overflow: 'hidden',
-  },
   item: {
-    flexDirection: 'row', alignItems: 'center', padding: 16,
-    borderBottomWidth: 1, borderBottomColor: Colors.border, gap: 12,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    padding: 16, backgroundColor: Colors.white,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  itemTitle: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
-  itemDesc: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  itemUnread: { backgroundColor: '#FFF5F5' },
+  icon: { fontSize: 24, marginTop: 2 },
+  title: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  body: { fontSize: 14, color: Colors.textSecondary, marginTop: 2, lineHeight: 20 },
+  time: { fontSize: 12, color: Colors.textLight, marginTop: 4 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary, marginTop: 6 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, paddingTop: 100 },
+  emptyEmoji: { fontSize: 56, marginBottom: 16 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8 },
+  emptyText: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22 },
 });

@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../src/constants/colors';
 import { AuthProvider } from '../src/lib/auth-context';
+import { setupNotificationHandler, registerPushToken } from '../src/lib/notifications';
 
 // Handle cubby://payment-result deep links when the app was backgrounded during payment
 function usePaymentDeepLink() {
@@ -37,6 +38,11 @@ function usePaymentDeepLink() {
 
 export default function RootLayout() {
   usePaymentDeepLink();
+
+  useEffect(() => {
+    setupNotificationHandler();
+    registerPushToken();
+  }, []);
 
   return (
     <AuthProvider>

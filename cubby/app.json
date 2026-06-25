@@ -35,6 +35,14 @@
         {
           "photosPermission": "Cubby needs access to your photos to add storage space images."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FF5C5C",
+          "sounds": []
+        }
       ]
     ],
     "experiments": {
