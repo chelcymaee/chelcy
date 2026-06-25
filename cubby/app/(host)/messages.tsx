@@ -25,7 +25,6 @@ export default function HostMessages() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      // Find the host record for this user
       const { data: hostRow } = await supabase
         .from('hosts')
         .select('id')
@@ -34,40 +33,56 @@ export default function HostMessages() {
 
       if (!hostRow) { setLoading(false); return; }
 
-      const { data } = await supabase
+      // Fetch conversations for this host
+      const { data: convData, error: convErr } = await supabase
         .from('conversations')
-        .select(`
-          id, last_message_at,
-          travellers:traveller_id ( display_name ),
-          messages ( id, sender_id, read_at )
-        `)
+        .select('id, traveller_id, last_message_at')
         .eq('host_id', hostRow.id)
         .order('last_message_at', { ascending: false });
 
-      if (!data) { setLoading(false); return; }
+      if (convErr || !convData || convData.length === 0) { setLoading(false); return; }
 
-      const convIds = data.map((c: any) => c.id);
-      let lastMsgMap: Record<string, string> = {};
-      if (convIds.length > 0) {
-        const { data: lastMsgs } = await supabase
-          .from('messages')
-          .select('conversation_id, body, created_at')
-          .in('conversation_id', convIds)
-          .order('created_at', { ascending: false });
+      const convIds = convData.map((c: any) => c.id);
+      const travellerIds = [...new Set(convData.map((c: any) => c.traveller_id))];
 
-        for (const m of lastMsgs ?? []) {
-          if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m.body;
+      // Fetch traveller names separately
+      let profileMap: Record<string, string> = {};
+      if (travellerIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', travellerIds);
+        for (const p of profs ?? []) {
+          profileMap[p.id] = p.full_name?.trim() || p.email?.split('@')[0] || 'Traveller';
         }
       }
 
-      setConvos(data.map((c: any) => ({
+      // Fetch last message per conversation
+      let lastMsgMap: Record<string, string> = {};
+      let unreadMap: Record<string, number> = {};
+      if (convIds.length > 0) {
+        const { data: msgs } = await supabase
+          .from('messages')
+          .select('conversation_id, body, sender_id, read_at, created_at')
+          .in('conversation_id', convIds)
+          .order('created_at', { ascending: false });
+
+        for (const m of msgs ?? []) {
+          if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m.body;
+          if (!m.read_at && m.sender_id !== user.id) {
+            unreadMap[m.conversation_id] = (unreadMap[m.conversation_id] ?? 0) + 1;
+          }
+        }
+      }
+
+      setConvos(convData.map((c: any) => ({
         id: c.id,
-        travellerName: c.travellers?.display_name ?? 'Traveller',
+        travellerName: profileMap[c.traveller_id] ?? 'Traveller',
         lastMessage: lastMsgMap[c.id] ?? 'No messages yet',
         lastMessageAt: c.last_message_at
           ? new Date(c.last_message_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
           : '',
-        unread: (c.messages ?? []).filter((m: any) => !m.read_at && m.sender_id !== user.id).length,
+        unread: unreadMap[c.id] ?? 0,
       })));
     } finally {
       setLoading(false);
