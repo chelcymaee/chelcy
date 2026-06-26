@@ -86,6 +86,17 @@ export default function Verifications() {
       await supabase.from('profiles').update({ is_verified: false }).eq('id', userId);
     }
 
+    // Notify the traveller
+    await supabase.from('notifications').insert({
+      user_id: userId,
+      type: status === 'approved' ? 'verification_approved' : 'verification_rejected',
+      title: status === 'approved' ? 'You\'re verified! ✅' : 'Verification unsuccessful',
+      body: status === 'approved'
+        ? 'Your identity has been confirmed. Your profile now shows the verified badge.'
+        : 'We couldn\'t verify your identity. Please try again with a clearer photo of your ID and selfie.',
+      read_at: null,
+    });
+
     setVerifications(prev => prev.map(v => v.id === id ? { ...v, status, reviewedAt: now } : v));
     setMsg(`Verification ${status} ✓`);
     setTimeout(() => setMsg(''), 3000);

@@ -458,7 +458,7 @@ Host photos are uploaded and served at original size. No compression, no respons
 | # | Task | Status |
 |---|---|---|
 | 1 | Admin Operations Centre Dashboard | ✅ Done |
-| 2 | Pending Verification Management | ✅ Done |
+| 2 | Pending Verification Management | ✅ Done (full workflow: submit → queue → approve/reject → badge → notification) |
 | 3 | Partner Application Management | ✅ Done |
 | 4 | Support Inbox | ✅ Done |
 | 5 | Admin Activity Feed | ✅ Done |
@@ -569,7 +569,13 @@ Host photos are uploaded and served at original size. No compression, no respons
 ## NEXT RECOMMENDED TASK
 
 > **Phase 1, Item 6 — Admin Notifications**
-> The next incomplete item in Phase 1. Admin should be alerted when new support messages, partner applications, or verifications arrive — without having to check the dashboard manually.
+> Verification workflow is now complete end-to-end. Next: admin should be alerted in real-time when new support messages, partner applications, or verifications arrive — without manually refreshing the dashboard.
+>
+> Implementation order:
+> 1. Real-time dashboard auto-refresh + Needs Attention live updates
+> 2. Notification bell with unread badge in admin
+> 3. Browser push notifications
+> 4. Email alerts for critical operational events (Phase 3)
 
 ---
 

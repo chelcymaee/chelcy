@@ -361,7 +361,19 @@ export default function Profile() {
               )}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.profileName}>{displayName}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Text style={styles.profileName}>{displayName}</Text>
+                {verificationStatus === 'approved' && (
+                  <View style={styles.verifiedBadge}>
+                    <Text style={styles.verifiedBadgeText}>✅ Verified</Text>
+                  </View>
+                )}
+                {verificationStatus === 'pending' && (
+                  <View style={styles.pendingBadge}>
+                    <Text style={styles.pendingBadgeText}>⏳ Pending</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.profileEmail}>{email}</Text>
             </View>
             <TouchableOpacity style={styles.editChip} onPress={openEditModal}>
@@ -632,6 +644,10 @@ const styles = StyleSheet.create({
   toastText: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
   profileName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
   profileEmail: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  verifiedBadge: { backgroundColor: '#D1FAE5', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  verifiedBadgeText: { fontSize: 11, fontWeight: '700', color: '#059669' },
+  pendingBadge: { backgroundColor: '#FEF3C7', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  pendingBadgeText: { fontSize: 11, fontWeight: '700', color: '#D97706' },
   editChip: {
     borderWidth: 1.5,
     borderColor: Colors.primary,

@@ -153,8 +153,8 @@ export default function TravellerProfileForHost() {
       );
     }
     return (
-      <View style={[styles.badge, styles.badgePending]}>
-        <Text style={[styles.badgeText, styles.badgeTextPending]}>⏳ Verification Pending</Text>
+      <View style={[styles.badge, styles.badgeUnverified]}>
+        <Text style={[styles.badgeText, styles.badgeTextUnverified]}>Not yet verified</Text>
       </View>
     );
   }
@@ -257,7 +257,7 @@ export default function TravellerProfileForHost() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.infoLabel}>Identity verification</Text>
                   <Text style={[styles.infoValue, { color: traveller.isVerified ? '#059669' : Colors.textSecondary }]}>
-                    {traveller.isVerified ? 'Identity verified' : 'Verification pending'}
+                    {traveller.isVerified ? 'Identity verified' : 'Not yet verified'}
                   </Text>
                 </View>
               </View>
@@ -305,10 +305,10 @@ const styles = StyleSheet.create({
   name: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
   badge: { borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6 },
   badgeVerified: { backgroundColor: '#D1FAE5' },
-  badgePending: { backgroundColor: '#FEF3C7' },
+  badgeUnverified: { backgroundColor: '#F3F4F6' },
   badgeText: { fontSize: 13, fontWeight: '700' },
   badgeTextVerified: { color: '#059669' },
-  badgeTextPending: { color: '#D97706' },
+  badgeTextUnverified: { color: '#6B7280' },
   memberSince: { fontSize: 13, color: Colors.textSecondary },
   statsRow: { flexDirection: 'row', gap: 12 },
   statCard: { flex: 1, backgroundColor: Colors.white, borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: Colors.border, gap: 6 },
