@@ -447,13 +447,129 @@ Host photos are uploaded and served at original size. No compression, no respons
 
 ---
 
+## OFFICIAL DEVELOPMENT ROADMAP
+
+> This is the canonical priority order. Always follow this sequence unless explicitly told otherwise.
+> After every completed feature: update this file, mark tasks complete, update percentages, recommend next task.
+
+### PHASE 1 — OPERATIONS CENTRE
+*Goal: Build the tools required to run Cubby as a real business.*
+
+| # | Task | Status |
+|---|---|---|
+| 1 | Admin Operations Centre Dashboard | ✅ Done |
+| 2 | Pending Verification Management | ✅ Done |
+| 3 | Partner Application Management | ✅ Done |
+| 4 | Support Inbox | ✅ Done |
+| 5 | Admin Activity Feed | ✅ Done |
+| 6 | Admin Notifications | 🔴 Not started |
+| 7 | User Management | 🔴 Not started |
+| 8 | Host Management Improvements | 🔴 Not started |
+
+### PHASE 2 — TRUST & SAFETY
+*Goal: Make travellers comfortable leaving their belongings with strangers.*
+
+| # | Task | Status |
+|---|---|---|
+| 1 | Traveller Profile Visibility for Hosts | 🔴 Not started |
+| 2 | Verification Approval System | ✅ Done |
+| 3 | Verification Badges | 🔴 Not started |
+| 4 | Trust Badges | 🔴 Not started |
+| 5 | Response Rate | 🔴 Not started |
+| 6 | Response Time | 🔴 Not started |
+| 7 | Host Ranking | 🔴 Not started |
+| 8 | Search Ranking Improvements | 🔴 Not started |
+
+### PHASE 3 — COMMUNICATION
+*Goal: Keep hosts and travellers informed.*
+
+| # | Task | Status |
+|---|---|---|
+| 1 | Complete Messaging | ✅ Done |
+| 2 | Notification Centre (Bell) | ✅ Done |
+| 3 | Notification Preferences | ✅ Done |
+| 4 | Push Notifications | 🟡 Partial (Edge Fn built, webhook not wired) |
+| 5 | Booking Notifications | 🔴 Not started |
+| 6 | Message Notifications | 🟡 Partial (DB trigger exists, push not delivered) |
+| 7 | Reminder Notifications | 🔴 Not started |
+| 8 | Email Notifications | 🔴 Not started |
+
+### PHASE 4 — MARKETPLACE POLISH
+*Goal: Create the best booking experience possible.*
+
+| # | Task | Status |
+|---|---|---|
+| 1 | Google Maps Integration | 🟡 Partial (native only, no API key) |
+| 2 | Better Search | 🟡 Partial (keyword only, no GPS radius) |
+| 3 | Accurate Distance Calculations | 🔴 Not started |
+| 4 | Host Analytics | 🔴 Not started |
+| 5 | Booking Analytics | 🔴 Not started |
+| 6 | Review Improvements | 🔴 Not started |
+| 7 | Favourite Hosts | ✅ Done (saved_spots) |
+| 8 | Saved Searches | 🔴 Future |
+
+### PHASE 5 — PAYMENTS
+*Goal: Make payments reliable and fully automated.*
+
+| # | Task | Status |
+|---|---|---|
+| 1 | Peach Payments Production | 🟡 Partial (integrated, not production keys) |
+| 2 | Payment Confirmation Flow | ✅ Done |
+| 3 | Payment Failure Handling | 🔴 Dead-end screen missing |
+| 4 | Refund Flow | 🔴 Not started |
+| 5 | Host Payout Flow | 🟡 Partial (edge fn built, wrong table bug) |
+| 6 | Payout History | 🔴 Not started |
+| 7 | Finance Dashboard | 🔴 Not started |
+
+### PHASE 6 — HOST EXPERIENCE
+*Goal: Create the best possible experience for hosts.*
+
+| # | Task | Status |
+|---|---|---|
+| 1 | Host Dashboard Improvements | 🟡 Partial |
+| 2 | Better Earnings Dashboard | 🟡 Partial |
+| 3 | Availability Improvements | 🔴 Not started |
+| 4 | Host Performance Insights | 🔴 Not started |
+| 5 | Host Tips | 🔴 Not started |
+| 6 | Top Host Programme | 🔴 Future |
+
+### PHASE 7 — USER EXPERIENCE
+*Goal: Polish Cubby.*
+
+| # | Task | Status |
+|---|---|---|
+| 1 | Better Animations | 🔴 Not started |
+| 2 | Better Loading States | 🟡 Partial (spinners only) |
+| 3 | Better Error Handling | 🔴 No error boundaries |
+| 4 | Skeleton Loaders | 🔴 Not started |
+| 5 | Empty States | 🟡 Partial |
+| 6 | Success Screens | 🟡 Partial |
+| 7 | Consistent Navigation | 🟡 Partial |
+| 8 | Accessibility Improvements | 🔴 Not started |
+
+### PHASE 8 — LEGAL & LAUNCH
+*Goal: Prepare Cubby for public launch.*
+
+| # | Task | Status |
+|---|---|---|
+| 1 | Privacy Policy | 🔴 Not started |
+| 2 | Terms & Conditions | 🔴 Not started |
+| 3 | Password Reset | 🔴 Not started |
+| 4 | Security Review | 🔴 Not started |
+| 5 | Production Testing | 🔴 Not started |
+| 6 | Beta Testing | 🔴 Not started |
+| 7 | App Store Submission | 🔴 Not started |
+| 8 | Google Play Submission | 🔴 Not started |
+
+### PHASE 9 — GROWTH
+*Future: Referral Programme, Promo Codes, Business Accounts, Airport/Hotel/Travel Agent Partnerships, Loyalty Programme, Insurance Options.*
+
+---
+
 ## NEXT RECOMMENDED TASK
 
-> **Current: Phase 1 — Operations Centre**
-> Transform the admin dashboard into Cubby's unified Operations Centre.
-> This is the highest priority. You cannot run the business without it.
->
-> **Status:** ✅ IMPLEMENTED (2026-06-26) — see Phase 1 spec below for what was built.
+> **Phase 1, Item 6 — Admin Notifications**
+> The next incomplete item in Phase 1. Admin should be alerted when new support messages, partner applications, or verifications arrive — without having to check the dashboard manually.
 
 ---
 
@@ -556,46 +672,6 @@ Also create a private `verifications` storage bucket in Supabase Dashboard → S
 - `host-payouts.tsx` — functional as-is
 
 ---
-
-## FUTURE PHASES
-
-### Phase 2 — Trust & Safety
-- Verification backend (submit, review, approve)
-- Terms of Service acceptance
-- Password reset flow
-- Dead-end screens (safety, language, payment-success, payment-failed)
-- Error boundaries
-- Fix email confirmation
-
-### Phase 3 — Communications
-- Email integration (Resend) — booking confirmation as first email
-- Booking event notifications (confirmed, declined, cancelled, reminders)
-- Support message email alerts
-- Partner application email notifications
-
-### Phase 4 — Marketplace Quality
-- Search ranking (rating + response rate + reviews)
-- Real GPS radius search
-- Host response rate tracking
-- Read receipts
-- Host payout history
-- Host listing analytics
-
-### Phase 5 — Performance & Scale
-- Pagination (bookings, notifications, messages)
-- Loading skeletons
-- Pull-to-refresh
-- Image optimisation
-- Error logging (Sentry)
-- Analytics (PostHog)
-
-### Phase 6 — Platform Expansion
-- Runners system (real backend)
-- Multi-city support
-- Language / localisation
-- Booking modification
-- Dispute resolution
-- Bag coverage claims process
 
 ---
 
