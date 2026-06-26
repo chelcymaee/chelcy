@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { router } from 'expo-router';
 import { checkAdminSession, clearAdminSession } from '../../src/lib/admin-auth';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ActivityItem {
   id: string;
@@ -24,20 +26,43 @@ interface Stats {
   pendingVerifications: number;
 }
 
+interface Toast {
+  id: string;
+  msg: string;
+  icon: string;
+}
+
+const EMPTY_STATS: Stats = {
+  totalHosts: 0, activeHosts: 0, activeBookings: 0,
+  revenueMonth: 0, revenueTotal: 0,
+  pendingHostApprovals: 0, pendingPartnerApplications: 0,
+  openSupportMessages: 0, pendingVerifications: 0,
+};
+
+const POLL_INTERVAL_MS = 30_000;
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats>({
-    totalHosts: 0, activeHosts: 0, activeBookings: 0,
-    revenueMonth: 0, revenueTotal: 0,
-    pendingHostApprovals: 0, pendingPartnerApplications: 0,
-    openSupportMessages: 0, pendingVerifications: 0,
-  });
+  const [stats, setStats] = useState<Stats>(EMPTY_STATS);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [pulseKeys, setPulseKeys] = useState<Set<string>>(new Set());
+
+  const prevStatsRef = useRef<Stats | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     checkAuth();
-    loadData();
+    loadData(true);
+
+    // Poll for changes every 30 seconds
+    intervalRef.current = setInterval(() => loadData(false), POLL_INTERVAL_MS);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
   async function checkAuth() {
@@ -45,9 +70,57 @@ export default function AdminDashboard() {
     if (!valid) router.replace('/(admin)/login');
   }
 
-  async function loadData() {
-    setLoading(true);
-    if (!isSupabaseConfigured) { setLoading(false); return; }
+  // ─── Toast helpers ────────────────────────────────────────────────────────
+
+  function addToast(msg: string, icon: string) {
+    const id = `${Date.now()}-${Math.random()}`;
+    setToasts(prev => [...prev.slice(-2), { id, msg, icon }]); // max 3 visible
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
+  }
+
+  // ─── Change detection ─────────────────────────────────────────────────────
+
+  function detectChanges(newStats: Stats) {
+    const prev = prevStatsRef.current;
+    prevStatsRef.current = newStats;
+    if (!prev) return; // first load — nothing to compare
+
+    const newPulse = new Set<string>();
+
+    if (newStats.pendingPartnerApplications > prev.pendingPartnerApplications) {
+      const n = newStats.pendingPartnerApplications - prev.pendingPartnerApplications;
+      addToast(`${n} new partner application${n > 1 ? 's' : ''}`, '🤝');
+      newPulse.add('applications');
+    }
+    if (newStats.pendingVerifications > prev.pendingVerifications) {
+      addToast('New verification submitted', '🪪');
+      newPulse.add('verifications');
+    }
+    if (newStats.openSupportMessages > prev.openSupportMessages) {
+      const n = newStats.openSupportMessages - prev.openSupportMessages;
+      addToast(`${n} new support message${n > 1 ? 's' : ''}`, '💬');
+      newPulse.add('support');
+    }
+    if (newStats.activeBookings > prev.activeBookings) {
+      addToast('New booking created', '📦');
+    }
+    if (newStats.totalHosts > prev.totalHosts) {
+      addToast('New host added', '🏠');
+      newPulse.add('hosts');
+    }
+
+    if (newPulse.size > 0) {
+      setPulseKeys(newPulse);
+      setTimeout(() => setPulseKeys(new Set()), 4000);
+    }
+  }
+
+  // ─── Data loading ─────────────────────────────────────────────────────────
+
+  async function loadData(initial: boolean) {
+    if (!isSupabaseConfigured) { if (initial) setLoading(false); return; }
+    if (initial) setLoading(true); else setRefreshing(true);
+
     try {
       const now = new Date();
       const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -58,6 +131,7 @@ export default function AdminDashboard() {
         { count: pendingHostApprovals },
         { count: pendingPartnerApps },
         { count: openSupport },
+        { count: pendingVerifs },
         { data: bookings },
         { data: recentBookings },
         { data: recentApplications },
@@ -68,6 +142,7 @@ export default function AdminDashboard() {
         supabase.from('hosts').select('*', { count: 'exact', head: true }).eq('is_active', false),
         supabase.from('partner_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('support_messages').select('*', { count: 'exact', head: true }).neq('status', 'resolved'),
+        supabase.from('verifications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('bookings').select('status, total_price, created_at'),
         supabase.from('bookings').select('id, status, total_price, created_at').order('created_at', { ascending: false }).limit(10),
         supabase.from('partner_applications').select('id, business_name, created_at, status').order('created_at', { ascending: false }).limit(5),
@@ -83,7 +158,7 @@ export default function AdminDashboard() {
         .filter((b: any) => ['confirmed', 'completed'].includes(b.status) && b.created_at >= firstOfMonth)
         .reduce((sum: number, b: any) => sum + (b.total_price ?? 0), 0);
 
-      setStats({
+      const newStats: Stats = {
         totalHosts: totalHosts ?? 0,
         activeHosts: activeHosts ?? 0,
         activeBookings,
@@ -92,52 +167,47 @@ export default function AdminDashboard() {
         pendingHostApprovals: pendingHostApprovals ?? 0,
         pendingPartnerApplications: pendingPartnerApps ?? 0,
         openSupportMessages: openSupport ?? 0,
-        pendingVerifications: 0,
-      });
+        pendingVerifications: pendingVerifs ?? 0,
+      };
 
-      // Build merged activity feed
+      setStats(newStats);
+      detectChanges(newStats);
+      setLastUpdated(new Date());
+
+      // Rebuild activity feed
       const items: ActivityItem[] = [];
-
       for (const b of recentBookings ?? []) {
         const statusIcon: Record<string, string> = { pending: '⏳', confirmed: '✅', active: '📦', completed: '🏁', cancelled: '❌' };
         items.push({
-          id: `b-${b.id}`,
-          type: 'booking',
+          id: `b-${b.id}`, type: 'booking',
           icon: statusIcon[b.status] ?? '📋',
           title: `Booking ${b.status}`,
           subtitle: b.total_price ? `R${Number(b.total_price).toFixed(0)}` : 'No charge',
           time: new Date(b.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
         });
       }
-
       for (const a of recentApplications ?? []) {
         items.push({
-          id: `a-${a.id}`,
-          type: 'application',
-          icon: '🤝',
+          id: `a-${a.id}`, type: 'application', icon: '🤝',
           title: `Partner application — ${a.business_name ?? 'Unknown'}`,
           subtitle: a.status === 'pending' ? 'Awaiting review' : a.status,
           time: new Date(a.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
         });
       }
-
       for (const s of recentSupport ?? []) {
         items.push({
-          id: `s-${s.id}`,
-          type: 'support',
-          icon: '💬',
+          id: `s-${s.id}`, type: 'support', icon: '💬',
           title: s.subject ?? 'Support message',
-          subtitle: s.status === 'open' ? 'Open — needs response' : 'Resolved',
+          subtitle: s.status !== 'resolved' ? 'Open — needs response' : 'Resolved',
           time: new Date(s.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
         });
       }
-
       items.sort((a, b) => b.time.localeCompare(a.time));
       setActivity(items.slice(0, 15));
     } catch (e) {
       console.error('[admin dashboard] loadData error:', e);
     } finally {
-      setLoading(false);
+      if (initial) setLoading(false); else setRefreshing(false);
     }
   }
 
@@ -146,28 +216,35 @@ export default function AdminDashboard() {
     router.replace('/(traveller)/explore');
   }
 
-  const needsAttention = [
-    stats.pendingPartnerApplications > 0 && {
+  function formatLastUpdated(d: Date) {
+    const secs = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (secs < 60) return 'just now';
+    if (secs < 120) return '1 min ago';
+    return `${Math.floor(secs / 60)} min ago`;
+  }
+
+  // ─── Needs Attention list (with pulse keys) ───────────────────────────────
+
+  const needsAttention: Array<{ label: string; route: string; color: string; pulseKey: string }> = [
+    ...(stats.pendingPartnerApplications > 0 ? [{
       label: `${stats.pendingPartnerApplications} partner application${stats.pendingPartnerApplications > 1 ? 's' : ''} awaiting review`,
-      route: '/(admin)/partner-applications',
-      color: '#F59E0B',
-    },
-    stats.openSupportMessages > 0 && {
+      route: '/(admin)/partner-applications', color: '#F59E0B', pulseKey: 'applications',
+    }] : []),
+    ...(stats.openSupportMessages > 0 ? [{
       label: `${stats.openSupportMessages} open support message${stats.openSupportMessages > 1 ? 's' : ''}`,
-      route: '/(admin)/support-messages',
-      color: '#EF4444',
-    },
-    stats.pendingVerifications > 0 && {
+      route: '/(admin)/support-messages', color: '#EF4444', pulseKey: 'support',
+    }] : []),
+    ...(stats.pendingVerifications > 0 ? [{
       label: `${stats.pendingVerifications} verification${stats.pendingVerifications > 1 ? 's' : ''} to review`,
-      route: '/(admin)/verifications',
-      color: '#8B5CF6',
-    },
-    stats.pendingHostApprovals > 0 && {
+      route: '/(admin)/verifications', color: '#8B5CF6', pulseKey: 'verifications',
+    }] : []),
+    ...(stats.pendingHostApprovals > 0 ? [{
       label: `${stats.pendingHostApprovals} inactive host${stats.pendingHostApprovals > 1 ? 's' : ''} (may need setup)`,
-      route: '/(admin)/manage-hosts',
-      color: '#3B82F6',
-    },
-  ].filter(Boolean) as { label: string; route: string; color: string }[];
+      route: '/(admin)/manage-hosts', color: '#3B82F6', pulseKey: 'hosts',
+    }] : []),
+  ];
+
+  // ─── Styles ───────────────────────────────────────────────────────────────
 
   const s: any = {
     page: { minHeight: '100vh', backgroundColor: '#FAF9F6', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', overflowY: 'auto', maxWidth: 480, margin: '0 auto' },
@@ -175,12 +252,23 @@ export default function AdminDashboard() {
     logo: { fontSize: 11, fontWeight: 800, color: '#2D6A4F', letterSpacing: 2, textTransform: 'uppercase', margin: '0 0 4px' },
     headerRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
     headerTitle: { fontSize: 26, fontWeight: 900, color: '#1a1a1a', margin: 0 },
+    headerRight: { display: 'flex', alignItems: 'center', gap: 8 },
     exitBtn: { background: 'none', border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 12px', fontSize: 13, fontWeight: 600, color: '#6B7280', cursor: 'pointer' },
+    refreshBtn: { background: 'none', border: 'none', padding: '6px', cursor: 'pointer', fontSize: 16, opacity: refreshing ? 0.4 : 1 },
+    lastUpdated: { fontSize: 11, color: '#9CA3AF', paddingTop: 4 },
     sectionLabel: { fontSize: 11, fontWeight: 800, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1, padding: '20px 20px 8px', margin: 0 },
 
     // Needs Attention
-    attentionCard: (color: string) => ({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', border: `1.5px solid ${color}20`, borderLeft: `4px solid ${color}`, borderRadius: 12, padding: '12px 16px', marginBottom: 8, cursor: 'pointer' }),
-    attentionLabel: (color: string) => ({ fontSize: 14, fontWeight: 600, color: '#1a1a1a', flex: 1 }),
+    attentionCard: (color: string, pulsing: boolean) => ({
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: pulsing ? color + '12' : '#fff',
+      border: `1.5px solid ${color}${pulsing ? '60' : '20'}`,
+      borderLeft: `4px solid ${color}`,
+      borderRadius: 12, padding: '12px 16px', marginBottom: 8, cursor: 'pointer',
+      transition: 'background-color 0.4s, border-color 0.4s',
+    }),
+    attentionLabel: { fontSize: 14, fontWeight: 600, color: '#1a1a1a', flex: 1 },
+    attentionNew: { fontSize: 10, fontWeight: 800, color: '#fff', backgroundColor: '#EF4444', borderRadius: 10, padding: '2px 7px', marginRight: 8 },
     attentionArrow: { fontSize: 16, color: '#9CA3AF' },
 
     // Snapshot grid
@@ -190,13 +278,18 @@ export default function AdminDashboard() {
     snapshotLabel: { fontSize: 11, color: '#6B7280', marginTop: 4, lineHeight: 1.3 },
 
     // Section cards
-    sectionCard: { margin: '0 12px', backgroundColor: '#fff', borderRadius: 14, border: '1px solid #F0EAEA', overflow: 'hidden', marginBottom: 0 },
+    sectionCard: { margin: '0 12px', backgroundColor: '#fff', borderRadius: 14, border: '1px solid #F0EAEA', overflow: 'hidden' },
     sectionRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #F8F8F8', cursor: 'pointer' },
     sectionRowLast: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer' },
     sectionRowLeft: { display: 'flex', alignItems: 'center', gap: 10 },
     sectionRowIcon: { fontSize: 20, width: 32 },
     sectionRowLabel: { fontSize: 15, fontWeight: 600, color: '#1a1a1a' },
-    sectionRowBadge: (color: string) => ({ backgroundColor: color + '20', color: color, borderRadius: 20, padding: '2px 8px', fontSize: 12, fontWeight: 700 }),
+    sectionRowBadge: (color: string, pulsing: boolean) => ({
+      backgroundColor: pulsing ? color : color + '20',
+      color: pulsing ? '#fff' : color,
+      borderRadius: 20, padding: '2px 8px', fontSize: 12, fontWeight: 700,
+      transition: 'background-color 0.4s, color 0.4s',
+    }),
 
     // Activity feed
     activityWrap: { padding: '0 12px', marginBottom: 40 },
@@ -212,13 +305,54 @@ export default function AdminDashboard() {
     confirmNo: { backgroundColor: '#fff', color: '#6B7280', border: '1px solid #D1D5DB', borderRadius: 8, padding: '8px 16px', fontWeight: 700, cursor: 'pointer', fontSize: 14 },
   };
 
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
     <div style={s.page}>
+
+      {/* ---- Toast stack (top-right, fixed) ---- */}
+      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 280 }}>
+        {toasts.map(t => (
+          <div
+            key={t.id}
+            style={{
+              backgroundColor: '#1a1a1a', color: '#fff', borderRadius: 12,
+              padding: '10px 16px', fontSize: 13, fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 8,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+              animation: 'slideIn 0.25s ease-out',
+            }}
+          >
+            <span style={{ fontSize: 16 }}>{t.icon}</span>
+            {t.msg}
+          </div>
+        ))}
+      </div>
+
+      {/* Inject keyframe for toast animation */}
+      <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }`}</style>
+
+      {/* ---- Header ---- */}
       <div style={s.header}>
         <p style={s.logo}>Cubby Operations</p>
         <div style={s.headerRow}>
-          <h1 style={s.headerTitle}>Dashboard</h1>
-          <button style={s.exitBtn} onClick={() => setConfirmSignOut(true)}>Exit Admin</button>
+          <div>
+            <h1 style={s.headerTitle}>Dashboard</h1>
+            {lastUpdated && (
+              <p style={s.lastUpdated}>Updated {formatLastUpdated(lastUpdated)}</p>
+            )}
+          </div>
+          <div style={s.headerRight}>
+            <button
+              style={s.refreshBtn}
+              title="Refresh now"
+              onClick={() => loadData(false)}
+              disabled={refreshing}
+            >
+              {refreshing ? '⏳' : '🔄'}
+            </button>
+            <button style={s.exitBtn} onClick={() => setConfirmSignOut(true)}>Exit Admin</button>
+          </div>
         </div>
       </div>
 
@@ -227,12 +361,16 @@ export default function AdminDashboard() {
         <>
           <p style={{ ...s.sectionLabel, color: '#EF4444' }}>🚨 Needs Attention</p>
           <div style={{ padding: '0 12px' }}>
-            {needsAttention.map(item => (
-              <div key={item.route} style={s.attentionCard(item.color)} onClick={() => router.push(item.route as any)}>
-                <span style={s.attentionLabel(item.color)}>{item.label}</span>
-                <span style={s.attentionArrow}>›</span>
-              </div>
-            ))}
+            {needsAttention.map(item => {
+              const pulsing = pulseKeys.has(item.pulseKey);
+              return (
+                <div key={item.route} style={s.attentionCard(item.color, pulsing)} onClick={() => router.push(item.route as any)}>
+                  <span style={s.attentionLabel}>{item.label}</span>
+                  {pulsing && <span style={s.attentionNew}>NEW</span>}
+                  <span style={s.attentionArrow}>›</span>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -303,7 +441,7 @@ export default function AdminDashboard() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {stats.pendingPartnerApplications > 0 && (
-              <span style={s.sectionRowBadge('#F59E0B')}>{stats.pendingPartnerApplications} pending</span>
+              <span style={s.sectionRowBadge('#F59E0B', pulseKeys.has('applications'))}>{stats.pendingPartnerApplications} pending</span>
             )}
             <span style={s.attentionArrow}>›</span>
           </div>
@@ -315,7 +453,7 @@ export default function AdminDashboard() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {stats.pendingVerifications > 0 && (
-              <span style={s.sectionRowBadge('#8B5CF6')}>{stats.pendingVerifications} pending</span>
+              <span style={s.sectionRowBadge('#8B5CF6', pulseKeys.has('verifications'))}>{stats.pendingVerifications} pending</span>
             )}
             <span style={s.attentionArrow}>›</span>
           </div>
@@ -346,7 +484,7 @@ export default function AdminDashboard() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {stats.openSupportMessages > 0 && (
-              <span style={s.sectionRowBadge('#EF4444')}>{stats.openSupportMessages} open</span>
+              <span style={s.sectionRowBadge('#EF4444', pulseKeys.has('support'))}>{stats.openSupportMessages} open</span>
             )}
             <span style={s.attentionArrow}>›</span>
           </div>
@@ -373,13 +511,13 @@ export default function AdminDashboard() {
       </div>
 
       {/* ---- Sign Out ---- */}
-      {confirmSignOut ? (
+      {confirmSignOut && (
         <div style={s.confirmBox}>
           <span style={{ fontSize: 14, fontWeight: 600, color: '#DC2626' }}>Exit admin and return to app?</span>
           <button style={s.confirmYes} onClick={handleSignOut}>Yes, exit</button>
           <button style={s.confirmNo} onClick={() => setConfirmSignOut(false)}>Stay</button>
         </div>
-      ) : null}
+      )}
 
       <div style={{ height: 40 }} />
     </div>
