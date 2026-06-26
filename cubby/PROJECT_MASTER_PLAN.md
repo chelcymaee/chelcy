@@ -222,14 +222,15 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 - [ ] Verification approved / rejected email
 
 ### Admin Operations Centre (Phase 1)
-- [ ] Redesigned dashboard as unified operations hub
-- [ ] Partner application review screen (approve / reject with email notification)
-- [ ] Support messages viewer (view / close / respond)
+- [x] Redesigned dashboard as unified operations hub (Needs Attention + Snapshot + sections + Activity Feed)
+- [x] Partner application review screen (approve / reject)
+- [x] Support messages viewer (view / resolve / reopen)
+- [x] Verification review queue (view ID + selfie, approve/reject)
+- [x] Recent activity feed (merged timeline on dashboard)
+- [ ] Email notification to applicant on approval/rejection (Phase 3)
 - [ ] Traveller management screen (view travellers, bookings, flag/ban)
-- [ ] Verification review queue (view submissions, approve/reject)
-- [ ] Recent activity feed
 - [ ] System health indicators
-- [ ] Consistent admin navigation (no sidebar yet, screens are disconnected)
+- [ ] Consistent admin navigation sidebar (future role-based design)
 
 ### Trust & Safety
 - [ ] R2,000 bag coverage claims process (currently a marketing claim with no mechanism)
@@ -449,8 +450,7 @@ Host photos are uploaded and served at original size. No compression, no respons
 > Transform the admin dashboard into Cubby's unified Operations Centre.
 > This is the highest priority. You cannot run the business without it.
 >
-> **Status:** Awaiting approval to begin implementation.
-> See Phase 1 spec below.
+> **Status:** ✅ IMPLEMENTED (2026-06-26) — see Phase 1 spec below for what was built.
 
 ---
 
@@ -512,27 +512,45 @@ OPERATIONS
 4. Architecture supports future role-based access without redesign
 5. No code that assumes single admin — use `admin_role` concept even if only 'super_admin' for now
 
-### New Screens to Build (Phase 1)
-1. Redesigned `dashboard.tsx` (hub with live metrics, section cards, activity snapshot)
-2. `partner-applications.tsx` (review queue, approve/reject)
-3. `support-messages.tsx` (message viewer, close/open status)
-4. Admin navigation component (consistent back/header pattern)
+### Approved Modifications (2026-06-26)
+1. **Include Verification in Phase 1** — `verifications.tsx` admin review queue built. Shows setup notice if table doesn't exist yet.
+2. **Recent Activity Feed** — Merged timeline of bookings, applications, support messages on the dashboard. Heartbeat of the business at a glance.
+3. **🚨 Needs Attention section** — First thing admin sees. Red-bordered cards for pending items requiring action. Only shown when items exist.
+
+### Long-Term Vision
+The dashboard should be readable in 5 seconds. A Cubby operator should be able to open the admin panel and immediately know: what needs action, what happened today, and the health of the marketplace — without clicking into any sub-screen.
+
+### What Was Built (Phase 1 — ✅ Implemented)
+1. ✅ Redesigned `dashboard.tsx` — Needs Attention + Today's Snapshot + Marketplace + Approvals + Support + Recent Activity Feed
+2. ✅ `partner-applications.tsx` — tabbed view (pending/approved/rejected), expand to review, approve/reject
+3. ✅ `support-messages.tsx` — tabbed view (open/resolved), expand to read, mark resolved/reopen
+4. ✅ `verifications.tsx` — tabbed view with photo display for ID + selfie, approve/reject (graceful empty state if table not yet created)
+5. ✅ `all-bookings.tsx` — migrated from AsyncStorage to real Supabase queries
+6. ✅ `revenue.tsx` — migrated from AsyncStorage to real Supabase queries
+
+### SQL Required for Verifications (run manually in Supabase)
+```sql
+CREATE TABLE IF NOT EXISTS verifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  id_photo_url TEXT,
+  selfie_url TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ
+);
+ALTER TABLE verifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can insert own verification" ON verifications FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can read own verification" ON verifications FOR SELECT USING (auth.uid() = user_id);
+```
+
+Also create a private `verifications` storage bucket in Supabase Dashboard → Storage → New bucket (NOT public — sensitive ID documents).
 
 ### Screens to Keep (as-is for now)
 - `login.tsx` — leave untouched
-- `manage-hosts.tsx` — keep, add consistent header
-- `create-host.tsx` — keep, add consistent header
-- `host-payouts.tsx` — keep, add consistent header
-- `all-bookings.tsx` — keep, add consistent header
-- `revenue.tsx` — keep, add consistent header
-
-### SQL Required (Phase 1)
-None new — uses existing tables. Reads:
-- `partner_applications` (status = 'pending')
-- `support_messages` (status = 'pending')
-- `hosts` (counts)
-- `bookings` (active counts)
-- `profiles` (traveller counts)
+- `manage-hosts.tsx` — functional as-is
+- `create-host.tsx` — functional as-is
+- `host-payouts.tsx` — functional as-is
 
 ---
 

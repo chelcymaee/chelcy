@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 const STATUS_COLOR: Record<string, string> = {
   pending: '#F59E0B',
@@ -15,9 +15,15 @@ export default function AdminBookings() {
   const [tab, setTab] = useState<'all' | 'active' | 'completed'>('all');
 
   useFocusEffect(useCallback(() => {
-    AsyncStorage.getItem('cubby_bookings').then(raw => {
-      setBookings(raw ? JSON.parse(raw) : []);
-    });
+    if (!isSupabaseConfigured) return;
+    async function load() {
+      const { data } = await supabase
+        .from('bookings')
+        .select('id, status, total_price, bag_count, drop_off_date, created_at, host_id')
+        .order('created_at', { ascending: false });
+      setBookings(data ?? []);
+    }
+    load();
   }, []));
 
   const filtered = tab === 'all' ? bookings

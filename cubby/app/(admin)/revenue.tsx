@@ -1,15 +1,21 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 export default function Revenue() {
   const [bookings, setBookings] = useState<any[]>([]);
 
   useFocusEffect(useCallback(() => {
-    AsyncStorage.getItem('cubby_bookings').then(raw => {
-      const all = raw ? JSON.parse(raw) : [];
-      setBookings(all.filter((b: any) => b.status === 'completed'));
-    });
+    if (!isSupabaseConfigured) return;
+    async function load() {
+      const { data } = await supabase
+        .from('bookings')
+        .select('id, status, total_price, bag_count, drop_off_date, host_id, created_at')
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false });
+      setBookings(data ?? []);
+    }
+    load();
   }, []));
 
   const total = bookings.reduce((sum, b) => sum + (b.total_price ?? b.totalPrice ?? 0), 0);
