@@ -314,6 +314,10 @@ CREATE POLICY "Users can read own verification"
 CREATE POLICY "Users can update own verification"
   ON verifications FOR UPDATE USING (auth.uid() = user_id);
 
+-- NOTE: The above UPDATE policy also allows admin to approve/reject verifications
+-- because the admin runs in the same browser session as the logged-in traveller user.
+-- For a multi-user admin system, replace with a service-role edge function.
+
 -- -------------------------------------------------------------------------
 -- Storage bucket for verifications (MANUAL — Supabase Dashboard)
 -- -------------------------------------------------------------------------
