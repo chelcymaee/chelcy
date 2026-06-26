@@ -53,7 +53,6 @@ export default function Profile() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [isHostApproved, setIsHostApproved] = useState(false);
-  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -71,22 +70,7 @@ export default function Profile() {
 
   useEffect(() => {
     loadProfile();
-    loadUnreadNotifs();
   }, []);
-
-  async function loadUnreadNotifs() {
-    if (!isSupabaseConfigured) return;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .is('read_at', null);
-      setUnreadNotifCount(count ?? 0);
-    } catch {}
-  }
 
   async function loadProfile() {
     if (isSupabaseConfigured) {
@@ -298,7 +282,7 @@ export default function Profile() {
       title: 'General',
       items: [
         { icon: '💳', label: 'Payment methods', onPress: () => router.push('/(traveller)/payment-details') },
-        { icon: '🔔', label: unreadNotifCount > 0 ? `Notifications  🔴 ${unreadNotifCount}` : 'Notifications', onPress: () => router.push('/(traveller)/notifications') },
+        { icon: '🔔', label: 'Notification Preferences', onPress: () => router.push('/(traveller)/notification-preferences') },
         { icon: '🌐', label: 'Language', onPress: () => router.push('/(traveller)/language') },
         { icon: '✅', label: 'Get verified ✅', onPress: () => router.push('/(traveller)/verification'), highlight: true },
       ],

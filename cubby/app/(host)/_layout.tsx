@@ -82,6 +82,7 @@ export default function HostLayout() {
       <Tabs.Screen name="bank-details" options={{ href: null }} />
       <Tabs.Screen name="chat" options={{ href: null }} />
       <Tabs.Screen name="traveller-profile" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>
   );
 }

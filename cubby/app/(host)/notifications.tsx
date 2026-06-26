@@ -19,12 +19,7 @@ interface Notif {
   related_message_id: string | null;
 }
 
-interface Section {
-  title: string;
-  data: Notif[];
-}
-
-// ── Config ──────────────────────────────────────────────────────────────────
+interface Section { title: string; data: Notif[] }
 
 const TYPE_CONFIG: Record<string, { icon: string; accent: string }> = {
   new_message:           { icon: '💬', accent: '#3B82F6' },
@@ -52,8 +47,6 @@ function getConfig(type: string) {
   return TYPE_CONFIG[type] ?? { icon: '🔔', accent: Colors.textSecondary };
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
@@ -70,7 +63,6 @@ function groupByTime(notifs: Notif[]): Section[] {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const yesterdayStart = todayStart - 86400000;
-
   const today: Notif[] = [], yesterday: Notif[] = [], earlier: Notif[] = [];
   for (const n of notifs) {
     const t = new Date(n.created_at).getTime();
@@ -78,7 +70,6 @@ function groupByTime(notifs: Notif[]): Section[] {
     else if (t >= yesterdayStart) yesterday.push(n);
     else earlier.push(n);
   }
-
   const sections: Section[] = [];
   if (today.length) sections.push({ title: 'Today', data: today });
   if (yesterday.length) sections.push({ title: 'Yesterday', data: yesterday });
@@ -88,19 +79,17 @@ function groupByTime(notifs: Notif[]): Section[] {
 
 function navigate(n: Notif) {
   if (n.type === 'new_message' && n.data?.conversation_id) {
-    router.push({ pathname: '/(traveller)/chat', params: { conversationId: n.data.conversation_id } } as any);
+    router.push({ pathname: '/(host)/chat', params: { conversationId: n.data.conversation_id } } as any);
   } else if (n.type?.startsWith('booking') || n.type?.startsWith('payment') || n.type?.includes('reminder')) {
-    router.push('/(traveller)/bookings');
+    router.push('/(host)/requests');
   } else if (n.type?.startsWith('verification')) {
     router.push('/(traveller)/verification');
   } else if (n.type?.startsWith('partner')) {
-    router.push('/(traveller)/partner-apply');
-  } else if (n.type === 'review_request' && n.related_booking_id) {
-    router.push({ pathname: '/(traveller)/review', params: { bookingId: n.related_booking_id } } as any);
+    router.push('/(host)/dashboard');
+  } else if (n.type === 'review_request') {
+    router.push('/(host)/requests');
   }
 }
-
-// ── Notification row ─────────────────────────────────────────────────────────
 
 function NotifRow({ item, onRead }: { item: Notif; onRead: (id: string) => void }) {
   const { icon, accent } = getConfig(item.type);
@@ -122,12 +111,9 @@ function NotifRow({ item, onRead }: { item: Notif; onRead: (id: string) => void 
       onClick={handlePress}
       activeOpacity={0.7}
     >
-      {/* Left: coloured icon pill */}
       <View style={[styles.iconPill, { backgroundColor: accent + '18' }]}>
         <Text style={styles.iconText}>{icon}</Text>
       </View>
-
-      {/* Middle: content */}
       <View style={styles.rowContent}>
         <View style={styles.rowTop}>
           <Text style={[styles.rowTitle, unread && styles.rowTitleUnread]} numberOfLines={1}>
@@ -137,16 +123,12 @@ function NotifRow({ item, onRead }: { item: Notif; onRead: (id: string) => void 
         </View>
         <Text style={styles.rowBody} numberOfLines={2}>{item.body}</Text>
       </View>
-
-      {/* Right: unread dot */}
       {unread && <View style={[styles.dot, { backgroundColor: accent }]} />}
     </TouchableOpacity>
   );
 }
 
-// ── Main screen ───────────────────────────────────────────────────────────────
-
-export default function Notifications() {
+export default function HostNotifications() {
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -158,14 +140,12 @@ export default function Notifications() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
-
       const { data } = await supabase
         .from('notifications')
         .select('id, type, title, body, data, read_at, created_at, related_booking_id, related_message_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(100);
-
       setSections(groupByTime(data ?? []));
     } finally {
       setLoading(false);
@@ -183,11 +163,8 @@ export default function Notifications() {
     if (!isSupabaseConfigured) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase
-      .from('notifications')
-      .update({ read_at: new Date().toISOString() })
-      .eq('user_id', user.id)
-      .is('read_at', null);
+    await supabase.from('notifications').update({ read_at: new Date().toISOString() })
+      .eq('user_id', user.id).is('read_at', null);
     setSections(prev => prev.map(s => ({
       ...s,
       data: s.data.map(n => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })),
@@ -198,12 +175,11 @@ export default function Notifications() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.replace('/(traveller)/profile')}
+          onPress={() => router.replace('/(host)/dashboard')}
           // @ts-ignore
-          onClick={() => router.replace('/(traveller)/profile')}
+          onClick={() => router.replace('/(host)/dashboard')}
         >
           <Text style={styles.back}>← Back</Text>
         </TouchableOpacity>
@@ -227,7 +203,7 @@ export default function Notifications() {
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🔔</Text>
           <Text style={styles.emptyTitle}>No notifications yet</Text>
-          <Text style={styles.emptyText}>Messages, booking updates and reminders will appear here.</Text>
+          <Text style={styles.emptyText}>Booking requests, messages and updates will appear here.</Text>
         </View>
       ) : (
         <SectionList
@@ -239,17 +215,13 @@ export default function Notifications() {
               <Text style={styles.sectionHeaderText}>{section.title}</Text>
             </View>
           )}
-          renderItem={({ item }) => (
-            <NotifRow item={item} onRead={markRead} />
-          )}
+          renderItem={({ item }) => <NotifRow item={item} onRead={markRead} />}
           contentContainerStyle={{ paddingBottom: 40 }}
         />
       )}
     </SafeAreaView>
   );
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
@@ -258,46 +230,29 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
   markAll: { fontSize: 13, fontWeight: '600', color: Colors.primary },
-
   sectionHeader: {
     backgroundColor: Colors.background,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 6,
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6,
   },
   sectionHeaderText: {
     fontSize: 13, fontWeight: '700', color: Colors.textSecondary,
     textTransform: 'uppercase', letterSpacing: 0.5,
   },
-
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingHorizontal: 20, paddingVertical: 14,
+    backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   rowUnread: { backgroundColor: '#FFF8F8' },
-
-  iconPill: {
-    width: 48, height: 48, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
-  },
+  iconPill: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   iconText: { fontSize: 22 },
-
   rowContent: { flex: 1, gap: 3 },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rowTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
   rowTitleUnread: { fontWeight: '700' },
   rowBody: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
   rowTime: { fontSize: 11, color: Colors.textLight, flexShrink: 0 },
-
   dot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8 },

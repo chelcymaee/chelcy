@@ -6,6 +6,7 @@ import {
 import { useFocusEffect, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import NotificationBell from '../../src/components/NotificationBell';
 
 // Booking statuses used across Cubby:
 //   pending   — created by traveller, awaiting host acknowledgement
@@ -187,11 +188,14 @@ export default function Requests() {
 
       <View style={styles.header}>
         <Text style={styles.heading}>Booking Requests</Text>
-        {pending > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{pending} new</Text>
-          </View>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {pending > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{pending} new</Text>
+            </View>
+          )}
+          <NotificationBell variant="host" />
+        </View>
       </View>
 
       {loading ? (

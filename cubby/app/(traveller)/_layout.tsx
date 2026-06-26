@@ -35,6 +35,7 @@ export default function TravellerLayout() {
       <Tabs.Screen name="runners" options={{ href: null }} />
       <Tabs.Screen name="verification" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="notification-preferences" options={{ href: null }} />
       <Tabs.Screen name="safety" options={{ href: null }} />
       <Tabs.Screen name="support" options={{ href: null }} />
       <Tabs.Screen name="booking-confirmation" options={{ href: null }} />

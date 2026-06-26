@@ -10,6 +10,7 @@ import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { MOCK_RUNNERS, Runner } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
 import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
+import NotificationBell from '../../src/components/NotificationBell';
 
 const TIME_SLOTS = [
   '7am–8am','8am–9am','9am–10am','10am–11am','11am–12pm',
@@ -248,7 +249,10 @@ function SearchScreen({
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.searchScroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.searchHeading}>Find storage near you</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+          <Text style={[styles.searchHeading, { marginBottom: 0 }]}>Find storage near you</Text>
+          <NotificationBell variant="traveller" />
+        </View>
 
         {/* Where */}
         <Text style={styles.sectionLabel}>Where?</Text>

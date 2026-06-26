@@ -6,6 +6,7 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import NotificationBell from '../../src/components/NotificationBell';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -302,18 +303,21 @@ export default function Dashboard() {
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>Welcome back 👋</Text>
             <Text style={styles.heading}>Host Dashboard</Text>
           </View>
-          <TouchableOpacity
-            style={styles.switchBtn}
-            onPress={() => router.replace('/(traveller)/explore')}
-            // @ts-ignore
-            onClick={() => router.replace('/(traveller)/explore')}
-          >
-            <Text style={styles.switchBtnText}>🧳 Switch to traveller</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <NotificationBell variant="host" />
+            <TouchableOpacity
+              style={styles.switchBtn}
+              onPress={() => router.replace('/(traveller)/explore')}
+              // @ts-ignore
+              onClick={() => router.replace('/(traveller)/explore')}
+            >
+              <Text style={styles.switchBtnText}>🧳 Traveller</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Error banner ─────────────────────────────────────────────────── */}

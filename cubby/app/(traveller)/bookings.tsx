@@ -4,6 +4,7 @@ import { useFocusEffect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { Colors } from '../../src/constants/colors';
+import NotificationBell from '../../src/components/NotificationBell';
 
 const STATUS_COLOR: Record<string, string> = {
   pending: '#F59E0B',
@@ -81,8 +82,9 @@ export default function Bookings() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
         <Text style={styles.heading}>My Bookings</Text>
+        <NotificationBell variant="traveller" />
       </View>
 
       <View style={styles.tabBar}>

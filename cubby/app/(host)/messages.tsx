@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Activ
 import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import NotificationBell from '../../src/components/NotificationBell';
 
 interface Convo {
   id: string;
@@ -91,8 +92,9 @@ export default function HostMessages() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
         <Text style={styles.heading}>Messages</Text>
+        <NotificationBell variant="host" />
       </View>
 
       {loading ? (
