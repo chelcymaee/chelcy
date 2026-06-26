@@ -282,3 +282,54 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_host_approved BOOLEAN DEFAULT F
 -- RLS FIX: bookings — hosts must be readable by assigned_user_id too
 -- -------------------------------------------------------------------------
 -- (Run the migration SQL block below in Supabase SQL editor)
+
+-- -------------------------------------------------------------------------
+-- Verifications table (Phase 1 — Operations Centre)
+-- -------------------------------------------------------------------------
+-- MANUAL STEP: Run this block in Supabase SQL Editor
+
+CREATE TABLE IF NOT EXISTS verifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  id_photo_url TEXT,   -- 7-day signed URL generated at upload time
+  selfie_url TEXT,     -- 7-day signed URL generated at upload time
+  status TEXT NOT NULL DEFAULT 'pending', -- pending | approved | rejected
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ
+);
+
+-- One pending verification per user (upsert on user_id)
+CREATE UNIQUE INDEX IF NOT EXISTS verifications_user_id_unique ON verifications (user_id);
+
+ALTER TABLE verifications ENABLE ROW LEVEL SECURITY;
+
+-- Travellers can submit and read their own verification
+CREATE POLICY "Users can insert own verification"
+  ON verifications FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can read own verification"
+  ON verifications FOR SELECT USING (auth.uid() = user_id);
+
+-- Users can update their own verification (needed for re-submission after rejection)
+CREATE POLICY "Users can update own verification"
+  ON verifications FOR UPDATE USING (auth.uid() = user_id);
+
+-- -------------------------------------------------------------------------
+-- Storage bucket for verifications (MANUAL — Supabase Dashboard)
+-- -------------------------------------------------------------------------
+-- 1. Go to Storage → New bucket
+-- 2. Name: verifications
+-- 3. Public access: OFF (private)
+-- 4. After creating, add these storage policies in Dashboard → Storage → verifications → Policies:
+
+-- Policy: Users can upload to their own folder
+-- INSERT: (auth.uid() = (storage.foldername(name))[1]::uuid)
+
+-- Policy: Users can read their own files
+-- SELECT: (auth.uid() = (storage.foldername(name))[1]::uuid)
+
+-- Policy: Users can overwrite their own files (for re-submission)
+-- UPDATE: (auth.uid() = (storage.foldername(name))[1]::uuid)
+
+-- Storage path format: verifications/{user_id}/id.jpg
+--                      verifications/{user_id}/selfie.jpg

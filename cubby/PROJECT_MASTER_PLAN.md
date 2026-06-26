@@ -202,7 +202,7 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 - [ ] Password reset / forgot password flow (Supabase supports it, UI missing)
 - [ ] Email confirmation re-enabled in Supabase (disabled for dev, must re-enable before launch)
 - [ ] Admin PIN default must error if env var not set (currently defaults to '1234')
-- [ ] Verification backend (`verifications` table, admin review queue, `is_verified` update)
+- [x] Verification backend (`verifications` table SQL provided, admin review queue built, `is_verified` updated on approve/reject)
 - [ ] Dead-end screens: `safety.tsx`, `language.tsx`, `payment-success.tsx`, `payment-failed.tsx`
 
 ### Booking Events — Notifications
@@ -355,6 +355,9 @@ Host photos are uploaded and served at original size. No compression, no respons
 - [ ] Set `ADMIN_SECRET` env var on all edge functions (Supabase → Functions → Secrets)
 - [ ] Set `PEACH_PAYMENTS_TOKEN`, `PEACH_PAYMENTS_ENTITY_ID`, `PEACH_WEBHOOK_SECRET` on edge functions
 - [ ] Confirm `host-photos` and `avatars` storage buckets exist with correct public policies
+- [ ] Create private `verifications` storage bucket (Storage → New bucket → name: verifications, public: OFF)
+- [ ] Add storage policies to `verifications` bucket (INSERT/SELECT/UPDATE: `auth.uid() = (storage.foldername(name))[1]::uuid`)
+- [ ] Run `verifications` table SQL (see schema.sql bottom section)
 - [ ] Confirm `payment-webhook` is registered with Peach Payments as webhook endpoint
 
 ### App Configuration
@@ -605,7 +608,7 @@ Also create a private `verifications` storage bucket in Supabase Dashboard → S
 | `notify-new-message` Edge Function exists but DB webhook not wired | 🟡 High | Supabase Dashboard |
 | 4 navigation dead ends crash or blank on tap | 🟡 High | `app/(traveller)/_layout.tsx` |
 | `MOCK_REVIEWS` shown as real reviews on empty host profiles | 🟡 High | `app/(traveller)/host-detail.tsx` |
-| Verification UI submits to nowhere (photos never saved) | 🟡 High | `app/(traveller)/verification.tsx` |
+| Verification signed URLs expire after 7 days — admin needs edge fn to refresh for long-pending reviews | 🟠 Medium | `app/(admin)/verifications.tsx` |
 | Response rate always shows 100% (never updated) | 🟠 Medium | `supabase/schema.sql` |
 | Read receipts on messages never set | 🟠 Medium | `app/(traveller)/chat.tsx`, `app/(host)/chat.tsx` |
 | Bag count `−/+` buttons not functional in booking screen | 🟠 Medium | `app/(traveller)/booking.tsx` |

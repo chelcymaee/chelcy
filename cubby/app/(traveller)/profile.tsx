@@ -53,6 +53,7 @@ export default function Profile() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [isHostApproved, setIsHostApproved] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -85,6 +86,18 @@ export default function Profile() {
           setPhone(profile.phone ?? '');
           if (profile.avatar_url) setAvatar(profile.avatar_url);
           setIsHostApproved(profile.is_host_approved ?? false);
+
+          // Check verification status
+          const { data: verif } = await supabase
+            .from('verifications')
+            .select('status')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          if (verif) {
+            setVerificationStatus(verif.status);
+          } else if (profile.is_verified) {
+            setVerificationStatus('approved');
+          }
           return;
         }
       }
@@ -284,7 +297,12 @@ export default function Profile() {
         { icon: '💳', label: 'Payment methods', onPress: () => router.push('/(traveller)/payment-details') },
         { icon: '🔔', label: 'Notification Preferences', onPress: () => router.push('/(traveller)/notification-preferences') },
         { icon: '🌐', label: 'Language', onPress: () => router.push('/(traveller)/language') },
-        { icon: '✅', label: 'Get verified ✅', onPress: () => router.push('/(traveller)/verification'), highlight: true },
+        {
+          icon: verificationStatus === 'approved' ? '✅' : verificationStatus === 'pending' ? '⏳' : verificationStatus === 'rejected' ? '❌' : '🪪',
+          label: verificationStatus === 'approved' ? 'Verified ✅' : verificationStatus === 'pending' ? 'Verification pending…' : verificationStatus === 'rejected' ? 'Verification failed — retry' : 'Get verified ✅',
+          onPress: () => router.push('/(traveller)/verification'),
+          highlight: verificationStatus === 'none' || verificationStatus === 'rejected',
+        },
       ],
     },
     {
