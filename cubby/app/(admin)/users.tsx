@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useFocusEffect, router } from 'expo-router';
 
 const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? 'cubby-admin-secret-2025';
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
 const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
