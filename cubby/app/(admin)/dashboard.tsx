@@ -24,6 +24,7 @@ interface Stats {
   pendingPartnerApplications: number;
   openSupportMessages: number;
   pendingVerifications: number;
+  totalUsers: number;
 }
 
 interface Toast {
@@ -36,7 +37,7 @@ const EMPTY_STATS: Stats = {
   totalHosts: 0, activeHosts: 0, activeBookings: 0,
   revenueMonth: 0, revenueTotal: 0,
   pendingHostApprovals: 0, pendingPartnerApplications: 0,
-  openSupportMessages: 0, pendingVerifications: 0,
+  openSupportMessages: 0, pendingVerifications: 0, totalUsers: 0,
 };
 
 const POLL_INTERVAL_MS = 30_000;
@@ -132,6 +133,7 @@ export default function AdminDashboard() {
         { count: pendingPartnerApps },
         { count: openSupport },
         { count: pendingVerifs },
+        { count: totalUsers },
         { data: bookings },
         { data: recentBookings },
         { data: recentApplications },
@@ -143,6 +145,7 @@ export default function AdminDashboard() {
         supabase.from('partner_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('support_messages').select('*', { count: 'exact', head: true }).neq('status', 'resolved'),
         supabase.from('verifications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }),
         supabase.from('bookings').select('status, total_price, created_at'),
         supabase.from('bookings').select('id, status, total_price, created_at').order('created_at', { ascending: false }).limit(10),
         supabase.from('partner_applications').select('id, business_name, created_at, status').order('created_at', { ascending: false }).limit(5),
@@ -168,6 +171,7 @@ export default function AdminDashboard() {
         pendingPartnerApplications: pendingPartnerApps ?? 0,
         openSupportMessages: openSupport ?? 0,
         pendingVerifications: pendingVerifs ?? 0,
+        totalUsers: totalUsers ?? 0,
       };
 
       setStats(newStats);
@@ -399,6 +403,16 @@ export default function AdminDashboard() {
       {/* ---- Marketplace ---- */}
       <p style={s.sectionLabel}>Marketplace</p>
       <div style={s.sectionCard}>
+        <div style={s.sectionRow} onClick={() => router.push('/(admin)/users' as any)}>
+          <div style={s.sectionRowLeft}>
+            <span style={s.sectionRowIcon}>👥</span>
+            <div>
+              <div style={s.sectionRowLabel}>Users</div>
+              <div style={{ fontSize: 12, color: '#9CA3AF' }}>{stats.totalUsers ?? 0} registered</div>
+            </div>
+          </div>
+          <span style={s.attentionArrow}>›</span>
+        </div>
         <div style={s.sectionRow} onClick={() => router.push('/(admin)/manage-hosts' as any)}>
           <div style={s.sectionRowLeft}>
             <span style={s.sectionRowIcon}>🏠</span>

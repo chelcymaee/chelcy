@@ -462,8 +462,8 @@ Host photos are uploaded and served at original size. No compression, no respons
 | 3 | Partner Application Management | ✅ Done |
 | 4 | Support Inbox | ✅ Done |
 | 5 | Admin Activity Feed | ✅ Done |
-| 6 | Admin Notifications | 🔴 Not started |
-| 7 | User Management | 🔴 Not started |
+| 6 | Admin Notifications | ✅ Done (30s polling, toast stack, pulse effects on Needs Attention cards) |
+| 7 | User Management | ✅ Done (admin-users Edge Function, users.tsx screen, search/filter/detail/actions) |
 | 8 | Host Management Improvements | 🔴 Not started |
 
 ### PHASE 2 — TRUST & SAFETY
