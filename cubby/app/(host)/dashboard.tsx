@@ -12,6 +12,7 @@ import NotificationBell from '../../src/components/NotificationBell';
 
 type Booking = {
   id: string;
+  travellerId?: string;
   traveller: string;
   bags: number;
   dropOff: string;
@@ -173,6 +174,7 @@ export default function Dashboard() {
       // ── 3. Process today's bookings ──────────────────────────────────────
       const todayBookings: Booking[] = (todayRes.data ?? []).map((b: any) => ({
         id: b.id,
+        travellerId: b.traveller_id,
         traveller: b.profiles?.full_name?.trim() || b.profiles?.email?.split('@')[0] || 'Traveller',
         bags: b.bag_count,
         dropOff: b.drop_off_time,
@@ -518,7 +520,7 @@ export default function Dashboard() {
                 )}
 
                 {b.status === 'confirmed' && (
-                  <View style={styles.actionRow}>
+                  <View style={{ gap: 8, marginTop: 12 }}>
                     <TouchableOpacity
                       style={[styles.completeBtn, completingId === b.id && styles.completeBtnDisabled]}
                       onPress={() => handleComplete(b)}
@@ -530,6 +532,16 @@ export default function Dashboard() {
                         {completingId === b.id ? 'Processing…' : '✓ Mark complete & pay out'}
                       </Text>
                     </TouchableOpacity>
+                    {b.travellerId && (
+                      <TouchableOpacity
+                        style={styles.profileBtn}
+                        onPress={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: b.travellerId, bookingId: b.id } })}
+                        // @ts-ignore
+                        onClick={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: b.travellerId, bookingId: b.id } })}
+                      >
+                        <Text style={styles.profileBtnText}>👤 View Traveller Profile</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
               </View>
@@ -674,6 +686,11 @@ const styles = StyleSheet.create({
   },
   completeBtnDisabled: { opacity: 0.6 },
   completeBtnText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
+  profileBtn: {
+    borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 10,
+    paddingVertical: 9, alignItems: 'center',
+  },
+  profileBtnText: { color: Colors.primary, fontWeight: '600', fontSize: 14 },
 
   tipCard: {
     backgroundColor: '#FFF9EC', borderRadius: 14, marginHorizontal: 20,

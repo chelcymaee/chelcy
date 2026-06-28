@@ -471,7 +471,7 @@ Host photos are uploaded and served at original size. No compression, no respons
 
 | # | Task | Status |
 |---|---|---|
-| 1 | Traveller Profile Visibility for Hosts | 🔴 Not started |
+| 1 | Traveller Profile Visibility for Hosts | ✅ Done |
 | 2 | Verification Approval System | ✅ Done |
 | 3 | Verification Badges | 🔴 Not started |
 | 4 | Trust Badges | 🔴 Not started |

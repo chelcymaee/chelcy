@@ -7,6 +7,8 @@ import NotificationBell from '../../src/components/NotificationBell';
 
 interface Convo {
   id: string;
+  travellerId: string;
+  bookingId?: string;
   travellerName: string;
   lastMessage: string;
   lastMessageAt: string;
@@ -58,26 +60,42 @@ export default function HostMessages() {
         }
       }
 
-      // Fetch last message per conversation
+      // Fetch last message per conversation + bookings for profile links
       let lastMsgMap: Record<string, string> = {};
       let unreadMap: Record<string, number> = {};
-      if (convIds.length > 0) {
-        const { data: msgs } = await supabase
-          .from('messages')
-          .select('conversation_id, body, sender_id, read_at, created_at')
-          .in('conversation_id', convIds)
-          .order('created_at', { ascending: false });
+      let bookingMap: Record<string, string> = {}; // traveller_id -> booking_id
 
-        for (const m of msgs ?? []) {
-          if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m.body;
-          if (!m.read_at && m.sender_id !== user.id) {
-            unreadMap[m.conversation_id] = (unreadMap[m.conversation_id] ?? 0) + 1;
-          }
+      const [msgsResult, bookingsResult] = await Promise.all([
+        convIds.length > 0
+          ? supabase
+              .from('messages')
+              .select('conversation_id, body, sender_id, read_at, created_at')
+              .in('conversation_id', convIds)
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: [] }),
+        supabase
+          .from('bookings')
+          .select('id, traveller_id')
+          .eq('host_id', hostRow.id)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      for (const m of msgsResult.data ?? []) {
+        if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m.body;
+        if (!m.read_at && m.sender_id !== user.id) {
+          unreadMap[m.conversation_id] = (unreadMap[m.conversation_id] ?? 0) + 1;
         }
+      }
+
+      // Map traveller_id -> most recent booking_id
+      for (const b of bookingsResult.data ?? []) {
+        if (!bookingMap[b.traveller_id]) bookingMap[b.traveller_id] = b.id;
       }
 
       setConvos(convData.map((c: any) => ({
         id: c.id,
+        travellerId: c.traveller_id,
+        bookingId: bookingMap[c.traveller_id],
         travellerName: profileMap[c.traveller_id] ?? 'Traveller',
         lastMessage: lastMsgMap[c.id] ?? 'No messages yet',
         lastMessageAt: c.last_message_at
@@ -109,13 +127,18 @@ export default function HostMessages() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.convo}
-              onPress={() => router.push({ pathname: '/(host)/chat', params: { conversationId: item.id, travellerName: item.travellerName } })}
+              onPress={() => router.push({ pathname: '/(host)/chat', params: { conversationId: item.id, travellerName: item.travellerName, travellerId: item.travellerId, bookingId: item.bookingId ?? '' } })}
               // @ts-ignore
-              onClick={() => router.push({ pathname: '/(host)/chat', params: { conversationId: item.id, travellerName: item.travellerName } })}
+              onClick={() => router.push({ pathname: '/(host)/chat', params: { conversationId: item.id, travellerName: item.travellerName, travellerId: item.travellerId, bookingId: item.bookingId ?? '' } })}
             >
-              <View style={styles.avatar}>
+              <TouchableOpacity
+                style={styles.avatar}
+                onPress={() => item.travellerId && item.bookingId && router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.travellerId, bookingId: item.bookingId, returnTo: 'messages' } })}
+                // @ts-ignore
+                onClick={(e: any) => { e.stopPropagation(); item.travellerId && item.bookingId && router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.travellerId, bookingId: item.bookingId, returnTo: 'messages' } }); }}
+              >
                 <Text style={{ fontSize: 22 }}>🎒</Text>
-              </View>
+              </TouchableOpacity>
               <View style={{ flex: 1 }}>
                 <Text style={styles.travellerName}>{item.travellerName}</Text>
                 <Text style={styles.lastMsg} numberOfLines={1}>{item.lastMessage}</Text>
