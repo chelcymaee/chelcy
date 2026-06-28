@@ -44,6 +44,7 @@ async function callAdminUsers(
     headers: {
       'Content-Type': 'application/json',
       'apikey': ANON_KEY,
+      'Authorization': `Bearer ${ANON_KEY}`,
       'x-admin-secret': ADMIN_SECRET,
     },
     body: body ? JSON.stringify(body) : undefined,
