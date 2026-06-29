@@ -477,7 +477,7 @@ Host photos are uploaded and served at original size. No compression, no respons
 | 4 | Response Rate | ✅ Done |
 | 5 | Response Time | ✅ Done |
 | 6 | Host Ranking | ✅ Done |
-| 7 | Search Ranking Improvements | 🔴 Not started |
+| 7 | Search Ranking Improvements | ✅ Done |
 
 ### PHASE 3 — COMMUNICATION
 *Goal: Keep hosts and travellers informed.*

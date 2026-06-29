@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ScrollView, Platform, Modal, ActivityIndicator,
@@ -13,7 +13,7 @@ import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components
 import NotificationBell from '../../src/components/NotificationBell';
 import { computeHostBadges, topBadges } from '../../src/lib/trust-badges';
 import { formatResponseTimeShort } from '../../src/lib/response-rate';
-import { rankHosts, rankingLabel, RankingSignals } from '../../src/lib/host-ranking';
+import { rankHosts, rankingLabel, rankingReason, RankingSignals } from '../../src/lib/host-ranking';
 
 const TIME_SLOTS = [
   '7am–8am','8am–9am','9am–10am','10am–11am','11am–12pm',
@@ -26,31 +26,57 @@ const typeEmoji: Record<string, string> = {
   airbnb: '🔑', tour_operator: '🗺️', home: '🏠', other: '📦',
 };
 
+const TYPE_LABELS: Record<string, string> = {
+  cafe: 'Café', hotel: 'Hotel', hostel: 'Hostel', guesthouse: 'Guesthouse',
+  airbnb: 'Airbnb', tour_operator: 'Tour Op', home: 'Home', other: 'Other',
+};
+
+// ─── Sort & Filter Types ──────────────────────────────────────────────────────
+
+type SortOption = 'recommended' | 'price_asc' | 'rating' | 'fastest' | 'most_trusted';
+
+const SORT_OPTIONS: { id: SortOption; label: string }[] = [
+  { id: 'recommended', label: '✨ Recommended' },
+  { id: 'price_asc',   label: '💰 Price: Low → High' },
+  { id: 'rating',      label: '⭐ Rating' },
+  { id: 'fastest',     label: '⚡ Fastest Response' },
+  { id: 'most_trusted', label: '🛡️ Most Trusted' },
+];
+
+type ActiveFilters = {
+  verifiedOnly: boolean;
+  fastResponders: boolean;
+  priceRange: 'any' | 'budget' | 'mid' | 'premium';
+  hostType: string | null;
+};
+
+const DEFAULT_FILTERS: ActiveFilters = {
+  verifiedOnly: false,
+  fastResponders: false,
+  priceRange: 'any',
+  hostType: null,
+};
+
 // ─── Filter Helpers ───────────────────────────────────────────────────────────
 
-// 'YYYY-MM-DD' → 'Mon' | 'Tue' | ... (no timezone shift)
 function isoToDayOfWeek(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
   return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(y, m - 1, d).getDay()];
 }
 
-// '9am–10am' → minutes since midnight of the START of the slot
 function slotStartMinutes(slot: string): number {
   const part = slot.split('–')[0].trim().toLowerCase();
   const h = parseInt(part, 10);
   if (part.includes('pm') && h !== 12) return (h + 12) * 60;
-  if (part.includes('am') && h === 12) return 0; // midnight
+  if (part.includes('am') && h === 12) return 0;
   return h * 60;
 }
 
-// 'HH:MM' → minutes since midnight
 function hhmm(t: string): number {
   const [h, m] = (t ?? '00:00').split(':').map(Number);
   return h * 60 + (m || 0);
 }
 
-// True when the host's location_name matches the search text.
-// Default city-level strings ('Cape Town, South Africa') return true for all hosts.
 function locationMatches(hostLoc: string, search: string): boolean {
   if (!search) return true;
   const stripped = search.toLowerCase()
@@ -58,7 +84,7 @@ function locationMatches(hostLoc: string, search: string): boolean {
     .replace(/south africa/g, '')
     .replace(/cape town/g, '')
     .trim();
-  if (!stripped) return true; // city-level only — no neighbourhood specified
+  if (!stripped) return true;
   const words = stripped.split(/\s+/).filter(w => w.length > 2);
   if (words.length === 0) return true;
   const loc = hostLoc.toLowerCase();
@@ -189,10 +215,16 @@ function LocationModal({
 // ─── Results Host Card ────────────────────────────────────────────────────────
 type RankedHostCard = Host & { ranking_score: number; ranking_signals: RankingSignals };
 
-function ResultCard({ host, index, onPress }: { host: RankedHostCard; index: number; onPress: () => void }) {
+function ResultCard({
+  host, index, sortBy, onPress,
+}: {
+  host: RankedHostCard; index: number; sortBy: SortOption; onPress: () => void;
+}) {
   const cardBadges = topBadges(computeHostBadges(host), 2);
   const responseTimeShort = formatResponseTimeShort(host.avg_response_time_minutes ?? null, host.responded_requests ?? 0);
   const rlabel = rankingLabel(host.ranking_signals, host);
+  const reason = sortBy === 'recommended' ? rankingReason(host.ranking_signals, host) : null;
+
   return (
     <TouchableOpacity
       style={styles.resultCard}
@@ -221,6 +253,9 @@ function ResultCard({ host, index, onPress }: { host: RankedHostCard; index: num
         </View>
         {responseTimeShort && (
           <Text style={styles.resultResponseTime}>⚡ {responseTimeShort}</Text>
+        )}
+        {reason && (
+          <Text style={styles.resultReason}>{reason}</Text>
         )}
         <View style={styles.resultBadgeRow}>
           <View style={styles.openBadge}><Text style={styles.openBadgeText}>OPEN</Text></View>
@@ -427,6 +462,68 @@ function RunnerCard({ runner }: { runner: Runner }) {
 }
 
 // ─── Results Screen ───────────────────────────────────────────────────────────
+
+function applySortAndSecondaryFilters(
+  ranked: RankedHostCard[],
+  sortBy: SortOption,
+  filters: ActiveFilters,
+): RankedHostCard[] {
+  // Secondary filters
+  let out = ranked.filter(h => {
+    if (filters.verifiedOnly && !h.owner_is_verified) return false;
+    if (filters.fastResponders && (h.avg_response_time_minutes == null || h.avg_response_time_minutes > 60)) return false;
+    if (filters.priceRange === 'budget' && h.price_per_bag_per_day > 100) return false;
+    if (filters.priceRange === 'mid' && (h.price_per_bag_per_day <= 100 || h.price_per_bag_per_day > 200)) return false;
+    if (filters.priceRange === 'premium' && h.price_per_bag_per_day <= 200) return false;
+    if (filters.hostType && h.business_type !== filters.hostType) return false;
+    return true;
+  });
+
+  // Sort (ranked array is already sorted by recommended)
+  switch (sortBy) {
+    case 'price_asc':
+      out = [...out].sort((a, b) => a.price_per_bag_per_day - b.price_per_bag_per_day);
+      break;
+    case 'rating':
+      out = [...out].sort((a, b) => b.rating - a.rating || b.review_count - a.review_count);
+      break;
+    case 'fastest':
+      out = [...out].sort((a, b) => {
+        const aT = a.avg_response_time_minutes ?? Infinity;
+        const bT = b.avg_response_time_minutes ?? Infinity;
+        return aT - bT;
+      });
+      break;
+    case 'most_trusted':
+      out = [...out].sort((a, b) => {
+        const aT = (a.ranking_signals.verificationPts + a.ranking_signals.reviewCountPts + a.ranking_signals.responseRatePts);
+        const bT = (b.ranking_signals.verificationPts + b.ranking_signals.reviewCountPts + b.ranking_signals.responseRatePts);
+        return bT - aT;
+      });
+      break;
+    default:
+      // recommended — already sorted by ranking_score
+      break;
+  }
+  return out;
+}
+
+function filtersAreDefault(f: ActiveFilters, s: SortOption): boolean {
+  return s === 'recommended' && !f.verifiedOnly && !f.fastResponders && f.priceRange === 'any' && f.hostType === null;
+}
+
+function emptyStateForFilters(filters: ActiveFilters): { emoji: string; title: string; sub: string } {
+  if (filters.verifiedOnly)
+    return { emoji: '🔒', title: 'No verified hosts here yet', sub: 'Remove the "Verified" filter to see all available spots.' };
+  if (filters.fastResponders)
+    return { emoji: '⚡', title: 'No fast responders found', sub: 'Remove the "Fast Responder" filter to see more options.' };
+  if (filters.priceRange !== 'any')
+    return { emoji: '💰', title: 'No hosts in this price range', sub: 'Try a different price range or clear the filter.' };
+  if (filters.hostType)
+    return { emoji: typeEmoji[filters.hostType] ?? '📦', title: `No ${TYPE_LABELS[filters.hostType] ?? filters.hostType} spots found`, sub: 'Remove the type filter to see all storage spots.' };
+  return { emoji: '🔍', title: 'No Cubby spots found for this search', sub: "Try a different date, time, or location — we're growing fast!" };
+}
+
 function ResultsScreen({
   hosts, location, dropOff, pickUp, selectedDate, bags,
   onBack,
@@ -436,14 +533,39 @@ function ResultsScreen({
   onBack: () => void;
 }) {
   const [showMap, setShowMap] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>('recommended');
+  const [filters, setFilters] = useState<ActiveFilters>(DEFAULT_FILTERS);
+
   const insets = { bottom: 0 };
 
-  // Lazy-load HostMap on native only
   const HostMap = Platform.OS !== 'web'
     ? require('../../src/components/HostMap').default
     : null;
 
   const toggleMap = () => setShowMap(v => !v);
+
+  const displayed = useMemo(
+    () => applySortAndSecondaryFilters(hosts, sortBy, filters),
+    [hosts, sortBy, filters],
+  );
+
+  const hasActiveFilters = !filtersAreDefault(filters, sortBy);
+
+  const clearAll = () => {
+    setSortBy('recommended');
+    setFilters(DEFAULT_FILTERS);
+  };
+
+  const toggle = (key: keyof ActiveFilters, value: any) =>
+    setFilters(f => ({ ...f, [key]: f[key] === value ? DEFAULT_FILTERS[key] : value }));
+
+  const emptyState = emptyStateForFilters(filters);
+
+  // Which host types appear in results so we only show relevant type chips
+  const presentTypes = useMemo(() => {
+    const s = new Set(hosts.map(h => h.business_type));
+    return ['cafe', 'hotel', 'hostel', 'guesthouse', 'airbnb'].filter(t => s.has(t));
+  }, [hosts]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -462,14 +584,105 @@ function ResultsScreen({
             {location} · {formatDateLabel(selectedDate)} · {dropOff} → {pickUp} · {bags} bag{bags > 1 ? 's' : ''}
           </Text>
         </View>
+        {hasActiveFilters && (
+          <TouchableOpacity onPress={clearAll} // @ts-ignore
+            onClick={clearAll} style={styles.clearAllBtn}>
+            <Text style={styles.clearAllText}>Clear</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      <Text style={styles.resultsCount}>{hosts.length} storage spots</Text>
+      {/* Sort chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.sortRow}
+        contentContainerStyle={styles.sortRowContent}
+      >
+        {SORT_OPTIONS.map(opt => {
+          const active = sortBy === opt.id;
+          const fn = () => setSortBy(opt.id);
+          return (
+            <TouchableOpacity
+              key={opt.id}
+              style={[styles.sortChip, active && styles.sortChipActive]}
+              onPress={fn}
+              // @ts-ignore
+              onClick={fn}
+            >
+              <Text style={[styles.sortChipText, active && styles.sortChipTextActive]}>{opt.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Filter chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterRow}
+        contentContainerStyle={styles.filterRowContent}
+      >
+        {/* Verified only */}
+        {(() => {
+          const active = filters.verifiedOnly;
+          const fn = () => setFilters(f => ({ ...f, verifiedOnly: !f.verifiedOnly }));
+          return (
+            <TouchableOpacity key="verified" style={[styles.filterChip, active && styles.filterChipActive]} onPress={fn}
+              // @ts-ignore
+              onClick={fn}>
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>🔒 Verified</Text>
+            </TouchableOpacity>
+          );
+        })()}
+
+        {/* Fast responder */}
+        {(() => {
+          const active = filters.fastResponders;
+          const fn = () => setFilters(f => ({ ...f, fastResponders: !f.fastResponders }));
+          return (
+            <TouchableOpacity key="fast" style={[styles.filterChip, active && styles.filterChipActive]} onPress={fn}
+              // @ts-ignore
+              onClick={fn}>
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>⚡ Fast Responder</Text>
+            </TouchableOpacity>
+          );
+        })()}
+
+        {/* Price ranges */}
+        {(['budget', 'mid', 'premium'] as const).map(range => {
+          const labels = { budget: '💰 Under R100', mid: '💳 R100–200', premium: '💎 R200+' };
+          const active = filters.priceRange === range;
+          const fn = () => toggle('priceRange', range);
+          return (
+            <TouchableOpacity key={range} style={[styles.filterChip, active && styles.filterChipActive]} onPress={fn}
+              // @ts-ignore
+              onClick={fn}>
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{labels[range]}</Text>
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Host types present in results */}
+        {presentTypes.map(type => {
+          const active = filters.hostType === type;
+          const fn = () => toggle('hostType', type);
+          return (
+            <TouchableOpacity key={type} style={[styles.filterChip, active && styles.filterChipActive]} onPress={fn}
+              // @ts-ignore
+              onClick={fn}>
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{typeEmoji[type]} {TYPE_LABELS[type]}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      <Text style={styles.resultsCount}>{displayed.length} of {hosts.length} storage spots</Text>
 
       {showMap && HostMap ? (
         <View style={{ flex: 1 }}>
           <HostMap
-            filtered={hosts}
+            filtered={displayed}
             style={StyleSheet.absoluteFillObject}
             onPinPress={(id: string) => {
               router.push({ pathname: '/(traveller)/host-detail', params: { id, selectedDate } });
@@ -478,20 +691,27 @@ function ResultsScreen({
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.resultsList} showsVerticalScrollIndicator={false}>
-          {/* Storage spots */}
           <Text style={styles.sectionHeader}>📦 Storage spots near you</Text>
-          {hosts.length === 0 ? (
+          {displayed.length === 0 ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🔍</Text>
-              <Text style={styles.emptyTitle}>No Cubby spots found for this search.</Text>
-              <Text style={styles.emptyText}>Try a different date, time, or location — we're growing fast!</Text>
+              <Text style={styles.emptyEmoji}>{emptyState.emoji}</Text>
+              <Text style={styles.emptyTitle}>{emptyState.title}</Text>
+              <Text style={styles.emptyText}>{emptyState.sub}</Text>
+              {hasActiveFilters && (
+                <TouchableOpacity style={styles.clearFiltersBtn} onPress={clearAll}
+                  // @ts-ignore
+                  onClick={clearAll}>
+                  <Text style={styles.clearFiltersBtnText}>Clear filters</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
-            hosts.map((item, index) => (
+            displayed.map((item, index) => (
               <ResultCard
                 key={item.id}
                 host={item}
                 index={index}
+                sortBy={sortBy}
                 onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id, selectedDate } })}
               />
             ))
@@ -539,7 +759,6 @@ function normalizeHost(raw: any): Host {
     price_per_bag_per_day: raw.price_per_bag_per_day ?? raw.pricePerBag ?? 100,
     rating: raw.rating ?? 0,
     review_count: raw.review_count ?? raw.reviewCount ?? 0,
-    response_rate: raw.response_rate ?? raw.responseRate ?? 100,
     available_from: raw.available_from ?? raw.availableFrom ?? '08:00',
     available_until: raw.available_until ?? raw.availableUntil ?? '20:00',
     available_days: raw.available_days ?? raw.availableDays ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
@@ -551,6 +770,7 @@ function normalizeHost(raw: any): Host {
     avg_response_time_minutes: raw.avg_response_time_minutes ?? null,
     total_requests: raw.total_requests ?? 0,
     responded_requests: raw.responded_requests ?? 0,
+    owner_is_verified: raw.owner_is_verified ?? false,
     created_at: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
   };
 }
@@ -566,9 +786,7 @@ export default function Explore() {
   const [hosts, setHosts] = useState<RankedHostCard[]>([]);
   const [searching, setSearching] = useState(false);
 
-  // Pre-load all active hosts so back-navigation is instant
   useFocusEffect(useCallback(() => {
-    // only pre-load when on the search screen (results are fetched on demand)
     if (step !== 'search') return;
     prefetchHosts();
   }, [step]));
@@ -594,7 +812,6 @@ export default function Explore() {
       let allActive: Host[] = [];
 
       if (isSupabaseConfigured) {
-        // Supabase handles: is_active and min bag capacity
         const { data } = await supabase
           .from('hosts')
           .select('*')
@@ -609,7 +826,6 @@ export default function Explore() {
           : [];
       }
 
-      // Client-side: location keywords, day of week, time window — then rank
       setHosts(rankHosts(applyFilters(allActive, params)));
       setStep('results');
     } finally {
@@ -749,8 +965,32 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   backBtnText: { fontSize: 28, color: '#1A1A1A', lineHeight: 28 },
   resultsSummary: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
+  clearAllBtn: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#FFF0F0', borderRadius: 10 },
+  clearAllText: { fontSize: 12, fontWeight: '700', color: '#FF5C5C' },
 
-  resultsCount: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', paddingHorizontal: 20, paddingTop: 14, paddingBottom: 6 },
+  // Sort chips
+  sortRow: { backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F0EAEA', maxHeight: 48 },
+  sortRowContent: { paddingHorizontal: 14, paddingVertical: 8, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  sortChip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+    backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB',
+  },
+  sortChipActive: { backgroundColor: '#1A1A1A', borderColor: '#1A1A1A' },
+  sortChipText: { fontSize: 12, fontWeight: '600', color: '#6B7280', whiteSpace: 'nowrap' } as any,
+  sortChipTextActive: { color: '#FFFFFF' },
+
+  // Filter chips
+  filterRow: { backgroundColor: '#FAFAFA', borderBottomWidth: 1, borderBottomColor: '#F0EAEA', maxHeight: 44 },
+  filterRowContent: { paddingHorizontal: 14, paddingVertical: 6, gap: 6, flexDirection: 'row', alignItems: 'center' },
+  filterChip: {
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB',
+  },
+  filterChipActive: { backgroundColor: '#EFF6FF', borderColor: '#3B82F6' },
+  filterChipText: { fontSize: 11, fontWeight: '600', color: '#6B7280', whiteSpace: 'nowrap' } as any,
+  filterChipTextActive: { color: '#1D4ED8' },
+
+  resultsCount: { fontSize: 13, fontWeight: '600', color: '#6B7280', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 4 },
   resultsList: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 80, gap: 12 },
 
   resultCard: {
@@ -767,20 +1007,21 @@ const styles = StyleSheet.create({
   resultLabel: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.8, marginBottom: 2 },
   resultName: { fontSize: 17, fontWeight: '800', color: '#1A1A1A', marginBottom: 2 },
   resultLocation: { fontSize: 13, color: '#6B7280', marginBottom: 6 },
-  resultStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 3, marginBottom: 8 },
+  resultStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 3, marginBottom: 6 },
   resultStar: { fontSize: 12, fontWeight: '700', color: '#F59E0B' },
   resultStatSep: { fontSize: 12, color: '#D1D5DB' },
   resultStatText: { fontSize: 12, color: '#6B7280' },
   resultPrice: { fontSize: 12, fontWeight: '700', color: '#FF5C5C' },
   resultWalk: { fontSize: 12, color: '#6B7280' },
-  resultBadgeRow: { flexDirection: 'row', gap: 6 },
+  resultResponseTime: { fontSize: 11, color: '#1D4ED8', fontWeight: '600', marginBottom: 4 },
+  resultReason: { fontSize: 11, color: '#6B7280', fontStyle: 'italic', marginBottom: 6 },
+  resultBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   openBadge: { backgroundColor: '#DCFCE7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   openBadgeText: { fontSize: 10, fontWeight: '800', color: '#16A34A', letterSpacing: 0.5 },
   closestBadge: { backgroundColor: '#EEF2FF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   closestBadgeText: { fontSize: 10, fontWeight: '800', color: '#4F46E5', letterSpacing: 0.5 },
   trustChip: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
   trustChipText: { fontSize: 10, fontWeight: '700' },
-  resultResponseTime: { fontSize: 11, color: '#1D4ED8', fontWeight: '600', marginTop: 3 },
 
   mapToggleBar: {
     backgroundColor: '#1A1A1A', paddingTop: 16, alignItems: 'center',
@@ -817,9 +1058,13 @@ const styles = StyleSheet.create({
   runnerPrice: { fontSize: 14, fontWeight: '800', color: '#FF5C5C' },
   runnerRadius: { fontSize: 12, color: '#9CA3AF' },
 
-  // Shared empty state
-  empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 20 },
+  // Empty state
+  empty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 20 },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 8 },
-  emptyText: { fontSize: 15, color: '#6B7280', textAlign: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', marginBottom: 8, textAlign: 'center' },
+  emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 20 },
+  clearFiltersBtn: {
+    backgroundColor: '#FF5C5C', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 24,
+  },
+  clearFiltersBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
 });

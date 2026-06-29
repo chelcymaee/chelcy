@@ -119,6 +119,24 @@ export function rankHosts<T extends RankingInput>(hosts: T[]): (T & RankedHost)[
 }
 
 /**
+ * Human-readable sentence explaining why this host ranks where it does.
+ * Shown on cards when sorted by Recommended.
+ */
+export function rankingReason(signals: RankingSignals, host: Pick<RankingInput, 'rating' | 'review_count' | 'owner_is_verified'>): string {
+  if (signals.isNewHost) return 'Recently added to Cubby';
+  const parts: string[] = [];
+  if (signals.verificationPts > 0) parts.push('verified');
+  if (signals.responseTimePts === 15) parts.push('responds quickly');
+  if (host.rating >= 4.7 && host.review_count >= 5) parts.push('highly rated');
+  if (signals.reviewCountPts >= 12) parts.push('many reviews');
+  if (signals.responseRatePts >= 16) parts.push('high response rate');
+  if (parts.length === 0) return 'Matches your search';
+  if (parts.length === 1) return `Recommended — ${parts[0]}`;
+  const last = parts.pop();
+  return `Recommended — ${parts.join(', ')} and ${last}`;
+}
+
+/**
  * Short label for the top-ranked signal on a host card.
  * Returns null if nothing notable to show.
  */
