@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
 import { formatResponseTime } from '../../src/lib/response-rate';
+import { computeHostRanking } from '../../src/lib/host-ranking';
 
 const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? 'cubby-admin-secret-2025';
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
@@ -402,6 +403,45 @@ export default function ManageHosts() {
               ))}
             </div>
           </div>
+
+          {/* ── Ranking Debug ── */}
+          {(() => {
+            const r = computeHostRanking({
+              id: host.id,
+              rating: host.rating ?? 0,
+              review_count: host.review_count ?? 0,
+              response_rate: host.response_rate ?? null,
+              avg_response_time_minutes: host.avg_response_time_minutes ?? null,
+              total_requests: host.total_requests ?? stats.totalRequests,
+              responded_requests: host.responded_requests ?? stats.respondedRequests,
+              is_active: host.is_active ?? false,
+              owner_is_verified: false,
+              created_at: host.created_at,
+            });
+            const sig = r.ranking_signals;
+            return (
+              <div style={s.section}>
+                <p style={s.sectionLabel}>🏆 Ranking Score: {r.ranking_score}/100{sig.isNewHost ? ' (New Host)' : ''}</p>
+                <div style={s.statGrid}>
+                  {[
+                    [sig.verificationPts, 'Verification /10'],
+                    [sig.ratingPts, 'Rating /25'],
+                    [sig.reviewCountPts, 'Review count /15'],
+                    [sig.responseRatePts, 'Response rate /20'],
+                    [sig.responseTimePts, 'Response time /15'],
+                    [sig.availabilityPts, 'Availability /10'],
+                    [sig.bookingHistPts, 'Booking history /5'],
+                    [sig.newHostBonus, 'New host bonus /15'],
+                  ].map(([val, lbl]) => (
+                    <div key={lbl as string} style={{ ...s.statCard, opacity: (val as number) === 0 ? 0.4 : 1 }}>
+                      <p style={{ ...s.statVal, fontSize: 18 }}>{val}</p>
+                      <p style={s.statLbl}>{lbl}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Host Info ── */}
           {!editing && (

@@ -476,7 +476,7 @@ Host photos are uploaded and served at original size. No compression, no respons
 | 3 | Trust & Safety (merged Verification Badges + Trust Badges) | ✅ Done |
 | 4 | Response Rate | ✅ Done |
 | 5 | Response Time | ✅ Done |
-| 6 | Host Ranking | 🔴 Not started |
+| 6 | Host Ranking | ✅ Done |
 | 7 | Search Ranking Improvements | 🔴 Not started |
 
 ### PHASE 3 — COMMUNICATION

@@ -13,6 +13,7 @@ import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components
 import NotificationBell from '../../src/components/NotificationBell';
 import { computeHostBadges, topBadges } from '../../src/lib/trust-badges';
 import { formatResponseTimeShort } from '../../src/lib/response-rate';
+import { rankHosts, rankingLabel, RankingSignals } from '../../src/lib/host-ranking';
 
 const TIME_SLOTS = [
   '7am–8am','8am–9am','9am–10am','10am–11am','11am–12pm',
@@ -186,9 +187,12 @@ function LocationModal({
 }
 
 // ─── Results Host Card ────────────────────────────────────────────────────────
-function ResultCard({ host, index, onPress }: { host: Host; index: number; onPress: () => void }) {
+type RankedHostCard = Host & { ranking_score: number; ranking_signals: RankingSignals };
+
+function ResultCard({ host, index, onPress }: { host: RankedHostCard; index: number; onPress: () => void }) {
   const cardBadges = topBadges(computeHostBadges(host), 2);
   const responseTimeShort = formatResponseTimeShort(host.avg_response_time_minutes ?? null, host.responded_requests ?? 0);
+  const rlabel = rankingLabel(host.ranking_signals, host);
   return (
     <TouchableOpacity
       style={styles.resultCard}
@@ -221,6 +225,11 @@ function ResultCard({ host, index, onPress }: { host: Host; index: number; onPre
         <View style={styles.resultBadgeRow}>
           <View style={styles.openBadge}><Text style={styles.openBadgeText}>OPEN</Text></View>
           {index === 0 && <View style={styles.closestBadge}><Text style={styles.closestBadgeText}>CLOSEST</Text></View>}
+          {rlabel && (
+            <View style={[styles.trustChip, { backgroundColor: '#F0FDF4' }]}>
+              <Text style={[styles.trustChipText, { color: '#15803D' }]}>{rlabel}</Text>
+            </View>
+          )}
           {cardBadges.map(b => (
             <View key={b.id} style={[styles.trustChip, { backgroundColor: b.bg }]}>
               <Text style={[styles.trustChipText, { color: b.color }]}>{b.emoji} {b.label}</Text>
@@ -422,7 +431,7 @@ function ResultsScreen({
   hosts, location, dropOff, pickUp, selectedDate, bags,
   onBack,
 }: {
-  hosts: Host[]; location: string; dropOff: string; pickUp: string;
+  hosts: RankedHostCard[]; location: string; dropOff: string; pickUp: string;
   selectedDate: string; bags: number;
   onBack: () => void;
 }) {
@@ -554,7 +563,7 @@ export default function Explore() {
   const [pickUp, setPickUp] = useState('5pm–6pm');
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [bags, setBags] = useState(1);
-  const [hosts, setHosts] = useState<Host[]>([]);
+  const [hosts, setHosts] = useState<RankedHostCard[]>([]);
   const [searching, setSearching] = useState(false);
 
   // Pre-load all active hosts so back-navigation is instant
@@ -570,11 +579,11 @@ export default function Explore() {
         .from('hosts')
         .select('*')
         .eq('is_active', true)
-        .order('rating', { ascending: false });
-      if (data) setHosts(data.map(normalizeHost));
+        .order('created_at', { ascending: false });
+      if (data) setHosts(rankHosts(data.map(normalizeHost)));
     } else {
       const raw = await AsyncStorage.getItem('cubby_hosts');
-      if (raw) setHosts(JSON.parse(raw).map(normalizeHost).filter((h: Host) => h.is_active));
+      if (raw) setHosts(rankHosts(JSON.parse(raw).map(normalizeHost).filter((h: Host) => h.is_active)));
     }
   }
 
@@ -591,7 +600,7 @@ export default function Explore() {
           .select('*')
           .eq('is_active', true)
           .gte('max_bags', bags)
-          .order('rating', { ascending: false });
+          .order('created_at', { ascending: false });
         allActive = (data ?? []).map(normalizeHost);
       } else {
         const raw = await AsyncStorage.getItem('cubby_hosts');
@@ -600,8 +609,8 @@ export default function Explore() {
           : [];
       }
 
-      // Client-side: location keywords, day of week, time window
-      setHosts(applyFilters(allActive, params));
+      // Client-side: location keywords, day of week, time window — then rank
+      setHosts(rankHosts(applyFilters(allActive, params)));
       setStep('results');
     } finally {
       setSearching(false);
