@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { MOCK_REVIEWS } from '../../src/lib/mock-data';
+import { computeHostBadges, topBadges, TrustBadge } from '../../src/lib/trust-badges';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TODAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -31,7 +32,7 @@ const HOW_IT_WORKS = [
   },
 ];
 
-function normalizeHost(raw: any) {
+function normalizeHost(raw: any, ownerIsVerified?: boolean) {
   return {
     id: raw.id,
     display_name: raw.display_name ?? raw.displayName ?? '',
@@ -46,12 +47,16 @@ function normalizeHost(raw: any) {
     available_until: raw.available_until ?? raw.availableUntil ?? '20:00',
     available_days: raw.available_days ?? raw.availableDays ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
     max_bags: raw.max_bags ?? raw.maxBags ?? 10,
+    storage_features: raw.storage_features ?? [],
+    owner_is_verified: ownerIsVerified ?? false,
+    created_at: raw.created_at ?? new Date().toISOString(),
   };
 }
 
 export default function HostDetail() {
   const { id, selectedDate } = useLocalSearchParams<{ id: string; selectedDate: string }>();
   const [host, setHost] = useState<any>(null);
+  const [badges, setBadges] = useState<TrustBadge[]>([]);
   const mockReviews = MOCK_REVIEWS.filter(r => r.host_id === id);
   const [bagCount, setBagCount] = useState(1);
   const [savedReviews, setSavedReviews] = useState<any[]>([]);
@@ -68,13 +73,30 @@ export default function HostDetail() {
           .eq('id', id)
           .single();
         if (!error && data) {
-          setHost(normalizeHost(data));
+          // Fetch owner profile for verification status
+          const ownerId = data.assigned_user_id ?? data.user_id;
+          let ownerIsVerified = false;
+          if (ownerId) {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('is_verified')
+              .eq('id', ownerId)
+              .single();
+            ownerIsVerified = prof?.is_verified ?? false;
+          }
+          const normalized = normalizeHost(data, ownerIsVerified);
+          setHost(normalized);
+          setBadges(computeHostBadges(normalized));
         }
       } else {
         const raw = await AsyncStorage.getItem('cubby_hosts');
         if (raw) {
           const found = JSON.parse(raw).find((h: any) => h.id === id);
-          if (found) setHost(normalizeHost(found));
+          if (found) {
+            const normalized = normalizeHost(found);
+            setHost(normalized);
+            setBadges(computeHostBadges(normalized));
+          }
         }
       }
     }
@@ -215,6 +237,18 @@ export default function HostDetail() {
                 </View>
               )}
             </View>
+
+            {/* Top trust badges — 2–3 most important only */}
+            {badges.length > 0 && (
+              <View style={styles.headerBadgesRow}>
+                {topBadges(badges, 3).map(b => (
+                  <View key={b.id} style={[styles.headerBadge, { backgroundColor: b.bg }]}>
+                    <Text style={styles.headerBadgeEmoji}>{b.emoji}</Text>
+                    <Text style={[styles.headerBadgeLabel, { color: b.color }]}>{b.label}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
 
           <View style={styles.divider} />
@@ -233,11 +267,27 @@ export default function HostDetail() {
 
           <View style={styles.divider} />
 
-          {/* Trust card */}
+          {/* Trust & Safety section */}
+          <Text style={styles.sectionTitle}>Trust & Safety</Text>
+
+          {/* Cubby guarantee */}
           <View style={styles.trustCard}>
             <Text style={styles.trustTitle}>🛡️  Each bag is protected up to R2,000!</Text>
             <Text style={styles.trustSub}>Only when booking online with Cubby.</Text>
           </View>
+
+          {/* Trust badges grid */}
+          {badges.length > 0 && (
+            <View style={styles.badgesGrid}>
+              {badges.map(b => (
+                <View key={b.id} style={[styles.badgeCell, { backgroundColor: b.bg }]}>
+                  <Text style={styles.badgeCellEmoji}>{b.emoji}</Text>
+                  <Text style={[styles.badgeCellLabel, { color: b.color }]}>{b.label}</Text>
+                  <Text style={styles.badgeCellDesc}>{b.description}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           <View style={styles.divider} />
 
@@ -432,9 +482,28 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     backgroundColor: '#FFFFFF',
+    marginBottom: 12,
   },
   trustTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 },
   trustSub: { fontSize: 13, color: '#6B7280' },
+
+  /* Header badge chips */
+  headerBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 10 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  headerBadgeEmoji: { fontSize: 12 },
+  headerBadgeLabel: { fontSize: 11, fontWeight: '700' },
+
+  /* Trust badges full grid */
+  badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  badgeCell: {
+    width: '47%',
+    borderRadius: 14,
+    padding: 14,
+    gap: 4,
+  },
+  badgeCellEmoji: { fontSize: 22 },
+  badgeCellLabel: { fontSize: 13, fontWeight: '700' },
+  badgeCellDesc: { fontSize: 11, color: '#6B7280', lineHeight: 15, marginTop: 2 },
 
   /* Section title */
   sectionTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 },

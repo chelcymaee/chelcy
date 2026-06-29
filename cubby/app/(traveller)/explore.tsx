@@ -11,6 +11,7 @@ import { MOCK_RUNNERS, Runner } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
 import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
 import NotificationBell from '../../src/components/NotificationBell';
+import { computeHostBadges, topBadges } from '../../src/lib/trust-badges';
 
 const TIME_SLOTS = [
   '7am–8am','8am–9am','9am–10am','10am–11am','11am–12pm',
@@ -185,6 +186,7 @@ function LocationModal({
 
 // ─── Results Host Card ────────────────────────────────────────────────────────
 function ResultCard({ host, index, onPress }: { host: Host; index: number; onPress: () => void }) {
+  const cardBadges = topBadges(computeHostBadges(host), 2);
   return (
     <TouchableOpacity
       style={styles.resultCard}
@@ -214,6 +216,11 @@ function ResultCard({ host, index, onPress }: { host: Host; index: number; onPre
         <View style={styles.resultBadgeRow}>
           <View style={styles.openBadge}><Text style={styles.openBadgeText}>OPEN</Text></View>
           {index === 0 && <View style={styles.closestBadge}><Text style={styles.closestBadgeText}>CLOSEST</Text></View>}
+          {cardBadges.map(b => (
+            <View key={b.id} style={[styles.trustChip, { backgroundColor: b.bg }]}>
+              <Text style={[styles.trustChipText, { color: b.color }]}>{b.emoji} {b.label}</Text>
+            </View>
+          ))}
         </View>
       </View>
     </TouchableOpacity>
@@ -525,6 +532,7 @@ function normalizeHost(raw: any): Host {
     max_bags: raw.max_bags ?? raw.maxBags ?? 10,
     photos: raw.photos ?? [],
     is_active: raw.is_active ?? raw.active ?? true,
+    storage_features: raw.storage_features ?? [],
     created_at: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
   };
 }
@@ -752,6 +760,8 @@ const styles = StyleSheet.create({
   openBadgeText: { fontSize: 10, fontWeight: '800', color: '#16A34A', letterSpacing: 0.5 },
   closestBadge: { backgroundColor: '#EEF2FF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   closestBadgeText: { fontSize: 10, fontWeight: '800', color: '#4F46E5', letterSpacing: 0.5 },
+  trustChip: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
+  trustChipText: { fontSize: 10, fontWeight: '700' },
 
   mapToggleBar: {
     backgroundColor: '#1A1A1A', paddingTop: 16, alignItems: 'center',

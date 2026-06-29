@@ -8,6 +8,13 @@ import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const STORAGE_FEATURES = [
+  { value: 'secure_storage', emoji: '🛡', label: 'Secure Storage' },
+  { value: 'cctv', emoji: '📷', label: 'CCTV' },
+  { value: 'staffed', emoji: '🏢', label: 'Staffed Location' },
+  { value: 'indoor', emoji: '🏠', label: 'Indoor Storage' },
+];
 const TYPES = [
   { value: 'cafe', label: 'Café', emoji: '☕' },
   { value: 'hotel', label: 'Hotel', emoji: '🏨' },
@@ -30,6 +37,7 @@ export default function HostProfile() {
   const [untilTime, setUntilTime] = useState('20:00');
   const [days, setDays] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
   const [isActive, setIsActive] = useState(true);
+  const [storageFeatures, setStorageFeatures] = useState<string[]>([]);
 
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -68,6 +76,7 @@ export default function HostProfile() {
           setUntilTime(data.available_until ?? '20:00');
           setDays(data.available_days ?? DAYS);
           setIsActive(data.is_active ?? true);
+          setStorageFeatures(data.storage_features ?? []);
           setPhotos(data.photos ?? []);
           return;
         }
@@ -93,6 +102,10 @@ export default function HostProfile() {
 
   function toggleDay(d: string) {
     setDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+  }
+
+  function toggleFeature(f: string) {
+    setStorageFeatures(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
   }
 
   async function handlePhotoSelect(e: any) {
@@ -163,6 +176,7 @@ export default function HostProfile() {
               available_until: untilTime,
               available_days: days,
               is_active: isActive,
+              storage_features: storageFeatures,
             })
             .eq('assigned_user_id', user.id);
 
@@ -337,6 +351,29 @@ export default function HostProfile() {
           ))}
         </View>
 
+        {/* Storage features */}
+        <Text style={styles.sectionTitle}>Storage features</Text>
+        <Text style={styles.sectionSub}>Tick what applies — these appear as trust badges on your listing.</Text>
+        <View style={styles.featuresGrid}>
+          {STORAGE_FEATURES.map(f => {
+            const active = storageFeatures.includes(f.value);
+            return (
+              <TouchableOpacity
+                key={f.value}
+                style={[styles.featureChip, active && styles.featureChipActive]}
+                onPress={() => toggleFeature(f.value)}
+                // @ts-ignore
+                onClick={() => toggleFeature(f.value)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.featureEmoji}>{f.emoji}</Text>
+                <Text style={[styles.featureLabel, active && styles.featureLabelActive]}>{f.label}</Text>
+                {active && <Text style={styles.featureCheck}>✓</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {/* Photos */}
         <Text style={styles.sectionTitle}>Photos of your storage space</Text>
         {Platform.OS === 'web' && (
@@ -502,6 +539,18 @@ const styles = StyleSheet.create({
   photosIcon: { fontSize: 28, marginBottom: 4 },
   photosText: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center' },
   photosSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 4, textAlign: 'center', paddingHorizontal: 4 },
+  sectionSub: { fontSize: 12, color: Colors.textSecondary, paddingHorizontal: 20, marginTop: -6, marginBottom: 12 },
+  featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 20, marginBottom: 24 },
+  featureChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10, backgroundColor: Colors.white,
+  },
+  featureChipActive: { borderColor: Colors.primary, backgroundColor: '#FFF0F0' },
+  featureEmoji: { fontSize: 18 },
+  featureLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  featureLabelActive: { color: Colors.primary },
+  featureCheck: { fontSize: 13, color: Colors.primary, fontWeight: '800', marginLeft: 2 },
   saveBtn: {
     backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18,
     alignItems: 'center', marginHorizontal: 20,

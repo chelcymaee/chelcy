@@ -473,12 +473,11 @@ Host photos are uploaded and served at original size. No compression, no respons
 |---|---|---|
 | 1 | Traveller Profile Visibility for Hosts | ✅ Done |
 | 2 | Verification Approval System | ✅ Done |
-| 3 | Verification Badges | 🔴 Not started |
-| 4 | Trust Badges | 🔴 Not started |
-| 5 | Response Rate | 🔴 Not started |
-| 6 | Response Time | 🔴 Not started |
-| 7 | Host Ranking | 🔴 Not started |
-| 8 | Search Ranking Improvements | 🔴 Not started |
+| 3 | Trust & Safety (merged Verification Badges + Trust Badges) | ✅ Done |
+| 4 | Response Rate | 🔴 Not started |
+| 5 | Response Time | 🔴 Not started |
+| 6 | Host Ranking | 🔴 Not started |
+| 7 | Search Ranking Improvements | 🔴 Not started |
 
 ### PHASE 3 — COMMUNICATION
 *Goal: Keep hosts and travellers informed.*

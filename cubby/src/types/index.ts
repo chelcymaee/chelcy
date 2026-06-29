@@ -31,6 +31,8 @@ export interface Host {
   review_count: number;
   response_rate: number;         // 0-100
   is_active: boolean;
+  storage_features: string[];    // e.g. ['cctv', 'indoor', 'staffed', 'secure_storage']
+  owner_is_verified?: boolean;   // from profiles.is_verified of the host owner
   created_at: string;
 }
 

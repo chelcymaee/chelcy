@@ -6,6 +6,7 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { computeTravellerBadges, TrustBadge } from '../../src/lib/trust-badges';
 
 interface TravellerData {
   fullName: string;
@@ -49,6 +50,7 @@ export default function TravellerProfileForHost() {
   }>();
 
   const [traveller, setTraveller] = useState<TravellerData | null>(null);
+  const [travellerBadges, setTravellerBadges] = useState<TrustBadge[]>([]);
   const [booking, setBooking] = useState<BookingContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -119,7 +121,7 @@ export default function TravellerProfileForHost() {
         .eq('traveller_id', travellerId)
         .eq('status', 'completed');
 
-      setTraveller({
+      const tData: TravellerData = {
         fullName: prof.full_name?.trim() || prof.email?.split('@')[0] || 'Traveller',
         email: prof.email ?? '',
         avatarUrl: prof.avatar_url ?? null,
@@ -128,7 +130,13 @@ export default function TravellerProfileForHost() {
           ? new Date(prof.created_at).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' })
           : 'Unknown',
         completedBookings: completedCount ?? 0,
-      });
+      };
+      setTraveller(tData);
+      setTravellerBadges(computeTravellerBadges({
+        is_verified: tData.isVerified,
+        created_at: prof.created_at ?? new Date().toISOString(),
+        completed_bookings: completedCount ?? 0,
+      }));
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -251,17 +259,22 @@ export default function TravellerProfileForHost() {
           {/* Trust & Safety */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Trust & Safety</Text>
-            <View style={styles.infoCard}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoIcon}>{traveller.isVerified ? '✅' : '⏳'}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>Identity verification</Text>
-                  <Text style={[styles.infoValue, { color: traveller.isVerified ? '#059669' : Colors.textSecondary }]}>
-                    {traveller.isVerified ? 'Identity verified' : 'Not yet verified'}
-                  </Text>
-                </View>
+
+            {/* Trust badges */}
+            {travellerBadges.length > 0 ? (
+              <View style={styles.badgesGrid}>
+                {travellerBadges.map(b => (
+                  <View key={b.id} style={[styles.badgeCell, { backgroundColor: b.bg }]}>
+                    <Text style={styles.badgeCellEmoji}>{b.emoji}</Text>
+                    <Text style={[styles.badgeCellLabel, { color: b.color }]}>{b.label}</Text>
+                    <Text style={styles.badgeCellDesc}>{b.description}</Text>
+                  </View>
+                ))}
               </View>
-              <View style={styles.infoDivider} />
+            ) : null}
+
+            {/* Always-visible info rows */}
+            <View style={styles.infoCard}>
               <View style={styles.infoRow}>
                 <Text style={styles.infoIcon}>📅</Text>
                 <View style={{ flex: 1 }}>
@@ -277,6 +290,18 @@ export default function TravellerProfileForHost() {
                   <Text style={styles.infoValue}>{traveller.completedBookings} booking{traveller.completedBookings !== 1 ? 's' : ''} completed</Text>
                 </View>
               </View>
+              {!traveller.isVerified && (
+                <>
+                  <View style={styles.infoDivider} />
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoIcon}>⏳</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.infoLabel}>Identity verification</Text>
+                      <Text style={[styles.infoValue, { color: Colors.textSecondary }]}>Not yet verified</Text>
+                    </View>
+                  </View>
+                </>
+              )}
             </View>
           </View>
 
@@ -323,6 +348,11 @@ const styles = StyleSheet.create({
   bookingDetail: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   bookingIcon: { fontSize: 16, width: 24, textAlign: 'center' },
   bookingDetailText: { fontSize: 14, color: Colors.textSecondary },
+  badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  badgeCell: { width: '47%', borderRadius: 14, padding: 14, gap: 4 },
+  badgeCellEmoji: { fontSize: 22 },
+  badgeCellLabel: { fontSize: 13, fontWeight: '700' },
+  badgeCellDesc: { fontSize: 11, color: '#6B7280', lineHeight: 15, marginTop: 2 },
   infoCard: { backgroundColor: Colors.white, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   infoIcon: { fontSize: 20, width: 28, textAlign: 'center' },
