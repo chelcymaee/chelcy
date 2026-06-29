@@ -26,7 +26,7 @@ If it does not, question whether it should exist.
 | Marketplace | 72% | Booking + payment loop works. Search, discovery weak. |
 | Operations | 35% | Admin screens exist but are disconnected. No operational workflow. |
 | Trust & Safety | 20% | Verification is UI-only. No ToS. No claims process. |
-| Communications | 40% | In-app messaging done. Email = 0. Push = partial. |
+| Communications | 60% | In-app messaging done. Transactional email V1 done (Resend). Push = partial. |
 | Launch Readiness | 45% | Cannot yet be put in front of real users safely. |
 | **Overall** | **~62%** | Solid MVP foundation. 6–8 focused weeks to beta. |
 
@@ -491,7 +491,7 @@ Host photos are uploaded and served at original size. No compression, no respons
 | 5 | Booking Notifications | 🔴 Not started |
 | 6 | Message Notifications | 🟡 Partial (DB trigger exists, push not delivered) |
 | 7 | Reminder Notifications | 🔴 Not started |
-| 8 | Email Notifications | 🔴 Not started |
+| 8 | Email Notifications (Transactional V1) | ✅ Done |
 
 ### PHASE 4 — MARKETPLACE POLISH
 *Goal: Create the best booking experience possible.*
