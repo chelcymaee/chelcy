@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
+import { formatResponseTime } from '../../src/lib/response-rate';
 
 const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? 'cubby-admin-secret-2025';
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
@@ -388,7 +389,7 @@ export default function ManageHosts() {
                 [stats.avgRating > 0 ? `${stats.avgRating}★` : '—', 'Rating'],
                 [stats.reviewCount, 'Reviews'],
                 [stats.responseRate != null ? `${stats.responseRate}%` : 'New host', 'Response rate'],
-                [stats.avgResponseTimeMinutes != null ? `${stats.avgResponseTimeMinutes}m` : '—', 'Avg response time'],
+                [formatResponseTime(stats.avgResponseTimeMinutes, stats.respondedRequests) ?? '—', 'Avg response time'],
                 [stats.totalRequests, 'Total requests'],
                 [stats.respondedRequests, 'Responded'],
                 [stats.missedRequests, 'Missed'],

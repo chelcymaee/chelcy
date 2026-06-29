@@ -9,7 +9,7 @@ import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { MOCK_REVIEWS } from '../../src/lib/mock-data';
 import { computeHostBadges, topBadges, TrustBadge } from '../../src/lib/trust-badges';
-import { formatResponseRate } from '../../src/lib/response-rate';
+import { formatResponseRate, formatResponseTime, formatResponseTimeShort } from '../../src/lib/response-rate';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TODAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -242,6 +242,17 @@ export default function HostDetail() {
               )}
             </View>
 
+            {/* Response time row */}
+            {(() => {
+              const rt = formatResponseTime(host.avg_response_time_minutes, host.responded_requests ?? 0);
+              return rt ? (
+                <View style={styles.responseTimeRow}>
+                  <Text style={styles.responseTimeEmoji}>⚡</Text>
+                  <Text style={styles.responseTimeText}>{rt}</Text>
+                </View>
+              ) : null;
+            })()}
+
             {/* Top trust badges — 2–3 most important only */}
             {badges.length > 0 && (
               <View style={styles.headerBadgesRow}>
@@ -274,10 +285,24 @@ export default function HostDetail() {
           {/* Trust & Safety section */}
           <Text style={styles.sectionTitle}>Trust & Safety</Text>
 
-          {/* Cubby guarantee */}
+          {/* Cubby guarantee + response time */}
           <View style={styles.trustCard}>
             <Text style={styles.trustTitle}>🛡️  Each bag is protected up to R2,000!</Text>
             <Text style={styles.trustSub}>Only when booking online with Cubby.</Text>
+            {(() => {
+              const rt = formatResponseTime(host.avg_response_time_minutes, host.responded_requests ?? 0);
+              return rt ? (
+                <View style={styles.trustResponseRow}>
+                  <Text style={styles.trustResponseEmoji}>⚡</Text>
+                  <Text style={styles.trustResponseText}>{rt}</Text>
+                </View>
+              ) : (
+                <View style={styles.trustResponseRow}>
+                  <Text style={styles.trustResponseEmoji}>⚡</Text>
+                  <Text style={[styles.trustResponseText, { color: '#9CA3AF' }]}>New host — response time not yet available</Text>
+                </View>
+              );
+            })()}
           </View>
 
           {/* Trust badges grid */}
@@ -479,6 +504,11 @@ const styles = StyleSheet.create({
   },
   bagTipText: { fontSize: 13, color: '#1D4ED8', lineHeight: 20 },
 
+  /* Response time row (under rating) */
+  responseTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  responseTimeEmoji: { fontSize: 13 },
+  responseTimeText: { fontSize: 13, color: '#1D4ED8', fontWeight: '600' },
+
   /* Trust card */
   trustCard: {
     borderWidth: 1,
@@ -489,7 +519,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   trustTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 },
-  trustSub: { fontSize: 13, color: '#6B7280' },
+  trustSub: { fontSize: 13, color: '#6B7280', marginBottom: 10 },
+  trustResponseRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  trustResponseEmoji: { fontSize: 13 },
+  trustResponseText: { fontSize: 13, color: '#1D4ED8', fontWeight: '600' },
 
   /* Header badge chips */
   headerBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 10 },

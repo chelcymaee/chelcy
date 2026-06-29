@@ -1,6 +1,6 @@
 # CUBBY — PROJECT MASTER PLAN
 > Single source of truth for all development, product decisions, and launch planning.
-> Last updated: 2026-06-26
+> Last updated: 2026-06-29
 
 ---
 
@@ -475,7 +475,7 @@ Host photos are uploaded and served at original size. No compression, no respons
 | 2 | Verification Approval System | ✅ Done |
 | 3 | Trust & Safety (merged Verification Badges + Trust Badges) | ✅ Done |
 | 4 | Response Rate | ✅ Done |
-| 5 | Response Time | 🔴 Not started |
+| 5 | Response Time | ✅ Done |
 | 6 | Host Ranking | 🔴 Not started |
 | 7 | Search Ranking Improvements | 🔴 Not started |
 

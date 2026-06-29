@@ -12,6 +12,7 @@ import { Host } from '../../src/types';
 import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
 import NotificationBell from '../../src/components/NotificationBell';
 import { computeHostBadges, topBadges } from '../../src/lib/trust-badges';
+import { formatResponseTimeShort } from '../../src/lib/response-rate';
 
 const TIME_SLOTS = [
   '7am–8am','8am–9am','9am–10am','10am–11am','11am–12pm',
@@ -187,6 +188,7 @@ function LocationModal({
 // ─── Results Host Card ────────────────────────────────────────────────────────
 function ResultCard({ host, index, onPress }: { host: Host; index: number; onPress: () => void }) {
   const cardBadges = topBadges(computeHostBadges(host), 2);
+  const responseTimeShort = formatResponseTimeShort(host.avg_response_time_minutes ?? null, host.responded_requests ?? 0);
   return (
     <TouchableOpacity
       style={styles.resultCard}
@@ -213,6 +215,9 @@ function ResultCard({ host, index, onPress }: { host: Host; index: number; onPre
           <Text style={styles.resultStatSep}>·</Text>
           <Text style={styles.resultWalk}>🚶 {3 + index * 2} min</Text>
         </View>
+        {responseTimeShort && (
+          <Text style={styles.resultResponseTime}>⚡ {responseTimeShort}</Text>
+        )}
         <View style={styles.resultBadgeRow}>
           <View style={styles.openBadge}><Text style={styles.openBadgeText}>OPEN</Text></View>
           {index === 0 && <View style={styles.closestBadge}><Text style={styles.closestBadgeText}>CLOSEST</Text></View>}
@@ -766,6 +771,7 @@ const styles = StyleSheet.create({
   closestBadgeText: { fontSize: 10, fontWeight: '800', color: '#4F46E5', letterSpacing: 0.5 },
   trustChip: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
   trustChipText: { fontSize: 10, fontWeight: '700' },
+  resultResponseTime: { fontSize: 11, color: '#1D4ED8', fontWeight: '600', marginTop: 3 },
 
   mapToggleBar: {
     backgroundColor: '#1A1A1A', paddingTop: 16, alignItems: 'center',

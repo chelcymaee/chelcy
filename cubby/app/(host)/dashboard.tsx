@@ -7,7 +7,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
-import { recalculateHostResponseRate, minutesBetween, formatResponseRate } from '../../src/lib/response-rate';
+import { recalculateHostResponseRate, minutesBetween, formatResponseRate, formatResponseTime } from '../../src/lib/response-rate';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +34,7 @@ type Stats = {
   avgRating: number;
   reviewCount: number;
   responseRate: number | null;
+  avgResponseTimeMinutes: number | null;
   totalRequests: number;
   pendingCount: number;
   completedCount: number;
@@ -56,6 +57,7 @@ const DEMO_STATS: Stats = {
   avgRating: 4.9,
   reviewCount: 23,
   responseRate: 98,
+  avgResponseTimeMinutes: 45,
   totalRequests: 15,
   pendingCount: 2,
   completedCount: 12,
@@ -116,7 +118,7 @@ export default function Dashboard() {
       // ── 1. Host row ──────────────────────────────────────────────────────
       const { data: host, error: hostErr } = await supabase
         .from('hosts')
-        .select('id, display_name, rating, review_count, is_active, response_rate, total_requests')
+        .select('id, display_name, rating, review_count, is_active, response_rate, avg_response_time_minutes, total_requests, responded_requests')
         .eq('assigned_user_id', user.id)
         .single();
 
@@ -217,6 +219,7 @@ export default function Dashboard() {
         avgRating: host.rating ?? 0,
         reviewCount: host.review_count ?? 0,
         responseRate: host.response_rate ?? null,
+        avgResponseTimeMinutes: host.avg_response_time_minutes ?? null,
         totalRequests: host.total_requests ?? 0,
         pendingCount: pendingRes.count ?? 0,
         completedCount: completedRes.count ?? 0,
@@ -267,7 +270,7 @@ export default function Dashboard() {
         // Fire-and-forget recalculate
         if (isResponse && stats.hostId) {
           recalculateHostResponseRate(supabase, stats.hostId)
-            .then(r => setStats(s => ({ ...s, responseRate: r.response_rate, totalRequests: r.total_requests })))
+            .then(r => setStats(s => ({ ...s, responseRate: r.response_rate, avgResponseTimeMinutes: r.avg_response_time_minutes, totalRequests: r.total_requests })))
             .catch(() => {});
         }
       }
@@ -381,7 +384,12 @@ export default function Dashboard() {
                   <Text style={styles.earningsStatNum}>
                     {formatResponseRate(stats.responseRate, stats.totalRequests)}
                   </Text>
-                  <Text style={styles.earningsStatLabel}>Response</Text>
+                  <Text style={styles.earningsStatLabel}>
+                    {(() => {
+                      const rt = formatResponseTime(stats.avgResponseTimeMinutes, stats.totalRequests);
+                      return rt ? rt.replace('Responds ', '') : 'Response rate';
+                    })()}
+                  </Text>
                 </View>
               </View>
             </>
@@ -579,9 +587,9 @@ export default function Dashboard() {
         {/* ── Response rate nudge ──────────────────────────────────────────── */}
         {!loading && stats.totalRequests < 3 && (
           <View style={styles.nudgeCard}>
-            <Text style={styles.nudgeTitle}>⚡ Build your response rate</Text>
+            <Text style={styles.nudgeTitle}>⚡ Build your response stats</Text>
             <Text style={styles.nudgeText}>
-              Respond to your first {3 - stats.totalRequests} booking request{3 - stats.totalRequests !== 1 ? 's' : ''} to start showing your response rate. Hosts who respond quickly get more bookings.
+              Respond to your first {Math.max(1, 3 - stats.totalRequests)} booking request{3 - stats.totalRequests !== 1 ? 's' : ''} to start showing your response rate and time. Hosts who respond quickly earn more bookings.
             </Text>
           </View>
         )}
@@ -590,6 +598,14 @@ export default function Dashboard() {
             <Text style={styles.nudgeTitle}>⚠️ Your response rate is low</Text>
             <Text style={styles.nudgeText}>
               Respond to all requests within 24 hours to keep your rate healthy. A low rate reduces your visibility in search results.
+            </Text>
+          </View>
+        )}
+        {!loading && stats.totalRequests >= 3 && stats.avgResponseTimeMinutes !== null && stats.avgResponseTimeMinutes > 60 && (stats.responseRate ?? 0) >= 80 && (
+          <View style={styles.nudgeCard}>
+            <Text style={styles.nudgeTitle}>⚡ Respond faster to rank higher</Text>
+            <Text style={styles.nudgeText}>
+              Your average response time is {stats.avgResponseTimeMinutes >= 60 ? `${Math.round(stats.avgResponseTimeMinutes / 60)}h` : `${stats.avgResponseTimeMinutes}min`}. Hosts who respond within 1 hour earn the Fast Responder badge and rank higher in search.
             </Text>
           </View>
         )}
