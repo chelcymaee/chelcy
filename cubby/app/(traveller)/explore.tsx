@@ -533,6 +533,10 @@ function normalizeHost(raw: any): Host {
     photos: raw.photos ?? [],
     is_active: raw.is_active ?? raw.active ?? true,
     storage_features: raw.storage_features ?? [],
+    response_rate: raw.response_rate ?? null,
+    avg_response_time_minutes: raw.avg_response_time_minutes ?? null,
+    total_requests: raw.total_requests ?? 0,
+    responded_requests: raw.responded_requests ?? 0,
     created_at: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
   };
 }

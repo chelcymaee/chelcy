@@ -9,6 +9,7 @@ import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { MOCK_REVIEWS } from '../../src/lib/mock-data';
 import { computeHostBadges, topBadges, TrustBadge } from '../../src/lib/trust-badges';
+import { formatResponseRate } from '../../src/lib/response-rate';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TODAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -42,7 +43,10 @@ function normalizeHost(raw: any, ownerIsVerified?: boolean) {
     price_per_bag_per_day: raw.price_per_bag_per_day ?? raw.pricePerBag ?? 100,
     rating: raw.rating ?? 0,
     review_count: raw.review_count ?? 0,
-    response_rate: raw.response_rate ?? raw.responseRate ?? 100,
+    response_rate: raw.response_rate ?? null,
+    avg_response_time_minutes: raw.avg_response_time_minutes ?? null,
+    total_requests: raw.total_requests ?? 0,
+    responded_requests: raw.responded_requests ?? 0,
     available_from: raw.available_from ?? raw.availableFrom ?? '08:00',
     available_until: raw.available_until ?? raw.availableUntil ?? '20:00',
     available_days: raw.available_days ?? raw.availableDays ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
@@ -230,7 +234,7 @@ export default function HostDetail() {
               <Text style={styles.ratingText}>{host.rating.toFixed(1)}</Text>
               <Text style={styles.ratingCount}>({host.review_count})</Text>
               <Text style={styles.ratingDot}>·</Text>
-              <Text style={styles.responseRate}>{host.response_rate}% response</Text>
+              <Text style={styles.responseRate}>{formatResponseRate(host.response_rate, host.total_requests)} response</Text>
               {isOpen && (
                 <View style={styles.openBadge}>
                   <Text style={styles.openBadgeText}>OPEN</Text>

@@ -40,6 +40,11 @@ interface HostDetail {
     avgRating: number;
     reviewCount: number;
     responseRate: number | null;
+    avgResponseTimeMinutes: number | null;
+    totalRequests: number;
+    respondedRequests: number;
+    missedRequests: number;
+    pendingRequests: number;
   };
 }
 
@@ -382,7 +387,12 @@ export default function ManageHosts() {
                 [`R${stats.cubbyEarnings}`, 'Cubby cut'],
                 [stats.avgRating > 0 ? `${stats.avgRating}★` : '—', 'Rating'],
                 [stats.reviewCount, 'Reviews'],
-                [stats.responseRate != null ? `${stats.responseRate}%` : '—', 'Response rate'],
+                [stats.responseRate != null ? `${stats.responseRate}%` : 'New host', 'Response rate'],
+                [stats.avgResponseTimeMinutes != null ? `${stats.avgResponseTimeMinutes}m` : '—', 'Avg response time'],
+                [stats.totalRequests, 'Total requests'],
+                [stats.respondedRequests, 'Responded'],
+                [stats.missedRequests, 'Missed'],
+                [stats.pendingRequests, 'Pending now'],
               ].map(([val, lbl]) => (
                 <div key={lbl as string} style={s.statCard}>
                   <p style={s.statVal}>{val}</p>

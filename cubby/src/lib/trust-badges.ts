@@ -155,7 +155,9 @@ export const TRAVELLER_BADGE_DEFINITIONS: TrustBadge[] = [
 export interface HostBadgeInput {
   rating: number;
   review_count: number;
-  response_rate: number;
+  response_rate: number | null;
+  avg_response_time_minutes?: number | null;
+  total_requests?: number;
   is_active: boolean;
   created_at: string;
   storage_features?: string[];
@@ -187,7 +189,13 @@ export function computeHostBadges(input: HostBadgeInput): TrustBadge[] {
   check('verified_host', input.owner_is_verified === true);
   check('top_host', input.rating >= 4.9 && input.review_count >= 10 && input.response_rate >= 90);
   check('top_rated', input.rating >= 4.7 && input.review_count >= 5);
-  check('fast_responder', input.response_rate >= 95);
+  // Fast Responder: needs real data (>= 3 requests), high rate, and quick avg time
+  const hasRealData = (input.total_requests ?? 0) >= 3;
+  check('fast_responder',
+    hasRealData &&
+    (input.response_rate ?? 0) >= 90 &&
+    (input.avg_response_time_minutes ?? Infinity) <= 60,
+  );
   check('bags_stored', (input.completed_bookings ?? 0) >= 1);
   check('recently_active', daysSinceLastBooking <= 30);
   check('secure_storage', features.includes('secure_storage'));

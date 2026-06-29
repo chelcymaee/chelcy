@@ -94,6 +94,11 @@ serve(async (req) => {
               avgRating: host.rating ?? 0,
               reviewCount: host.review_count ?? 0,
               responseRate: host.response_rate ?? null,
+              avgResponseTimeMinutes: host.avg_response_time_minutes ?? null,
+              totalRequests: host.total_requests ?? 0,
+              respondedRequests: host.responded_requests ?? 0,
+              missedRequests: Math.max(0, (host.total_requests ?? 0) - (host.responded_requests ?? 0)),
+              pendingRequests: allBookings.filter((b: any) => b.status === 'pending').length,
             },
           },
         });

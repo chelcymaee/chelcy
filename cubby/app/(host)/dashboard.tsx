@@ -7,6 +7,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
+import { recalculateHostResponseRate, minutesBetween, formatResponseRate } from '../../src/lib/response-rate';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,18 +20,21 @@ type Booking = {
   pickUp: string;
   total: number;
   status: string;
+  created_at?: string;
 };
 
 type WeekDay = { day: string; earnings: number };
 
 type Stats = {
   hostName: string;
+  hostId: string;
   isActive: boolean;
   monthlyEarnings: number;
   monthlyBookings: number;
   avgRating: number;
   reviewCount: number;
-  responseRate: number;
+  responseRate: number | null;
+  totalRequests: number;
   pendingCount: number;
   completedCount: number;
   weeklyData: WeekDay[];
@@ -45,12 +49,14 @@ const DEMO_BOOKINGS: Booking[] = [
 
 const DEMO_STATS: Stats = {
   hostName: 'Host',
+  hostId: '',
   isActive: true,
   monthlyEarnings: 1240,
   monthlyBookings: 14,
   avgRating: 4.9,
   reviewCount: 23,
   responseRate: 98,
+  totalRequests: 15,
   pendingCount: 2,
   completedCount: 12,
   weeklyData: [
@@ -110,7 +116,7 @@ export default function Dashboard() {
       // ── 1. Host row ──────────────────────────────────────────────────────
       const { data: host, error: hostErr } = await supabase
         .from('hosts')
-        .select('id, display_name, rating, review_count, is_active, response_rate')
+        .select('id, display_name, rating, review_count, is_active, response_rate, total_requests')
         .eq('assigned_user_id', user.id)
         .single();
 
@@ -132,7 +138,7 @@ export default function Dashboard() {
         // Today's active bookings (for the card list)
         supabase
           .from('bookings')
-          .select('id, bag_count, drop_off_time, pick_up_time, total_price, status, profiles:traveller_id(full_name, email)')
+          .select('id, traveller_id, bag_count, drop_off_time, pick_up_time, total_price, status, created_at, profiles:traveller_id(full_name, email)')
           .eq('host_id', hostId)
           .eq('drop_off_date', today)
           .in('status', ['pending', 'confirmed', 'active'])
@@ -181,6 +187,7 @@ export default function Dashboard() {
         pickUp: b.pick_up_time,
         total: b.total_price,
         status: b.status,
+        created_at: b.created_at,
       }));
       setBookings(todayBookings);
 
@@ -203,12 +210,14 @@ export default function Dashboard() {
       // ── 6. Assemble stats ────────────────────────────────────────────────
       setStats({
         hostName: host.display_name ?? 'Host',
+        hostId: host.id,
         isActive: host.is_active ?? true,
         monthlyEarnings,
         monthlyBookings,
         avgRating: host.rating ?? 0,
         reviewCount: host.review_count ?? 0,
-        responseRate: host.response_rate ?? 100,
+        responseRate: host.response_rate ?? null,
+        totalRequests: host.total_requests ?? 0,
         pendingCount: pendingRes.count ?? 0,
         completedCount: completedRes.count ?? 0,
         weeklyData,
@@ -239,14 +248,30 @@ export default function Dashboard() {
     setActionId(bookingId);
     try {
       if (isSupabaseConfigured) {
-        const { error } = await supabase.from('bookings').update({ status: newStatus }).eq('id', bookingId);
-        if (error) {
-          Alert.alert('Error', 'Could not update booking. Please try again.');
-          return;
+        const respondedAt = new Date().toISOString();
+        const booking = bookings.find(b => b.id === bookingId);
+        const isResponse = newStatus === 'confirmed' || newStatus === 'cancelled';
+        const responseMinutes = (isResponse && booking?.status === 'pending' && booking?.created_at)
+          ? minutesBetween(booking.created_at as unknown as string, respondedAt)
+          : undefined;
+
+        const update: Record<string, unknown> = { status: newStatus };
+        if (isResponse && booking?.status === 'pending') {
+          update.host_responded_at = respondedAt;
+          if (responseMinutes !== undefined) update.response_time_minutes = responseMinutes;
+        }
+
+        const { error } = await supabase.from('bookings').update(update).eq('id', bookingId);
+        if (error) { Alert.alert('Error', 'Could not update booking. Please try again.'); return; }
+
+        // Fire-and-forget recalculate
+        if (isResponse && stats.hostId) {
+          recalculateHostResponseRate(supabase, stats.hostId)
+            .then(r => setStats(s => ({ ...s, responseRate: r.response_rate, totalRequests: r.total_requests })))
+            .catch(() => {});
         }
       }
       setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
-      // Refresh pending count
       if (newStatus !== 'pending') {
         setStats(s => ({ ...s, pendingCount: Math.max(0, s.pendingCount - 1) }));
       }
@@ -353,7 +378,9 @@ export default function Dashboard() {
                 </View>
                 <View style={styles.earningsDivider} />
                 <View style={styles.earningsStat}>
-                  <Text style={styles.earningsStatNum}>{stats.responseRate}%</Text>
+                  <Text style={styles.earningsStatNum}>
+                    {formatResponseRate(stats.responseRate, stats.totalRequests)}
+                  </Text>
                   <Text style={styles.earningsStatLabel}>Response</Text>
                 </View>
               </View>
@@ -549,6 +576,24 @@ export default function Dashboard() {
           </View>
         )}
 
+        {/* ── Response rate nudge ──────────────────────────────────────────── */}
+        {!loading && stats.totalRequests < 3 && (
+          <View style={styles.nudgeCard}>
+            <Text style={styles.nudgeTitle}>⚡ Build your response rate</Text>
+            <Text style={styles.nudgeText}>
+              Respond to your first {3 - stats.totalRequests} booking request{3 - stats.totalRequests !== 1 ? 's' : ''} to start showing your response rate. Hosts who respond quickly get more bookings.
+            </Text>
+          </View>
+        )}
+        {!loading && stats.totalRequests >= 3 && stats.responseRate !== null && stats.responseRate < 80 && (
+          <View style={[styles.nudgeCard, styles.nudgeCardWarn]}>
+            <Text style={styles.nudgeTitle}>⚠️ Your response rate is low</Text>
+            <Text style={styles.nudgeText}>
+              Respond to all requests within 24 hours to keep your rate healthy. A low rate reduces your visibility in search results.
+            </Text>
+          </View>
+        )}
+
         {/* ── Tip ─────────────────────────────────────────────────────────── */}
         <View style={styles.tipCard}>
           <Text style={styles.tipTitle}>💡 Hosting tip</Text>
@@ -692,6 +737,13 @@ const styles = StyleSheet.create({
   },
   profileBtnText: { color: Colors.primary, fontWeight: '600', fontSize: 14 },
 
+  nudgeCard: {
+    backgroundColor: '#EFF6FF', borderRadius: 14, marginHorizontal: 20,
+    padding: 16, borderWidth: 1, borderColor: '#BFDBFE', marginBottom: 12,
+  },
+  nudgeCardWarn: { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
+  nudgeTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 },
+  nudgeText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
   tipCard: {
     backgroundColor: '#FFF9EC', borderRadius: 14, marginHorizontal: 20,
     padding: 16, borderWidth: 1, borderColor: '#F59E0B40',

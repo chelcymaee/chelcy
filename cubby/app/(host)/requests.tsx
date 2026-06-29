@@ -7,6 +7,7 @@ import { useFocusEffect, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
+import { recalculateHostResponseRate, minutesBetween } from '../../src/lib/response-rate';
 
 // Booking statuses used across Cubby:
 //   pending   — created by traveller, awaiting host acknowledgement
@@ -29,6 +30,8 @@ interface HostBooking {
   total_price: number;
   status: BookingStatus;
   pin_code: string;
+  created_at: string;
+  host_id: string;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -44,17 +47,17 @@ const DEMO_REQUESTS: HostBooking[] = [
   {
     id: 'demo-1', traveller_id: 'demo', traveller_name: 'Sarah T.', traveller_email: 'sarah@example.com',
     bag_count: 2, drop_off_date: 'Today', drop_off_time: '09:00', pick_up_time: '15:00',
-    total_price: 160, status: 'pending', pin_code: '4821',
+    total_price: 160, status: 'pending', pin_code: '4821', created_at: new Date().toISOString(), host_id: '',
   },
   {
     id: 'demo-2', traveller_id: 'demo', traveller_name: 'Luca B.', traveller_email: 'luca@example.com',
     bag_count: 3, drop_off_date: 'Today', drop_off_time: '11:00', pick_up_time: '19:00',
-    total_price: 240, status: 'pending', pin_code: '7203',
+    total_price: 240, status: 'pending', pin_code: '7203', created_at: new Date().toISOString(), host_id: '',
   },
   {
     id: 'demo-3', traveller_id: 'demo', traveller_name: 'Anika R.', traveller_email: 'anika@example.com',
     bag_count: 1, drop_off_date: 'Yesterday', drop_off_time: '08:30', pick_up_time: '14:00',
-    total_price: 80, status: 'confirmed', pin_code: '3391',
+    total_price: 80, status: 'confirmed', pin_code: '3391', created_at: new Date().toISOString(), host_id: '',
   },
 ];
 
@@ -98,6 +101,7 @@ export default function Requests() {
             .from('bookings')
             .select(`
               id,
+              host_id,
               traveller_id,
               bag_count,
               drop_off_date,
@@ -105,7 +109,8 @@ export default function Requests() {
               pick_up_time,
               total_price,
               status,
-              pin_code
+              pin_code,
+              created_at
             `)
             .eq('host_id', hostRow.id)
             .in('status', ['pending', 'confirmed', 'active'])
@@ -138,6 +143,8 @@ export default function Requests() {
             total_price: b.total_price,
             status: b.status,
             pin_code: b.pin_code,
+            created_at: b.created_at,
+            host_id: b.host_id,
           };});
           setBookings(mapped);
           return;
@@ -154,18 +161,31 @@ export default function Requests() {
     setActionId(bookingId);
     try {
       if (isSupabaseConfigured) {
-        const { error } = await supabase
-          .from('bookings')
-          .update({ status: newStatus })
-          .eq('id', bookingId);
+        const respondedAt = new Date().toISOString();
+        const booking = bookings.find(b => b.id === bookingId);
 
+        // Record response time when accepting or declining a pending booking
+        const isResponse = newStatus === 'confirmed' || newStatus === 'cancelled';
+        const responseMinutes = (isResponse && booking?.status === 'pending' && booking?.created_at)
+          ? minutesBetween(booking.created_at, respondedAt)
+          : undefined;
+
+        const update: Record<string, unknown> = { status: newStatus };
+        if (isResponse && booking?.status === 'pending') {
+          update.host_responded_at = respondedAt;
+          if (responseMinutes !== undefined) update.response_time_minutes = responseMinutes;
+        }
+
+        const { error } = await supabase.from('bookings').update(update).eq('id', bookingId);
         if (error) { showToast('Could not update booking. Please try again.', true); return; }
+
+        // Recalculate host response rate after responding
+        if (isResponse && booking?.host_id) {
+          recalculateHostResponseRate(supabase, booking.host_id).catch(() => {});
+        }
       }
 
-      // Update local state immediately for snappy UI
-      setBookings(prev =>
-        prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b)
-      );
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
 
       if (newStatus === 'confirmed') showToast('Booking accepted ✓');
       if (newStatus === 'cancelled') showToast('Booking declined');
