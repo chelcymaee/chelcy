@@ -19,7 +19,10 @@ export type NotificationType =
   | 'partner_received'
   | 'partner_approved'
   | 'partner_rejected'
-  | 'review_request';
+  | 'review_request'
+  | 'review_received'
+  | 'review_reminder'
+  | 'milestone_reached';
 
 // Maps notification type → preference column key
 const PREF_KEY: Record<NotificationType, string> = {
@@ -42,6 +45,9 @@ const PREF_KEY: Record<NotificationType, string> = {
   partner_approved: 'product_updates',
   partner_rejected: 'product_updates',
   review_request: 'booking_updates',
+  review_received: 'new_reviews',
+  review_reminder: 'review_reminders',
+  milestone_reached: 'milestones',
 };
 
 export interface SendNotificationOptions {

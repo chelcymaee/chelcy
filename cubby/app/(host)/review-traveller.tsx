@@ -6,6 +6,10 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { sendNotification } from '../../src/lib/notification-service';
+
+const SUPABASE_URL = 'https://gqgxahqmndkaeyuvhliv.supabase.co';
+const ADMIN_SECRET = 'cubby-admin-secret-2025';
 
 const CATEGORIES = [
   { key: 'rating_respectful',    label: 'Respectful',        emoji: '🤝' },
@@ -27,6 +31,64 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
       ))}
     </View>
   );
+}
+
+async function notifyTravellerOfReview(opts: {
+  travellerId: string; bookingId: string; hostName: string;
+  ratings: Record<string, number>;
+}): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const { travellerId, bookingId, hostName, ratings } = opts;
+
+  const avg = Math.round(Object.values(ratings).reduce((s, v) => s + v, 0) / Object.values(ratings).length);
+
+  await sendNotification({
+    userId: travellerId,
+    type: 'review_received',
+    title: `${hostName} reviewed you`,
+    body: avg >= 4 ? '🌟 Great news — you got a positive review!' : 'You have a new traveller review.',
+    data: { bookingId, hostName, avg },
+    relatedBookingId: bookingId,
+  });
+
+  // Reciprocal prompt — if traveller hasn't reviewed the host yet
+  const { data: existingReview } = await supabase
+    .from('reviews').select('id').eq('booking_id', bookingId).maybeSingle();
+  if (!existingReview) {
+    // Get host_id from the booking to pass along
+    const { data: booking } = await supabase
+      .from('bookings').select('host_id').eq('id', bookingId).single();
+    if (booking?.host_id) {
+      await sendNotification({
+        userId: travellerId,
+        type: 'review_request',
+        title: `${hostName} just reviewed you`,
+        body: 'Return the favour — review your host now.',
+        data: { bookingId, hostId: booking.host_id, hostName },
+        relatedBookingId: bookingId,
+      });
+    }
+  }
+
+  // Email the traveller
+  const { data: profile } = await supabase
+    .from('profiles').select('email, full_name').eq('id', travellerId).single();
+  if (profile?.email) {
+    fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
+      body: JSON.stringify({
+        emailType: 'review_received',
+        data: {
+          recipientEmail: profile.email,
+          recipientName: profile.full_name ?? 'Traveller',
+          reviewerName: hostName,
+          rating: avg,
+          role: 'traveller',
+        },
+      }),
+    }).catch(() => {});
+  }
 }
 
 export default function ReviewTraveller() {
@@ -87,6 +149,14 @@ export default function ReviewTraveller() {
         else setError('Could not submit review. Please try again.');
         return;
       }
+
+      // Notify traveller (fire-and-forget)
+      notifyTravellerOfReview({
+        travellerId,
+        bookingId,
+        hostName: hostRow.display_name,
+        ratings,
+      }).catch(() => {});
 
       setSuccess(true);
       setTimeout(goBack, 2000);

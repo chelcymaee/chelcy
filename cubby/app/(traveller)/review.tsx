@@ -7,6 +7,10 @@ import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { sendNotification } from '../../src/lib/notification-service';
+
+const SUPABASE_URL = 'https://gqgxahqmndkaeyuvhliv.supabase.co';
+const ADMIN_SECRET = 'cubby-admin-secret-2025';
 
 const TAGS = ['Great location', 'Friendly host', 'Secure storage', 'Easy to find', 'Quick response', 'Would return'];
 const RATING_LABELS = ['', 'Poor experience', 'Not great', 'It was okay', 'Really good!', 'Outstanding! 🎉'];
@@ -30,6 +34,106 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
       ))}
     </View>
   );
+}
+
+async function notifyHostOfReview(opts: {
+  hostId: string; bookingId: string; reviewerName: string;
+  rating: number; comment: string; user: any;
+}): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const { hostId, bookingId, reviewerName, rating, comment, user } = opts;
+
+  // Get host's assigned_user_id so we can send them an in-app notification
+  const { data: host } = await supabase
+    .from('hosts').select('assigned_user_id, display_name').eq('id', hostId).single();
+  if (!host?.assigned_user_id) return;
+
+  await sendNotification({
+    userId: host.assigned_user_id,
+    type: 'review_received',
+    title: `${reviewerName} reviewed your listing`,
+    body: rating === 5 ? '⭐ You got a 5-star review!' : `They gave you ${rating} stars.`,
+    data: { bookingId, reviewerName, rating },
+    relatedBookingId: bookingId,
+  });
+
+  // Check milestones for this host
+  const { data: stats } = await supabase
+    .from('reviews').select('rating').eq('host_id', hostId);
+  if (!stats) return;
+
+  const fiveStarCount = stats.filter((r: any) => r.rating === 5).length;
+  const avgRating = stats.reduce((s: number, r: any) => s + r.rating, 0) / stats.length;
+  const totalReviews = stats.length;
+
+  let milestone: string | null = null;
+  let detail: string | null = null;
+
+  if (fiveStarCount === 10) { milestone = '10 five-star reviews'; detail = 'Travellers love you — keep it up!'; }
+  else if (fiveStarCount === 5) { milestone = 'First 5 five-star reviews'; detail = "You're building an outstanding reputation."; }
+  else if (totalReviews === 10) { milestone = '10 reviews'; detail = "You're a well-established Cubby host!"; }
+  else if (totalReviews === 5) { milestone = 'First 5 reviews'; detail = 'Your reputation is growing!'; }
+  else if (avgRating >= 4.8 && totalReviews >= 5) { milestone = '4.8★ average rating'; detail = 'You rank among the top Cubby hosts.'; }
+
+  if (milestone) {
+    await sendNotification({
+      userId: host.assigned_user_id,
+      type: 'milestone_reached',
+      title: `🏆 Milestone: ${milestone}`,
+      body: detail ?? '',
+    });
+
+    // Email the milestone too
+    const { data: hostProfile } = await supabase
+      .from('profiles').select('email, full_name').eq('id', host.assigned_user_id).single();
+    if (hostProfile?.email) {
+      fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
+        body: JSON.stringify({
+          emailType: 'milestone_reached',
+          data: { hostEmail: hostProfile.email, hostName: hostProfile.full_name ?? host.display_name, milestone, detail },
+        }),
+      }).catch(() => {});
+    }
+  }
+
+  // Send reciprocal prompt to host if they haven't reviewed traveller yet
+  const { data: existingHostReview } = await supabase
+    .from('traveller_reviews').select('id').eq('booking_id', bookingId).maybeSingle();
+  if (!existingHostReview) {
+    const { data: traveller } = await supabase
+      .from('profiles').select('full_name').eq('id', user.id).single();
+    await sendNotification({
+      userId: host.assigned_user_id,
+      type: 'review_request',
+      title: `${reviewerName} just reviewed you`,
+      body: 'Now review them — it only takes 30 seconds.',
+      data: { bookingId, travellerId: user.id, travellerName: traveller?.full_name ?? reviewerName },
+      relatedBookingId: bookingId,
+    });
+  }
+
+  // Email the host about the new review
+  const { data: hostProfile } = await supabase
+    .from('profiles').select('email, full_name').eq('id', host.assigned_user_id).single();
+  if (hostProfile?.email) {
+    fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
+      body: JSON.stringify({
+        emailType: 'review_received',
+        data: {
+          recipientEmail: hostProfile.email,
+          recipientName: hostProfile.full_name ?? host.display_name,
+          reviewerName,
+          rating,
+          comment: comment.trim() || undefined,
+          role: 'host',
+        },
+      }),
+    }).catch(() => {});
+  }
 }
 
 export default function Review() {
@@ -117,6 +221,9 @@ export default function Review() {
           else setError('Could not submit review. Please try again.');
           return;
         }
+
+        // Notify host of new review (fire-and-forget)
+        notifyHostOfReview({ hostId, bookingId, reviewerName, rating, comment, user }).catch(() => {});
 
         setSuccess(true);
         setTimeout(() => router.replace('/(traveller)/bookings'), 2000);

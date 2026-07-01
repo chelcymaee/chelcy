@@ -7,6 +7,90 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const ADMIN_SECRET = Deno.env.get('ADMIN_SECRET') ?? 'cubby-admin-secret-2025';
+
+async function sendReviewPrompts(supabase: any, bookingId: string, booking: any): Promise<void> {
+  // Fetch host + traveller details
+  const [{ data: host }, { data: traveller }] = await Promise.all([
+    supabase.from('hosts').select('display_name, assigned_user_id').eq('id', booking.host_id).single(),
+    supabase.from('profiles').select('full_name, email').eq('id', booking.traveller_id).single(),
+  ]);
+
+  const hostUserId = host?.assigned_user_id;
+  const hostProfile = hostUserId
+    ? (await supabase.from('profiles').select('full_name, email').eq('id', hostUserId).single()).data
+    : null;
+
+  const hostName = host?.display_name ?? 'your host';
+  const travellerName = traveller?.full_name ?? 'your traveller';
+
+  // In-app notifications
+  const notifications = [];
+  if (booking.traveller_id) {
+    notifications.push(
+      supabase.from('notifications').insert({
+        user_id: booking.traveller_id,
+        type: 'review_request',
+        title: `How was ${hostName}?`,
+        body: 'Take 30 seconds to rate your storage experience.',
+        data: { bookingId, hostId: booking.host_id, hostName },
+        related_booking_id: bookingId,
+      })
+    );
+  }
+  if (hostUserId) {
+    notifications.push(
+      supabase.from('notifications').insert({
+        user_id: hostUserId,
+        type: 'review_request',
+        title: `How was ${travellerName}?`,
+        body: 'Let other hosts know about this traveller.',
+        data: { bookingId, travellerId: booking.traveller_id, travellerName },
+        related_booking_id: bookingId,
+      })
+    );
+  }
+  await Promise.all(notifications);
+
+  // Emails (fire-and-forget, never throws)
+  const emailBase = `${SUPABASE_URL}/functions/v1/send-email`;
+  const emailHeaders = { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET };
+
+  const emails = [];
+  if (traveller?.email) {
+    emails.push(fetch(emailBase, {
+      method: 'POST',
+      headers: emailHeaders,
+      body: JSON.stringify({
+        emailType: 'review_prompt',
+        data: {
+          recipientEmail: traveller.email,
+          recipientName: travellerName,
+          otherPartyName: hostName,
+          role: 'traveller',
+        },
+      }),
+    }).catch(() => {}));
+  }
+  if (hostProfile?.email) {
+    emails.push(fetch(emailBase, {
+      method: 'POST',
+      headers: emailHeaders,
+      body: JSON.stringify({
+        emailType: 'review_prompt',
+        data: {
+          recipientEmail: hostProfile.email,
+          recipientName: hostProfile.full_name ?? hostName,
+          otherPartyName: travellerName,
+          role: 'host',
+        },
+      }),
+    }).catch(() => {}));
+  }
+  await Promise.all(emails);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -30,7 +114,7 @@ serve(async (req) => {
     // Look up booking
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('id, total_price, host_id, status')
+      .select('id, total_price, host_id, traveller_id, status')
       .eq('id', bookingId)
       .single();
 
@@ -118,6 +202,7 @@ serve(async (req) => {
       .from('bookings')
       .update({
         status: 'completed',
+        completed_at: new Date().toISOString(),
         host_payout_amount: hostAmount,
         cubby_amount: cubbyAmount,
         payout_status: 'processing',
@@ -129,6 +214,11 @@ serve(async (req) => {
       console.error('Supabase update error:', updateError);
       // Non-fatal — payout was initiated, log and continue
     }
+
+    // Send review prompt notifications to both parties (fire-and-forget)
+    sendReviewPrompts(supabase, bookingId, booking).catch(e =>
+      console.error('[complete-booking] review prompt error:', e)
+    );
 
     return new Response(
       JSON.stringify({

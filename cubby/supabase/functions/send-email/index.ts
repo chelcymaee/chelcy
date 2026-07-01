@@ -311,6 +311,65 @@ function tmpl_verification_decision(d: {
   return { subject, html, text };
 }
 
+function tmpl_review_prompt(d: {
+  recipientName: string; otherPartyName: string; role: 'traveller' | 'host';
+  appUrl?: string;
+}): { subject: string; html: string; text: string } {
+  const subject = d.role === 'traveller'
+    ? `How was your stay with ${d.otherPartyName}?`
+    : `How was ${d.otherPartyName} as a traveller?`;
+  const cta = d.role === 'traveller' ? 'Leave a review' : 'Review your traveller';
+  const appUrl = d.appUrl ?? 'https://mycubby.co.za';
+  const html = wrap(`
+    <h1 style="margin:0 0 8px;font-size:24px;font-weight:800;color:#1A1A1A;">Share your experience ⭐</h1>
+    <p style="margin:0 0 24px;font-size:16px;color:#6B7280;">Hi ${d.recipientName}, your booking with ${d.otherPartyName} is complete. Let the community know how it went!</p>
+    <div style="background:#FFF0F0;border-radius:12px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0;font-size:14px;color:#1A1A1A;line-height:1.6;">Reviews help build trust in the Cubby community and help ${d.role === 'traveller' ? 'other travellers find great hosts' : 'hosts know who to welcome'}. It only takes 30 seconds.</p>
+    </div>
+    ${btn(cta, appUrl)}
+    <p style="font-size:12px;color:#9CA3AF;margin:16px 0 0;">The review window closes after 7 days.</p>
+  `);
+  const text = `Share your experience\n\nHi ${d.recipientName},\n\nYour booking with ${d.otherPartyName} is complete. Please take a moment to leave a review.\n\nOpen the Cubby app to ${cta.toLowerCase()}.\n\n— Cubby`;
+  return { subject, html, text };
+}
+
+function tmpl_review_received(d: {
+  recipientName: string; reviewerName: string; rating: number; comment?: string;
+  role: 'traveller' | 'host';
+}): { subject: string; html: string; text: string } {
+  const subject = `${d.reviewerName} left you a review`;
+  const stars = '★'.repeat(d.rating) + '☆'.repeat(5 - d.rating);
+  const html = wrap(`
+    <h1 style="margin:0 0 8px;font-size:24px;font-weight:800;color:#1A1A1A;">New review received 🙌</h1>
+    <p style="margin:0 0 24px;font-size:16px;color:#6B7280;">Hi ${d.recipientName}, ${d.reviewerName} left you a review.</p>
+    <div style="background:#F9FAFB;border-radius:12px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;font-size:24px;color:#F59E0B;">${stars}</p>
+      ${d.comment ? `<p style="margin:0;font-size:15px;color:#1A1A1A;line-height:1.6;font-style:italic;">"${d.comment}"</p>` : ''}
+    </div>
+    <p style="font-size:13px;color:#6B7280;">Open the Cubby app to see your full rating profile.</p>
+  `);
+  const text = `New review from ${d.reviewerName}\n\nHi ${d.recipientName},\n\n${stars} ${d.rating}/5\n\n${d.comment ? `"${d.comment}"\n\n` : ''}Open the Cubby app to view your profile.\n\n— Cubby`;
+  return { subject, html, text };
+}
+
+function tmpl_milestone_reached(d: {
+  hostName: string; milestone: string; detail: string;
+}): { subject: string; html: string; text: string } {
+  const subject = `🎉 Milestone reached — ${d.milestone}`;
+  const html = wrap(`
+    <h1 style="margin:0 0 8px;font-size:24px;font-weight:800;color:#1A1A1A;">You hit a milestone! 🎉</h1>
+    <p style="margin:0 0 24px;font-size:16px;color:#6B7280;">Hi ${d.hostName}, congratulations on your latest achievement.</p>
+    <div style="background:#DCFCE7;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
+      <p style="margin:0 0 4px;font-size:32px;">🏆</p>
+      <p style="margin:0 0 4px;font-size:20px;font-weight:800;color:#15803D;">${d.milestone}</p>
+      <p style="margin:0;font-size:14px;color:#166534;">${d.detail}</p>
+    </div>
+    <p style="font-size:13px;color:#6B7280;">Keep it up — travellers love great hosts. Open the Cubby app to see your full stats.</p>
+  `);
+  const text = `Milestone reached!\n\nHi ${d.hostName},\n\n🏆 ${d.milestone}\n${d.detail}\n\nOpen the Cubby app to see your stats.\n\n— Cubby`;
+  return { subject, html, text };
+}
+
 // ─── DB Webhook Handlers ──────────────────────────────────────────────────────
 
 async function handleDbWebhook(payload: any): Promise<void> {
@@ -454,6 +513,18 @@ async function handleDirect(body: any): Promise<Response> {
     case 'verification_decision':
       tmpl = tmpl_verification_decision(data);
       to = data.travellerEmail;
+      break;
+    case 'review_prompt':
+      tmpl = tmpl_review_prompt(data);
+      to = data.recipientEmail;
+      break;
+    case 'review_received':
+      tmpl = tmpl_review_received(data);
+      to = data.recipientEmail;
+      break;
+    case 'milestone_reached':
+      tmpl = tmpl_milestone_reached(data);
+      to = data.hostEmail;
       break;
     default:
       return new Response(JSON.stringify({ error: `Unknown emailType: ${emailType}` }), { status: 400 });
