@@ -7,6 +7,7 @@ import { Colors } from '../../src/constants/colors';
 import NotificationBell from '../../src/components/NotificationBell';
 
 const STATUS_COLOR: Record<string, string> = {
+  pending_payment: '#9CA3AF',
   pending: '#F59E0B',
   confirmed: '#3B82F6',
   active: '#10B981',
@@ -15,6 +16,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
+  pending_payment: '⏳ Awaiting payment',
   pending: 'Pending',
   confirmed: 'Confirmed',
   active: 'Active',

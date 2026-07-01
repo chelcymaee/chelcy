@@ -1,6 +1,6 @@
 # CUBBY — PROJECT MASTER PLAN
 > Single source of truth for all development, product decisions, and launch planning.
-> Last updated: 2026-06-29
+> Last updated: 2026-07-01
 
 ---
 
@@ -127,13 +127,25 @@ If it does not, question whether it should exist.
 - [x] Mock data for demo mode (`mock-data.ts`)
 - [x] Supabase Storage: `avatars` bucket, `host-photos` bucket
 
-### Payments
-- [x] Full Peach Payments integration (hosted checkout)
-- [x] Payment webhook handling with HMAC signature verification
-- [x] Booking status update on payment success/failure
-- [x] Host payout via Peach Payments payout API
-- [x] 70/30 split calculation (host/Cubby)
-- [x] `payout_status`, `payout_id`, `host_payout_amount`, `cubby_amount` on bookings
+### Payments (PayFast — Phase 5)
+- [x] Provider-agnostic booking columns: `payment_provider`, `payment_reference`, `paid_at`, `failure_reason`
+- [x] `pending_payment` booking status — booking exists but payment not yet received
+- [x] `payfast-create` edge function — validates booking, marks provider, returns checkout URL
+- [x] `payfast-page` edge function — GET endpoint, generates signed PayFast form, auto-submits (no secrets exposed to client)
+- [x] `payfast-itn` edge function — ITN webhook handler with: signature validation, amount validation, merchant ID check, production IP validation, server-side validation, idempotent DB update
+- [x] `payfast-return` edge function — return URL handler, checks DB status, deep-links back to app
+- [x] `payfast-cancel` edge function — cancel URL handler, marks booking cancelled, deep-links back
+- [x] 70/30 split calculation (host/Cubby) recorded on completion
+- [x] `payout_status: 'pending_manual'` — host payout tracked for manual EFT from Cubby's PayFast settlement
+- [x] PayFast sandbox supported (PAYFAST_SANDBOX=true is the default for safety)
+- [x] Graceful fallback when PayFast env vars not configured
+- [x] `payment-details.tsx` updated: Peach → PayFast branding
+- [ ] PayFast sandbox end-to-end test (see testing steps below)
+- [ ] PayFast production credentials configured in Supabase Secrets
+
+### Payments (Peach — deprecated)
+- [~] `create-payment`, `payment-page`, `payment-result`, `payment-webhook` — kept for reference, no longer called by the app
+- [~] `complete-booking` — Peach payout API removed; booking now marked `payout_status: 'pending_manual'`
 
 ---
 
@@ -289,7 +301,7 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 ### Critical (fix before beta)
 
 **Duplicate bank details tables**
-`bank_details` (keyed by `user_id`) and `host_bank_details` (keyed by `host_id`) both exist. The `complete-booking` edge function uses `bank_details` (old pattern). The admin payouts screen uses `host_bank_details` (new pattern). A host who sets up bank details via the admin panel will have their payout fail silently because `complete-booking` looks in the wrong table. This is an active payout bug.
+`bank_details` (keyed by `user_id`) and `host_bank_details` (keyed by `host_id`) both exist. The admin payouts screen uses `host_bank_details`. The `complete-booking` payout API call has been removed (Peach → PayFast migration). Host payouts are now manual EFTs from Cubby's PayFast settlement; bank details are read-only in the admin payout dashboard. This partially resolves the original bug but the duplicate table structure remains technical debt.
 
 **Admin PIN defaults to '1234'**
 `EXPO_PUBLIC_ADMIN_PIN` falls back to `'1234'` in code. Any deployment that doesn't set this env var exposes the admin panel with a trivially guessable PIN. Must throw at startup instead of defaulting.
@@ -360,7 +372,7 @@ Host photos are uploaded and served at original size. No compression, no respons
 - [ ] Confirm `notification_preferences` RLS policy exists
 - [ ] Run SQL: add `related_booking_id`, `related_message_id` columns to `notifications`
 - [ ] Set `ADMIN_SECRET` env var on all edge functions (Supabase → Functions → Secrets)
-- [ ] Set `PEACH_PAYMENTS_TOKEN`, `PEACH_PAYMENTS_ENTITY_ID`, `PEACH_WEBHOOK_SECRET` on edge functions
+- [ ] Set PayFast secrets on edge functions: `PAYFAST_MERCHANT_ID`, `PAYFAST_MERCHANT_KEY`, `PAYFAST_PASSPHRASE` (optional), `PAYFAST_SANDBOX` (set to `false` for production)
 - [ ] Confirm `host-photos` and `avatars` storage buckets exist with correct public policies
 - [ ] Create private `verifications` storage bucket (Storage → New bucket → name: verifications, public: OFF)
 - [ ] Add storage policies to `verifications` bucket (INSERT/SELECT/UPDATE: `auth.uid() = (storage.foldername(name))[1]::uuid`)
@@ -391,6 +403,87 @@ Host photos are uploaded and served at original size. No compression, no respons
 - [ ] Privacy Policy document written and hosted
 - [ ] ToS acceptance screen built into signup flow
 - [ ] R2,000 coverage: either build a claims process or remove the claim from all screens
+
+---
+
+## PAYFAST SETUP
+
+### Required Supabase Secrets (edge function environment variables)
+
+| Secret | Value | Notes |
+|--------|-------|-------|
+| `PAYFAST_MERCHANT_ID` | Your PayFast merchant ID | Sandbox: `10000100` |
+| `PAYFAST_MERCHANT_KEY` | Your PayFast merchant key | Sandbox: `46f0cd694581a` |
+| `PAYFAST_PASSPHRASE` | Your PayFast security passphrase | Optional but recommended |
+| `PAYFAST_SANDBOX` | `true` or `false` | Defaults to `true` — set `false` for production |
+
+Set via Supabase Dashboard → Edge Functions → Secrets, or:
+```bash
+supabase secrets set PAYFAST_MERCHANT_ID=10000100
+supabase secrets set PAYFAST_MERCHANT_KEY=46f0cd694581a
+supabase secrets set PAYFAST_PASSPHRASE=your_passphrase
+supabase secrets set PAYFAST_SANDBOX=true
+```
+
+### Required SQL
+
+Run once in Supabase SQL Editor:
+```sql
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS payment_provider TEXT DEFAULT 'payfast',
+  ADD COLUMN IF NOT EXISTS payment_reference TEXT,
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS failure_reason TEXT;
+```
+
+### Deploy Commands
+
+```bash
+cd cubby
+supabase functions deploy payfast-create
+supabase functions deploy payfast-page
+supabase functions deploy payfast-itn
+supabase functions deploy payfast-return
+supabase functions deploy payfast-cancel
+supabase functions deploy complete-booking
+```
+
+### PayFast Dashboard Setup
+
+1. Log in at https://sandbox.payfast.co.za (sandbox) or https://my.payfast.co.za (production)
+2. Go to Settings → Integration Settings
+3. Set **Notify URL** (ITN): `https://gqgxahqmndkaeyuvhliv.supabase.co/functions/v1/payfast-itn`
+4. Set **Return URL**: `https://gqgxahqmndkaeyuvhliv.supabase.co/functions/v1/payfast-return` (optional — overridden per-payment)
+5. Set **Cancel URL**: `https://gqgxahqmndkaeyuvhliv.supabase.co/functions/v1/payfast-cancel` (optional — overridden per-payment)
+6. Set a **Passphrase** (use same value as `PAYFAST_PASSPHRASE` secret)
+
+### Sandbox Testing Steps
+
+1. Set Supabase secrets with sandbox credentials (see above)
+2. Deploy all 5 PayFast edge functions
+3. Run the SQL migration
+4. Start the app: `npx expo start --web`
+5. Sign in as a traveller, find a host, tap a listing
+6. Proceed to booking → tap "Pay R{amount} & confirm"
+7. You should be redirected to `sandbox.payfast.co.za`
+8. Use PayFast sandbox test cards:
+   - Visa: `4000000000000002` (any expiry, any CVV)
+   - No OTP required in sandbox
+9. After payment:
+   - PayFast sends ITN to `payfast-itn` (may take a few seconds)
+   - You're redirected to `payfast-return` → deep-linked back to app
+   - Booking status should be `confirmed` in Supabase
+10. Verify in Supabase Dashboard → Table Editor → bookings:
+    - `status = 'confirmed'`
+    - `payment_provider = 'payfast'`
+    - `payment_reference` = PayFast pf_payment_id
+    - `paid_at` is set
+11. Test cancellation: tap Cancel on PayFast checkout → booking should be `cancelled` in DB
+
+### Payment will NOT be marked complete until
+
+- [ ] PayFast sandbox end-to-end test passes (step 9-11 above)
+- [ ] ITN is confirmed received and processed (check Supabase edge function logs)
 
 ---
 

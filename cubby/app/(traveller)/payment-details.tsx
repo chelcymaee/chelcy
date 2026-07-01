@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 
 // Card details are never stored in the app — all payments go through the
-// Peach Payments hosted checkout page which handles card capture securely.
+// PayFast hosted checkout page which handles card capture securely.
 export default function PaymentDetails() {
   return (
     <SafeAreaView style={s.container}>
@@ -12,10 +12,10 @@ export default function PaymentDetails() {
         <Text style={s.heading}>Payment methods</Text>
         <Text style={s.body}>
           Payment methods are securely handled by{'\n'}
-          <Text style={s.bold}>Peach Payments</Text>.
+          <Text style={s.bold}>PayFast</Text>.
         </Text>
         <Text style={s.body}>
-          Your card details are entered directly on Peach's PCI-DSS certified checkout page and are never stored by Cubby.
+          Your card details are entered directly on PayFast's PCI-DSS certified checkout page and are never stored by Cubby.
         </Text>
         <View style={s.badge}>
           <Text style={s.badgeText}>🛡️ PCI-DSS compliant · 256-bit SSL</Text>

@@ -133,7 +133,8 @@ export default function Booking() {
             pick_up_time: pickTime,
             bag_count: bags,
             total_price: grandTotal,
-            status: 'pending',
+            status: 'pending_payment',
+            payment_provider: 'payfast',
             pin_code: pin,
           })
           .select('id')
@@ -144,10 +145,10 @@ export default function Booking() {
           return;
         }
 
-        const { data, error } = await supabase.functions.invoke('create-payment', {
+        const { data, error } = await supabase.functions.invoke('payfast-create', {
           body: {
             bookingId: booking.id,
-            amount: grandTotal * 100,
+            amount: grandTotal,
             bagCount: bags,
             hostName: host.display_name,
             travellerId: user?.id,
@@ -156,7 +157,13 @@ export default function Booking() {
         });
 
         if (error || !data?.redirectUrl) {
-          setErrorMsg('Could not start payment. Please try again.');
+          // Clean up the pending booking so it doesn't clutter the user's list
+          await supabase.from('bookings').delete().eq('id', booking.id);
+          if (data?.code === 'PAYFAST_NOT_CONFIGURED') {
+            setErrorMsg('Payments are not available yet. Please contact support.');
+          } else {
+            setErrorMsg('Could not start payment. Please try again.');
+          }
           return;
         }
 
@@ -190,6 +197,8 @@ export default function Booking() {
             });
           } else if (status === 'pending') {
             setErrorMsg('Payment is processing. Check your bookings tab in a few minutes.');
+          } else if (status === 'cancelled') {
+            setErrorMsg('Payment was cancelled. Your booking has been removed.');
           } else {
             setErrorMsg('Payment was not completed. Please try again.');
           }

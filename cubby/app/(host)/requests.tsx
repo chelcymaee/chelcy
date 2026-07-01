@@ -11,13 +11,14 @@ import { recalculateHostResponseRate, minutesBetween } from '../../src/lib/respo
 import { sendNotification } from '../../src/lib/notification-service';
 
 // Booking statuses used across Cubby:
-//   pending   — created by traveller, awaiting host acknowledgement
-//   confirmed — host accepted; bags may be dropped off
-//   active    — bags physically dropped off (future use)
-//   completed — bags collected, payout triggered
-//   cancelled — host declined or traveller cancelled
+//   pending_payment — created, awaiting traveller payment via PayFast
+//   pending         — legacy status (pre-PayFast) / fallback
+//   confirmed       — payment received; bags may be dropped off
+//   active          — bags physically dropped off (future use)
+//   completed       — bags collected, split recorded for manual payout
+//   cancelled       — payment failed, user cancelled, or host declined
 
-type BookingStatus = 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled';
+type BookingStatus = 'pending_payment' | 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled';
 
 interface HostBooking {
   id: string;
@@ -36,6 +37,7 @@ interface HostBooking {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  pending_payment: { label: '💳 Awaiting payment', color: '#6B7280', bg: '#F3F4F6' },
   pending:   { label: '⏳ Pending',   color: '#D97706', bg: '#FEF3C7' },
   confirmed: { label: '✓ Confirmed', color: '#059669', bg: '#D1FAE5' },
   active:    { label: '📦 Active',    color: '#2563EB', bg: '#DBEAFE' },
@@ -115,7 +117,7 @@ export default function Requests() {
               created_at
             `)
             .eq('host_id', hostRow.id)
-            .in('status', ['pending', 'confirmed', 'active', 'completed'])
+            .in('status', ['pending_payment', 'pending', 'confirmed', 'active', 'completed'])
             .order('created_at', { ascending: false });
 
           if (error) { showToast('Could not load bookings.', true); return; }
