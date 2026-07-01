@@ -108,7 +108,7 @@ export default function HostDetail() {
       if (isSupabaseConfigured) {
         const { data } = await supabase
           .from('reviews')
-          .select('id, reviewer_name, rating, comment, tags, created_at')
+          .select('id, reviewer_name, rating, comment, tags, created_at, rating_friendliness, rating_location, rating_drop_off, rating_security')
           .eq('host_id', id)
           .order('created_at', { ascending: false });
         if (data && data.length > 0) { setSavedReviews(data); return; }
@@ -399,9 +399,53 @@ export default function HostDetail() {
             </TouchableOpacity>
           </View>
 
+          {/* Rating distribution */}
+          {reviews.length >= 3 && (() => {
+            const dist = [5, 4, 3, 2, 1].map(star => ({
+              star,
+              count: reviews.filter((r: any) => r.rating === star).length,
+            }));
+            const catAvgs = [
+              { emoji: '😊', label: 'Friendliness', key: 'rating_friendliness' },
+              { emoji: '📍', label: 'Location', key: 'rating_location' },
+              { emoji: '🧳', label: 'Drop-off', key: 'rating_drop_off' },
+              { emoji: '🔒', label: 'Security', key: 'rating_security' },
+            ].map(c => {
+              const vals = reviews.map((r: any) => r[c.key]).filter(Boolean);
+              return { ...c, avg: vals.length ? (vals.reduce((a: number, b: number) => a + b, 0) / vals.length) : null };
+            }).filter(c => c.avg !== null);
+
+            return (
+              <View style={styles.ratingDistBox}>
+                <View style={styles.ratingDistBars}>
+                  {dist.map(({ star, count }) => (
+                    <View key={star} style={styles.distRow}>
+                      <Text style={styles.distStar}>{star}★</Text>
+                      <View style={styles.distBarBg}>
+                        <View style={[styles.distBarFill, { flex: count / reviews.length }]} />
+                      </View>
+                      <Text style={styles.distCount}>{count}</Text>
+                    </View>
+                  ))}
+                </View>
+                {catAvgs.length > 0 && (
+                  <View style={styles.catAvgsRow}>
+                    {catAvgs.map(c => (
+                      <View key={c.key} style={styles.catAvgChip}>
+                        <Text style={styles.catAvgEmoji}>{c.emoji}</Text>
+                        <Text style={styles.catAvgVal}>{(c.avg as number).toFixed(1)}</Text>
+                        <Text style={styles.catAvgLabel}>{c.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          })()}
+
           {reviews.length > 0 && (
             <View style={styles.reviewsList}>
-              {reviews.map(r => (
+              {reviews.map((r: any) => (
                 <View key={r.id} style={styles.review}>
                   <View style={styles.reviewHeaderRow}>
                     <View style={styles.reviewAvatar}>
@@ -417,7 +461,16 @@ export default function HostDetail() {
                     </View>
                     <Text style={styles.reviewDate}>{r.created_at.slice(0, 7)}</Text>
                   </View>
-                  <Text style={styles.reviewComment}>{r.comment}</Text>
+                  {!!r.comment && <Text style={styles.reviewComment}>{r.comment}</Text>}
+                  {r.tags?.length > 0 && (
+                    <View style={styles.reviewTagsRow}>
+                      {r.tags.map((tag: string) => (
+                        <View key={tag} style={styles.reviewTag}>
+                          <Text style={styles.reviewTagText}>{tag}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
               ))}
             </View>
@@ -593,7 +646,22 @@ const styles = StyleSheet.create({
   reviewsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   writeReviewBtn: { backgroundColor: '#FF5C5C', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
   writeReviewBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  ratingDistBox: { backgroundColor: Colors.white, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, padding: 16, marginBottom: 12 },
+  ratingDistBars: { gap: 6 },
+  distRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  distStar: { fontSize: 12, color: Colors.textSecondary, width: 22, textAlign: 'right' },
+  distBarBg: { flex: 1, height: 6, backgroundColor: Colors.border, borderRadius: 3, flexDirection: 'row' },
+  distBarFill: { backgroundColor: Colors.star, borderRadius: 3 },
+  distCount: { fontSize: 12, color: Colors.textSecondary, width: 16, textAlign: 'right' },
+  catAvgsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
+  catAvgChip: { backgroundColor: '#FAFAFA', borderRadius: 10, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  catAvgEmoji: { fontSize: 14 },
+  catAvgVal: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  catAvgLabel: { fontSize: 10, color: Colors.textSecondary },
   reviewsList: { gap: 12 },
+  reviewTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  reviewTag: { backgroundColor: '#FFF0F0', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  reviewTagText: { fontSize: 11, fontWeight: '600', color: Colors.primary },
   review: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,

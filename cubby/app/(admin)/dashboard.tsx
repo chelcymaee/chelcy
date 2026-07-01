@@ -488,6 +488,18 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* ---- Reviews ---- */}
+      <p style={s.sectionLabel}>Reviews</p>
+      <div style={s.sectionCard}>
+        <div style={s.sectionRowLast} onClick={() => router.push('/(admin)/reviews' as any)}>
+          <div style={s.sectionRowLeft}>
+            <span style={s.sectionRowIcon}>⭐</span>
+            <span style={s.sectionRowLabel}>Review Moderation</span>
+          </div>
+          <span style={s.attentionArrow}>›</span>
+        </div>
+      </div>
+
       {/* ---- Support ---- */}
       <p style={s.sectionLabel}>Support</p>
       <div style={s.sectionCard}>

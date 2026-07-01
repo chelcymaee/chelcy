@@ -24,6 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function Bookings() {
   const [bookings, setBookings] = useState<any[]>([]);
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
@@ -42,7 +43,17 @@ export default function Bookings() {
             .select('*, hosts(display_name, location_name)')
             .eq('traveller_id', user.id)
             .order('created_at', { ascending: false });
-          if (data) { setBookings(data); return; }
+          if (data) {
+            setBookings(data);
+            // Check which completed bookings have already been reviewed
+            const completedIds = data.filter((b: any) => b.status === 'completed').map((b: any) => b.id);
+            if (completedIds.length > 0) {
+              const { data: reviewed } = await supabase
+                .from('reviews').select('booking_id').in('booking_id', completedIds);
+              setReviewedBookingIds(new Set((reviewed ?? []).map((r: any) => r.booking_id)));
+            }
+            return;
+          }
         }
       }
       const raw = await AsyncStorage.getItem('cubby_bookings');
@@ -209,14 +220,18 @@ export default function Bookings() {
                 )}
 
                 {status === 'completed' && (
-                  <TouchableOpacity
-                    style={styles.reviewBtn}
-                    onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName, bookingId: booking.id } })}
-                    // @ts-ignore
-                    onClick={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName, bookingId: booking.id } })}
-                  >
-                    <Text style={styles.reviewBtnText}>✏️ Leave a review</Text>
-                  </TouchableOpacity>
+                  reviewedBookingIds.has(booking.id)
+                    ? <View style={styles.reviewedBadge}><Text style={styles.reviewedBadgeText}>✓ Reviewed</Text></View>
+                    : (
+                      <TouchableOpacity
+                        style={styles.reviewBtn}
+                        onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName, bookingId: booking.id } })}
+                        // @ts-ignore
+                        onClick={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName, bookingId: booking.id } })}
+                      >
+                        <Text style={styles.reviewBtnText}>✏️ Leave a review</Text>
+                      </TouchableOpacity>
+                    )
                 )}
 
                 {['pending', 'confirmed'].includes(status) && (
@@ -311,6 +326,8 @@ const styles = StyleSheet.create({
   messageBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
   reviewBtn: { borderWidth: 1.5, borderColor: '#FF5C5C', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
   reviewBtnText: { fontSize: 14, fontWeight: '700', color: '#FF5C5C' },
+  reviewedBadge: { backgroundColor: '#F0FDF4', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  reviewedBadgeText: { fontSize: 14, fontWeight: '700', color: '#16A34A' },
   cancelBtn: { borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
   cancelBtnText: { fontSize: 14, fontWeight: '700', color: '#DC2626' },
 });

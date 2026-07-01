@@ -64,6 +64,7 @@ const DEMO_REQUESTS: HostBooking[] = [
 
 export default function Requests() {
   const [bookings, setBookings] = useState<HostBooking[]>([]);
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [confirmDeclineId, setConfirmDeclineId] = useState<string | null>(null);
@@ -114,7 +115,7 @@ export default function Requests() {
               created_at
             `)
             .eq('host_id', hostRow.id)
-            .in('status', ['pending', 'confirmed', 'active'])
+            .in('status', ['pending', 'confirmed', 'active', 'completed'])
             .order('created_at', { ascending: false });
 
           if (error) { showToast('Could not load bookings.', true); return; }
@@ -148,6 +149,14 @@ export default function Requests() {
             host_id: b.host_id,
           };});
           setBookings(mapped);
+
+          // Track which completed bookings the host has already reviewed
+          const completedIds = mapped.filter(b => b.status === 'completed').map(b => b.id);
+          if (completedIds.length > 0) {
+            const { data: reviewed } = await supabase
+              .from('traveller_reviews').select('booking_id').in('booking_id', completedIds);
+            setReviewedBookingIds(new Set((reviewed ?? []).map((r: any) => r.booking_id)));
+          }
           return;
         }
       }
@@ -295,6 +304,22 @@ export default function Requests() {
                   <Text style={styles.viewProfileBtnText}>👤 View Traveller Profile</Text>
                 </TouchableOpacity>
 
+                {/* Review traveller for completed bookings */}
+                {item.status === 'completed' && (
+                  reviewedBookingIds.has(item.id)
+                    ? <View style={styles.reviewedBadge}><Text style={styles.reviewedBadgeText}>✓ Traveller reviewed</Text></View>
+                    : (
+                      <TouchableOpacity
+                        style={styles.reviewTravellerBtn}
+                        onPress={() => router.push({ pathname: '/(host)/review-traveller', params: { travellerId: item.traveller_id, travellerName: item.traveller_name, bookingId: item.id } })}
+                        // @ts-ignore
+                        onClick={() => router.push({ pathname: '/(host)/review-traveller', params: { travellerId: item.traveller_id, travellerName: item.traveller_name, bookingId: item.id } })}
+                      >
+                        <Text style={styles.reviewTravellerBtnText}>✏️ Review traveller</Text>
+                      </TouchableOpacity>
+                    )
+                )}
+
                 {/* Accept / Decline for pending */}
                 {item.status === 'pending' && (
                   confirmDeclineId === item.id ? (
@@ -367,6 +392,10 @@ const styles = StyleSheet.create({
   badge: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText: { fontSize: 12, fontWeight: '700', color: '#1A1A1A' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  reviewTravellerBtn: { borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 8 },
+  reviewTravellerBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  reviewedBadge: { backgroundColor: '#F0FDF4', borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 8 },
+  reviewedBadgeText: { fontSize: 14, fontWeight: '700', color: '#16A34A' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8, textAlign: 'center' },
