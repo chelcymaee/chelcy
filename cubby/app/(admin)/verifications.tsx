@@ -82,12 +82,10 @@ export default function Verifications() {
       .eq('id', id);
     if (error) { setMsg('Error: ' + error.message); return; }
 
-    // Update profile is_verified flag
-    if (status === 'approved') {
-      await supabase.from('profiles').update({ is_verified: true }).eq('id', userId);
-    } else {
-      await supabase.from('profiles').update({ is_verified: false }).eq('id', userId);
-    }
+    // Update profile is_verified flag + sync all host listings for this user
+    const isApproved = status === 'approved';
+    await supabase.from('profiles').update({ is_verified: isApproved }).eq('id', userId);
+    await supabase.from('hosts').update({ owner_is_verified: isApproved }).eq('assigned_user_id', userId);
 
     // Notify the traveller
     await supabase.from('notifications').insert({

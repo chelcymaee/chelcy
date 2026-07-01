@@ -69,12 +69,13 @@ export default function CreateHost() {
           setErrorMsg('Not signed in to Supabase. Go to the traveller app and sign in first, then return here.');
           return;
         }
-        // Look up assigned user by email (optional)
+        // Look up assigned user by email — read their current verification status
         let assignedUserId: string | null = null;
+        let assignedUserIsVerified = false;
         if (partnerEmail.trim()) {
           const { data: assignedProfile } = await supabase
             .from('profiles')
-            .select('id')
+            .select('id, is_verified')
             .eq('email', partnerEmail.trim().toLowerCase())
             .single();
           if (!assignedProfile) {
@@ -82,7 +83,8 @@ export default function CreateHost() {
             return;
           }
           assignedUserId = assignedProfile.id;
-          log('Assigning to user: ' + assignedUserId);
+          assignedUserIsVerified = assignedProfile.is_verified ?? false;
+          log('Assigning to user: ' + assignedUserId + ' (verified: ' + assignedUserIsVerified + ')');
         }
 
         const payload = {
@@ -90,7 +92,7 @@ export default function CreateHost() {
           assigned_user_id: assignedUserId,
           display_name: displayName.trim(), bio: bio.trim(), location_name: locationName.trim(),
           latitude: latitude || null, longitude: longitude || null,
-          owner_is_verified: !!assignedUserId, // verified when assigned to an approved partner
+          owner_is_verified: assignedUserIsVerified,
           business_type: businessType, price_per_bag_per_day: parseInt(pricePerBag), max_bags: parseInt(maxBags),
           available_from: availableFrom.trim() || '08:00', available_until: availableUntil.trim() || '20:00',
           available_days: availableDays, is_active: active,
@@ -104,14 +106,11 @@ export default function CreateHost() {
         }
         log('Insert success! Row ID: ' + (inserted?.[0]?.id ?? 'unknown'));
 
-        // Approve the assigned user as a host
+        // Mark partner as an approved host
         if (assignedUserId) {
           await supabase.from('profiles')
             .update({ is_host_approved: true })
             .eq('id', assignedUserId);
-          await supabase.from('hosts')
-            .update({ owner_is_verified: true })
-            .eq('assigned_user_id', assignedUserId);
           log('Host approved for user: ' + assignedUserId);
         }
         setSuccessMsg('Host profile created!');
