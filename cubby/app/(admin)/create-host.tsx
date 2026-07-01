@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import LocationPicker, { LocationResult } from '../../src/components/LocationPicker.web';
 
 type BusinessType = 'café' | 'hotel' | 'hostel' | 'guesthouse' | 'airbnb' | 'tour_operator' | 'home' | 'other';
 
@@ -22,6 +23,8 @@ export default function CreateHost() {
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [locationName, setLocationName] = useState('');
+  const [latitude, setLatitude] = useState<number>(0);
+  const [longitude, setLongitude] = useState<number>(0);
   const [businessType, setBusinessType] = useState<BusinessType>('café');
   const [pricePerBag, setPricePerBag] = useState('');
   const [maxBags, setMaxBags] = useState('');
@@ -85,6 +88,7 @@ export default function CreateHost() {
           user_id: assignedUserId ?? user.id,
           assigned_user_id: assignedUserId,
           display_name: displayName.trim(), bio: bio.trim(), location_name: locationName.trim(),
+          latitude: latitude || null, longitude: longitude || null,
           business_type: businessType, price_per_bag_per_day: parseInt(pricePerBag), max_bags: parseInt(maxBags),
           available_from: availableFrom.trim() || '08:00', available_until: availableUntil.trim() || '20:00',
           available_days: availableDays, is_active: active,
@@ -183,8 +187,13 @@ export default function CreateHost() {
         <label style={s.fieldLabel}>Bio</label>
         <textarea style={s.textarea} value={bio} onChange={(e: any) => setBio(e.target.value)} placeholder="A short description of the hosting spot..." />
 
-        <label style={s.fieldLabel}>Location Name *</label>
-        <input style={s.input} value={locationName} onChange={e => setLocationName(e.target.value)} placeholder="e.g. Cape Town City Bowl" />
+        <LocationPicker
+          label="Location *"
+          value={locationName}
+          placeholder="Search address or area…"
+          onSelect={(r: LocationResult) => { setLocationName(r.address); setLatitude(r.latitude); setLongitude(r.longitude); }}
+          inputStyle={s.input}
+        />
 
         <label style={s.fieldLabel}>Business Type</label>
         <div style={s.typeGrid}>

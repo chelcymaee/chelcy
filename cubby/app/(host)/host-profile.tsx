@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import LocationPicker, { LocationResult } from '../../src/components/LocationPicker';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -30,6 +31,8 @@ export default function HostProfile() {
   const [displayName, setDisplayName] = useState('My Cubby Spot');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
+  const [latitude, setLatitude] = useState<number>(0);
+  const [longitude, setLongitude] = useState<number>(0);
   const [type, setType] = useState('home');
   const [pricePerBag, setPricePerBag] = useState('100');
   const [maxBags, setMaxBags] = useState('4');
@@ -69,6 +72,8 @@ export default function HostProfile() {
           setDisplayName(data.display_name ?? 'My Cubby Spot');
           setBio(data.bio ?? '');
           setLocation(data.location_name ?? '');
+          setLatitude(data.latitude ?? 0);
+          setLongitude(data.longitude ?? 0);
           setType(data.business_type ?? 'home');
           setPricePerBag(String(data.price_per_bag_per_day ?? 100));
           setMaxBags(String(data.max_bags ?? 4));
@@ -169,6 +174,8 @@ export default function HostProfile() {
               display_name: displayName.trim(),
               bio: bio.trim(),
               location_name: location.trim(),
+              latitude: latitude || null,
+              longitude: longitude || null,
               business_type: type,
               price_per_bag_per_day: price,
               max_bags: bags,
@@ -266,13 +273,11 @@ export default function HostProfile() {
           placeholderTextColor={Colors.textLight}
         />
 
-        <Text style={styles.sectionTitle}>Location</Text>
-        <TextInput
-          style={styles.input}
+        <LocationPicker
+          label="Location"
           value={location}
-          onChangeText={setLocation}
-          placeholder="e.g. Sea Point, Cape Town"
-          placeholderTextColor={Colors.textLight}
+          placeholder="Search address or area…"
+          onSelect={(r: LocationResult) => { setLocation(r.address); setLatitude(r.latitude); setLongitude(r.longitude); }}
         />
 
         <Text style={styles.sectionTitle}>About your space</Text>
