@@ -52,6 +52,7 @@ export default function CreateHost() {
 
     if (!displayName.trim()) { setErrorMsg('Display name is required.'); log('FAIL: no display name'); return; }
     if (!locationName.trim()) { setErrorMsg('Location name is required.'); log('FAIL: no location name'); return; }
+    if (!latitude || !longitude) { setErrorMsg('Please select a location from the autocomplete suggestions — do not type manually.'); log('FAIL: no coordinates'); return; }
     const price = parseFloat(pricePerBag);
     if (isNaN(price) || price < 1 || price > 1000) { setErrorMsg('Price must be between R1 and R1000. Got: ' + pricePerBag); log('FAIL: invalid price: ' + pricePerBag); return; }
     const bags = parseInt(maxBags);

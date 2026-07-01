@@ -154,6 +154,11 @@ export default function HostProfile() {
   }
 
   async function save() {
+    if (location.trim() && (!latitude || !longitude)) {
+      showToast('Please select a location from the suggestions — do not type manually.', true);
+      return;
+    }
+
     const price = parseInt(pricePerBag);
     if (isNaN(price) || price < 10 || price > 1000) {
       setPriceError('Price must be between R10 and R1,000 per bag per day.');

@@ -799,7 +799,10 @@ function normalizeHost(raw: any): Host {
     avg_response_time_minutes: raw.avg_response_time_minutes ?? null,
     total_requests: raw.total_requests ?? 0,
     responded_requests: raw.responded_requests ?? 0,
-    owner_is_verified: raw.owner_is_verified ?? false,
+    // profiles join via assigned_user_id FK — falls back gracefully if FK name differs
+    owner_is_verified: raw.owner_is_verified
+      ?? (Array.isArray(raw.profiles) ? raw.profiles[0]?.is_host_approved : (raw.profiles as any)?.is_host_approved)
+      ?? false,
     created_at: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
   };
 }
@@ -824,7 +827,7 @@ export default function Explore() {
     if (isSupabaseConfigured) {
       const { data } = await supabase
         .from('hosts')
-        .select('*')
+        .select('*, profiles!hosts_assigned_user_id_fkey(is_host_approved)')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
       if (data) setHosts(rankHosts(data.map(normalizeHost)));
@@ -843,7 +846,7 @@ export default function Explore() {
       if (isSupabaseConfigured) {
         const { data } = await supabase
           .from('hosts')
-          .select('*')
+          .select('*, profiles!hosts_assigned_user_id_fkey(is_host_approved)')
           .eq('is_active', true)
           .gte('max_bags', bags)
           .order('created_at', { ascending: false });
