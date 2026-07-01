@@ -58,6 +58,17 @@ Deno.serve(async (req) => {
       .eq('id', message.sender_id)
       .single();
     const senderName = sender?.full_name?.trim() || sender?.email?.split('@')[0] || 'Someone';
+    const notifBody = message.body.length > 100 ? message.body.substring(0, 97) + '…' : message.body;
+
+    // Insert in-app notification row for the recipient
+    supabase.from('notifications').insert({
+      user_id: recipientUserId,
+      type: 'new_message',
+      title: `New message from ${senderName}`,
+      body: notifBody,
+      related_message_id: message.id ?? null,
+      read_at: null,
+    }).catch((e: unknown) => console.warn('notification insert failed:', e));
 
     // Look up recipient push tokens
     const { data: tokens } = await supabase
@@ -74,7 +85,7 @@ Deno.serve(async (req) => {
     const expoPushMessages = tokens.map(({ token }) => ({
       to: token,
       title: `New message from ${senderName}`,
-      body: message.body.length > 100 ? message.body.substring(0, 97) + '…' : message.body,
+      body: notifBody,
       data: { conversation_id: message.conversation_id, type: 'new_message' },
       sound: 'default',
     }));

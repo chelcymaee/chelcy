@@ -8,6 +8,7 @@ import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
 import { recalculateHostResponseRate, minutesBetween } from '../../src/lib/response-rate';
+import { sendNotification } from '../../src/lib/notification-service';
 
 // Booking statuses used across Cubby:
 //   pending   — created by traveller, awaiting host acknowledgement
@@ -189,6 +190,19 @@ export default function Requests() {
 
       if (newStatus === 'confirmed') showToast('Booking accepted ✓');
       if (newStatus === 'cancelled') showToast('Booking declined');
+
+      // Notify the traveller of the host's decision
+      if (booking?.traveller_id && isSupabaseConfigured) {
+        sendNotification({
+          userId: booking.traveller_id,
+          type: newStatus === 'confirmed' ? 'booking_confirmed' : 'booking_declined',
+          title: newStatus === 'confirmed' ? 'Booking confirmed ✅' : 'Booking declined',
+          body: newStatus === 'confirmed'
+            ? 'Your booking has been accepted. Check your bookings for the PIN.'
+            : 'Your booking request was not accepted. Try another host nearby!',
+          relatedBookingId: bookingId,
+        }).catch(() => {});
+      }
     } finally {
       setActionId(null);
       setConfirmDeclineId(null);

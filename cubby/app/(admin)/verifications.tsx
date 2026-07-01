@@ -2,6 +2,9 @@ import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
+const SUPABASE_URL = 'https://gqgxahqmndkaeyuvhliv.supabase.co';
+const ADMIN_SECRET = 'cubby-admin-secret-2025';
+
 interface Verification {
   id: string;
   userId: string;
@@ -99,6 +102,20 @@ export default function Verifications() {
 
     setVerifications(prev => prev.map(v => v.id === id ? { ...v, status, reviewedAt: now } : v));
     setMsg(`Verification ${status} ✓`);
+
+    // Fire-and-forget push notification to the user
+    fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
+      body: JSON.stringify({
+        user_id: userId,
+        title: status === 'approved' ? 'You\'re verified! ✅' : 'Verification unsuccessful',
+        body: status === 'approved'
+          ? 'Your identity has been confirmed. Your profile now shows the verified badge.'
+          : 'We couldn\'t verify your identity. Please try again with clearer photos.',
+        data: { type: status === 'approved' ? 'verification_approved' : 'verification_rejected' },
+      }),
+    }).catch(() => {});
     setTimeout(() => setMsg(''), 3000);
   }
 

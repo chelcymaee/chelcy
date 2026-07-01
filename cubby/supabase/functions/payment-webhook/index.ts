@@ -89,6 +89,38 @@ serve(async (req) => {
 
       console.log(`Booking ${bookingId} confirmed`);
 
+      // Insert in-app notification for the traveller (fire-and-forget)
+      supabase.from('bookings')
+        .select('traveller_id')
+        .eq('id', bookingId)
+        .single()
+        .then(({ data: bk }) => {
+          if (bk?.traveller_id) {
+            supabase.from('notifications').insert({
+              user_id: bk.traveller_id,
+              type: 'booking_confirmed',
+              title: 'Payment confirmed ✅',
+              body: 'Your payment was successful. Check your bookings for the PIN.',
+              related_booking_id: bookingId,
+              read_at: null,
+            }).catch(() => {});
+
+            // Push notification
+            const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+            const adminSecret = Deno.env.get('ADMIN_SECRET') ?? 'cubby-admin-secret-2025';
+            fetch(`${supabaseUrl}/functions/v1/send-push`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-admin-secret': adminSecret },
+              body: JSON.stringify({
+                user_id: bk.traveller_id,
+                title: 'Payment confirmed ✅',
+                body: 'Your payment was successful. Check your bookings for the PIN.',
+                data: { type: 'booking_confirmed', booking_id: bookingId },
+              }),
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+
       // Send booking confirmation + new booking emails (fire-and-forget — never block)
       try {
         const { data: booking } = await supabase
