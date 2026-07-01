@@ -90,6 +90,7 @@ export default function CreateHost() {
           assigned_user_id: assignedUserId,
           display_name: displayName.trim(), bio: bio.trim(), location_name: locationName.trim(),
           latitude: latitude || null, longitude: longitude || null,
+          owner_is_verified: !!assignedUserId, // verified when assigned to an approved partner
           business_type: businessType, price_per_bag_per_day: parseInt(pricePerBag), max_bags: parseInt(maxBags),
           available_from: availableFrom.trim() || '08:00', available_until: availableUntil.trim() || '20:00',
           available_days: availableDays, is_active: active,
@@ -108,6 +109,9 @@ export default function CreateHost() {
           await supabase.from('profiles')
             .update({ is_host_approved: true })
             .eq('id', assignedUserId);
+          await supabase.from('hosts')
+            .update({ owner_is_verified: true })
+            .eq('assigned_user_id', assignedUserId);
           log('Host approved for user: ' + assignedUserId);
         }
         setSuccessMsg('Host profile created!');
