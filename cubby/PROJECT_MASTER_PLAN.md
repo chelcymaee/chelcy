@@ -190,11 +190,15 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 - No guided setup flow ("Add listing → Add bank details → Go live")
 - Host lands on empty dashboard with no next-step instructions
 
-### Maps
-- Native: `react-native-maps` integration partially working
-- Web: `HostMap.web.tsx` stub — no functional map on web
-- No Google Maps API key in `app.json`
-- No map on host detail page
+### Maps ✅ Phase 4 Item 1 Done
+- Native: upgraded `HostMap.tsx` — custom price-bubble pins, real user location dot, PROVIDER_GOOGLE on Android, distance + walk time in callout
+- Web: `HostMap.web.tsx` upgraded to Google Maps JavaScript API — real markers, InfoWindow with distance, user location blue dot
+- `src/lib/location.ts` — reusable haversine, formatDistance, walkMinutes, getUserLocation
+- Android Maps API key placeholder in `app.json` (user must replace with real key)
+- Map toggle now visible on web too
+- "CLOSEST" badge now based on real calculated distance
+- "X m away" / "X min walk" labels on host cards when location is available
+- No map on host detail page yet (future)
 
 ---
 

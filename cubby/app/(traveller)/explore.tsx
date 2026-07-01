@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ScrollView, Platform, Modal, ActivityIndicator,
@@ -14,6 +14,8 @@ import NotificationBell from '../../src/components/NotificationBell';
 import { computeHostBadges, topBadges } from '../../src/lib/trust-badges';
 import { formatResponseTimeShort } from '../../src/lib/response-rate';
 import { rankHosts, rankingLabel, rankingReason, RankingSignals } from '../../src/lib/host-ranking';
+import HostMapComponent from '../../src/components/HostMap';
+import { getUserLocation, haversineMeters, formatDistance, formatWalkLabel, LatLon } from '../../src/lib/location';
 
 const TIME_SLOTS = [
   '7am–8am','8am–9am','9am–10am','10am–11am','11am–12pm',
@@ -216,14 +218,21 @@ function LocationModal({
 type RankedHostCard = Host & { ranking_score: number; ranking_signals: RankingSignals };
 
 function ResultCard({
-  host, index, sortBy, onPress,
+  host, index, sortBy, onPress, userLocation, isClosest,
 }: {
   host: RankedHostCard; index: number; sortBy: SortOption; onPress: () => void;
+  userLocation?: LatLon | null; isClosest?: boolean;
 }) {
   const cardBadges = topBadges(computeHostBadges(host), 2);
   const responseTimeShort = formatResponseTimeShort(host.avg_response_time_minutes ?? null, host.responded_requests ?? 0);
   const rlabel = rankingLabel(host.ranking_signals, host);
   const reason = sortBy === 'recommended' ? rankingReason(host.ranking_signals, host) : null;
+
+  const distInfo = useMemo(() => {
+    if (!userLocation || !host.latitude || !host.longitude) return null;
+    const m = haversineMeters(userLocation, { lat: host.latitude, lon: host.longitude });
+    return { distance: formatDistance(m), walk: formatWalkLabel(m) };
+  }, [userLocation, host.latitude, host.longitude]);
 
   return (
     <TouchableOpacity
@@ -242,14 +251,21 @@ function ResultCard({
         <Text style={styles.resultLabel}>STORAGE IN</Text>
         <Text style={styles.resultName}>{host.display_name}</Text>
         <Text style={styles.resultLocation}>{host.location_name}</Text>
+        {distInfo && (
+          <Text style={styles.resultDistLabel}>📍 {distInfo.distance} away</Text>
+        )}
         <View style={styles.resultStatsRow}>
           <Text style={styles.resultStar}>★ {host.rating.toFixed(1)}</Text>
           <Text style={styles.resultStatSep}>·</Text>
           <Text style={styles.resultStatText}>{host.review_count} reviews</Text>
           <Text style={styles.resultStatSep}>·</Text>
           <Text style={styles.resultPrice}>R{host.price_per_bag_per_day}/bag/day</Text>
-          <Text style={styles.resultStatSep}>·</Text>
-          <Text style={styles.resultWalk}>🚶 {3 + index * 2} min</Text>
+          {distInfo && (
+            <>
+              <Text style={styles.resultStatSep}>·</Text>
+              <Text style={styles.resultWalk}>🚶 {distInfo.walk}</Text>
+            </>
+          )}
         </View>
         {responseTimeShort && (
           <Text style={styles.resultResponseTime}>⚡ {responseTimeShort}</Text>
@@ -259,7 +275,7 @@ function ResultCard({
         )}
         <View style={styles.resultBadgeRow}>
           <View style={styles.openBadge}><Text style={styles.openBadgeText}>OPEN</Text></View>
-          {index === 0 && <View style={styles.closestBadge}><Text style={styles.closestBadgeText}>CLOSEST</Text></View>}
+          {isClosest && <View style={styles.closestBadge}><Text style={styles.closestBadgeText}>CLOSEST</Text></View>}
           {rlabel && (
             <View style={[styles.trustChip, { backgroundColor: '#F0FDF4' }]}>
               <Text style={[styles.trustChipText, { color: '#15803D' }]}>{rlabel}</Text>
@@ -535,12 +551,13 @@ function ResultsScreen({
   const [showMap, setShowMap] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('recommended');
   const [filters, setFilters] = useState<ActiveFilters>(DEFAULT_FILTERS);
+  const [userLocation, setUserLocation] = useState<LatLon | null>(null);
 
   const insets = { bottom: 0 };
 
-  const HostMap = Platform.OS !== 'web'
-    ? require('../../src/components/HostMap').default
-    : null;
+  useEffect(() => {
+    getUserLocation().then(loc => { if (loc) setUserLocation(loc); }).catch(() => {});
+  }, []);
 
   const toggleMap = () => setShowMap(v => !v);
 
@@ -548,6 +565,18 @@ function ResultsScreen({
     () => applySortAndSecondaryFilters(hosts, sortBy, filters),
     [hosts, sortBy, filters],
   );
+
+  const closestId = useMemo(() => {
+    if (!userLocation) return null;
+    let minId = '', minDist = Infinity;
+    for (const h of displayed) {
+      if (h.latitude && h.longitude) {
+        const d = haversineMeters(userLocation, { lat: h.latitude, lon: h.longitude });
+        if (d < minDist) { minDist = d; minId = h.id; }
+      }
+    }
+    return minId || null;
+  }, [userLocation, displayed]);
 
   const hasActiveFilters = !filtersAreDefault(filters, sortBy);
 
@@ -679,11 +708,11 @@ function ResultsScreen({
 
       <Text style={styles.resultsCount}>{displayed.length} of {hosts.length} storage spots</Text>
 
-      {showMap && HostMap ? (
+      {showMap ? (
         <View style={{ flex: 1 }}>
-          <HostMap
+          <HostMapComponent
             filtered={displayed}
-            style={StyleSheet.absoluteFillObject}
+            userLocation={userLocation}
             onPinPress={(id: string) => {
               router.push({ pathname: '/(traveller)/host-detail', params: { id, selectedDate } });
             }}
@@ -712,6 +741,8 @@ function ResultsScreen({
                 host={item}
                 index={index}
                 sortBy={sortBy}
+                userLocation={userLocation}
+                isClosest={closestId === item.id}
                 onPress={() => router.push({ pathname: '/(traveller)/host-detail', params: { id: item.id, selectedDate } })}
               />
             ))
@@ -729,19 +760,17 @@ function ResultsScreen({
       )}
 
       {/* Map toggle bar */}
-      {Platform.OS !== 'web' && (
-        <TouchableOpacity
-          style={[styles.mapToggleBar, { paddingBottom: insets.bottom + 8 }]}
-          onPress={toggleMap}
-          // @ts-ignore
-          onClick={toggleMap}
-          activeOpacity={0.88}
-        >
-          <Text style={styles.mapToggleText}>
-            {showMap ? 'Show list 📋' : 'Tap to show on map 🗺️'}
-          </Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={[styles.mapToggleBar, { paddingBottom: insets.bottom + 8 }]}
+        onPress={toggleMap}
+        // @ts-ignore
+        onClick={toggleMap}
+        activeOpacity={0.88}
+      >
+        <Text style={styles.mapToggleText}>
+          {showMap ? 'Show list 📋' : 'Show on map 🗺️'}
+        </Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -1006,7 +1035,8 @@ const styles = StyleSheet.create({
   resultCardBody: { flex: 1 },
   resultLabel: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.8, marginBottom: 2 },
   resultName: { fontSize: 17, fontWeight: '800', color: '#1A1A1A', marginBottom: 2 },
-  resultLocation: { fontSize: 13, color: '#6B7280', marginBottom: 6 },
+  resultLocation: { fontSize: 13, color: '#6B7280', marginBottom: 2 },
+  resultDistLabel: { fontSize: 12, color: '#059669', fontWeight: '600', marginBottom: 5 },
   resultStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 3, marginBottom: 6 },
   resultStar: { fontSize: 12, fontWeight: '700', color: '#F59E0B' },
   resultStatSep: { fontSize: 12, color: '#D1D5DB' },
