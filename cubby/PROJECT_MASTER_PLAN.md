@@ -145,11 +145,14 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 - Missing screens: partner application review, support message viewer, verification review, activity feed, traveller management
 - See Phase 1 spec below.
 
-### Push Notifications (backend wiring incomplete)
-- `notify-new-message` Edge Function is built
-- DB webhook in Supabase **not yet connected** — the function exists but is never triggered
-- Booking event notifications (confirmed/declined/cancelled) not built
-- Phase 2 of notification system not started
+### Push Notifications ✅ Phase 3 Item 2 Done
+- `notify-new-message` Edge Function built + now inserts in-app notification row
+- `send-push` Edge Function built (generic, called from all flows)
+- `notification-service.ts` client lib: checks prefs → inserts in-app → fires push
+- Booking confirmed/declined notifications wired in host/requests.tsx
+- Payment confirmed notification wired in payment-webhook
+- Verification approve/reject push wired in admin/verifications.tsx
+- Reminder notifications (drop-off/pick-up) still TODO (requires scheduled job)
 
 ### Verification System
 - Full UI flow exists (intro → upload ID → selfie → success screen)
@@ -206,12 +209,12 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 - [ ] Dead-end screens: `safety.tsx`, `language.tsx`, `payment-success.tsx`, `payment-failed.tsx`
 
 ### Booking Events — Notifications
-- [ ] Notification when booking is confirmed (most important notification in the product)
-- [ ] Notification when booking is declined
-- [ ] Notification when booking is cancelled (by traveller or host)
-- [ ] Notification when payment succeeds / fails
-- [ ] Drop-off reminder (1 hour before)
-- [ ] Pick-up reminder (1 hour before)
+- [x] Notification when booking is confirmed (in-app + push via host/requests.tsx)
+- [x] Notification when booking is declined (in-app + push via host/requests.tsx)
+- [x] Notification when payment succeeds (in-app + push via payment-webhook)
+- [ ] Notification when booking is cancelled by traveller (not yet wired)
+- [ ] Drop-off reminder (1 hour before — requires scheduled Edge Function)
+- [ ] Pick-up reminder (1 hour before — requires scheduled Edge Function)
 
 ### Email Notifications (zero currently)
 - [ ] Booking confirmation email (traveller + host)
