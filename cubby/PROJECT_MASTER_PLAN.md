@@ -140,8 +140,17 @@ If it does not, question whether it should exist.
 - [x] PayFast sandbox supported (PAYFAST_SANDBOX=true is the default for safety)
 - [x] Graceful fallback when PayFast env vars not configured
 - [x] `payment-details.tsx` updated: Peach → PayFast branding
-- [ ] PayFast sandbox end-to-end test (see testing steps below)
-- [ ] PayFast production credentials configured in Supabase Secrets
+- [x] All 5 functions deployed to Supabase with `--no-verify-jwt` on public endpoints
+- [x] Sandbox credentials set in Supabase Secrets (`PAYFAST_MERCHANT_ID`, `PAYFAST_MERCHANT_KEY`, `PAYFAST_SANDBOX=true`)
+- [x] `payfast-page` confirmed generating correct signed form (manually verified)
+
+**Status: CODE LAYER COMPLETE — blocked on external setup**
+- [ ] ⏸ PayFast merchant account setup — **BLOCKED: account not yet created**
+- [ ] ⏸ Sandbox end-to-end payment test — **PENDING: requires merchant account**
+- [ ] ⏸ Live payment test — **PENDING: requires merchant account + production credentials**
+- [ ] ⏸ SQL migration (`payment_provider`, `payment_reference`, `paid_at`, `failure_reason` columns) — run when ready to test
+
+> Do not continue payment work until PayFast account setup is confirmed.
 
 ### Payments (Peach — deprecated)
 - [~] `create-payment`, `payment-page`, `payment-result`, `payment-webhook` — kept for reference, no longer called by the app
