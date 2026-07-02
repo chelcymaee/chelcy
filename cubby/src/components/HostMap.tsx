@@ -17,9 +17,10 @@ interface Props {
   filtered: any[];
   userLocation?: LatLon | null;
   onPinPress?: (id: string) => void;
+  selectedId?: string | null;
 }
 
-export default function HostMap({ filtered, userLocation, onPinPress }: Props) {
+export default function HostMap({ filtered, userLocation, onPinPress, selectedId }: Props) {
   const hosts = filtered.filter((h: any) => h.latitude && h.longitude);
 
   const center = userLocation
@@ -44,18 +45,20 @@ export default function HostMap({ filtered, userLocation, onPinPress }: Props) {
         const distM = userLocation
           ? haversineMeters(userLocation, { lat: host.latitude, lon: host.longitude })
           : null;
+        const isSelected = host.id === selectedId;
 
         return (
           <Marker
             key={host.id}
             coordinate={{ latitude: host.latitude, longitude: host.longitude }}
             tracksViewChanges={false}
+            zIndex={isSelected ? 10 : 1}
           >
-            {/* Custom price-bubble pin */}
-            <View style={styles.pin}>
-              <Text style={styles.pinEmoji}>{TYPE_EMOJI[host.business_type] ?? '📦'}</Text>
-              <Text style={styles.pinPrice}>R{host.price_per_bag_per_day}</Text>
-              <View style={styles.pinTail} />
+            {/* Custom price-bubble pin — enlarges when selected */}
+            <View style={[styles.pin, isSelected && styles.pinSelected]}>
+              <Text style={[styles.pinEmoji, isSelected && styles.pinEmojiSelected]}>{TYPE_EMOJI[host.business_type] ?? '📦'}</Text>
+              <Text style={[styles.pinPrice, isSelected && styles.pinPriceSelected]}>R{host.price_per_bag_per_day}</Text>
+              <View style={[styles.pinTail, isSelected && styles.pinTailSelected]} />
             </View>
 
             <Callout onPress={() => handlePress(host.id)} tooltip={false}>
@@ -94,6 +97,15 @@ const styles = StyleSheet.create({
   },
   pinEmoji: { fontSize: 9, lineHeight: 11 },
   pinPrice: { fontSize: 11, fontWeight: '800', color: '#fff' },
+  pinSelected: {
+    backgroundColor: '#1A1A1A',
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  pinEmojiSelected: { fontSize: 11, lineHeight: 13 },
+  pinPriceSelected: { fontSize: 13 },
   pinTail: {
     width: 0, height: 0,
     borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 6,
@@ -102,6 +114,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: -1,
   },
+  pinTailSelected: { borderTopColor: '#1A1A1A' },
   callout: { padding: 10, width: 200, backgroundColor: '#fff', borderRadius: 10 },
   calloutName: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
   calloutMeta: { fontSize: 12, color: '#6B7280', marginTop: 2 },

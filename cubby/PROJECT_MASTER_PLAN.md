@@ -1,6 +1,6 @@
 # CUBBY — PROJECT MASTER PLAN
 > Single source of truth for all development, product decisions, and launch planning.
-> Last updated: 2026-07-01
+> Last updated: 2026-07-02
 
 ---
 
@@ -23,12 +23,70 @@ If it does not, question whether it should exist.
 | Area | Completion | Notes |
 |---|---|---|
 | Core Platform | 82% | Auth, profiles, navigation solid. All screens implemented. |
-| Marketplace | 72% | Booking + payment loop works. Search, discovery weak. |
+| Marketplace | 80% | Booking + payment loop works. Discovery: integrated map + bottom sheet. |
 | Operations | 35% | Admin screens exist but are disconnected. No operational workflow. |
 | Trust & Safety | 20% | Verification is UI-only. No ToS. No claims process. |
 | Communications | 60% | In-app messaging done. Transactional email V1 done (Resend). Push = partial. |
 | Launch Readiness | 45% | Cannot yet be put in front of real users safely. |
 | **Overall** | **~62%** | Solid MVP foundation. 6–8 focused weeks to beta. |
+
+---
+
+## 🚀 LAUNCH POLISH SPRINT
+
+> Goal: make Cubby feel like a real product someone would happily download from the App Store.
+> Strategy: reduce friction, improve perceived quality. No new features.
+
+### Priority 1 — First-Time User Experience
+
+| Item | Status | Notes |
+|---|---|---|
+| Location permission onboarding card | ✅ Done | Beautiful card before system dialog. "Enable Location" / "Not Now". Stored in AsyncStorage, shows once. |
+| Integrated search + map screen | ✅ Done | Removed form-first flow. Map fills background, draggable bottom sheet for host list (peek/half/full). |
+| Improved location modal | ✅ Done | Airport, cruise terminal, station, waterfront shortcuts. Recent searches saved to AsyncStorage. |
+| Compact filter chips on map | ✅ Done | Date, drop-off time, pick-up time, bags accessible as chips floating above map. |
+| Map marker selection state | ✅ Done | Selected pin enlarges and turns dark on native. Web already had CSS transitions. |
+
+### Priority 2 — Search Experience
+
+| Item | Status | Notes |
+|---|---|---|
+| Recent searches | ✅ Done | Last 4 locations saved in AsyncStorage, shown in location modal. |
+| Popular destinations | ✅ Done | Cape Town Airport, Cruise Terminal, Station, V&A Waterfront, Camps Bay. |
+| Airport / terminal shortcuts | ✅ Done | Included in landmarks section of location modal. |
+
+### Priority 3 — Loading Experience
+
+| Item | Status | Notes |
+|---|---|---|
+| Skeleton loaders | 🔲 Pending | Search, results, bookings, messages, host profile. |
+
+### Priority 4 — Empty States
+
+| Item | Status | Notes |
+|---|---|---|
+| Contextual empty state copy | ✅ Done (partial) | Filter-aware empty states already exist. No-results copy improved. |
+
+### Priority 5 — Animations
+
+| Item | Status | Notes |
+|---|---|---|
+| Bottom sheet drag animation | ✅ Done | Spring-based snap to peek/half/full positions. |
+| Map marker selection | ✅ Done | Enlarges on select, dark background. |
+| Card transitions, favourite animation | 🔲 Pending | |
+
+### Priority 6 — Social Presence
+
+| Item | Status | Notes |
+|---|---|---|
+| Follow Cubby section in profile | 🔲 Pending | Instagram, TikTok, website, support. |
+
+### Priority 7 — General Polish
+
+| Item | Status | Notes |
+|---|---|---|
+| Spacing / typography audit | 🔲 Pending | |
+| Button / card / shadow consistency | 🔲 Pending | |
 
 ---
 
