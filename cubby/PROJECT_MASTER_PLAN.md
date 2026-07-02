@@ -22,7 +22,7 @@ If it does not, question whether it should exist.
 
 | Area | Completion | Notes |
 |---|---|---|
-| Core Platform | 78% | Auth, profiles, navigation solid. Dead-end screens remain. |
+| Core Platform | 82% | Auth, profiles, navigation solid. All screens implemented. |
 | Marketplace | 72% | Booking + payment loop works. Search, discovery weak. |
 | Operations | 35% | Admin screens exist but are disconnected. No operational workflow. |
 | Trust & Safety | 20% | Verification is UI-only. No ToS. No claims process. |
@@ -231,7 +231,7 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 - [ ] Email confirmation re-enabled in Supabase (disabled for dev, must re-enable before launch)
 - [ ] Admin PIN default must error if env var not set (currently defaults to '1234')
 - [x] Verification backend (`verifications` table SQL provided, admin review queue built, `is_verified` updated on approve/reject)
-- [ ] Dead-end screens: `safety.tsx`, `language.tsx`, `payment-success.tsx`, `payment-failed.tsx`
+- [x] Dead-end screens: `safety.tsx`, `language.tsx`, `payment-success.tsx`, `payment-failed.tsx` — all fully implemented
 
 ### Booking Events — Notifications
 - [x] Notification when booking is confirmed (in-app + push via host/requests.tsx)
@@ -318,8 +318,8 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 **Email confirmation disabled**
 Supabase email confirmation was turned off during development. Users can sign up with any email address. This must be re-enabled before any real users are onboarded.
 
-**4 navigation dead ends**
-`safety.tsx`, `language.tsx`, `payment-success.tsx`, `payment-failed.tsx` are referenced in `_layout.tsx` and navigation code but do not exist as files. Tapping these links causes a crash or blank screen.
+~~**4 navigation dead ends** — RESOLVED~~
+All 4 screens (`safety.tsx`, `language.tsx`, `payment-success.tsx`, `payment-failed.tsx`) are fully implemented and registered in `_layout.tsx` with `href: null`.
 
 ### High Priority
 
@@ -499,7 +499,7 @@ supabase functions deploy complete-booking
 ## LAUNCH CHECKLISTS
 
 ### 🔒 Private Alpha (internal only — founder + 5 test users)
-- [ ] Fix 4 navigation dead ends (safety, language, payment-success, payment-failed)
+- [x] Fix 4 navigation dead ends (safety, language, payment-success, payment-failed) — already implemented
 - [ ] Fix admin PIN default (error if not set)
 - [ ] Fix payout bug (complete-booking → host_bank_details, not bank_details)
 - [ ] Wire notify-new-message DB webhook
@@ -623,7 +623,7 @@ supabase functions deploy complete-booking
 |---|---|---|
 | 1 | Peach Payments Production | 🟡 Partial (integrated, not production keys) |
 | 2 | Payment Confirmation Flow | ✅ Done |
-| 3 | Payment Failure Handling | 🔴 Dead-end screen missing |
+| 3 | Payment Failure Handling | ✅ Done (`payment-failed.tsx` fully implemented) |
 | 4 | Refund Flow | 🔴 Not started |
 | 5 | Host Payout Flow | 🟡 Partial (edge fn built, wrong table bug) |
 | 6 | Payout History | 🔴 Not started |
@@ -796,7 +796,7 @@ Also create a private `verifications` storage bucket in Supabase Dashboard → S
 | `complete-booking` queries `bank_details` (user_id) but admin saves to `host_bank_details` (host_id) — payouts will fail | 🔴 Critical | `supabase/functions/complete-booking/index.ts` |
 | Admin PIN defaults to '1234' if env var not set | 🔴 Critical | `app/(admin)/login.tsx` |
 | `notify-new-message` Edge Function exists but DB webhook not wired | 🟡 High | Supabase Dashboard |
-| 4 navigation dead ends crash or blank on tap | 🟡 High | `app/(traveller)/_layout.tsx` |
+| ~~4 navigation dead ends crash or blank on tap~~ | ✅ Fixed | All 4 screens implemented |
 | `MOCK_REVIEWS` shown as real reviews on empty host profiles | 🟡 High | `app/(traveller)/host-detail.tsx` |
 | Verification signed URLs expire after 7 days — admin needs edge fn to refresh for long-pending reviews | 🟠 Medium | `app/(admin)/verifications.tsx` |
 | Response rate always shows 100% (never updated) | 🟠 Medium | `supabase/schema.sql` |
