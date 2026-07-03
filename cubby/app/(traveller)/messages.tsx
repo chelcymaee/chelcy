@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity } from 'react-native';
+import { MessageRowSkeleton } from '../../src/components/Skeleton';
 import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
@@ -75,8 +76,8 @@ export default function Messages() {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={Colors.primary} />
+        <View style={{ flex: 1 }}>
+          {[1, 2, 3, 4, 5].map(i => <MessageRowSkeleton key={i} />)}
         </View>
       ) : (
         <FlatList

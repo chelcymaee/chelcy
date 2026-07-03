@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { Colors } from '../../src/constants/colors';
 import NotificationBell from '../../src/components/NotificationBell';
+import { BookingCardSkeleton } from '../../src/components/Skeleton';
 
 const STATUS_COLOR: Record<string, string> = {
   pending_payment: '#9CA3AF',
@@ -30,12 +31,14 @@ export default function Bookings() {
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
     loadBookings();
   }, []));
 
   async function loadBookings() {
+    setLoading(true);
     try {
       if (isSupabaseConfigured) {
         const { data: { user } } = await supabase.auth.getUser();
@@ -62,6 +65,8 @@ export default function Bookings() {
       setBookings(raw ? JSON.parse(raw) : []);
     } catch {
       setBookings([]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -124,7 +129,9 @@ export default function Bookings() {
       </View>
 
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {shown.length === 0 ? (
+        {loading ? (
+          [1, 2, 3].map(i => <BookingCardSkeleton key={i} />)
+        ) : shown.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>🎟️</Text>
             <Text style={styles.emptyTitle}>

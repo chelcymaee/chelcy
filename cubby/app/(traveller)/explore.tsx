@@ -17,6 +17,7 @@ import { formatResponseTimeShort } from '../../src/lib/response-rate';
 import { rankHosts, rankingLabel, rankingReason, RankingSignals } from '../../src/lib/host-ranking';
 import HostMapComponent from '../../src/components/HostMap';
 import { getUserLocation, haversineMeters, formatDistance, formatWalkLabel, LatLon } from '../../src/lib/location';
+import { ExploreCardSkeleton } from '../../src/components/Skeleton';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const SHEET_H = SCREEN_H * 0.78;
@@ -468,6 +469,9 @@ export default function Explore() {
   const [sortBy, setSortBy] = useState<SortOption>('recommended');
   const [filters, setFilters] = useState<ActiveFilters>(DEFAULT_FILTERS);
 
+  // ── Loading state ──
+  const [loading, setLoading] = useState(true);
+
   // ── Modal state ──
   const [showPermCard, setShowPermCard] = useState(false);
   const [showLocation, setShowLocation] = useState(false);
@@ -528,6 +532,7 @@ export default function Explore() {
   }, []));
 
   async function loadHosts() {
+    setLoading(true);
     try {
       if (isSupabaseConfigured) {
         const { data } = await supabase
@@ -537,7 +542,9 @@ export default function Explore() {
       }
       const raw = await AsyncStorage.getItem('cubby_hosts');
       if (raw) setAllHosts(rankHosts(JSON.parse(raw).map(normalizeHost).filter((h: Host) => h.is_active)));
-    } catch {}
+    } catch {} finally {
+      setLoading(false);
+    }
   }
 
   async function handleEnableLocation() {
@@ -664,7 +671,9 @@ export default function Explore() {
 
   // ── Host list content ─────────────────────────────────────────────────────
 
-  const hostListContent = displayed.length === 0 ? (
+  const hostListContent = loading ? (
+    [1, 2, 3].map(i => <ExploreCardSkeleton key={i} />)
+  ) : displayed.length === 0 ? (
     <View style={S.empty}>
       <Text style={S.emptyEmoji}>{es.emoji}</Text>
       <Text style={S.emptyTitle}>{es.title}</Text>
@@ -781,7 +790,7 @@ export default function Explore() {
             <View style={S.sheetHandle} {...panResponder.panHandlers}>
               <View style={S.sheetHandleBar} />
               <Text style={S.sheetCount}>
-                {displayed.length} storage spot{displayed.length !== 1 ? 's' : ''} near you
+                {loading ? 'Finding storage spots…' : `${displayed.length} storage spot${displayed.length !== 1 ? 's' : ''} near you`}
               </Text>
             </View>
 
@@ -885,7 +894,7 @@ export default function Explore() {
 
       {/* Result count */}
       <Text style={[S.sheetCount, { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 0, backgroundColor: '#FAFAFA' }]}>
-        {displayed.length} storage spot{displayed.length !== 1 ? 's' : ''} near you
+        {loading ? 'Finding storage spots…' : `${displayed.length} storage spot${displayed.length !== 1 ? 's' : ''} near you`}
       </Text>
 
       {/* Host list */}

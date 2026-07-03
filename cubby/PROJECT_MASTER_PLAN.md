@@ -59,7 +59,7 @@ If it does not, question whether it should exist.
 
 | Item | Status | Notes |
 |---|---|---|
-| Skeleton loaders | 🔲 Pending | Search, results, bookings, messages, host profile. |
+| Skeleton loaders | ✅ Done | Explore (bottom sheet), Bookings, Messages, Host Detail, Host Dashboard. Reusable `Skeleton.tsx` component with shimmer animation. |
 
 ### Priority 4 — Empty States
 

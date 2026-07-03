@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, Alert, ActivityIndicator,
 } from 'react-native';
+import { DashboardSkeleton } from '../../src/components/Skeleton';
 import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
@@ -360,7 +361,13 @@ export default function Dashboard() {
         {/* ── Earnings card ─────────────────────────────────────────────────── */}
         <View style={styles.earningsCard}>
           {loading ? (
-            <ActivityIndicator color="rgba(255,255,255,0.8)" style={{ marginVertical: 12 }} />
+            <View style={{ gap: 10, paddingVertical: 8 }}>
+              <View style={{ width: 120, height: 14, borderRadius: 7, backgroundColor: 'rgba(255,255,255,0.25)' }} />
+              <View style={{ width: 180, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.25)' }} />
+              <View style={{ flexDirection: 'row', gap: 24, marginTop: 4 }}>
+                {[1,2,3].map(i => <View key={i} style={{ width: 60, height: 32, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.2)' }} />)}
+              </View>
+            </View>
           ) : (
             <>
               <Text style={styles.earningsLabel}>This month's earnings</Text>
@@ -418,7 +425,14 @@ export default function Dashboard() {
         <View style={styles.weekCard}>
           <Text style={styles.weekTitle}>This week's earnings</Text>
           {loading ? (
-            <ActivityIndicator color={Colors.primary} style={{ marginVertical: 24 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 80, marginTop: 8 }}>
+              {[55, 80, 40, 100, 65, 45, 75].map((pct, i) => (
+                <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+                  <View style={{ width: '100%', height: Math.round(pct * 0.7), borderRadius: 4, backgroundColor: '#EDEDEB' }} />
+                  <View style={{ width: 24, height: 10, borderRadius: 4, backgroundColor: '#EDEDEB', marginTop: 5 }} />
+                </View>
+              ))}
+            </View>
           ) : (
             <View style={styles.weekBars}>
               {stats.weeklyData.map((d, i) => {
@@ -481,8 +495,17 @@ export default function Dashboard() {
         <Text style={styles.sectionTitle}>Today's bookings</Text>
 
         {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator color={Colors.primary} />
+          <View style={{ gap: 10 }}>
+            {[1, 2].map(i => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#F0EAEA' }}>
+                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#EDEDEB' }} />
+                <View style={{ flex: 1, gap: 8 }}>
+                  <View style={{ width: '50%', height: 13, borderRadius: 6, backgroundColor: '#EDEDEB' }} />
+                  <View style={{ width: '70%', height: 11, borderRadius: 5, backgroundColor: '#EDEDEB' }} />
+                </View>
+                <View style={{ width: 60, height: 28, borderRadius: 8, backgroundColor: '#EDEDEB' }} />
+              </View>
+            ))}
           </View>
         ) : bookings.length === 0 ? (
           <View style={styles.emptyBox}>

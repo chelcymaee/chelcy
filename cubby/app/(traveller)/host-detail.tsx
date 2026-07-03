@@ -10,6 +10,7 @@ import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { MOCK_REVIEWS } from '../../src/lib/mock-data';
 import { computeHostBadges, topBadges, TrustBadge } from '../../src/lib/trust-badges';
 import { formatResponseRate, formatResponseTime, formatResponseTimeShort } from '../../src/lib/response-rate';
+import { HostDetailSkeleton } from '../../src/components/Skeleton';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TODAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -179,9 +180,9 @@ export default function HostDetail() {
       >
         <Text style={styles.backLinkText}>← Back to results</Text>
       </TouchableOpacity>
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: Colors.textSecondary }}>Loading…</Text>
-      </View>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <HostDetailSkeleton />
+      </ScrollView>
     </SafeAreaView>
   );
 
