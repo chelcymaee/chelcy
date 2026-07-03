@@ -7,10 +7,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
-import { sendNotification } from '../../src/lib/notification-service';
-
-const SUPABASE_URL = 'https://gqgxahqmndkaeyuvhliv.supabase.co';
-const ADMIN_SECRET = 'cubby-admin-secret-2025';
+import { submitHostReview } from '../../src/lib/review-service';
 
 const TAGS = ['Great location', 'Friendly host', 'Secure storage', 'Easy to find', 'Quick response', 'Would return'];
 const RATING_LABELS = ['', 'Poor experience', 'Not great', 'It was okay', 'Really good!', 'Outstanding! 🎉'];
@@ -36,106 +33,6 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
   );
 }
 
-async function notifyHostOfReview(opts: {
-  hostId: string; bookingId: string; reviewerName: string;
-  rating: number; comment: string; user: any;
-}): Promise<void> {
-  if (!isSupabaseConfigured) return;
-  const { hostId, bookingId, reviewerName, rating, comment, user } = opts;
-
-  // Get host's assigned_user_id so we can send them an in-app notification
-  const { data: host } = await supabase
-    .from('hosts').select('assigned_user_id, display_name').eq('id', hostId).single();
-  if (!host?.assigned_user_id) return;
-
-  await sendNotification({
-    userId: host.assigned_user_id,
-    type: 'review_received',
-    title: `${reviewerName} reviewed your listing`,
-    body: rating === 5 ? '⭐ You got a 5-star review!' : `They gave you ${rating} stars.`,
-    data: { bookingId, reviewerName, rating },
-    relatedBookingId: bookingId,
-  });
-
-  // Check milestones for this host
-  const { data: stats } = await supabase
-    .from('reviews').select('rating').eq('host_id', hostId);
-  if (!stats) return;
-
-  const fiveStarCount = stats.filter((r: any) => r.rating === 5).length;
-  const avgRating = stats.reduce((s: number, r: any) => s + r.rating, 0) / stats.length;
-  const totalReviews = stats.length;
-
-  let milestone: string | null = null;
-  let detail: string | null = null;
-
-  if (fiveStarCount === 10) { milestone = '10 five-star reviews'; detail = 'Travellers love you — keep it up!'; }
-  else if (fiveStarCount === 5) { milestone = 'First 5 five-star reviews'; detail = "You're building an outstanding reputation."; }
-  else if (totalReviews === 10) { milestone = '10 reviews'; detail = "You're a well-established Cubby host!"; }
-  else if (totalReviews === 5) { milestone = 'First 5 reviews'; detail = 'Your reputation is growing!'; }
-  else if (avgRating >= 4.8 && totalReviews >= 5) { milestone = '4.8★ average rating'; detail = 'You rank among the top Cubby hosts.'; }
-
-  if (milestone) {
-    await sendNotification({
-      userId: host.assigned_user_id,
-      type: 'milestone_reached',
-      title: `🏆 Milestone: ${milestone}`,
-      body: detail ?? '',
-    });
-
-    // Email the milestone too
-    const { data: hostProfile } = await supabase
-      .from('profiles').select('email, full_name').eq('id', host.assigned_user_id).single();
-    if (hostProfile?.email) {
-      fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
-        body: JSON.stringify({
-          emailType: 'milestone_reached',
-          data: { hostEmail: hostProfile.email, hostName: hostProfile.full_name ?? host.display_name, milestone, detail },
-        }),
-      }).catch(() => {});
-    }
-  }
-
-  // Send reciprocal prompt to host if they haven't reviewed traveller yet
-  const { data: existingHostReview } = await supabase
-    .from('traveller_reviews').select('id').eq('booking_id', bookingId).maybeSingle();
-  if (!existingHostReview) {
-    const { data: traveller } = await supabase
-      .from('profiles').select('full_name').eq('id', user.id).single();
-    await sendNotification({
-      userId: host.assigned_user_id,
-      type: 'review_request',
-      title: `${reviewerName} just reviewed you`,
-      body: 'Now review them — it only takes 30 seconds.',
-      data: { bookingId, travellerId: user.id, travellerName: traveller?.full_name ?? reviewerName },
-      relatedBookingId: bookingId,
-    });
-  }
-
-  // Email the host about the new review
-  const { data: hostProfile } = await supabase
-    .from('profiles').select('email, full_name').eq('id', host.assigned_user_id).single();
-  if (hostProfile?.email) {
-    fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
-      body: JSON.stringify({
-        emailType: 'review_received',
-        data: {
-          recipientEmail: hostProfile.email,
-          recipientName: hostProfile.full_name ?? host.display_name,
-          reviewerName,
-          rating,
-          comment: comment.trim() || undefined,
-          role: 'host',
-        },
-      }),
-    }).catch(() => {});
-  }
-}
-
 export default function Review() {
   const { hostName, hostId, bookingId } = useLocalSearchParams<{
     hostName: string; hostId: string; bookingId: string;
@@ -151,12 +48,10 @@ export default function Review() {
   const [alreadyReviewed, setAlreadyReviewed] = useState(false);
   const [checking, setChecking] = useState(!!bookingId);
 
-  // Check if this booking was already reviewed and that it's a completed booking
   useEffect(() => {
     if (!bookingId || !isSupabaseConfigured) { setChecking(false); return; }
     (async () => {
       try {
-        // Confirm booking is completed (not cancelled)
         const { data: booking } = await supabase
           .from('bookings').select('status').eq('id', bookingId).single();
         if (booking?.status === 'cancelled') {
@@ -164,7 +59,6 @@ export default function Review() {
           setChecking(false);
           return;
         }
-        // Check for existing review
         const { data: existing } = await supabase
           .from('reviews').select('id').eq('booking_id', bookingId).maybeSingle();
         if (existing) setAlreadyReviewed(true);
@@ -189,41 +83,30 @@ export default function Review() {
     setSubmitting(true);
     try {
       if (isSupabaseConfigured) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: authErr } = await supabase.auth.getUser();
+        if (authErr) console.error('[Review] auth error:', authErr);
         if (!user) { setError('You need to be signed in to leave a review.'); return; }
 
         const { data: profile } = await supabase
           .from('profiles').select('full_name').eq('id', user.id).single();
         const reviewerName = profile?.full_name?.trim() || user.email?.split('@')[0] || 'Anonymous';
 
-        if (bookingId) {
-          const { data: existing } = await supabase
-            .from('reviews').select('id').eq('booking_id', bookingId).maybeSingle();
-          if (existing) { setAlreadyReviewed(true); return; }
-        }
-
-        const reviewRow: Record<string, any> = {
-          reviewer_id: user.id,
-          host_id: hostId,
-          reviewer_name: reviewerName,
+        const result = await submitHostReview({
+          userId: user.id,
+          reviewerName,
+          hostId,
+          bookingId,
           rating,
-          comment: comment.trim() || null,
+          categoryRatings,
+          comment,
           tags: selectedTags,
-          ...Object.fromEntries(
-            Object.entries(categoryRatings).filter(([, v]) => v > 0)
-          ),
-        };
-        if (bookingId) reviewRow.booking_id = bookingId;
+        });
 
-        const { error: insertError } = await supabase.from('reviews').insert(reviewRow);
-        if (insertError) {
-          if (insertError.code === '23505') { setAlreadyReviewed(true); }
-          else setError('Could not submit review. Please try again.');
+        if (!result.success) {
+          if (result.alreadyReviewed) { setAlreadyReviewed(true); return; }
+          setError(result.error ?? 'Could not submit review. Please try again.');
           return;
         }
-
-        // Notify host of new review (fire-and-forget)
-        notifyHostOfReview({ hostId, bookingId, reviewerName, rating, comment, user }).catch(() => {});
 
         setSuccess(true);
         setTimeout(() => router.replace('/(traveller)/bookings'), 2000);
@@ -407,13 +290,13 @@ const styles = StyleSheet.create({
     fontSize: 15, color: Colors.textPrimary, height: 110, textAlignVertical: 'top', marginBottom: 24,
   },
   errorBanner: {
-    backgroundColor: '#FEE2E2', borderRadius: 10, padding: 12,
+    backgroundColor: Colors.errorBg, borderRadius: 10, padding: 12,
     borderWidth: 1, borderColor: '#FECACA', marginBottom: 16,
   },
-  errorText: { fontSize: 14, color: '#B91C1C', fontWeight: '600', textAlign: 'center' },
-  btn: { backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
+  errorText: { fontSize: 14, color: Colors.error, fontWeight: '600', textAlign: 'center' },
+  btn: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   btnDisabled: { opacity: 0.4 },
-  btnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  btnText: { fontSize: 16, fontWeight: '700', color: Colors.white },
   successScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   successEmoji: { fontSize: 64, marginBottom: 20 },
   successTitle: { fontSize: 28, fontWeight: '900', color: Colors.textPrimary, marginBottom: 10 },

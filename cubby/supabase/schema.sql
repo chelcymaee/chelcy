@@ -337,3 +337,72 @@ CREATE POLICY "Users can update own verification"
 
 -- Storage path format: verifications/{user_id}/id.jpg
 --                      verifications/{user_id}/selfie.jpg
+
+-- -------------------------------------------------------------------------
+-- Traveller reviews (host reviews traveller after a booking)
+-- -------------------------------------------------------------------------
+-- MANUAL STEP: Run this block in Supabase SQL Editor if the table doesn't exist
+
+CREATE TABLE IF NOT EXISTS traveller_reviews (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  reviewer_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  host_id UUID REFERENCES hosts(id) ON DELETE CASCADE NOT NULL,
+  traveller_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  host_name TEXT NOT NULL,
+  rating_respectful INTEGER NOT NULL CHECK (rating_respectful >= 1 AND rating_respectful <= 5),
+  rating_on_time INTEGER NOT NULL CHECK (rating_on_time >= 1 AND rating_on_time <= 5),
+  rating_communication INTEGER NOT NULL CHECK (rating_communication >= 1 AND rating_communication <= 5),
+  comment TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE traveller_reviews ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can read traveller reviews (used on admin + traveller profile views)
+CREATE POLICY "Traveller reviews are publicly viewable"
+  ON traveller_reviews FOR SELECT USING (true);
+
+-- Only the host (matched via auth.uid()) can insert a traveller review
+CREATE POLICY "Hosts can create traveller reviews"
+  ON traveller_reviews FOR INSERT WITH CHECK (auth.uid() = reviewer_id);
+
+-- Trigger: recalculate traveller's average rating after a review is inserted/deleted
+CREATE OR REPLACE FUNCTION recalculate_traveller_rating()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  target_traveller_id UUID;
+  avg_respectful NUMERIC;
+  avg_on_time NUMERIC;
+  avg_communication NUMERIC;
+  overall_avg NUMERIC;
+BEGIN
+  target_traveller_id := COALESCE(NEW.traveller_id, OLD.traveller_id);
+
+  SELECT
+    COALESCE(ROUND(AVG(rating_respectful)::NUMERIC, 1), 0),
+    COALESCE(ROUND(AVG(rating_on_time)::NUMERIC, 1), 0),
+    COALESCE(ROUND(AVG(rating_communication)::NUMERIC, 1), 0)
+  INTO avg_respectful, avg_on_time, avg_communication
+  FROM traveller_reviews
+  WHERE traveller_id = target_traveller_id;
+
+  overall_avg := ROUND(((avg_respectful + avg_on_time + avg_communication) / 3)::NUMERIC, 1);
+
+  -- Update traveller_rating on profiles (column added below if needed)
+  UPDATE profiles
+  SET traveller_rating = overall_avg,
+      traveller_review_count = (SELECT COUNT(*) FROM traveller_reviews WHERE traveller_id = target_traveller_id)
+  WHERE id = target_traveller_id;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_recalculate_traveller_rating
+AFTER INSERT OR DELETE ON traveller_reviews
+FOR EACH ROW EXECUTE FUNCTION recalculate_traveller_rating();
+
+-- Add traveller_rating + traveller_review_count to profiles (safe — no-op if already present)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS traveller_rating NUMERIC(3,1) DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS traveller_review_count INTEGER DEFAULT 0;
