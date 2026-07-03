@@ -81,6 +81,24 @@ If it does not, question whether it should exist.
 |---|---|---|
 | Follow Cubby section in profile | 🔲 Pending | Instagram, TikTok, website, support. |
 
+### Priority 8 — Review Ecosystem ✅ Complete
+
+| Item | Status | Notes |
+|---|---|---|
+| `traveller_reviews` table + RLS in schema.sql | ✅ Done | reviewer_id (auth.uid), host_id, traveller_id, 3 category ratings; INSERT policy |
+| `recalculate_traveller_rating` trigger | ✅ Done | Auto-updates profiles.traveller_rating + traveller_review_count on insert/delete |
+| Shared `src/lib/review-service.ts` | ✅ Done | `submitHostReview` + `submitTravellerReview`; both capture insert id for deep-link |
+| Review submission fixed (23502 bug) | ✅ Done | Missing reviewer_id in insert; missing bookingId from route params (guard added) |
+| `src/components/Stars.tsx` | ✅ Done | Shared star rating component reused across all review screens |
+| `app/(traveller)/review-detail.tsx` | ✅ Done | Traveller views review received from host; security-checked |
+| `app/(host)/review-detail.tsx` | ✅ Done | Host views review received from traveller; security-checked |
+| `app/(traveller)/reviews.tsx` — Reviews Centre | ✅ Done | 3 tabs: About Me / I Wrote / Pending; summary card with category averages |
+| `app/(host)/reviews.tsx` — Reviews Centre | ✅ Done | Same structure for host perspective |
+| Profile rating snippet (traveller) | ✅ Done | ⭐ rating + count below name; "New member" if no reviews |
+| Reviews entry in traveller profile menu | ✅ Done | General → ⭐ My Reviews |
+| Reviews pill on host dashboard | ✅ Done | Tappable — navigates to host Reviews Centre |
+| Notification deep-linking | ✅ Done | review_received → review-detail; review_request → review form with full params |
+
 ### Priority 7 — Design System Polish ✅ Done (Critical + Medium)
 
 #### Medium Priority — completed

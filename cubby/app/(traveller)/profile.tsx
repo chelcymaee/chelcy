@@ -54,6 +54,8 @@ export default function Profile() {
   const [email, setEmail] = useState('');
   const [isHostApproved, setIsHostApproved] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
+  const [travellerRating, setTravellerRating] = useState(0);
+  const [travellerReviewCount, setTravellerReviewCount] = useState(-1); // -1 = not loaded yet
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -86,6 +88,8 @@ export default function Profile() {
           setPhone(profile.phone ?? '');
           if (profile.avatar_url) setAvatar(profile.avatar_url);
           setIsHostApproved(profile.is_host_approved ?? false);
+          setTravellerRating(profile.traveller_rating ?? 0);
+          setTravellerReviewCount(profile.traveller_review_count ?? 0);
 
           // Check verification status
           const { data: verif } = await supabase
@@ -294,6 +298,7 @@ export default function Profile() {
     {
       title: 'General',
       items: [
+        { icon: '⭐', label: 'My Reviews', onPress: () => router.push('/(traveller)/reviews') },
         { icon: '💳', label: 'Payment methods', onPress: () => router.push('/(traveller)/payment-details') },
         { icon: '🔔', label: 'Notification Preferences', onPress: () => router.push('/(traveller)/notification-preferences') },
         { icon: '🌐', label: 'Language', onPress: () => router.push('/(traveller)/language') },
@@ -374,6 +379,17 @@ export default function Profile() {
                   </View>
                 )}
               </View>
+              {travellerReviewCount === 0 ? (
+                <Text style={styles.profileMember}>New member</Text>
+              ) : travellerReviewCount > 0 ? (
+                <TouchableOpacity onPress={() => router.push('/(traveller)/reviews')}
+                  // @ts-ignore
+                  onClick={() => router.push('/(traveller)/reviews')}>
+                  <Text style={styles.profileRating}>
+                    ⭐ {travellerRating.toFixed(1)} · {travellerReviewCount} review{travellerReviewCount !== 1 ? 's' : ''}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
               <Text style={styles.profileEmail}>{email}</Text>
             </View>
             <TouchableOpacity style={styles.editChip} onPress={openEditModal}>
@@ -643,6 +659,8 @@ const styles = StyleSheet.create({
   toastErr: { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FECACA' },
   toastText: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
   profileName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
+  profileRating: { fontSize: 13, color: Colors.star, fontWeight: '700', marginTop: 2 },
+  profileMember: { fontSize: 12, color: Colors.textLight, marginTop: 2, fontStyle: 'italic' },
   profileEmail: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
   verifiedBadge: { backgroundColor: '#D1FAE5', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   verifiedBadgeText: { fontSize: 11, fontWeight: '700', color: '#059669' },

@@ -12,18 +12,9 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { Radius, CardShadow, Spacing } from '../../src/constants/theme';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { Stars } from '../../src/components/Stars';
 
 const RATING_LABELS = ['', 'Poor', 'Not great', 'Okay', 'Good', 'Excellent'];
-
-function Stars({ value, size = 18 }: { value: number; size?: number }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 3 }}>
-      {[1, 2, 3, 4, 5].map(s => (
-        <Text key={s} style={{ fontSize: size, color: s <= value ? Colors.star : Colors.border }}>★</Text>
-      ))}
-    </View>
-  );
-}
 
 interface TravellerReview {
   id: string;

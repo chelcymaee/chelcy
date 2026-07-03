@@ -414,10 +414,16 @@ export default function Dashboard() {
               <Text style={[styles.pillNum, { color: '#7C3AED' }]}>{stats.completedCount}</Text>
               <Text style={styles.pillLabel}>Completed</Text>
             </View>
-            <View style={[styles.pill, { backgroundColor: '#DCFCE7' }]}>
+            <TouchableOpacity
+              style={[styles.pill, { backgroundColor: '#DCFCE7' }]}
+              onPress={() => router.push('/(host)/reviews')}
+              // @ts-ignore
+              onClick={() => router.push('/(host)/reviews')}
+              activeOpacity={0.75}
+            >
               <Text style={[styles.pillNum, { color: Colors.success }]}>{stats.reviewCount}</Text>
-              <Text style={styles.pillLabel}>Reviews</Text>
-            </View>
+              <Text style={styles.pillLabel}>Reviews ›</Text>
+            </TouchableOpacity>
           </View>
         )}
 
