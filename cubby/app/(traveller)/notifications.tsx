@@ -46,6 +46,9 @@ const TYPE_CONFIG: Record<string, { icon: string; accent: string }> = {
   partner_approved:      { icon: '🤝', accent: '#10B981' },
   partner_rejected:      { icon: '🤝', accent: '#EF4444' },
   review_request:        { icon: '⭐', accent: '#FFD93D' },
+  review_received:       { icon: '🌟', accent: '#FFD93D' },
+  review_reminder:       { icon: '⭐', accent: '#FFD93D' },
+  milestone_reached:     { icon: '🏆', accent: '#F59E0B' },
 };
 
 function getConfig(type: string) {
@@ -95,8 +98,28 @@ function navigate(n: Notif) {
     router.push('/(traveller)/verification');
   } else if (n.type?.startsWith('partner')) {
     router.push('/(traveller)/partner-apply');
-  } else if (n.type === 'review_request' && n.related_booking_id) {
-    router.push({ pathname: '/(traveller)/review', params: { bookingId: n.related_booking_id } } as any);
+  } else if (n.type === 'review_received') {
+    // Deep-link to review detail; fall back to bookings if no bookingId
+    const bookingId = n.data?.bookingId ?? n.related_booking_id;
+    if (bookingId) {
+      router.push({ pathname: '/(traveller)/review-detail', params: { bookingId } } as any);
+    } else {
+      router.push('/(traveller)/bookings');
+    }
+  } else if (n.type === 'review_request') {
+    // Prompt traveller to review the host — need bookingId + hostId
+    const bookingId = n.data?.bookingId ?? n.related_booking_id;
+    const hostId = n.data?.hostId;
+    const hostName = n.data?.hostName;
+    if (bookingId && hostId) {
+      router.push({ pathname: '/(traveller)/review', params: { bookingId, hostId, hostName: hostName ?? 'Your host' } } as any);
+    } else if (bookingId) {
+      router.push({ pathname: '/(traveller)/review', params: { bookingId } } as any);
+    } else {
+      router.push('/(traveller)/bookings');
+    }
+  } else if (n.type === 'review_reminder') {
+    router.push('/(traveller)/bookings');
   }
 }
 

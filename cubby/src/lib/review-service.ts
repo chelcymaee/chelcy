@@ -61,18 +61,19 @@ export async function submitHostReview(p: SubmitHostReviewParams): Promise<Revie
   };
   if (p.bookingId) reviewRow.booking_id = p.bookingId;
 
-  const { error: insertError } = await supabase.from('reviews').insert(reviewRow);
+  const { data: inserted, error: insertError } = await supabase
+    .from('reviews').insert(reviewRow).select('id').single();
   if (insertError) {
     console.error('[review-service] reviews insert error:', JSON.stringify(insertError));
     if (insertError.code === '23505') return { success: false, alreadyReviewed: true };
     return { success: false, error: `Could not submit review. Please try again. (${insertError.code})` };
   }
 
-  notifyHostOfReview(p).catch(err => console.error('[review-service] notifyHostOfReview error:', err));
+  notifyHostOfReview(p, inserted?.id).catch(err => console.error('[review-service] notifyHostOfReview error:', err));
   return { success: true };
 }
 
-async function notifyHostOfReview(p: SubmitHostReviewParams): Promise<void> {
+async function notifyHostOfReview(p: SubmitHostReviewParams, reviewId?: string): Promise<void> {
   const { data: host } = await supabase
     .from('hosts').select('assigned_user_id, display_name').eq('id', p.hostId).single();
   if (!host?.assigned_user_id) return;
@@ -82,7 +83,13 @@ async function notifyHostOfReview(p: SubmitHostReviewParams): Promise<void> {
     type: 'review_received',
     title: `${p.reviewerName} reviewed your listing`,
     body: p.rating === 5 ? '⭐ You got a 5-star review!' : `They gave you ${p.rating} stars.`,
-    data: { bookingId: p.bookingId, reviewerName: p.reviewerName, rating: p.rating },
+    data: {
+      bookingId: p.bookingId,
+      reviewId,
+      reviewType: 'host_review',
+      reviewerName: p.reviewerName,
+      rating: p.rating,
+    },
     relatedBookingId: p.bookingId,
   });
 
@@ -170,7 +177,7 @@ export async function submitTravellerReview(p: SubmitTravellerReviewParams): Pro
   if (dupErr) console.error('[review-service] duplicate check error:', dupErr);
   if (existing) return { success: false, alreadyReviewed: true };
 
-  const { error: insertError } = await supabase.from('traveller_reviews').insert({
+  const { data: inserted, error: insertError } = await supabase.from('traveller_reviews').insert({
     booking_id: p.bookingId,
     reviewer_id: p.reviewerId,
     host_id: p.hostId,
@@ -180,7 +187,7 @@ export async function submitTravellerReview(p: SubmitTravellerReviewParams): Pro
     rating_on_time: p.ratings.rating_on_time,
     rating_communication: p.ratings.rating_communication,
     comment: p.comment.trim() || null,
-  });
+  }).select('id').single();
 
   if (insertError) {
     console.error('[review-service] insert error:', insertError.code, insertError.message);
@@ -188,11 +195,11 @@ export async function submitTravellerReview(p: SubmitTravellerReviewParams): Pro
     return { success: false, error: `Could not submit review. Please try again. (${insertError.code})` };
   }
 
-  notifyTravellerOfReview(p).catch(err => console.error('[review-service] notify error:', err));
+  notifyTravellerOfReview(p, inserted?.id).catch(err => console.error('[review-service] notify error:', err));
   return { success: true };
 }
 
-async function notifyTravellerOfReview(p: SubmitTravellerReviewParams): Promise<void> {
+async function notifyTravellerOfReview(p: SubmitTravellerReviewParams, reviewId?: string): Promise<void> {
   const avg = Math.round(
     (p.ratings.rating_respectful + p.ratings.rating_on_time + p.ratings.rating_communication) / 3
   );
@@ -201,8 +208,14 @@ async function notifyTravellerOfReview(p: SubmitTravellerReviewParams): Promise<
     userId: p.travellerId,
     type: 'review_received',
     title: `${p.hostName} reviewed you`,
-    body: avg >= 4 ? '🌟 Great news — you got a positive review!' : 'You have a new traveller review.',
-    data: { bookingId: p.bookingId, hostName: p.hostName, avg },
+    body: avg >= 4 ? '🌟 Great news — you got a positive review!' : 'You have a new review.',
+    data: {
+      bookingId: p.bookingId,
+      reviewId,
+      reviewType: 'traveller_review',
+      hostName: p.hostName,
+      avg,
+    },
     relatedBookingId: p.bookingId,
   });
 

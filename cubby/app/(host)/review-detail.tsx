@@ -1,0 +1,295 @@
+/**
+ * Host views a review they received from a traveller.
+ * Fetches from reviews table where booking_id matches
+ * and verifies the booking belongs to the current host.
+ */
+import { useState, useEffect } from 'react';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  TouchableOpacity, ActivityIndicator,
+} from 'react-native';
+import { useLocalSearchParams, router } from 'expo-router';
+import { Colors } from '../../src/constants/colors';
+import { Radius, CardShadow, Spacing } from '../../src/constants/theme';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+
+const RATING_LABELS = ['', 'Poor', 'Not great', 'Okay', 'Really good', 'Outstanding'];
+
+function Stars({ value, size = 18 }: { value: number; size?: number }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 3 }}>
+      {[1, 2, 3, 4, 5].map(s => (
+        <Text key={s} style={{ fontSize: size, color: s <= value ? Colors.star : Colors.border }}>★</Text>
+      ))}
+    </View>
+  );
+}
+
+interface HostReview {
+  id: string;
+  reviewer_name: string;
+  rating: number;
+  comment: string | null;
+  tags: string[];
+  rating_friendliness: number | null;
+  rating_location: number | null;
+  rating_drop_off: number | null;
+  rating_security: number | null;
+  created_at: string;
+}
+
+interface BookingContext {
+  drop_off_date: string;
+  pick_up_date?: string;
+  bag_count: number;
+}
+
+const CATEGORY_LABELS: { key: keyof HostReview; emoji: string; label: string }[] = [
+  { key: 'rating_friendliness', emoji: '😊', label: 'Friendliness' },
+  { key: 'rating_location',     emoji: '📍', label: 'Location accuracy' },
+  { key: 'rating_drop_off',     emoji: '🧳', label: 'Ease of drop-off' },
+  { key: 'rating_security',     emoji: '🔒', label: 'Security' },
+];
+
+export default function HostReviewDetail() {
+  const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
+  const [review, setReview] = useState<HostReview | null>(null);
+  const [booking, setBooking] = useState<BookingContext | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const goBack = () => router.replace('/(host)/requests');
+
+  useEffect(() => {
+    if (!bookingId || !isSupabaseConfigured) {
+      setError('No booking reference provided.');
+      setLoading(false);
+      return;
+    }
+    load();
+  }, [bookingId]);
+
+  async function load() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setError('Please sign in to view this review.'); return; }
+
+      // Get the host's host row to verify ownership
+      const { data: hostRow } = await supabase
+        .from('hosts')
+        .select('id')
+        .eq('assigned_user_id', user.id)
+        .single();
+
+      if (!hostRow) { setError('Host profile not found.'); return; }
+
+      const { data: rev, error: revErr } = await supabase
+        .from('reviews')
+        .select(`
+          id, reviewer_name, rating, comment, tags,
+          rating_friendliness, rating_location, rating_drop_off, rating_security,
+          created_at, host_id
+        `)
+        .eq('booking_id', bookingId)
+        .single();
+
+      if (revErr || !rev) {
+        setError('Review not found. It may have been removed.');
+        return;
+      }
+
+      // Security: verify this review is for the current host
+      if (rev.host_id !== hostRow.id) {
+        setError('You do not have permission to view this review.');
+        return;
+      }
+
+      setReview(rev);
+
+      const { data: bk } = await supabase
+        .from('bookings')
+        .select('drop_off_date, pick_up_date, bag_count')
+        .eq('id', bookingId)
+        .single();
+      if (bk) setBooking(bk);
+
+    } catch {
+      setError('Something went wrong loading this review.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !review) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <Text style={{ fontSize: 40, marginBottom: 16 }}>🔍</Text>
+          <Text style={styles.errorTitle}>{error || 'Review not found'}</Text>
+          <TouchableOpacity style={styles.backBtn} onPress={goBack}
+            // @ts-ignore
+            onClick={goBack}>
+            <Text style={styles.backBtnText}>← Back to Requests</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const dateStr = new Date(review.created_at).toLocaleDateString('en-ZA', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  });
+
+  const activeCats = CATEGORY_LABELS.filter(c => (review[c.key] as number | null) != null && (review[c.key] as number) > 0);
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity onPress={goBack}
+          // @ts-ignore
+          onClick={goBack}>
+          <Text style={styles.back}>← Back</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.heading}>New review</Text>
+        <Text style={styles.sub}>From {review.reviewer_name}</Text>
+
+        {/* Overall rating hero */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroStars}>
+            <Stars value={review.rating} size={36} />
+          </View>
+          <Text style={styles.heroRating}>{review.rating}/5</Text>
+          <Text style={styles.heroLabel}>{RATING_LABELS[review.rating] ?? 'Good'}</Text>
+          <Text style={styles.heroDate}>Submitted {dateStr}</Text>
+        </View>
+
+        {/* Written comment */}
+        {!!review.comment && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>What they said</Text>
+            <Text style={styles.comment}>"{review.comment}"</Text>
+          </View>
+        )}
+
+        {/* Quick tags */}
+        {review.tags?.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Tags</Text>
+            <View style={styles.tagsRow}>
+              {review.tags.map(tag => (
+                <View key={tag} style={styles.tag}>
+                  <Text style={styles.tagText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Category ratings */}
+        {activeCats.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Category ratings</Text>
+            {activeCats.map((cat, idx) => (
+              <View key={cat.key as string} style={[styles.catRow, idx < activeCats.length - 1 && styles.catBorder]}>
+                <Text style={styles.catLabel}>{cat.emoji} {cat.label}</Text>
+                <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                  <Stars value={review[cat.key] as number} size={15} />
+                  <Text style={styles.catValue}>{RATING_LABELS[review[cat.key] as number]}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Booking context */}
+        {booking && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Booking details</Text>
+            <Text style={styles.contextItem}>📅 Drop-off: {booking.drop_off_date}</Text>
+            {booking.pick_up_date && (
+              <Text style={styles.contextItem}>📅 Pick-up: {booking.pick_up_date}</Text>
+            )}
+            <Text style={styles.contextItem}>🧳 {booking.bag_count} bag{booking.bag_count !== 1 ? 's' : ''}</Text>
+          </View>
+        )}
+
+        <View style={styles.noteCard}>
+          <Text style={styles.noteText}>
+            ✨ Great reviews help you attract more travellers. Keep up the good work!
+          </Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  inner: { padding: Spacing.xl, paddingTop: 28, paddingBottom: 48 },
+  back: { fontSize: 15, color: Colors.primary, fontWeight: '600', marginBottom: 24 },
+  heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, marginBottom: 4 },
+  sub: { fontSize: 16, color: Colors.textSecondary, marginBottom: 24 },
+
+  heroCard: {
+    backgroundColor: Colors.white,
+    borderRadius: Radius.lg,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 16,
+    ...CardShadow,
+  },
+  heroStars: { marginBottom: 8 },
+  heroRating: { fontSize: 36, fontWeight: '900', color: Colors.textPrimary, marginBottom: 2 },
+  heroLabel: { fontSize: 16, fontWeight: '700', color: Colors.textSecondary, marginBottom: 8 },
+  heroDate: { fontSize: 12, color: Colors.textLight },
+
+  card: {
+    backgroundColor: Colors.white,
+    borderRadius: Radius.md,
+    padding: 16,
+    marginBottom: 16,
+    ...CardShadow,
+  },
+  cardTitle: {
+    fontSize: 13, fontWeight: '700', color: Colors.textSecondary,
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14,
+  },
+
+  comment: { fontSize: 15, color: Colors.textPrimary, lineHeight: 22, fontStyle: 'italic' },
+
+  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+    backgroundColor: Colors.successBg, borderWidth: 1, borderColor: '#BBF7D0',
+  },
+  tagText: { fontSize: 13, fontWeight: '600', color: Colors.successText },
+
+  catRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
+  catBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
+  catLabel: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  catValue: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
+
+  contextItem: { fontSize: 14, color: Colors.textSecondary, marginBottom: 6 },
+
+  noteCard: {
+    backgroundColor: Colors.successBg,
+    borderRadius: Radius.sm,
+    padding: 14,
+    marginBottom: 8,
+  },
+  noteText: { fontSize: 13, color: Colors.successText, lineHeight: 19 },
+
+  errorTitle: { fontSize: 16, color: Colors.textSecondary, textAlign: 'center', marginBottom: 24 },
+  backBtn: { paddingVertical: 12, paddingHorizontal: 24 },
+  backBtnText: { fontSize: 15, color: Colors.primary, fontWeight: '600' },
+});
