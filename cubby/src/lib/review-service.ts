@@ -164,34 +164,13 @@ export interface SubmitTravellerReviewParams {
 }
 
 export async function submitTravellerReview(p: SubmitTravellerReviewParams): Promise<ReviewResult> {
-  // ── DEBUG ──────────────────────────────────────────────────────────────────
-  console.log('[DEBUG] submitTravellerReview called with:', {
-    reviewerId: p.reviewerId,
-    hostId: p.hostId,
-    hostName: p.hostName,
-    travellerId: p.travellerId,
-    bookingId: p.bookingId,
-    ratings: p.ratings,
-    comment: p.comment,
-  });
-
-  // Step 0: confirm table is reachable and RLS allows SELECT
-  const { data: tableCheck, error: tableErr } = await supabase
-    .from('traveller_reviews').select('id').limit(1);
-  console.log('[DEBUG] table probe → data:', tableCheck, '| error:', tableErr ? JSON.stringify(tableErr) : null);
-  if (tableErr?.code === '42P01') return { success: false, error: 'Table traveller_reviews does not exist. (42P01)' };
-  if (tableErr?.code === '42501') return { success: false, error: 'RLS is blocking SELECT on traveller_reviews. (42501)' };
-  // ── END DEBUG ──────────────────────────────────────────────────────────────
-
   // Duplicate guard
-  console.log('[DEBUG] checking for duplicate review on booking_id:', p.bookingId);
   const { data: existing, error: dupErr } = await supabase
     .from('traveller_reviews').select('id').eq('booking_id', p.bookingId).maybeSingle();
-  console.log('[DEBUG] duplicate check → data:', existing, '| error:', dupErr ? JSON.stringify(dupErr) : null);
-  if (dupErr) console.error('[review-service] traveller_reviews duplicate check error:', dupErr);
+  if (dupErr) console.error('[review-service] duplicate check error:', dupErr);
   if (existing) return { success: false, alreadyReviewed: true };
 
-  const insertPayload = {
+  const { error: insertError } = await supabase.from('traveller_reviews').insert({
     booking_id: p.bookingId,
     reviewer_id: p.reviewerId,
     host_id: p.hostId,
@@ -201,21 +180,15 @@ export async function submitTravellerReview(p: SubmitTravellerReviewParams): Pro
     rating_on_time: p.ratings.rating_on_time,
     rating_communication: p.ratings.rating_communication,
     comment: p.comment.trim() || null,
-  };
-  console.log('[DEBUG] insert payload:', JSON.stringify(insertPayload));
-
-  const { data: insertData, error: insertError } = await supabase
-    .from('traveller_reviews').insert(insertPayload).select();
-  console.log('[DEBUG] insert result → data:', insertData, '| error:', insertError ? JSON.stringify(insertError) : null);
+  });
 
   if (insertError) {
-    console.error('[review-service] INSERT FAILED — code:', insertError.code, '| message:', insertError.message, '| details:', insertError.details, '| hint:', insertError.hint);
+    console.error('[review-service] insert error:', insertError.code, insertError.message);
     if (insertError.code === '23505') return { success: false, alreadyReviewed: true };
-    return { success: false, error: `Could not submit review. Please try again. (${insertError.code}: ${insertError.message})` };
+    return { success: false, error: `Could not submit review. Please try again. (${insertError.code})` };
   }
 
-  console.log('[DEBUG] insert succeeded — firing notifications fire-and-forget');
-  notifyTravellerOfReview(p).catch(err => console.error('[review-service] notifyTravellerOfReview error:', err));
+  notifyTravellerOfReview(p).catch(err => console.error('[review-service] notify error:', err));
   return { success: true };
 }
 

@@ -48,6 +48,28 @@ export default function ReviewTraveller() {
   const allRated = Object.values(ratings).every(v => v > 0);
   const goBack = () => router.replace('/(host)/requests');
 
+  // Guard: params must come from navigation — direct URL access loses them
+  if (!bookingId || !travellerId) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <Text style={{ fontSize: 40, marginBottom: 16 }}>⚠️</Text>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8 }}>
+            Missing booking info
+          </Text>
+          <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginBottom: 24, paddingHorizontal: 32 }}>
+            Please open this page from the Requests screen, not directly via URL.
+          </Text>
+          <TouchableOpacity onPress={goBack}
+            // @ts-ignore
+            onClick={goBack}>
+            <Text style={{ fontSize: 15, color: Colors.primary, fontWeight: '600' }}>← Back to Requests</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   async function submit() {
     setError('');
     if (!allRated) { setError('Please rate all three categories.'); return; }
