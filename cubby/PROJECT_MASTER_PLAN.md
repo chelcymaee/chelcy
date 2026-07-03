@@ -1,6 +1,6 @@
 # CUBBY — PROJECT MASTER PLAN
 > Single source of truth for all development, product decisions, and launch planning.
-> Last updated: 2026-07-02
+> Last updated: 2026-07-03
 
 ---
 
@@ -81,12 +81,19 @@ If it does not, question whether it should exist.
 |---|---|---|
 | Follow Cubby section in profile | 🔲 Pending | Instagram, TikTok, website, support. |
 
-### Priority 7 — General Polish
+### Priority 7 — Design System Polish ✅ Done (Critical)
 
 | Item | Status | Notes |
 |---|---|---|
-| Spacing / typography audit | 🔲 Pending | |
-| Button / card / shadow consistency | 🔲 Pending | |
+| Full UI audit (typography, spacing, buttons, colours, cards, forms, shadows) | ✅ Done | 11 categories audited; grouped Critical / Medium / Minor |
+| Design tokens — `src/constants/theme.ts` | ✅ Done | Radius (xs=8, sm=10, md=14, lg=18, xl=22), Spacing, CardShadow, ElevatedShadow |
+| Semantic color tokens — `src/constants/colors.ts` | ✅ Done | Added error, errorBg, warningBg, warningText, infoBg, infoText, successBg, successText, trustBg. Fixed `error` from #FF5C5C to #DC2626 |
+| Reusable `Btn` component — `src/components/Btn.tsx` | ✅ Done | primary / secondary / destructive / ghost; borderRadius 14, paddingVertical 15, fontSize 16 everywhere |
+| Yellow payment CTA fix — `booking.tsx` | ✅ Done | `confirmBtn` was `Colors.accent` (#FFD93D yellow) → now `Colors.primary` (#FF5C5C red) |
+| Hardcoded hex removal — `host-detail.tsx` | ✅ Done | All 20+ hardcoded colours replaced with Colors.* tokens |
+| Padding / heading outlier — `verification.tsx` | ✅ Done | padding 24→20, heading 28→26 |
+| sectionTitle standardised to fontSize 17, fontWeight '700' | ✅ Done | booking.tsx (was 15), host-detail.tsx (was 20), verification.tsx (was 20) |
+| noSlotsBox, errorBanner, trustNote use semantic tokens | ✅ Done | booking.tsx inline colours replaced with Colors.warningBg, Colors.errorBg, Colors.trustBg |
 
 ---
 
