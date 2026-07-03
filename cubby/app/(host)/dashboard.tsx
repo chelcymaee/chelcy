@@ -666,10 +666,10 @@ const styles = StyleSheet.create({
   switchBtnText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
 
   errorBanner: {
-    backgroundColor: '#FEE2E2', borderRadius: 12, marginHorizontal: 20,
+    backgroundColor: Colors.errorBg, borderRadius: 12, marginHorizontal: 20,
     padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#FECACA',
   },
-  errorText: { fontSize: 14, color: '#B91C1C', fontWeight: '600' },
+  errorText: { fontSize: 14, color: Colors.error, fontWeight: '600' },
 
   earningsCard: {
     backgroundColor: Colors.primary, marginHorizontal: 20,
@@ -777,10 +777,10 @@ const styles = StyleSheet.create({
   profileBtnText: { color: Colors.primary, fontWeight: '600', fontSize: 14 },
 
   nudgeCard: {
-    backgroundColor: '#EFF6FF', borderRadius: 14, marginHorizontal: 20,
+    backgroundColor: Colors.infoBg, borderRadius: 14, marginHorizontal: 20,
     padding: 16, borderWidth: 1, borderColor: '#BFDBFE', marginBottom: 12,
   },
-  nudgeCardWarn: { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
+  nudgeCardWarn: { backgroundColor: Colors.warningBg, borderColor: '#FDE68A' },
   nudgeTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 },
   nudgeText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
   tipCard: {

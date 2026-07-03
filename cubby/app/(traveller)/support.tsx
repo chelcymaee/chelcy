@@ -6,6 +6,7 @@ import {
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import Btn from '../../src/components/Btn';
 
 const SUPPORT_EMAIL = 'hello@mycubby.co.za';
 const CUBBY_WHATSAPP_NUMBER = '27000000000'; // TODO: replace with real number
@@ -98,22 +99,8 @@ export default function Support() {
           <Text style={styles.successText}>
             We've received your message and will get back to you at your registered email address within 24–48 hours.
           </Text>
-          <TouchableOpacity
-            style={styles.successBtn}
-            onPress={() => setSuccess(false)}
-            // @ts-ignore
-            onClick={() => setSuccess(false)}
-          >
-            <Text style={styles.successBtnText}>Send another message</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.backProfileBtn}
-            onPress={() => router.replace('/(traveller)/profile')}
-            // @ts-ignore
-            onClick={() => router.replace('/(traveller)/profile')}
-          >
-            <Text style={styles.backProfileBtnText}>Back to profile</Text>
-          </TouchableOpacity>
+          <Btn label="Send another message" onPress={() => setSuccess(false)} variant="secondary" style={styles.successBtn} />
+          <Btn label="Back to profile" onPress={() => router.replace('/(traveller)/profile')} style={styles.backProfileBtn} />
         </View>
       </SafeAreaView>
     );
@@ -160,15 +147,7 @@ export default function Support() {
 
           {!!sendError && <Text style={styles.sendError}>{sendError}</Text>}
 
-          <TouchableOpacity
-            style={[styles.btn, sending && styles.btnDisabled]}
-            onPress={handleSend}
-            // @ts-ignore
-            onClick={handleSend}
-            disabled={sending}
-          >
-            <Text style={styles.btnText}>{sending ? 'Sending…' : 'Send message'}</Text>
-          </TouchableOpacity>
+          <Btn label={sending ? 'Sending…' : 'Send message'} onPress={handleSend} loading={sending} style={styles.btn} />
         </View>
 
         {/* FAQs */}
@@ -255,13 +234,11 @@ const styles = StyleSheet.create({
   formCard: { backgroundColor: Colors.white, marginHorizontal: 20, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: Colors.border },
   label: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary, marginBottom: 6, marginTop: 12 },
   input: { backgroundColor: Colors.background, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: Colors.textPrimary },
-  inputError: { borderColor: '#DC2626' },
+  inputError: { borderColor: Colors.error },
   textArea: { height: 120, textAlignVertical: 'top' },
-  fieldError: { fontSize: 12, color: '#DC2626', fontWeight: '600', marginTop: 4 },
-  sendError: { fontSize: 13, color: '#DC2626', fontWeight: '600', marginTop: 8, textAlign: 'center' },
-  btn: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 16 },
-  btnDisabled: { opacity: 0.5 },
-  btnText: { fontSize: 16, fontWeight: '700', color: Colors.white },
+  fieldError: { fontSize: 12, color: Colors.error, fontWeight: '600', marginTop: 4 },
+  sendError: { fontSize: 13, color: Colors.error, fontWeight: '600', marginTop: 8, textAlign: 'center' },
+  btn: { marginTop: 16 },
   faqList: { backgroundColor: Colors.white, marginHorizontal: 20, borderRadius: 18, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
   faqItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
   faqHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -279,8 +256,6 @@ const styles = StyleSheet.create({
   successEmoji: { fontSize: 64, marginBottom: 16 },
   successTitle: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, marginBottom: 12 },
   successText: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  successBtn: { backgroundColor: Colors.background, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28, borderWidth: 1.5, borderColor: Colors.border, marginBottom: 12 },
-  successBtnText: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  backProfileBtn: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28 },
-  backProfileBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
+  successBtn: { marginBottom: 12 },
+  backProfileBtn: {},
 });

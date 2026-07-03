@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import { Radius, CardShadow } from '../../src/constants/theme';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
 import { recalculateHostResponseRate, minutesBetween } from '../../src/lib/response-rate';
@@ -384,10 +385,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   toast: {
     position: 'absolute', top: 16, left: 24, right: 24,
-    backgroundColor: '#1A1A1A', borderRadius: 12,
+    backgroundColor: Colors.textPrimary, borderRadius: 12,
     paddingVertical: 14, paddingHorizontal: 20, zIndex: 100, alignItems: 'center',
   },
-  toastError: { backgroundColor: '#DC2626' },
+  toastError: { backgroundColor: Colors.error },
   toastText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 20, paddingTop: 8 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
@@ -396,18 +397,17 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   reviewTravellerBtn: { borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 8 },
   reviewTravellerBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
-  reviewedBadge: { backgroundColor: '#F0FDF4', borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 8 },
-  reviewedBadgeText: { fontSize: 14, fontWeight: '700', color: '#16A34A' },
+  reviewedBadge: { backgroundColor: Colors.successBg, borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 8 },
+  reviewedBadgeText: { fontSize: 14, fontWeight: '700', color: Colors.successText },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8, textAlign: 'center' },
   emptySub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
   list: { padding: 20, gap: 14 },
   card: {
-    backgroundColor: Colors.white, borderRadius: 16, padding: 14,
+    backgroundColor: Colors.white, borderRadius: Radius.lg, padding: 14,
     borderWidth: 1, borderColor: Colors.border,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, gap: 12,
+    ...CardShadow, gap: 12,
   },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   avatar: {
@@ -425,10 +425,10 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 11, fontWeight: '700' },
   pinRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#F0FDF4', borderRadius: 10, padding: 10,
+    backgroundColor: Colors.successBg, borderRadius: 10, padding: 10,
   },
-  pinLabel: { fontSize: 13, color: '#059669', fontWeight: '600' },
-  pinCode: { fontSize: 22, fontWeight: '900', color: '#059669', letterSpacing: 4 },
+  pinLabel: { fontSize: 13, color: Colors.successText, fontWeight: '600' },
+  pinCode: { fontSize: 22, fontWeight: '900', color: Colors.successText, letterSpacing: 4 },
   actions: { flexDirection: 'row', gap: 10 },
   acceptBtn: {
     flex: 1, backgroundColor: Colors.primary, borderRadius: 10,
@@ -441,9 +441,9 @@ const styles = StyleSheet.create({
   },
   declineText: { color: Colors.textSecondary, fontWeight: '700', fontSize: 15 },
   confirmRow: { gap: 8 },
-  confirmText: { fontSize: 13, color: '#DC2626', fontWeight: '600', textAlign: 'center' },
+  confirmText: { fontSize: 13, color: Colors.error, fontWeight: '600', textAlign: 'center' },
   declineConfirmBtn: {
-    flex: 1, backgroundColor: '#DC2626', borderRadius: 10,
+    flex: 1, backgroundColor: Colors.error, borderRadius: 10,
     paddingVertical: 12, alignItems: 'center',
   },
   declineConfirmText: { color: Colors.white, fontWeight: '700', fontSize: 14 },

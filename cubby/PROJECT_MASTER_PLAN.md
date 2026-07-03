@@ -81,7 +81,23 @@ If it does not, question whether it should exist.
 |---|---|---|
 | Follow Cubby section in profile | 🔲 Pending | Instagram, TikTok, website, support. |
 
-### Priority 7 — Design System Polish ✅ Done (Critical)
+### Priority 7 — Design System Polish ✅ Done (Critical + Medium)
+
+#### Medium Priority — completed
+
+| Item | Status | Notes |
+|---|---|---|
+| `Banner` component — `src/components/Banner.tsx` | ✅ Done | Shared error/warning/success/info banner; semantic colors + borderRadius token |
+| `Btn` adoption — auth + payment + confirmation + support + safety + partner-apply + host-profile | ✅ Done | 8 screens; standardised primary/secondary/destructive/ghost CTAs |
+| `Banner` usage — login, signup, partner-apply error states | ✅ Done | Replaced inline `View+Text` error divs with `<Banner variant="error" />` |
+| Semantic color tokens — bookings.tsx | ✅ Done | warningBg/warningText for pendingCard; successBg/successText for reviewedBadge; Colors.error for cancelBtn + cancel confirm |
+| Semantic color tokens — requests.tsx | ✅ Done | successBg/successText for pinRow + reviewedBadge; Colors.error for declineConfirmBtn; `CardShadow` + `Radius.lg` for card |
+| Semantic color tokens — verification.tsx STATUS_CONFIG | ✅ Done | Dynamic bg/color values → Colors.warningBg/successBg/errorBg |
+| Semantic color tokens — host-profile, dashboard | ✅ Done | toast/errorBanner/nudgeCards → Colors tokens |
+| Semantic color tokens — safety.tsx | ✅ Done | emergencyCard → Colors.errorBg |
+| Intentionally left unchanged | — | `explore.tsx` (complex interactions), `profile.tsx` (modal confirm inline safe), `booking.tsx`/`host-detail.tsx` (already updated in Critical pass) |
+
+#### Critical Priority — completed
 
 | Item | Status | Notes |
 |---|---|---|

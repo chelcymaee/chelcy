@@ -174,22 +174,22 @@ export default function Verification() {
         emoji: '⏳',
         title: 'Verification in progress',
         text: 'Your documents are under review. This usually takes 24–48 hours. We\'ll notify you once your blue tick is confirmed.',
-        color: '#F59E0B',
-        bg: '#FFFBEB',
+        color: Colors.warningText,
+        bg: Colors.warningBg,
       },
       approved: {
         emoji: '✅',
         title: 'You\'re verified!',
         text: 'Your identity has been confirmed. Your profile now shows the blue verified tick.',
-        color: Colors.primary,
-        bg: '#F0FDF4',
+        color: Colors.successText,
+        bg: Colors.successBg,
       },
       rejected: {
         emoji: '❌',
         title: 'Verification unsuccessful',
         text: 'We couldn\'t verify your identity with the documents provided. Please try again with a clearer photo of your ID and selfie.',
-        color: '#EF4444',
-        bg: '#FEF2F2',
+        color: Colors.error,
+        bg: Colors.errorBg,
       },
     };
 
@@ -250,7 +250,7 @@ export default function Verification() {
       <SafeAreaView style={styles.container}>
         <View style={styles.centreScreen}>
           <Text style={styles.successEmoji}>⚠️</Text>
-          <Text style={[styles.successTitle, { color: '#EF4444' }]}>Upload failed</Text>
+          <Text style={[styles.successTitle, { color: Colors.error }]}>Upload failed</Text>
           <Text style={styles.successText}>{errorMsg}</Text>
           <TouchableOpacity
             style={[styles.btn, { marginTop: 8 }]}

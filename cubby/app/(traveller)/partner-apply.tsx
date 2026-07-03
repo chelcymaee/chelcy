@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  SafeAreaView, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
+  SafeAreaView, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import Btn from '../../src/components/Btn';
+import Banner from '../../src/components/Banner';
 
 const BUSINESS_TYPES = [
   { label: '☕ Café', value: 'cafe' },
@@ -115,14 +117,7 @@ export default function PartnerApply() {
               ))}
             </View>
           </View>
-          <TouchableOpacity
-            style={s.doneBtn}
-            onPress={() => router.replace('/(traveller)/explore')}
-            // @ts-ignore
-            onClick={() => router.replace('/(traveller)/explore')}
-          >
-            <Text style={s.doneBtnText}>Back to explore</Text>
-          </TouchableOpacity>
+          <Btn label="Back to explore" onPress={() => router.replace('/(traveller)/explore')} style={s.doneBtn} />
         </View>
       </SafeAreaView>
     );
@@ -159,11 +154,7 @@ export default function PartnerApply() {
             ))}
           </View>
 
-          {!!serverError && (
-            <View style={s.errorBanner}>
-              <Text style={s.errorBannerText}>⚠️ {serverError}</Text>
-            </View>
-          )}
+          {!!serverError && <Banner message={serverError} variant="error" />}
 
           {/* ── Contact details ─────────────────────────────────────── */}
           <Text style={s.sectionLabel}>Your details</Text>
@@ -269,19 +260,7 @@ export default function PartnerApply() {
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={[s.submitBtn, loading && s.submitBtnDisabled]}
-            onPress={handleSubmit}
-            // @ts-ignore
-            onClick={handleSubmit}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={s.submitBtnText}>Submit application →</Text>
-            }
-          </TouchableOpacity>
+          <Btn label="Submit application →" onPress={handleSubmit} loading={loading} style={s.submitBtn} />
 
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -334,20 +313,14 @@ const s = StyleSheet.create({
 
   benefitsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
   benefitChip: {
-    backgroundColor: '#FFF0F0', borderRadius: 20,
+    backgroundColor: Colors.offWhite, borderRadius: 20,
     paddingHorizontal: 12, paddingVertical: 6,
-    borderWidth: 1, borderColor: '#FFD0D0',
+    borderWidth: 1, borderColor: Colors.border,
   },
   benefitText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
 
-  errorBanner: {
-    backgroundColor: '#FEE2E2', borderRadius: 12, padding: 14,
-    marginBottom: 16, borderWidth: 1, borderColor: '#FECACA',
-  },
-  errorBannerText: { fontSize: 14, color: '#B91C1C', fontWeight: '600' },
-
   sectionLabel: {
-    fontSize: 13, fontWeight: '700', color: '#6B7280',
+    fontSize: 13, fontWeight: '700', color: Colors.textSecondary,
     textTransform: 'uppercase', letterSpacing: 0.5,
     marginTop: 24, marginBottom: 12,
   },
@@ -382,20 +355,13 @@ const s = StyleSheet.create({
   },
 
   trustNote: {
-    flexDirection: 'row', gap: 10, backgroundColor: '#F0FFF4',
+    flexDirection: 'row', gap: 10, backgroundColor: Colors.trustBg,
     borderRadius: 12, padding: 14, marginTop: 8, marginBottom: 24,
   },
   trustIcon: { fontSize: 18 },
   trustText: { flex: 1, fontSize: 12, color: Colors.textSecondary, lineHeight: 18 },
 
-  submitBtn: {
-    backgroundColor: Colors.primary, borderRadius: 16,
-    paddingVertical: 18, alignItems: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
-  },
-  submitBtnDisabled: { opacity: 0.6, shadowOpacity: 0 },
-  submitBtnText: { fontSize: 17, fontWeight: '800', color: '#fff' },
+  submitBtn: { marginTop: 8 },
 
   // ── Success screen ──
   successOuter: {
@@ -421,9 +387,5 @@ const s = StyleSheet.create({
   },
   stepNum: { fontSize: 14, fontWeight: '800', color: '#fff' },
   stepText: { fontSize: 14, color: Colors.textPrimary, flex: 1 },
-  doneBtn: {
-    backgroundColor: Colors.primary, borderRadius: 16,
-    paddingVertical: 18, alignItems: 'center', width: '100%',
-  },
-  doneBtnText: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  doneBtn: { width: '100%' },
 });

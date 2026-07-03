@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import Btn from '../../src/components/Btn';
 import LocationPicker, { LocationResult } from '../../src/components/LocationPicker';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -428,16 +429,7 @@ export default function HostProfile() {
         </View>
 
         {/* Save */}
-        <TouchableOpacity
-          style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
-          onPress={save}
-          // @ts-ignore
-          onClick={save}
-          activeOpacity={0.85}
-          disabled={loading}
-        >
-          <Text style={styles.saveBtnText}>{loading ? 'Saving…' : 'Save listing'}</Text>
-        </TouchableOpacity>
+        <Btn label={loading ? 'Saving…' : 'Save listing'} onPress={save} loading={loading} style={styles.saveBtn} />
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -452,14 +444,14 @@ const styles = StyleSheet.create({
     top: 16,
     left: 24,
     right: 24,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: Colors.textPrimary,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 20,
     zIndex: 100,
     alignItems: 'center',
   },
-  toastError: { backgroundColor: '#DC2626' },
+  toastError: { backgroundColor: Colors.error },
   toastText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   header: { padding: 20, paddingTop: 8 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
@@ -499,9 +491,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
   },
-  inputError: { borderColor: '#DC2626' },
+  inputError: { borderColor: Colors.error },
   textArea: { height: 100, textAlignVertical: 'top' },
-  errorText: { fontSize: 13, color: '#DC2626', marginHorizontal: 20, marginTop: -14, marginBottom: 16 },
+  errorText: { fontSize: 13, color: Colors.error, marginHorizontal: 20, marginTop: -14, marginBottom: 16 },
   priceRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 20 },
   pricePrefix: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginRight: 4 },
   priceInput: { width: 120, marginLeft: 0 },
@@ -556,15 +548,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 10, backgroundColor: Colors.white,
   },
-  featureChipActive: { borderColor: Colors.primary, backgroundColor: '#FFF0F0' },
+  featureChipActive: { borderColor: Colors.primary, backgroundColor: Colors.offWhite },
   featureEmoji: { fontSize: 18 },
   featureLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
   featureLabelActive: { color: Colors.primary },
   featureCheck: { fontSize: 13, color: Colors.primary, fontWeight: '800', marginLeft: 2 },
-  saveBtn: {
-    backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18,
-    alignItems: 'center', marginHorizontal: 20,
-  },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  saveBtn: { marginHorizontal: 20 },
 });

@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Share } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import Btn from '../../src/components/Btn';
 import { formatDateLabel, todayISO } from '../../src/components/DatePickerModal';
 
 export default function BookingConfirmation() {
@@ -90,11 +91,11 @@ export default function BookingConfirmation() {
         </View>
 
         {/* Actions */}
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => router.replace('/(traveller)/bookings')}
-          // @ts-ignore
-          onClick={() => router.replace('/(traveller)/bookings')}>
-          <Text style={styles.primaryBtnText}>View my bookings</Text>
-        </TouchableOpacity>
+        <Btn
+          label="View my bookings"
+          onPress={() => router.replace('/(traveller)/bookings')}
+          style={styles.primaryBtn}
+        />
 
         <TouchableOpacity style={styles.secondaryBtn} onPress={shareBooking}
           // @ts-ignore
@@ -102,11 +103,12 @@ export default function BookingConfirmation() {
           <Text style={styles.secondaryBtnText}>📤 Share Cubby with a friend</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.ghostBtn} onPress={() => router.replace('/(traveller)/explore')}
-          // @ts-ignore
-          onClick={() => router.replace('/(traveller)/explore')}>
-          <Text style={styles.ghostBtnText}>Back to explore</Text>
-        </TouchableOpacity>
+        <Btn
+          label="Back to explore"
+          onPress={() => router.replace('/(traveller)/explore')}
+          variant="ghost"
+          style={styles.ghostBtn}
+        />
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -119,7 +121,7 @@ const styles = StyleSheet.create({
   inner: { padding: 24, paddingTop: 32 },
   successHeader: { alignItems: 'center', marginBottom: 28 },
   successIcon: {
-    width: 80, height: 80, borderRadius: 40, backgroundColor: '#F0FFF4',
+    width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.successBg,
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
   successEmoji: { fontSize: 40 },
@@ -157,16 +159,11 @@ const styles = StyleSheet.create({
   stepText: { fontSize: 14, color: Colors.textPrimary, flex: 1 },
   trustRow: { gap: 8, marginBottom: 20 },
   trustBadge: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center' },
-  primaryBtn: {
-    backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18,
-    alignItems: 'center', marginBottom: 12,
-  },
-  primaryBtnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  primaryBtn: { marginBottom: 12 },
   secondaryBtn: {
-    backgroundColor: Colors.accent, borderRadius: 16, paddingVertical: 16,
+    backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 15,
     alignItems: 'center', marginBottom: 12,
   },
-  secondaryBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
-  ghostBtn: { paddingVertical: 14, alignItems: 'center' },
-  ghostBtnText: { fontSize: 15, color: Colors.textSecondary },
+  secondaryBtnText: { fontSize: 16, fontWeight: '700', color: Colors.white },
+  ghostBtn: { marginBottom: 4 },
 });

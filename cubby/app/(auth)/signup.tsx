@@ -7,6 +7,8 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import Btn from '../../src/components/Btn';
+import Banner from '../../src/components/Banner';
 
 type Role = 'traveller' | 'host' | 'both' | 'runner';
 
@@ -118,11 +120,7 @@ export default function Signup() {
         <Text style={styles.heading}>Create account</Text>
         <Text style={styles.subheading}>Join Cubby — it only takes a minute</Text>
 
-        {!!errorMsg && (
-          <View style={{ backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginBottom: 12 }}>
-            <Text style={{ color: '#DC2626', fontWeight: '600' }}>{errorMsg}</Text>
-          </View>
-        )}
+        {!!errorMsg && <Banner message={errorMsg} variant="error" />}
 
         {/* Role picker */}
         <Text style={styles.label}>I am a…</Text>
@@ -177,16 +175,12 @@ export default function Signup() {
             secureTextEntry
           />
 
-          <TouchableOpacity
-            style={[styles.btn, loading && styles.btnDisabled]}
+          <Btn
+            label={loading ? 'Creating account…' : 'Create account'}
             onPress={handleSignup}
-            disabled={loading}
-            activeOpacity={0.85}
-            // @ts-ignore
-            onClick={handleSignup}
-          >
-            <Text style={styles.btnText}>{loading ? 'Creating account…' : 'Create account'}</Text>
-          </TouchableOpacity>
+            loading={loading}
+            style={styles.btn}
+          />
         </View>
 
         <View style={styles.footer}>
@@ -241,15 +235,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textPrimary,
   },
-  btn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  btn: { marginTop: 24 },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
   footerText: { color: Colors.textSecondary, fontSize: 15 },
   footerLink: { color: Colors.primary, fontSize: 15, fontWeight: '700' },
