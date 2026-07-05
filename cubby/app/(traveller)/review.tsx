@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
-  TextInput, ScrollView, ActivityIndicator,
+  TextInput, ScrollView, ActivityIndicator, Animated,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -47,6 +47,18 @@ export default function Review() {
   const [success, setSuccess] = useState(false);
   const [alreadyReviewed, setAlreadyReviewed] = useState(false);
   const [checking, setChecking] = useState(!!bookingId);
+  const successOpacity = useRef(new Animated.Value(0)).current;
+  const successY = useRef(new Animated.Value(20)).current;
+  const successScale = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    if (!success) return;
+    Animated.parallel([
+      Animated.timing(successOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.spring(successY, { toValue: 0, useNativeDriver: true, speed: 18, bounciness: 8 }),
+      Animated.spring(successScale, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 14 }),
+    ]).start();
+  }, [success]);
 
   useEffect(() => {
     if (!bookingId || !isSupabaseConfigured) { setChecking(false); return; }
@@ -146,11 +158,11 @@ export default function Review() {
   if (success) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.successScreen}>
-          <Text style={styles.successEmoji}>🙏</Text>
+        <Animated.View style={[styles.successScreen, { opacity: successOpacity, transform: [{ translateY: successY }] }]}>
+          <Animated.Text style={[styles.successEmoji, { transform: [{ scale: successScale }] }]}>🙏</Animated.Text>
           <Text style={styles.successTitle}>Thank you!</Text>
           <Text style={styles.successSub}>Your review helps other travellers find great storage.</Text>
-        </View>
+        </Animated.View>
       </SafeAreaView>
     );
   }

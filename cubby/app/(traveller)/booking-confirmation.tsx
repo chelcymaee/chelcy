@@ -1,5 +1,6 @@
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Share } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Share, Animated } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { useRef, useEffect } from 'react';
 import { Colors } from '../../src/constants/colors';
 import Btn from '../../src/components/Btn';
 import { formatDateLabel, todayISO } from '../../src/components/DatePickerModal';
@@ -12,6 +13,18 @@ export default function BookingConfirmation() {
 
   const pinCode = pin ?? '4821';
 
+  const enterOpacity = useRef(new Animated.Value(0)).current;
+  const enterY = useRef(new Animated.Value(24)).current;
+  const iconScale = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(enterOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(enterY, { toValue: 0, useNativeDriver: true, speed: 18, bounciness: 8 }),
+      Animated.spring(iconScale, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 14 }),
+    ]).start();
+  }, []);
+
   async function shareBooking() {
     await Share.share({
       message: `I'm using Cubby to store my bags at ${hostName ?? 'a Cubby host'} while I explore Cape Town! 🧳 cubby.app`,
@@ -22,13 +35,13 @@ export default function BookingConfirmation() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
         {/* Success header */}
-        <View style={styles.successHeader}>
-          <View style={styles.successIcon}>
+        <Animated.View style={[styles.successHeader, { opacity: enterOpacity, transform: [{ translateY: enterY }] }]}>
+          <Animated.View style={[styles.successIcon, { transform: [{ scale: iconScale }] }]}>
             <Text style={styles.successEmoji}>✅</Text>
-          </View>
+          </Animated.View>
           <Text style={styles.successTitle}>Booking confirmed!</Text>
           <Text style={styles.successSub}>Your bags are as good as stored. Head to the host and show your PIN.</Text>
-        </View>
+        </Animated.View>
 
         {/* PIN code - most important element */}
         <View style={styles.pinCard}>

@@ -1,6 +1,6 @@
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-  Image, TextInput, Modal, KeyboardAvoidingView, Platform, ActivityIndicator,
+  Image, TextInput, Modal, KeyboardAvoidingView, Platform, ActivityIndicator, Animated,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -65,6 +65,8 @@ export default function Profile() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarToast, setAvatarToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastY = useRef(new Animated.Value(-8)).current;
 
   // Draft state for modal
   const [draftFirstName, setDraftFirstName] = useState('');
@@ -122,8 +124,16 @@ export default function Profile() {
 
   function showToast(msg: string, ok: boolean) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastOpacity.setValue(0);
+    toastY.setValue(-8);
     setAvatarToast({ msg, ok });
-    toastTimer.current = setTimeout(() => setAvatarToast(null), 3500);
+    Animated.parallel([
+      Animated.timing(toastOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.spring(toastY, { toValue: 0, useNativeDriver: true, speed: 24, bounciness: 6 }),
+    ]).start();
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(toastOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => setAvatarToast(null));
+    }, 3200);
   }
 
   async function saveProfile(fn: string, ln: string, ph: string, avatarUrl: string | null) {
@@ -332,9 +342,9 @@ export default function Profile() {
 
         {/* Avatar upload toast */}
         {!!avatarToast && (
-          <View style={[styles.toast, avatarToast.ok ? styles.toastOk : styles.toastErr]}>
+          <Animated.View style={[styles.toast, avatarToast.ok ? styles.toastOk : styles.toastErr, { opacity: toastOpacity, transform: [{ translateY: toastY }] }]}>
             <Text style={styles.toastText}>{avatarToast.ok ? '✅' : '⚠️'} {avatarToast.msg}</Text>
-          </View>
+          </Animated.View>
         )}
 
         {/* Profile row */}

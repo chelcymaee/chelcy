@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity,
+  TouchableOpacity, Animated,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -67,6 +67,7 @@ export default function HostDetail() {
   const [savedReviews, setSavedReviews] = useState<any[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [savingSpot, setSavingSpot] = useState(false);
+  const heartScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (!id) return;
@@ -139,8 +140,16 @@ export default function HostDetail() {
     setIsSaved(saved.includes(id));
   }
 
+  function animateHeart() {
+    Animated.sequence([
+      Animated.spring(heartScale, { toValue: 1.4, useNativeDriver: true, speed: 40, bounciness: 12 }),
+      Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 6 }),
+    ]).start();
+  }
+
   async function toggleSave() {
     if (!id) return;
+    animateHeart();
     setSavingSpot(true);
     try {
       if (isSupabaseConfigured) {
@@ -226,7 +235,9 @@ export default function HostDetail() {
               disabled={savingSpot}
               style={{ marginBottom: 8 }}
             >
-              <Text style={{ fontSize: 24 }}>{isSaved ? '❤️' : '🤍'}</Text>
+              <Animated.Text style={{ fontSize: 24, transform: [{ scale: heartScale }] }}>
+                {isSaved ? '❤️' : '🤍'}
+              </Animated.Text>
             </TouchableOpacity>
 
           {/* Rating row */}

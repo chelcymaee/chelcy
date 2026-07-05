@@ -73,7 +73,12 @@ If it does not, question whether it should exist.
 |---|---|---|
 | Bottom sheet drag animation | ✅ Done | Spring-based snap to peek/half/full positions. |
 | Map marker selection | ✅ Done | Enlarges on select, dark background. |
-| Card transitions, favourite animation | 🔲 Pending | |
+| Favourite/heart button | ✅ Done | Spring scale bounce on tap (`host-detail.tsx`). |
+| Notification bell shake | ✅ Done | Shake on new notification count increase (`NotificationBell.tsx`). |
+| Booking confirmation entrance | ✅ Done | Fade + slide-up + icon scale-in on mount (`booking-confirmation.tsx`). |
+| Review submitted entrance | ✅ Done | Fade + slide-up + emoji scale-in on success (`review.tsx`). |
+| Message sent entrance | ✅ Done | Fade + slide-up + emoji scale-in on success (`support.tsx`). |
+| Profile toast fade | ✅ Done | Fade-in/slide-down on appear, fade-out on dismiss (`profile.tsx`). |
 
 ### Priority 6 — Social Presence
 

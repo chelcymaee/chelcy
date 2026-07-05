@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../constants/colors';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -10,6 +10,18 @@ interface Props {
 
 export default function NotificationBell({ variant = 'traveller' }: Props) {
   const [unread, setUnread] = useState(0);
+  const prevUnread = useRef(0);
+  const shake = useRef(new Animated.Value(0)).current;
+
+  function runShake() {
+    Animated.sequence([
+      Animated.timing(shake, { toValue: -8, duration: 60, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: 8, duration: 60, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: -6, duration: 55, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: 6, duration: 55, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  }
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
@@ -23,7 +35,10 @@ export default function NotificationBell({ variant = 'traveller' }: Props) {
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .is('read_at', null);
-      setUnread(count ?? 0);
+      const newCount = count ?? 0;
+      if (newCount > prevUnread.current) runShake();
+      prevUnread.current = newCount;
+      setUnread(newCount);
     } catch {}
   }
 
@@ -37,7 +52,7 @@ export default function NotificationBell({ variant = 'traveller' }: Props) {
       onClick={() => router.push(target as any)}
       activeOpacity={0.7}
     >
-      <Text style={styles.icon}>🔔</Text>
+      <Animated.Text style={[styles.icon, { transform: [{ translateX: shake }] }]}>🔔</Animated.Text>
       {unread > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text>

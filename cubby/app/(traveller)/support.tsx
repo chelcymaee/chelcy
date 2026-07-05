@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-  TextInput, Linking, Platform,
+  TextInput, Linking, Platform, Animated,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
@@ -38,6 +38,18 @@ export default function Support() {
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [sendError, setSendError] = useState('');
+  const successOpacity = useRef(new Animated.Value(0)).current;
+  const successY = useRef(new Animated.Value(24)).current;
+  const successScale = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    if (!success) return;
+    Animated.parallel([
+      Animated.timing(successOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.spring(successY, { toValue: 0, useNativeDriver: true, speed: 18, bounciness: 8 }),
+      Animated.spring(successScale, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 14 }),
+    ]).start();
+  }, [success]);
 
   async function handleSend() {
     let valid = true;
@@ -93,15 +105,15 @@ export default function Support() {
           </TouchableOpacity>
           <Text style={styles.heading}>Help & Support</Text>
         </View>
-        <View style={styles.successContainer}>
-          <Text style={styles.successEmoji}>✅</Text>
+        <Animated.View style={[styles.successContainer, { opacity: successOpacity, transform: [{ translateY: successY }] }]}>
+          <Animated.Text style={[styles.successEmoji, { transform: [{ scale: successScale }] }]}>✅</Animated.Text>
           <Text style={styles.successTitle}>Message sent!</Text>
           <Text style={styles.successText}>
             We've received your message and will get back to you at your registered email address within 24–48 hours.
           </Text>
           <Btn label="Send another message" onPress={() => setSuccess(false)} variant="secondary" style={styles.successBtn} />
           <Btn label="Back to profile" onPress={() => router.replace('/(traveller)/profile')} style={styles.backProfileBtn} />
-        </View>
+        </Animated.View>
       </SafeAreaView>
     );
   }
