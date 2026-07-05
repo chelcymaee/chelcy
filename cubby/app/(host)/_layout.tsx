@@ -83,6 +83,9 @@ export default function HostLayout() {
       <Tabs.Screen name="chat" options={{ href: null }} />
       <Tabs.Screen name="traveller-profile" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="review-traveller" options={{ href: null }} />
+      <Tabs.Screen name="review-detail" options={{ href: null }} />
+      <Tabs.Screen name="reviews" options={{ href: null }} />
     </Tabs>
   );
 }
