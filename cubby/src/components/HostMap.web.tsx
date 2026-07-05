@@ -140,6 +140,15 @@ export default function HostMap({ filtered, userLocation, onPinPress }: Props) {
       ? { lat: userLocation.lat, lng: userLocation.lon }
       : CAPE_TOWN;
 
+    // --- TEMP DEBUG ---
+    const _key = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
+    console.log('[CubbyMap] key defined:', !!_key);
+    console.log('[CubbyMap] key length:', _key.length);
+    console.log('[CubbyMap] key preview:', _key.slice(0, 6) + '...' + _key.slice(-4));
+    console.log('[CubbyMap] script already in DOM:', !!document.getElementById('cubby-gmaps'));
+    console.log('[CubbyMap] google.maps already loaded:', !!(window as any).google?.maps);
+    // --- END TEMP DEBUG ---
+
     window._cubbyPush = (id: string) => {
       if (onPinPress) {
         onPinPress(id);
@@ -275,6 +284,7 @@ export default function HostMap({ filtered, userLocation, onPinPress }: Props) {
       const script = document.createElement('script');
       script.id = 'cubby-gmaps';
       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places&callback=_cubbyMapInit`;
+      console.log('[CubbyMap] loading script, key in URL:', script.src.includes('key=') && !script.src.includes('key=&'));
       script.async = true;
       window._cubbyMapInit = () => {
         delete window._cubbyMapInit;
