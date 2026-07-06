@@ -1,6 +1,22 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
-import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { isSupabaseConfigured } from '../../src/lib/supabase';
+
+const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
+
+async function adminFetch(method: string, body?: object) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-support-messages`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-secret': ADMIN_SECRET,
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return res.json();
+}
 
 interface SupportMessage {
   id: string;
@@ -25,10 +41,7 @@ export default function SupportMessages() {
     setLoading(true);
     if (!isSupabaseConfigured) { setLoading(false); return; }
     try {
-      const { data, error } = await supabase
-        .from('support_messages')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await adminFetch('GET');
       if (!error && data) {
         setMessages(data.map((r: any) => ({
           id: r.id,
@@ -46,11 +59,8 @@ export default function SupportMessages() {
   }
 
   async function resolveMessage(id: string) {
-    const { error } = await supabase
-      .from('support_messages')
-      .update({ status: 'resolved' } as any)
-      .eq('id', id);
-    if (error) { setMsg('Error: ' + error.message); return; }
+    const { error } = await adminFetch('POST', { id, status: 'resolved' });
+    if (error) { setMsg('Error: ' + error); return; }
     setMessages(prev => prev.map(m => m.id === id ? { ...m, status: 'resolved' } : m));
     setExpandedId(null);
     setMsg('Marked as resolved ✓');
@@ -58,11 +68,8 @@ export default function SupportMessages() {
   }
 
   async function reopenMessage(id: string) {
-    const { error } = await supabase
-      .from('support_messages')
-      .update({ status: 'pending' } as any)
-      .eq('id', id);
-    if (error) { setMsg('Error: ' + error.message); return; }
+    const { error } = await adminFetch('POST', { id, status: 'pending' });
+    if (error) { setMsg('Error: ' + error); return; }
     setMessages(prev => prev.map(m => m.id === id ? { ...m, status: 'open' } : m));
     setMsg('Reopened ✓');
     setTimeout(() => setMsg(''), 3000);

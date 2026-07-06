@@ -194,9 +194,11 @@ If it does not, question whether it should exist.
 | Booking notifications | ✅ Done | Audited first: "confirmed" and "declined" were already correctly wired (`app/(host)/requests.tsx`), contrary to some stale docs suggesting otherwise. "Cancelled by traveller" was genuinely missing — added to `app/(traveller)/bookings.tsx`, notifying the host (resolved via `assigned_user_id`/`user_id`) using the existing `booking_cancelled` type and `sendNotification` helper, same pattern as the other two. |
 | New message notifications | ✅ Confirmed working | Audited `notify-new-message` edge function — fully correct (resolves recipient via `assigned_user_id`, inserts the in-app row itself, sends the Expo push). Assumed the Database Webhook needed wiring per stale master plan notes — checked Supabase Dashboard → Integrations → Database Webhooks and found it was **already fully configured** (table `messages`, event `Insert`, type Supabase Edge Functions, pointed at `notify-new-message`, auth header auto-populated). Founder tested live: sent a message between a traveller and host account, confirmed an edge function log entry and a delivered notification. No code or config change was needed — another case of the docs being stale, not the app. |
 | MOCK_REVIEWS removed | ✅ Done | `app/(traveller)/host-detail.tsx` — removed the `MOCK_REVIEWS` import/merge entirely. Hosts with zero reviews now show an honest "No reviews yet — Be the first to leave a review after your stay." empty state instead of fabricated testimonials. |
-| Admin Partner Applications / Support Messages audit | ✅ Audited, not rebuilt | Both screens exist, are correctly linked from the dashboard, and are structurally well-built (correct field mapping, correct update logic). One open question the audit couldn't resolve: both read/write their tables via a direct client call (not a service-role edge function), while `schema.sql` documents `support_messages` with zero SELECT policies and a comment saying `partner_applications` admin reads should go through a service-role function. If the live database matches what's written there, both screens would show empty results forever. Could not verify live RLS behavior — outbound access to the live Supabase project (`gqgxahqmndkaeyuvhliv.supabase.co`) is blocked by this sandboxed dev environment's network policy, and `schema.sql` has proven stale elsewhere in this audit (e.g. the payout bug above), so this needs a quick live check rather than a speculative rebuild. Per instruction, did not rebuild either screen without confirmed evidence of breakage. |
+| Admin Partner Applications / Support Messages — **confirmed broken, now fixed** | ✅ Fixed | Founder ran live SQL diagnostics in the Supabase SQL Editor (`SET ROLE anon` + count queries, then `pg_policies`) and confirmed: `partner_applications` has an `INSERT`-only policy (no `SELECT`/`UPDATE` at all); `support_messages` has a `SELECT` policy that only lets a user read their *own* row via `auth.uid() = user_id` — useless for the PIN-based admin panel, which has no Supabase Auth session and hits the table as `anon`. Both admin screens were confirmed genuinely broken (RLS silently returned 0 rows even with 6 real support messages present). Fix: built two new service-role edge functions, `admin-partner-applications` and `admin-support-messages`, mirroring the existing `admin-bank-details`/`admin-hosts`/`admin-users` pattern exactly — `ADMIN_SECRET`-gated, service-role key used only inside the function, never exposed to the client. Updated `partner-applications.tsx` and `support-messages.tsx` to call these functions instead of querying the tables directly. **No RLS policy was weakened** — public anon/authenticated access to these tables is unchanged; admin access is now routed through the same secure pattern used everywhere else in the admin panel. Requires deploying both new functions and setting `ADMIN_SECRET` (already required from Sprint 2) — see Manual Tasks. |
 
-**Verified:** `tsc --noEmit` — zero new errors. Playwright headless checks confirm `bookings.tsx`, `bank-details.tsx`, `partner-applications.tsx`, and `support-messages.tsx` all render with zero console errors (data loading itself untestable from this sandbox — see above).
+**Verified:** `tsc --noEmit` — zero new errors. Playwright headless checks confirm `bookings.tsx`, `bank-details.tsx`, `partner-applications.tsx`, and `support-messages.tsx` all render with zero console errors — the two admin screens correctly show their empty state rather than crashing when the new (undeployed-from-this-sandbox) edge functions are unreachable. Full live behavior needs testing after deployment — see Manual Testing Steps.
+
+**Sprint 3 is now fully complete** — all five items done, including the one that started as an open audit question.
 
 ---
 
@@ -548,7 +550,22 @@ Host photos are uploaded and served at original size. No compression, no respons
 - [x] Confirm Auth → URL Configuration allows `cubby://reset-password` as a redirect URL — confirmed working, founder tested the full password reset flow live
 - [x] Wire `notify-new-message` DB Webhook — was already configured; founder confirmed live test (message sent → log entry → notification delivered)
 - [x] Run the Sprint 3 `host_bank_details` RLS migration (see schema.sql "Fix 3" block) — applied and verified via `pg_policy` query showing both `user_id` and `assigned_user_id` in the policy expression
-- [ ] Verify Partner Applications / Support Messages admin screens actually load data with real rows present — audited in Sprint 3 as structurally correct, but `schema.sql` documents `support_messages` with zero SELECT policies and a comment on `partner_applications` saying admin reads should go through a service-role function (neither screen does). Could be stale docs (schema.sql has been unreliable elsewhere in this audit) or a real RLS block — couldn't verify from the sandboxed dev environment (outbound access to the live Supabase project is blocked there). Quick manual check: log into admin, confirm existing pending applications/messages actually appear.
+- [x] Partner Applications / Support Messages admin screens — confirmed genuinely broken via live SQL diagnostics (not stale docs this time), fixed with new edge functions. **Still needed:** deploy `admin-partner-applications` and `admin-support-messages` (see deploy commands below) and confirm `ADMIN_SECRET` is set on both — same secret already required for `admin-bank-details`/`admin-hosts`/`admin-users` since Sprint 2.
+
+### Deploy the two new Sprint 3 edge functions
+```bash
+cd cubby
+supabase functions deploy admin-partner-applications
+supabase functions deploy admin-support-messages
+```
+Both require the `ADMIN_SECRET` secret (same one used by the existing admin functions) — confirm it's set:
+```bash
+supabase secrets list
+```
+If not set:
+```bash
+supabase secrets set ADMIN_SECRET=your-real-secret-here
+```
 - [ ] Confirm `notifications`, `push_tokens`, `notification_preferences` tables exist (run SQL if not)
 - [ ] Confirm `notification_preferences` RLS policy exists
 - [ ] Run SQL: add `related_booking_id`, `related_message_id` columns to `notifications`
@@ -848,15 +865,14 @@ supabase functions deploy complete-booking
 
 ## NEXT RECOMMENDED TASK
 
-> **Awaiting founder review of Sprint 3 (Private Beta Blockers)** before merging PR #38.
-> Sprint 1 (Legal & Trust), Sprint 2 (Account Access & Security), and Sprint 3 (payout bug, notifications, MOCK_REVIEWS, admin screen audit) are all complete on the branch.
+> **Sprint 3 is fully complete** — awaiting founder review before merging PR #38.
+> Sprint 1 (Legal & Trust), Sprint 2 (Account Access & Security), and Sprint 3 (payout bug, notifications, MOCK_REVIEWS, admin Partner Applications/Support Messages fix) are all done on the branch.
 >
-> Since Sprint 3 landed, the founder has manually verified in the live Supabase project:
-> `notify-new-message` webhook (was already wired), the `host_bank_details` RLS migration (applied), and the password reset redirect URL (works end-to-end). All three are done.
+> Founder has manually verified in the live Supabase project: `notify-new-message` webhook (was already wired), the `host_bank_details` RLS migration (applied), the password reset redirect URL (works end-to-end), and — via direct SQL diagnostics — confirmed the Partner Applications/Support Messages RLS bug was real, not stale docs. That last one is now fixed with two new edge functions, pending deployment.
 >
 > Once reviewed/approved, what's left:
 > 1. Manual: re-enable Supabase email confirmation (Dashboard toggle)
-> 2. Manual: verify Partner Applications / Support Messages actually load live data (see Manual Tasks) — the one remaining unverified item from Sprint 3
+> 2. Manual: deploy `admin-partner-applications` and `admin-support-messages`, confirm `ADMIN_SECRET` is set, test both admin screens live
 > 3. Bag Runners mock screen (explicitly deferred so far)
 > 4. Everything else in the Private Beta / Public Beta checklists below
 
@@ -930,8 +946,8 @@ The dashboard should be readable in 5 seconds. A Cubby operator should be able t
 
 ### What Was Built (Phase 1 — ✅ Implemented)
 1. ✅ Redesigned `dashboard.tsx` — Needs Attention + Today's Snapshot + Marketplace + Approvals + Support + Recent Activity Feed
-2. ✅ `partner-applications.tsx` — tabbed view (pending/approved/rejected), expand to review, approve/reject
-3. ✅ `support-messages.tsx` — tabbed view (open/resolved), expand to read, mark resolved/reopen
+2. ✅ `partner-applications.tsx` — tabbed view (pending/approved/rejected), expand to review, approve/reject. UI unchanged; Sprint 3 fixed the data layer to call `admin-partner-applications` (was RLS-blocked before).
+3. ✅ `support-messages.tsx` — tabbed view (open/resolved), expand to read, mark resolved/reopen. UI unchanged; Sprint 3 fixed the data layer to call `admin-support-messages` (was RLS-blocked before).
 4. ✅ `verifications.tsx` — tabbed view with photo display for ID + selfie, approve/reject (graceful empty state if table not yet created)
 5. ✅ `all-bookings.tsx` — migrated from AsyncStorage to real Supabase queries
 6. ✅ `revenue.tsx` — migrated from AsyncStorage to real Supabase queries
