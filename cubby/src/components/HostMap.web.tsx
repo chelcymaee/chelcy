@@ -14,6 +14,11 @@ import { haversineMeters, formatDistance, walkMinutes } from '../lib/location';
 const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 const CAPE_TOWN = { lat: -33.9249, lng: 18.4241 };
 
+// TEMP DEBUG — remove once the Maps env var loading issue is resolved.
+console.log('[HostMap debug] EXPO_PUBLIC_GOOGLE_MAPS_API_KEY present:', !!GOOGLE_MAPS_KEY,
+  '| length:', GOOGLE_MAPS_KEY.length,
+  '| preview:', GOOGLE_MAPS_KEY ? `${GOOGLE_MAPS_KEY.slice(0, 6)}...${GOOGLE_MAPS_KEY.slice(-4)}` : '(empty)');
+
 interface Props {
   filtered: any[];
   userLocation?: LatLon | null;
