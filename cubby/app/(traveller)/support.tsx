@@ -9,12 +9,12 @@ import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import Btn from '../../src/components/Btn';
 
 const SUPPORT_EMAIL = 'hello@mycubby.co.za';
-const CUBBY_WHATSAPP_NUMBER = '27000000000'; // TODO: replace with real number
-const CUBBY_SUPPORT_PHONE = '+27000000000';  // TODO: replace with real number
+const CUBBY_WHATSAPP_NUMBER = '27774609484';
+const CUBBY_SUPPORT_PHONE = '+27 77 460 9484';
 
 const FAQS = [
   { q: 'How does Cubby work?', a: "Find a nearby host, book a time slot, drop your bags, and pick them up when you're ready. It's that simple." },
-  { q: 'Is my luggage insured?', a: 'All bookings include basic coverage up to R2,000 per bag. For higher-value items, we recommend travel insurance.' },
+  { q: 'Is my luggage insured?', a: "Cubby doesn't currently provide built-in luggage insurance. All hosts are ID-verified, and we recommend travel insurance for valuable items." },
   { q: "What if I'm late for pick-up?", a: 'Message your host in-app as soon as possible. Hosts are usually flexible, but extended storage may incur additional charges.' },
   { q: 'Can I cancel a booking?', a: 'Free cancellation up to 1 hour before drop-off. After that, a 50% cancellation fee applies.' },
   { q: 'How do I become a host?', a: 'Tap "Become a Cubby host" in your profile, set up your listing, add your bank details, and start earning.' },

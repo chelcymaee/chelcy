@@ -191,7 +191,15 @@ export default function Signup() {
         </View>
 
         <Text style={styles.terms}>
-          By signing up you agree to our Terms of Service and Privacy Policy.
+          By signing up you agree to our{' '}
+          <Text style={styles.termsLink} onPress={() => router.push('/(traveller)/terms')}>
+            Terms of Service
+          </Text>
+          {' '}and{' '}
+          <Text style={styles.termsLink} onPress={() => router.push('/(traveller)/privacy')}>
+            Privacy Policy
+          </Text>
+          .
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -240,4 +248,5 @@ const styles = StyleSheet.create({
   footerText: { color: Colors.textSecondary, fontSize: 15 },
   footerLink: { color: Colors.primary, fontSize: 15, fontWeight: '700' },
   terms: { textAlign: 'center', color: Colors.textLight, fontSize: 12, marginTop: 16, lineHeight: 18 },
+  termsLink: { color: Colors.primary, fontWeight: '600' },
 });

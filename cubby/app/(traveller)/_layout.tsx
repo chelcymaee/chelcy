@@ -46,6 +46,8 @@ export default function TravellerLayout() {
       <Tabs.Screen name="partner-apply" options={{ href: null }} />
       <Tabs.Screen name="reviews" options={{ href: null }} />
       <Tabs.Screen name="review-detail" options={{ href: null }} />
+      <Tabs.Screen name="terms" options={{ href: null }} />
+      <Tabs.Screen name="privacy" options={{ href: null }} />
     </Tabs>
   );
 }

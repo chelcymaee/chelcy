@@ -299,8 +299,8 @@ export default function HostDetail() {
 
           {/* Cubby guarantee + response time */}
           <View style={styles.trustCard}>
-            <Text style={styles.trustTitle}>🛡️  Each bag is protected up to R2,000!</Text>
-            <Text style={styles.trustSub}>Only when booking online with Cubby.</Text>
+            <Text style={styles.trustTitle}>🛡️  ID-verified host, booked securely through Cubby</Text>
+            <Text style={styles.trustSub}>Payments and messaging stay protected in-app.</Text>
             {(() => {
               const rt = formatResponseTime(host.avg_response_time_minutes, host.responded_requests ?? 0);
               return rt ? (

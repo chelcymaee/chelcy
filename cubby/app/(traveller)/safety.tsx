@@ -58,7 +58,7 @@ export default function Safety() {
         <View style={styles.emergencyCard}>
           <Text style={styles.emergencyTitle}>🚨 Emergency?</Text>
           <Text style={styles.emergencyText}>If you feel unsafe or something has gone wrong, contact us immediately.</Text>
-          <Btn label="Contact safety team" onPress={() => Linking.openURL('mailto:safety@cubby.app')} variant="destructive" />
+          <Btn label="Contact safety team" onPress={() => Linking.openURL('mailto:safety@mycubby.co.za')} variant="destructive" />
         </View>
 
         <View style={{ height: 40 }} />

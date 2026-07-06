@@ -100,7 +100,7 @@ export default function BookingConfirmation() {
         {/* Trust badge */}
         <View style={styles.trustRow}>
           <Text style={styles.trustBadge}>🔒 Payment secured via PayFast</Text>
-          <Text style={styles.trustBadge}>🛡️ Up to R2,000 coverage per bag</Text>
+          <Text style={styles.trustBadge}>🛡️ ID-verified host</Text>
         </View>
 
         {/* Actions */}

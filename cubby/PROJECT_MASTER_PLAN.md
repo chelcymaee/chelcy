@@ -1,6 +1,6 @@
 # CUBBY — PROJECT MASTER PLAN
 > Single source of truth for all development, product decisions, and launch planning.
-> Last updated: 2026-07-03
+> Last updated: 2026-07-06
 
 ---
 
@@ -133,6 +133,24 @@ If it does not, question whether it should exist.
 | Padding / heading outlier — `verification.tsx` | ✅ Done | padding 24→20, heading 28→26 |
 | sectionTitle standardised to fontSize 17, fontWeight '700' | ✅ Done | booking.tsx (was 15), host-detail.tsx (was 20), verification.tsx (was 20) |
 | noSlotsBox, errorBanner, trustNote use semantic tokens | ✅ Done | booking.tsx inline colours replaced with Colors.warningBg, Colors.errorBg, Colors.trustBg |
+
+---
+
+## 🛡️ LEGAL & TRUST SPRINT — Sprint 1 ✅ Done (awaiting review)
+
+> Goal: close the legal/trust gaps blocking real users, without adding new features.
+> Status: implemented, pending founder review before merge/continuation to Sprint 2.
+
+| Item | Status | Notes |
+|---|---|---|
+| Support contact details | ✅ Done | `support.tsx` phone + WhatsApp placeholders (`+27000000000`) replaced with real number `+27 77 460 9484` |
+| Safety wording | ✅ Done | `safety@cubby.app` → `safety@mycubby.co.za` (domain consistency); R2,000 coverage claim removed platform-wide |
+| R2,000 bag coverage claim removed | ✅ Done | Was a marketing claim with no claims mechanism (flagged as launch blocker). Removed from `onboarding.tsx`, `booking-confirmation.tsx`, `host-detail.tsx`, `support.tsx` FAQ. Replaced with accurate trust copy ("ID-verified hosts" / "booked securely through Cubby"). No claims process was built — if coverage is reintroduced later it needs a real mechanism first. |
+| Terms of Service | ✅ Done | New `app/(traveller)/terms.tsx` — 14 sections covering platform role, bookings/payments, cancellations, verification, luggage coverage disclaimer, liability, governing law (South Africa). Uses "Cubby" as a trading name with `[COMPANY NAME]` placeholder (company not yet registered). **Not lawyer-reviewed** — review before public launch. |
+| Privacy Policy | ✅ Done | New `app/(traveller)/privacy.tsx` — POPIA-oriented: data collected, third parties (Supabase, PayFast, Resend), retention, user rights, security, contact. **Not lawyer-reviewed** — review before public launch. |
+| Screens wired up | ✅ Done | Registered in `(traveller)/_layout.tsx` (`href: null`, non-tab); linked from Profile → Information section; signup footer text ("Terms of Service" / "Privacy Policy") is now tappable and navigates to the new screens. No mandatory acceptance checkbox/gate added — that would be a new consent-flow feature, deferred. |
+
+**Not done in Sprint 1 (explicitly deferred per instruction):** Forgot Password, Email verification re-enable, Admin PIN fix — these are Sprint 2.
 
 ---
 
@@ -330,10 +348,11 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 ## 🔴 NOT STARTED
 
 ### Critical (blockers for any real users)
-- [ ] Terms of Service acceptance screen at signup (no legal agreement captured)
-- [ ] Password reset / forgot password flow (Supabase supports it, UI missing)
-- [ ] Email confirmation re-enabled in Supabase (disabled for dev, must re-enable before launch)
-- [ ] Admin PIN default must error if env var not set (currently defaults to '1234')
+- [x] Terms of Service document written + `terms.tsx` screen (linked from signup + profile) — see Sprint 1 below. Affirmative acceptance checkbox/gate at signup still not built.
+- [x] Privacy Policy document written + `privacy.tsx` screen (linked from signup + profile) — see Sprint 1 below.
+- [ ] Password reset / forgot password flow (Supabase supports it, UI missing) — next up (Sprint 2)
+- [ ] Email confirmation re-enabled in Supabase (disabled for dev, must re-enable before launch) — Sprint 2
+- [ ] Admin PIN default must error if env var not set (currently defaults to '1234') — Sprint 2
 - [x] Verification backend (`verifications` table SQL provided, admin review queue built, `is_verified` updated on approve/reject)
 - [x] Dead-end screens: `safety.tsx`, `language.tsx`, `payment-success.tsx`, `payment-failed.tsx` — all fully implemented
 
@@ -365,7 +384,7 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 - [ ] Consistent admin navigation sidebar (future role-based design)
 
 ### Trust & Safety
-- [ ] R2,000 bag coverage claims process (currently a marketing claim with no mechanism)
+- [x] R2,000 bag coverage claim — removed platform-wide (Sprint 1). Was a marketing claim with no claims mechanism; stripped from onboarding, booking-confirmation, host-detail, and support FAQ rather than building a claims process. Can be reintroduced later alongside a real coverage/claims process.
 - [ ] Dispute / chargeback handling screen
 - [ ] Host / traveller reporting system ("Report a problem with this booking")
 - [ ] Content moderation for reviews
@@ -512,10 +531,10 @@ Host photos are uploaded and served at original size. No compression, no respons
 - [ ] Play Store listing created
 
 ### Legal / Compliance
-- [ ] Terms of Service document written and hosted
-- [ ] Privacy Policy document written and hosted
-- [ ] ToS acceptance screen built into signup flow
-- [ ] R2,000 coverage: either build a claims process or remove the claim from all screens
+- [x] Terms of Service document written and hosted in-app (`app/(traveller)/terms.tsx`) — Sprint 1. **Not yet reviewed by a lawyer** — uses "Cubby" as a trading name with a `[COMPANY NAME]` placeholder since the company isn't registered yet. Review before public launch.
+- [x] Privacy Policy document written and hosted in-app (`app/(traveller)/privacy.tsx`) — Sprint 1. Same lawyer-review caveat applies.
+- [ ] ToS acceptance screen built into signup flow — signup footer text now links to both documents (Sprint 1), but there is no mandatory checkbox/consent gate yet. Decide if that's needed before Private Beta.
+- [x] R2,000 coverage: claim removed from all screens (Sprint 1) — no claims process built.
 
 ---
 
@@ -610,13 +629,13 @@ supabase functions deploy complete-booking
 - [ ] Add booking event notifications (confirmed, declined, cancelled)
 - [ ] Admin: Partner application review screen
 - [ ] Admin: Support messages viewer
-- [ ] Real phone/WhatsApp on support screen
+- [x] Real phone/WhatsApp on support screen — +27 77 460 9484 (Sprint 1)
 - [ ] Remove or replace Bag Runners mock screen
 - [ ] Replace MOCK_REVIEWS fallback with empty state
 
 ### 🧪 Private Beta (invite-only — 50–200 users)
 - [ ] Re-enable Supabase email confirmation
-- [ ] Terms of Service acceptance at signup
+- [~] Terms of Service acceptance at signup — docs written + linked from signup footer (Sprint 1); mandatory checkbox/consent gate still not built
 - [ ] Password reset / forgot password flow
 - [ ] Email integration (Resend/SendGrid) — booking confirmation email minimum
 - [ ] Verification backend (submit photos → review queue → approve/reject)
@@ -764,8 +783,8 @@ supabase functions deploy complete-booking
 
 | # | Task | Status |
 |---|---|---|
-| 1 | Privacy Policy | 🔴 Not started |
-| 2 | Terms & Conditions | 🔴 Not started |
+| 1 | Privacy Policy | ✅ Done (drafted + hosted in-app; needs lawyer review before public launch) |
+| 2 | Terms & Conditions | ✅ Done (drafted + hosted in-app; needs lawyer review before public launch) |
 | 3 | Password Reset | 🔴 Not started |
 | 4 | Security Review | 🔴 Not started |
 | 5 | Production Testing | 🔴 Not started |
@@ -780,14 +799,14 @@ supabase functions deploy complete-booking
 
 ## NEXT RECOMMENDED TASK
 
-> **Phase 1, Item 6 — Admin Notifications**
-> Verification workflow is now complete end-to-end. Next: admin should be alerted in real-time when new support messages, partner applications, or verifications arrive — without manually refreshing the dashboard.
+> **Legal & Trust Sprint 2 — Forgot Password → Email Verification → Admin PIN fix**
+> Sprint 1 (Legal & Trust) is complete and awaiting review: support contact details, safety wording, R2,000 claim removal, Terms of Service, Privacy Policy.
 >
-> Implementation order:
-> 1. Real-time dashboard auto-refresh + Needs Attention live updates
-> 2. Notification bell with unread badge in admin
-> 3. Browser push notifications
-> 4. Email alerts for critical operational events (Phase 3)
+> Approved next order:
+> 1. Forgot Password / reset flow
+> 2. Re-enable Supabase email confirmation
+> 3. Admin PIN default fix (error if env var not set)
+> 4. Remaining Private Beta blockers
 
 ---
 

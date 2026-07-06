@@ -328,6 +328,8 @@ export default function Profile() {
         { icon: '💬', label: 'FAQ', onPress: () => router.push('/(traveller)/support') },
         { icon: '🛡️', label: 'Safety & trust', onPress: () => router.push('/(traveller)/safety') },
         { icon: '📞', label: 'Contact support', onPress: () => router.push('/(traveller)/support') },
+        { icon: '📄', label: 'Terms of Service', onPress: () => router.push('/(traveller)/terms') },
+        { icon: '🔒', label: 'Privacy Policy', onPress: () => router.push('/(traveller)/privacy') },
       ],
     },
   ];
