@@ -192,7 +192,7 @@ If it does not, question whether it should exist.
 |---|---|---|
 | Payout bug | ✅ Fixed | Audit found the actual bug was different from what was documented: `complete-booking` never queries bank details at all (that code path was removed in the Peach→PayFast migration) — the real, live bug was `app/(host)/bank-details.tsx` writing to the orphaned `bank_details` table (`user_id`-keyed) while the admin payout dashboard exclusively reads `host_bank_details` (`host_id`-keyed). A host filling in their own bank details had zero chance of actually being paid. Fixed the screen to resolve `host_id` via `hosts.assigned_user_id`/`.user_id` (matching every other host-facing screen) and read/write `host_bank_details` directly, using the exact field names the admin dashboard already expects (verified by cross-checking `host-payouts.tsx`). Also fixed the `host_bank_details` RLS policy in `schema.sql`, which only matched `user_id` — admin-assigned hosts (`assigned_user_id`) would have been blocked by RLS even after the table fix. **SQL migration required on the live database** — see `schema.sql` "Fix 3" block / Manual Tasks. |
 | Booking notifications | ✅ Done | Audited first: "confirmed" and "declined" were already correctly wired (`app/(host)/requests.tsx`), contrary to some stale docs suggesting otherwise. "Cancelled by traveller" was genuinely missing — added to `app/(traveller)/bookings.tsx`, notifying the host (resolved via `assigned_user_id`/`user_id`) using the existing `booking_cancelled` type and `sendNotification` helper, same pattern as the other two. |
-| New message notifications | ➖ No code change needed | Audited `notify-new-message` edge function — it's fully correct (resolves recipient via `assigned_user_id`, inserts the in-app row itself, sends the Expo push). It's never triggered because no Supabase Database Webhook connects it to the `messages` table's INSERT event. That's a Dashboard configuration step, not a code fix — deliberately did not duplicate this logic client-side, which would risk double notifications once the webhook is eventually wired. |
+| New message notifications | ✅ Confirmed working | Audited `notify-new-message` edge function — fully correct (resolves recipient via `assigned_user_id`, inserts the in-app row itself, sends the Expo push). Assumed the Database Webhook needed wiring per stale master plan notes — checked Supabase Dashboard → Integrations → Database Webhooks and found it was **already fully configured** (table `messages`, event `Insert`, type Supabase Edge Functions, pointed at `notify-new-message`, auth header auto-populated). Founder tested live: sent a message between a traveller and host account, confirmed an edge function log entry and a delivered notification. No code or config change was needed — another case of the docs being stale, not the app. |
 | MOCK_REVIEWS removed | ✅ Done | `app/(traveller)/host-detail.tsx` — removed the `MOCK_REVIEWS` import/merge entirely. Hosts with zero reviews now show an honest "No reviews yet — Be the first to leave a review after your stay." empty state instead of fabricated testimonials. |
 | Admin Partner Applications / Support Messages audit | ✅ Audited, not rebuilt | Both screens exist, are correctly linked from the dashboard, and are structurally well-built (correct field mapping, correct update logic). One open question the audit couldn't resolve: both read/write their tables via a direct client call (not a service-role edge function), while `schema.sql` documents `support_messages` with zero SELECT policies and a comment saying `partner_applications` admin reads should go through a service-role function. If the live database matches what's written there, both screens would show empty results forever. Could not verify live RLS behavior — outbound access to the live Supabase project (`gqgxahqmndkaeyuvhliv.supabase.co`) is blocked by this sandboxed dev environment's network policy, and `schema.sql` has proven stale elsewhere in this audit (e.g. the payout bug above), so this needs a quick live check rather than a speculative rebuild. Per instruction, did not rebuild either screen without confirmed evidence of breakage. |
 
@@ -279,7 +279,7 @@ If it does not, question whether it should exist.
 - [x] `complete-booking` — 70/30 payout via Peach Payments API
 - [x] `admin-bank-details` — admin-only bank details CRUD (x-admin-secret auth)
 - [x] `delete-user-account` — full cascading account deletion (GDPR)
-- [x] `notify-new-message` — Expo push notification delivery (needs DB webhook wired)
+- [x] `notify-new-message` — Expo push notification delivery, DB webhook wired and confirmed working live (Sprint 3)
 
 ### Infrastructure
 - [x] Expo SDK 56, React Native 0.79.2, TypeScript
@@ -498,8 +498,8 @@ All 4 screens (`safety.tsx`, `language.tsx`, `payment-success.tsx`, `payment-fai
 **No error boundaries**
 Zero React error boundaries in the app. A JS error anywhere propagates to a blank screen. Users have no recovery path.
 
-**`notify-new-message` Edge Function not wired**
-The function itself is well-built (audited in Sprint 3 — correctly resolves recipient via `assigned_user_id`, inserts the in-app notification row, sends the Expo push) but no Supabase Database Webhook connects it to the `messages` table's INSERT event. Purely a Dashboard configuration step, not a code fix — see Manual Tasks below.
+~~**`notify-new-message` Edge Function not wired**~~ — RESOLVED (was already wired)
+Turned out the Database Webhook was already fully configured in Supabase (checked during Sprint 3 follow-up) — table `messages`, event `Insert`, pointed at the function. Founder confirmed live: sent a test message, saw the edge function log entry, recipient got notified. The "not wired" claim was stale documentation, not a real gap.
 
 **Cape Town hardcoded throughout**
 Location strings, search suggestions, and onboarding reference Cape Town explicitly. Multi-city expansion requires code changes.
@@ -545,9 +545,9 @@ Host photos are uploaded and served at original size. No compression, no respons
 
 ### Supabase Dashboard
 - [ ] Re-enable email confirmation (Auth → Providers → Email → Enable confirmation)
-- [ ] Confirm Auth → URL Configuration allows `cubby://reset-password` as a redirect URL (needed for the Sprint 2 password reset flow)
-- [ ] Wire `notify-new-message` DB Webhook (Database → Webhooks → New → messages table, INSERT event → function URL)
-- [ ] Run the Sprint 3 `host_bank_details` RLS migration (see schema.sql "Fix 3" block) — without this, admin-assigned hosts saving their own bank details via the self-service screen will be silently blocked by RLS
+- [x] Confirm Auth → URL Configuration allows `cubby://reset-password` as a redirect URL — confirmed working, founder tested the full password reset flow live
+- [x] Wire `notify-new-message` DB Webhook — was already configured; founder confirmed live test (message sent → log entry → notification delivered)
+- [x] Run the Sprint 3 `host_bank_details` RLS migration (see schema.sql "Fix 3" block) — applied and verified via `pg_policy` query showing both `user_id` and `assigned_user_id` in the policy expression
 - [ ] Verify Partner Applications / Support Messages admin screens actually load data with real rows present — audited in Sprint 3 as structurally correct, but `schema.sql` documents `support_messages` with zero SELECT policies and a comment on `partner_applications` saying admin reads should go through a service-role function (neither screen does). Could be stale docs (schema.sql has been unreliable elsewhere in this audit) or a real RLS block — couldn't verify from the sandboxed dev environment (outbound access to the live Supabase project is blocked there). Quick manual check: log into admin, confirm existing pending applications/messages actually appear.
 - [ ] Confirm `notifications`, `push_tokens`, `notification_preferences` tables exist (run SQL if not)
 - [ ] Confirm `notification_preferences` RLS policy exists
@@ -674,7 +674,7 @@ supabase functions deploy complete-booking
 - [x] Fix 4 navigation dead ends (safety, language, payment-success, payment-failed) — already implemented
 - [x] Fix admin PIN default (error if not set) — Sprint 2, also extended to the wider ADMIN_SECRET fallback
 - [x] Fix payout bug (host self-service bank-details screen was writing to the wrong table — Sprint 3)
-- [ ] Wire notify-new-message DB webhook — code side confirmed correct (Sprint 3 audit); remaining step is the Dashboard webhook wiring
+- [x] Wire notify-new-message DB webhook — was already wired, founder confirmed live end-to-end
 - [x] Add booking event notifications (confirmed + declined were already correct; cancelled-by-traveller wired in Sprint 3)
 - [x] Admin: Partner application review screen — exists, correctly linked, structurally sound (Sprint 3 audit); live RLS data-loading not verified, see Manual Tasks
 - [x] Admin: Support messages viewer — same as above
@@ -851,12 +851,14 @@ supabase functions deploy complete-booking
 > **Awaiting founder review of Sprint 3 (Private Beta Blockers)** before merging PR #38.
 > Sprint 1 (Legal & Trust), Sprint 2 (Account Access & Security), and Sprint 3 (payout bug, notifications, MOCK_REVIEWS, admin screen audit) are all complete on the branch.
 >
+> Since Sprint 3 landed, the founder has manually verified in the live Supabase project:
+> `notify-new-message` webhook (was already wired), the `host_bank_details` RLS migration (applied), and the password reset redirect URL (works end-to-end). All three are done.
+>
 > Once reviewed/approved, what's left:
 > 1. Manual: re-enable Supabase email confirmation (Dashboard toggle)
-> 2. Manual: wire `notify-new-message` DB Webhook (code confirmed correct, Sprint 3)
-> 3. Manual: run the `host_bank_details` RLS migration + verify Partner Applications / Support Messages actually load live data (see Manual Tasks)
-> 4. Bag Runners mock screen (explicitly deferred so far)
-> 5. Everything else in the Private Beta / Public Beta checklists below
+> 2. Manual: verify Partner Applications / Support Messages actually load live data (see Manual Tasks) — the one remaining unverified item from Sprint 3
+> 3. Bag Runners mock screen (explicitly deferred so far)
+> 4. Everything else in the Private Beta / Public Beta checklists below
 
 ---
 
@@ -969,7 +971,7 @@ Also create a private `verifications` storage bucket in Supabase Dashboard → S
 | ~~Host self-service bank-details screen wrote to the wrong table, invisible to admin payouts~~ | ✅ Fixed (Sprint 3) | `app/(host)/bank-details.tsx` |
 | ~~Admin PIN defaults to '1234' if env var not set~~ | ✅ Fixed (Sprint 2) | `app/(admin)/login.tsx` |
 | ~~ADMIN_SECRET hardcoded fallback in 13 locations~~ | ✅ Fixed (Sprint 2) | `app/(admin)/*.tsx`, `src/lib/review-service.ts`, 6 edge functions |
-| `notify-new-message` Edge Function exists but DB webhook not wired | 🟡 High | Supabase Dashboard |
+| ~~`notify-new-message` Edge Function exists but DB webhook not wired~~ | ✅ Confirmed working (was already wired) | Supabase Dashboard |
 | ~~4 navigation dead ends crash or blank on tap~~ | ✅ Fixed | All 4 screens implemented |
 | `MOCK_REVIEWS` shown as real reviews on empty host profiles | 🟡 High | `app/(traveller)/host-detail.tsx` |
 | Verification signed URLs expire after 7 days — admin needs edge fn to refresh for long-pending reviews | 🟠 Medium | `app/(admin)/verifications.tsx` |
