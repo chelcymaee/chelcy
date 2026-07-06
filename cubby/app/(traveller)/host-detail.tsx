@@ -7,7 +7,6 @@ import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
-import { MOCK_REVIEWS } from '../../src/lib/mock-data';
 import { computeHostBadges, topBadges, TrustBadge } from '../../src/lib/trust-badges';
 import { formatResponseRate, formatResponseTime, formatResponseTimeShort } from '../../src/lib/response-rate';
 import { HostDetailSkeleton } from '../../src/components/Skeleton';
@@ -62,7 +61,6 @@ export default function HostDetail() {
   const { id, selectedDate } = useLocalSearchParams<{ id: string; selectedDate: string }>();
   const [host, setHost] = useState<any>(null);
   const [badges, setBadges] = useState<TrustBadge[]>([]);
-  const mockReviews = MOCK_REVIEWS.filter(r => r.host_id === id);
   const [bagCount, setBagCount] = useState(1);
   const [savedReviews, setSavedReviews] = useState<any[]>([]);
   const [isSaved, setIsSaved] = useState(false);
@@ -175,7 +173,7 @@ export default function HostDetail() {
     }
   }
 
-  const reviews = [...savedReviews, ...mockReviews];
+  const reviews = savedReviews;
 
   const goBack = () => router.replace('/(traveller)/explore');
 
@@ -488,6 +486,14 @@ export default function HostDetail() {
             </View>
           )}
 
+          {reviews.length === 0 && (
+            <View style={styles.noReviewsBox}>
+              <Text style={styles.noReviewsEmoji}>💬</Text>
+              <Text style={styles.noReviewsText}>No reviews yet</Text>
+              <Text style={styles.noReviewsSub}>Be the first to leave a review after your stay.</Text>
+            </View>
+          )}
+
           <View style={{ height: 110 }} />
         </View>
       </ScrollView>
@@ -693,6 +699,10 @@ const styles = StyleSheet.create({
   reviewName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   reviewDate: { fontSize: 12, color: Colors.textSecondary },
   reviewComment: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  noReviewsBox: { alignItems: 'center', paddingVertical: 24 },
+  noReviewsEmoji: { fontSize: 32, marginBottom: 8 },
+  noReviewsText: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
+  noReviewsSub: { fontSize: 13, color: Colors.textSecondary },
 
   /* Sticky footer */
   stickyFooter: {

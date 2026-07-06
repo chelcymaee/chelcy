@@ -6,6 +6,7 @@ import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { Colors } from '../../src/constants/colors';
 import NotificationBell from '../../src/components/NotificationBell';
 import { BookingCardSkeleton } from '../../src/components/Skeleton';
+import { sendNotification } from '../../src/lib/notification-service';
 
 const STATUS_COLOR: Record<string, string> = {
   pending_payment: '#9CA3AF',
@@ -45,7 +46,7 @@ export default function Bookings() {
         if (user) {
           const { data } = await supabase
             .from('bookings')
-            .select('*, hosts(display_name, location_name)')
+            .select('*, hosts(display_name, location_name, user_id, assigned_user_id)')
             .eq('traveller_id', user.id)
             .order('created_at', { ascending: false });
           if (data) {
@@ -77,6 +78,19 @@ export default function Bookings() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId).eq('traveller_id', user.id);
+
+          // Notify the host that the traveller cancelled
+          const booking = bookings.find(b => b.id === bookingId);
+          const hostUserId = booking?.hosts?.assigned_user_id ?? booking?.hosts?.user_id;
+          if (hostUserId) {
+            sendNotification({
+              userId: hostUserId,
+              type: 'booking_cancelled',
+              title: 'Booking cancelled',
+              body: 'A traveller cancelled their upcoming booking with you.',
+              relatedBookingId: bookingId,
+            }).catch(() => {});
+          }
         }
       }
       // Update AsyncStorage too

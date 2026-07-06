@@ -133,10 +133,12 @@ CREATE TABLE IF NOT EXISTS host_bank_details (
 
 ALTER TABLE host_bank_details ENABLE ROW LEVEL SECURITY;
 -- Hosts can only manage bank details for their own listing.
+-- Matches hosts.user_id (self-registered) or hosts.assigned_user_id (admin-assigned) —
+-- every other host-facing screen resolves ownership via both columns.
 -- Admin reads go through the admin-bank-details Edge Function (service role).
 CREATE POLICY "Hosts can manage own bank details" ON host_bank_details
   FOR ALL USING (
-    host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid())
+    host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid() OR assigned_user_id = auth.uid())
   );
 
 -- Payment & payout columns on bookings
@@ -197,6 +199,15 @@ CREATE POLICY "Hosts can update bookings for their listing" ON bookings FOR UPDA
 
 -- Fix 2: partner_applications — drop the open SELECT policy
 -- DROP POLICY IF EXISTS "Admins can view all applications" ON partner_applications;
+
+-- Fix 3 (Sprint 3): host_bank_details RLS only matched hosts.user_id, but every
+-- host-facing screen resolves ownership via assigned_user_id (admin-assigned hosts)
+-- as well. Hosts using the self-service bank-details screen with an assigned_user_id
+-- host row would be silently blocked by RLS from saving their own bank details.
+-- RUN THIS ON EXISTING DATABASES:
+-- DROP POLICY IF EXISTS "Hosts can manage own bank details" ON host_bank_details;
+-- CREATE POLICY "Hosts can manage own bank details" ON host_bank_details
+--   FOR ALL USING (host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid() OR assigned_user_id = auth.uid()));
 
 -- -------------------------------------------------------------------------
 -- Avatar storage — run these in Supabase SQL editor / Storage dashboard
