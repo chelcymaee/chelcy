@@ -154,6 +154,16 @@ If it does not, question whether it should exist.
 
 ---
 
+## 🔧 DEPENDENCY REPAIR — SDK 56 Alignment ✅ Done
+
+> Discovered while trying to run the app locally to review Sprint 1's screens. Not a feature change — `package.json` had been self-inconsistent since the very first commit that ever created it on this branch's lineage (`cbfcdba`, 24 Jun 2026): `expo` was pinned to SDK 56 but `react` (18.3.1), `react-native` (0.79.2), `expo-router` (~4.0.22), and several `expo-*` packages were left on old, unrelated versions — a self-inconsistent file from day one, not an interrupted upgrade. `origin/main`'s original scaffold (`8daacf2`) had the correct, internally-consistent SDK 56 set (React 19.2.3, React Native 0.85.3, expo-router ^56.2.11) the whole time; this branch's lineage never had it.
+
+**Fix:** realigned `package.json` to match `origin/main`'s versions for every shared package, bumped the branch-only `expo-*` additions (`expo-font`, `expo-splash-screen`, `expo-notifications`) to their SDK-56-compatible releases, removed the redundant top-level `@expo/router-server` pin (not imported anywhere in app code, not present on `main`, and the direct cause of the peer-dependency conflict), and added `react-dom` + `react-native-web` (previously absent entirely, blocking web support). Renamed two now-invalid `StyleSheet.absoluteFillObject` references to `StyleSheet.absoluteFill` (RN API rename between versions) — the only code change, purely mechanical.
+
+**Verified:** `npm install` completes clean (no `ERESOLVE`), `tsc --noEmit` shows zero SDK-related errors (pre-existing unrelated app-level type issues left untouched, out of scope), and `expo start --web` now renders the real app — onboarding, signup, terms, privacy, safety, support all confirmed loading with zero console errors, replacing the previous blank white screen crash (`Cannot read properties of undefined (reading 'S')` — a React 18/19 version mismatch).
+
+---
+
 ## ✅ COMPLETED FEATURES
 
 ### Traveller
