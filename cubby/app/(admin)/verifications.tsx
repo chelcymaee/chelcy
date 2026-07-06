@@ -3,7 +3,7 @@ import { useFocusEffect, router } from 'expo-router';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 const SUPABASE_URL = 'https://gqgxahqmndkaeyuvhliv.supabase.co';
-const ADMIN_SECRET = 'cubby-admin-secret-2025';
+const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
 
 interface Verification {
   id: string;

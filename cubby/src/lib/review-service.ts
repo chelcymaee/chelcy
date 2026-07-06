@@ -10,7 +10,7 @@ import { supabase } from './supabase';
 import { sendNotification } from './notification-service';
 
 const SUPABASE_URL = 'https://gqgxahqmndkaeyuvhliv.supabase.co';
-const ADMIN_SECRET = 'cubby-admin-secret-2025';
+const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
 
 function fireEmail(body: object) {
   fetch(`${SUPABASE_URL}/functions/v1/send-email`, {

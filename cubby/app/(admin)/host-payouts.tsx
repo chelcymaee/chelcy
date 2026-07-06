@@ -3,7 +3,7 @@ import { useFocusEffect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
-const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? 'cubby-admin-secret-2025';
+const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
 
 async function adminFetch(method: string, path: string, body?: object) {

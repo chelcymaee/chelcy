@@ -10,7 +10,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const ADMIN_SECRET       = Deno.env.get('ADMIN_SECRET') ?? 'cubby-admin-secret-2025';
+const ADMIN_SECRET       = Deno.env.get('ADMIN_SECRET');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
   }
 
   const secret = req.headers.get('x-admin-secret');
-  if (secret !== ADMIN_SECRET) {
+  if (!ADMIN_SECRET || secret !== ADMIN_SECRET) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
   }
 

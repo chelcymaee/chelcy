@@ -26,7 +26,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const RESEND_API_KEY     = Deno.env.get('RESEND_API_KEY') ?? '';
 const ADMIN_EMAIL        = Deno.env.get('ADMIN_EMAIL') ?? 'chelcymae1@gmail.com';
-const ADMIN_SECRET       = Deno.env.get('ADMIN_SECRET') ?? 'cubby-admin-secret-2025';
+const ADMIN_SECRET       = Deno.env.get('ADMIN_SECRET');
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
@@ -552,7 +552,7 @@ Deno.serve(async (req) => {
 
     // Direct call: requires admin secret
     const secret = req.headers.get('x-admin-secret');
-    if (secret !== ADMIN_SECRET) {
+    if (!ADMIN_SECRET || secret !== ADMIN_SECRET) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 

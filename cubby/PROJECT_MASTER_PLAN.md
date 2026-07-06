@@ -136,10 +136,10 @@ If it does not, question whether it should exist.
 
 ---
 
-## 🛡️ LEGAL & TRUST SPRINT — Sprint 1 ✅ Done (awaiting review)
+## 🛡️ LEGAL & TRUST SPRINT — Sprint 1 ✅ Done & Approved
 
 > Goal: close the legal/trust gaps blocking real users, without adding new features.
-> Status: implemented, pending founder review before merge/continuation to Sprint 2.
+> Status: approved by founder. PR #38 still open (not yet merged — holding for Sprint 2 review too).
 
 | Item | Status | Notes |
 |---|---|---|
@@ -150,7 +150,7 @@ If it does not, question whether it should exist.
 | Privacy Policy | ✅ Done | New `app/(traveller)/privacy.tsx` — POPIA-oriented: data collected, third parties (Supabase, PayFast, Resend), retention, user rights, security, contact. **Not lawyer-reviewed** — review before public launch. |
 | Screens wired up | ✅ Done | Registered in `(traveller)/_layout.tsx` (`href: null`, non-tab); linked from Profile → Information section; signup footer text ("Terms of Service" / "Privacy Policy") is now tappable and navigates to the new screens. No mandatory acceptance checkbox/gate added — that would be a new consent-flow feature, deferred. |
 
-**Not done in Sprint 1 (explicitly deferred per instruction):** Forgot Password, Email verification re-enable, Admin PIN fix — these are Sprint 2.
+**Not done in Sprint 1 (explicitly deferred per instruction):** Forgot Password, Email verification re-enable, Admin PIN fix — these were Sprint 2 (below).
 
 ---
 
@@ -161,6 +161,25 @@ If it does not, question whether it should exist.
 **Fix:** realigned `package.json` to match `origin/main`'s versions for every shared package, bumped the branch-only `expo-*` additions (`expo-font`, `expo-splash-screen`, `expo-notifications`) to their SDK-56-compatible releases, removed the redundant top-level `@expo/router-server` pin (not imported anywhere in app code, not present on `main`, and the direct cause of the peer-dependency conflict), and added `react-dom` + `react-native-web` (previously absent entirely, blocking web support). Renamed two now-invalid `StyleSheet.absoluteFillObject` references to `StyleSheet.absoluteFill` (RN API rename between versions) — the only code change, purely mechanical.
 
 **Verified:** `npm install` completes clean (no `ERESOLVE`), `tsc --noEmit` shows zero SDK-related errors (pre-existing unrelated app-level type issues left untouched, out of scope), and `expo start --web` now renders the real app — onboarding, signup, terms, privacy, safety, support all confirmed loading with zero console errors, replacing the previous blank white screen crash (`Cannot read properties of undefined (reading 'S')` — a React 18/19 version mismatch).
+
+---
+
+## 🔐 ACCOUNT ACCESS & SECURITY SPRINT — Sprint 2 ✅ Done (awaiting review)
+
+> Goal: close the remaining private-beta-blocking auth/security gaps. No new features.
+> Status: implemented, pending founder review. PR #38 not merged yet.
+
+| Item | Status | Notes |
+|---|---|---|
+| Forgot Password flow | ✅ Done | New `app/(auth)/forgot-password.tsx` (email → `supabase.auth.resetPasswordForEmail`) and `app/(auth)/reset-password.tsx` (new password form). "Forgot password?" link added to `login.tsx`. Reuses the existing deep-link pattern in `app/_layout.tsx` (previously only handled PayFast returns) to catch `cubby://reset-password`, exchange the recovery code for a session, then route into the reset screen. `reset-password.tsx` shows a "Link expired" state with a "Request new link" button if opened without a valid recovery session (direct visit, expired/reused link). |
+| PKCE flow enabled | ✅ Done | `src/lib/supabase.ts` — added `flowType: 'pkce'` so the recovery link arrives as a plain `?code=` query param (parseable via the existing `Linking.parse` pattern) instead of a URL fragment, which custom-scheme deep links can't reliably carry. |
+| Email verification flow | ✅ Done (mostly a config step) | Audited `signup.tsx` / `login.tsx` — the code already correctly branches on whether a session comes back from `signUp` (confirmation on vs off) and shows a "check your email" message. Added a friendlier message for Supabase's "Email not confirmed" login error. **The actual re-enable is a Supabase Dashboard toggle** (Auth → Providers → Email → Confirm email) — see Manual Tasks below. |
+| Admin PIN insecure fallback | ✅ Done | `app/(admin)/login.tsx` — removed `?? '1234'`. Missing `EXPO_PUBLIC_ADMIN_PIN` now hits the already-existing "Admin PIN not configured" block instead of silently granting access. Verified: entering `1234` with no env var set now correctly blocks with that message. |
+| ADMIN_SECRET fallback (found during audit, not originally scoped) | ✅ Done | Audit surfaced the identical hardcoded-fallback pattern (`'cubby-admin-secret-2025'`) in 13 more places: `host-payouts.tsx`, `users.tsx`, `manage-hosts.tsx`, `verifications.tsx` (hardcoded, no env var at all), `src/lib/review-service.ts` (same), and 6 edge functions (`send-review-reminders`, `send-email`, `send-push`, `payment-webhook`, `complete-booking`, `payfast-itn`). Founder approved including this in Sprint 2. Client-side + outgoing edge-function usages now default to `''` (fails closed at the receiving end). Incoming-request-verifying edge functions (`send-review-reminders`, `send-email`, `send-push`) now use the same `!ADMIN_SECRET || provided !== ADMIN_SECRET` guard already used correctly in `admin-bank-details`/`admin-hosts`/`admin-users` — closes a real bug where an attacker sending an empty `x-admin-secret` header could have matched an unset (empty) expected secret. |
+
+**Verified:** `tsc --noEmit` — zero new errors. Playwright headless checks confirm `login.tsx` (shows Forgot password link), `forgot-password.tsx`, `reset-password.tsx` (correct "Link expired" state with no session), and `admin/login.tsx` (blocks `1234` with no PIN configured) all render with zero console errors.
+
+**Manual step still required (not code):** re-enable "Confirm email" in Supabase Dashboard → Auth → Providers → Email.
 
 ---
 
@@ -360,9 +379,9 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 ### Critical (blockers for any real users)
 - [x] Terms of Service document written + `terms.tsx` screen (linked from signup + profile) — see Sprint 1 below. Affirmative acceptance checkbox/gate at signup still not built.
 - [x] Privacy Policy document written + `privacy.tsx` screen (linked from signup + profile) — see Sprint 1 below.
-- [ ] Password reset / forgot password flow (Supabase supports it, UI missing) — next up (Sprint 2)
-- [ ] Email confirmation re-enabled in Supabase (disabled for dev, must re-enable before launch) — Sprint 2
-- [ ] Admin PIN default must error if env var not set (currently defaults to '1234') — Sprint 2
+- [x] Password reset / forgot password flow — `forgot-password.tsx` + `reset-password.tsx` screens, PKCE deep-link recovery. See Sprint 2 below.
+- [ ] Email confirmation re-enabled in Supabase (disabled for dev, must re-enable before launch) — app code already handles both states correctly; **remaining step is a manual Supabase Dashboard toggle**, see Sprint 2 below.
+- [x] Admin PIN default must error if env var not set — fixed, see Sprint 2 below. Same fix also applied to the broader `ADMIN_SECRET` fallback (13 locations, see Sprint 2).
 - [x] Verification backend (`verifications` table SQL provided, admin review queue built, `is_verified` updated on approve/reject)
 - [x] Dead-end screens: `safety.tsx`, `language.tsx`, `payment-success.tsx`, `payment-failed.tsx` — all fully implemented
 
@@ -445,11 +464,14 @@ Admin dashboard redesign into a unified operations hub. Currently the admin scre
 **Duplicate bank details tables**
 `bank_details` (keyed by `user_id`) and `host_bank_details` (keyed by `host_id`) both exist. The admin payouts screen uses `host_bank_details`. The `complete-booking` payout API call has been removed (Peach → PayFast migration). Host payouts are now manual EFTs from Cubby's PayFast settlement; bank details are read-only in the admin payout dashboard. This partially resolves the original bug but the duplicate table structure remains technical debt.
 
-**Admin PIN defaults to '1234'**
-`EXPO_PUBLIC_ADMIN_PIN` falls back to `'1234'` in code. Any deployment that doesn't set this env var exposes the admin panel with a trivially guessable PIN. Must throw at startup instead of defaulting.
+~~**Admin PIN defaults to '1234'**~~ — RESOLVED (Sprint 2)
+`EXPO_PUBLIC_ADMIN_PIN` no longer falls back to `'1234'`. Missing env var now blocks access with an explicit "Admin PIN not configured" message instead of granting entry.
+
+~~**ADMIN_SECRET hardcoded fallback**~~ — RESOLVED (Sprint 2)
+The same insecure-fallback pattern (`'cubby-admin-secret-2025'`) existed in 13 places beyond the PIN — `host-payouts.tsx`, `users.tsx`, `manage-hosts.tsx`, `verifications.tsx`, `review-service.ts`, and 6 Supabase edge functions (two of which had it hardcoded with no env var at all). All now fail closed if `ADMIN_SECRET` / `EXPO_PUBLIC_ADMIN_SECRET` isn't set.
 
 **Email confirmation disabled**
-Supabase email confirmation was turned off during development. Users can sign up with any email address. This must be re-enabled before any real users are onboarded.
+Supabase email confirmation was turned off during development. Users can sign up with any email address. This must be re-enabled before any real users are onboarded. App code (`signup.tsx`, `login.tsx`) already handles both the confirmed and unconfirmed states correctly — this is now purely a manual Supabase Dashboard toggle away from being live.
 
 ~~**4 navigation dead ends** — RESOLVED~~
 All 4 screens (`safety.tsx`, `language.tsx`, `payment-success.tsx`, `payment-failed.tsx`) are fully implemented and registered in `_layout.tsx` with `href: null`.
@@ -633,7 +655,7 @@ supabase functions deploy complete-booking
 
 ### 🔒 Private Alpha (internal only — founder + 5 test users)
 - [x] Fix 4 navigation dead ends (safety, language, payment-success, payment-failed) — already implemented
-- [ ] Fix admin PIN default (error if not set)
+- [x] Fix admin PIN default (error if not set) — Sprint 2, also extended to the wider ADMIN_SECRET fallback
 - [ ] Fix payout bug (complete-booking → host_bank_details, not bank_details)
 - [ ] Wire notify-new-message DB webhook
 - [ ] Add booking event notifications (confirmed, declined, cancelled)
@@ -644,9 +666,9 @@ supabase functions deploy complete-booking
 - [ ] Replace MOCK_REVIEWS fallback with empty state
 
 ### 🧪 Private Beta (invite-only — 50–200 users)
-- [ ] Re-enable Supabase email confirmation
+- [ ] Re-enable Supabase email confirmation — app code ready (Sprint 2); remaining step is the Supabase Dashboard toggle
 - [~] Terms of Service acceptance at signup — docs written + linked from signup footer (Sprint 1); mandatory checkbox/consent gate still not built
-- [ ] Password reset / forgot password flow
+- [x] Password reset / forgot password flow — Sprint 2
 - [ ] Email integration (Resend/SendGrid) — booking confirmation email minimum
 - [ ] Verification backend (submit photos → review queue → approve/reject)
 - [ ] Error boundaries on all screens
@@ -795,7 +817,7 @@ supabase functions deploy complete-booking
 |---|---|---|
 | 1 | Privacy Policy | ✅ Done (drafted + hosted in-app; needs lawyer review before public launch) |
 | 2 | Terms & Conditions | ✅ Done (drafted + hosted in-app; needs lawyer review before public launch) |
-| 3 | Password Reset | 🔴 Not started |
+| 3 | Password Reset | ✅ Done (Sprint 2) |
 | 4 | Security Review | 🔴 Not started |
 | 5 | Production Testing | 🔴 Not started |
 | 6 | Beta Testing | 🔴 Not started |
@@ -809,14 +831,17 @@ supabase functions deploy complete-booking
 
 ## NEXT RECOMMENDED TASK
 
-> **Legal & Trust Sprint 2 — Forgot Password → Email Verification → Admin PIN fix**
-> Sprint 1 (Legal & Trust) is complete and awaiting review: support contact details, safety wording, R2,000 claim removal, Terms of Service, Privacy Policy.
+> **Awaiting founder review of Sprint 2 (Account Access & Security)** before merging PR #38.
+> Sprint 1 (Legal & Trust) and Sprint 2 (Forgot Password, Email verification audit, Admin PIN + ADMIN_SECRET fix) are both complete on the branch.
 >
-> Approved next order:
-> 1. Forgot Password / reset flow
-> 2. Re-enable Supabase email confirmation
-> 3. Admin PIN default fix (error if env var not set)
-> 4. Remaining Private Beta blockers
+> Once reviewed/approved, remaining Private Beta blockers per the checklist above:
+> 1. Manual: re-enable Supabase email confirmation (Dashboard toggle)
+> 2. Fix payout bug (`complete-booking` → `host_bank_details`, not `bank_details`)
+> 3. Wire `notify-new-message` DB webhook
+> 4. Booking event notifications (cancelled by traveller, declined by host)
+> 5. Admin: Partner application review screen, Support messages viewer (check if already done — master plan shows conflicting status, needs a quick re-check before assuming either way)
+> 6. Remove or replace Bag Runners mock screen
+> 7. Replace `MOCK_REVIEWS` fallback with empty state
 
 ---
 
@@ -927,7 +952,8 @@ Also create a private `verifications` storage bucket in Supabase Dashboard → S
 | Bug | Severity | Location |
 |---|---|---|
 | `complete-booking` queries `bank_details` (user_id) but admin saves to `host_bank_details` (host_id) — payouts will fail | 🔴 Critical | `supabase/functions/complete-booking/index.ts` |
-| Admin PIN defaults to '1234' if env var not set | 🔴 Critical | `app/(admin)/login.tsx` |
+| ~~Admin PIN defaults to '1234' if env var not set~~ | ✅ Fixed (Sprint 2) | `app/(admin)/login.tsx` |
+| ~~ADMIN_SECRET hardcoded fallback in 13 locations~~ | ✅ Fixed (Sprint 2) | `app/(admin)/*.tsx`, `src/lib/review-service.ts`, 6 edge functions |
 | `notify-new-message` Edge Function exists but DB webhook not wired | 🟡 High | Supabase Dashboard |
 | ~~4 navigation dead ends crash or blank on tap~~ | ✅ Fixed | All 4 screens implemented |
 | `MOCK_REVIEWS` shown as real reviews on empty host profiles | 🟡 High | `app/(traveller)/host-detail.tsx` |

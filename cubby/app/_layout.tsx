@@ -7,8 +7,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../src/constants/colors';
 import { AuthProvider } from '../src/lib/auth-context';
 import { setupNotificationHandler, registerPushToken } from '../src/lib/notifications';
+import { supabase } from '../src/lib/supabase';
 
-// Handle cubby://payment-result deep links when the app was backgrounded during payment
+// Handle cubby://payment-result and cubby://reset-password deep links
 function usePaymentDeepLink() {
   useEffect(() => {
     function handleUrl(event: { url: string }) {
@@ -19,6 +20,15 @@ function usePaymentDeepLink() {
           router.replace('/(traveller)/payment-success');
         } else {
           router.replace('/(traveller)/payment-failed');
+        }
+      } else if (parsed.path === 'reset-password') {
+        const code = parsed.queryParams?.code as string | undefined;
+        if (code) {
+          supabase.auth.exchangeCodeForSession(code).finally(() => {
+            router.replace('/(auth)/reset-password');
+          });
+        } else {
+          router.replace('/(auth)/reset-password');
         }
       }
     }

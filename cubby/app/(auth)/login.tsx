@@ -26,7 +26,14 @@ export default function Login() {
     try {
       if (isSupabaseConfigured) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) { setErrorMsg(error.message); return; }
+        if (error) {
+          if (error.message.toLowerCase().includes('email not confirmed')) {
+            setErrorMsg('Please confirm your email before signing in — check your inbox for the confirmation link.');
+          } else {
+            setErrorMsg(error.message);
+          }
+          return;
+        }
         const user = data.user;
         let role = 'traveller';
         if (user) {
@@ -106,6 +113,10 @@ export default function Login() {
             secureTextEntry
           />
 
+          <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')} style={styles.forgotLink}>
+            <Text style={styles.forgotLinkText}>Forgot password?</Text>
+          </TouchableOpacity>
+
           <Btn
             label={loading ? 'Signing in…' : 'Sign in'}
             onPress={handleLogin}
@@ -148,6 +159,8 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   btn: { marginTop: 24 },
+  forgotLink: { alignSelf: 'flex-end', marginTop: 10 },
+  forgotLinkText: { color: Colors.primary, fontSize: 14, fontWeight: '600' },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 32 },
   footerText: { color: Colors.textSecondary, fontSize: 15 },
   footerLink: { color: Colors.primary, fontSize: 15, fontWeight: '700' },

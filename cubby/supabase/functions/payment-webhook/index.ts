@@ -107,7 +107,7 @@ serve(async (req) => {
 
             // Push notification
             const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-            const adminSecret = Deno.env.get('ADMIN_SECRET') ?? 'cubby-admin-secret-2025';
+            const adminSecret = Deno.env.get('ADMIN_SECRET') ?? '';
             fetch(`${supabaseUrl}/functions/v1/send-push`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'x-admin-secret': adminSecret },
@@ -141,7 +141,7 @@ serve(async (req) => {
             : { data: null };
 
           const SUPABASE_URL_LOCAL = Deno.env.get('SUPABASE_URL') ?? '';
-          const ADMIN_SECRET_LOCAL = Deno.env.get('ADMIN_SECRET') ?? 'cubby-admin-secret-2025';
+          const ADMIN_SECRET_LOCAL = Deno.env.get('ADMIN_SECRET') ?? '';
           const emailBase = `${SUPABASE_URL_LOCAL}/functions/v1/send-email`;
 
           if (traveller?.email) {

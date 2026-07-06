@@ -18,7 +18,7 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
-const ADMIN_SECRET = Deno.env.get('ADMIN_SECRET') ?? 'cubby-admin-secret-2025';
+const ADMIN_SECRET = Deno.env.get('ADMIN_SECRET') ?? '';
 
 async function sendReviewPrompts(supabase: any, bookingId: string, booking: any): Promise<void> {
   const [{ data: host }, { data: traveller }] = await Promise.all([

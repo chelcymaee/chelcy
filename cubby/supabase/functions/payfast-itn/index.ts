@@ -21,7 +21,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const PAYFAST_MERCHANT_ID = Deno.env.get('PAYFAST_MERCHANT_ID') ?? '';
 const PAYFAST_PASSPHRASE = Deno.env.get('PAYFAST_PASSPHRASE') ?? '';
 const PAYFAST_SANDBOX = Deno.env.get('PAYFAST_SANDBOX') !== 'false';
-const ADMIN_SECRET = Deno.env.get('ADMIN_SECRET') ?? 'cubby-admin-secret-2025';
+const ADMIN_SECRET = Deno.env.get('ADMIN_SECRET') ?? '';
 
 // PayFast production server IPs (skip validation in sandbox)
 const PAYFAST_IPS = ['41.74.179.194', '41.74.179.195', '41.74.179.196', '41.74.179.197'];
