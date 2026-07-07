@@ -83,7 +83,7 @@ export default function Signup() {
         await AsyncStorage.setItem('cubby_session', JSON.stringify(user));
         await AsyncStorage.setItem('cubby_traveller_profile', JSON.stringify({ name: fullName, avatarUri: null }));
       }
-      if (role === 'host' || role === 'both') router.replace('/(host)/bank-details');
+      if (role === 'host' || role === 'both') router.replace('/(traveller)/profile');
       else if (role === 'runner') router.replace('/(runner)/dashboard');
       else router.replace('/(traveller)/explore');
     } catch (err: any) {
