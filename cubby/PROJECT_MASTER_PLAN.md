@@ -904,7 +904,9 @@ supabase functions deploy complete-booking
 
 > **PR #38 merged into `main`** (merge commit `afc1ccf`, 2026-07-07) — Sprint 1 (Legal & Trust), the SDK 56 dependency fix, Sprint 2 (Account Access & Security), and Sprint 3 (payout bug, notifications, MOCK_REVIEWS, admin Partner Applications/Support Messages fix) are all now on `main`.
 >
-> **Sprint 4 (Private Beta Polish) is now done** on branch `claude/private-beta-polish`: global error boundary, fake Cubby Runners removed, email confirmation flow verified + one real native crash fixed, admin-gated host onboarding checklist (Option B) implemented + the dashboard demo-data leak fixed, and the orphaned `bank_details` table audited (recommend-only, not dropped). Per founder instruction, **Sprint 5 has not been started** — stopping here for review/approval.
+> **PR #39 merged into `main`** (merge commit `4a4ba3f`, 2026-07-07) — Sprint 4 (Private Beta Polish) is now on `main`: global error boundary, fake Cubby Runners removed, email confirmation flow verified + one real native crash fixed, admin-gated host onboarding checklist (Option B) implemented + the dashboard demo-data leak fixed, and the orphaned `bank_details` table audited (recommend-only, not dropped). Founder approved Sprint 4 and live-verified the full host onboarding flow end-to-end against the real Supabase project before merging.
+>
+> **Current work has moved to a fresh branch, `claude/private-beta-final-qa`**, cut from `main` post-merge. Do not continue work on the old `claude/private-beta-polish` branch — it's merged and done. Per founder instruction, **Sprint 5 has not been started** — stopping here for review/approval.
 >
 > Founder manually verified live: `notify-new-message` webhook, the `host_bank_details` RLS migration, the password reset flow, the two new admin edge functions (`admin-partner-applications`, `admin-support-messages`), and (2026-07-07) the full Sprint 4 host onboarding flow end-to-end — all deployed and working.
 >
