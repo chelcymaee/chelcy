@@ -149,7 +149,7 @@ export default function Runners() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore')}>
+        <TouchableOpacity style={styles.back} onPress={() => router.replace('/(traveller)/explore')}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
         <View>

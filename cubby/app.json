@@ -25,6 +25,11 @@
       "adaptiveIcon": {
         "backgroundColor": "#1A3C34",
         "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "config": {
+        "googleMaps": {
+          "apiKey": "REPLACE_WITH_ANDROID_MAPS_API_KEY"
+        }
       }
     },
     "plugins": [
@@ -35,10 +40,18 @@
         {
           "photosPermission": "Cubby needs access to your photos to add storage space images."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FF5C5C",
+          "sounds": []
+        }
       ]
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": false
     }
   }
 }

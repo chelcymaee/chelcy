@@ -16,6 +16,7 @@ const LANGUAGES = [
 
 export default function Language() {
   const [selected, setSelected] = useState('English');
+  const [toast, setToast] = useState('');
 
   useEffect(() => {
     AsyncStorage.getItem('cubby_language').then(lang => {
@@ -24,15 +25,27 @@ export default function Language() {
   }, []);
 
   async function handleSelect(lang: string) {
+    if (lang !== 'English') {
+      setToast(`${lang} — coming soon!`);
+      setTimeout(() => setToast(''), 2500);
+      return;
+    }
     setSelected(lang);
     await AsyncStorage.setItem('cubby_language', lang);
   }
 
   return (
     <SafeAreaView style={styles.container}>
+      {!!toast && (
+        <View style={styles.toast}>
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      )}
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.replace('/(traveller)/profile')} style={styles.backBtn}
+          // @ts-ignore
+          onClick={() => router.replace('/(traveller)/profile')}>
           <Text style={styles.backText}>← Account</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Language</Text>
@@ -47,8 +60,11 @@ export default function Language() {
               style={[styles.row, idx === LANGUAGES.length - 1 && { borderBottomWidth: 0 }]}
               onPress={() => handleSelect(lang)}
               activeOpacity={0.7}
+              // @ts-ignore
+              onClick={() => handleSelect(lang)}
             >
               <Text style={styles.langLabel}>{lang}</Text>
+              {lang !== 'English' && <Text style={styles.comingSoon}>Coming soon</Text>}
               <View style={[styles.radio, selected === lang && styles.radioSelected]}>
                 {selected === lang && <View style={styles.radioDot} />}
               </View>
@@ -101,10 +117,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioSelected: { borderColor: '#FF5C5C' },
-  radioDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#FF5C5C',
+  radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#FF5C5C' },
+  comingSoon: { fontSize: 11, color: '#9CA3AF', marginRight: 10, fontStyle: 'italic' },
+  toast: {
+    position: 'absolute', top: 16, left: 24, right: 24, zIndex: 100,
+    backgroundColor: '#1A1A1A', borderRadius: 12, padding: 14, alignItems: 'center',
   },
+  toastText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });

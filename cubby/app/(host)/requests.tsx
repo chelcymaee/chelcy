@@ -1,133 +1,435 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity } from 'react-native';
+import { useState, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  TouchableOpacity, ActivityIndicator,
+} from 'react-native';
+import { useFocusEffect, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import { Radius, CardShadow } from '../../src/constants/theme';
+import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import NotificationBell from '../../src/components/NotificationBell';
+import { recalculateHostResponseRate, minutesBetween } from '../../src/lib/response-rate';
+import { sendNotification } from '../../src/lib/notification-service';
 
-type RequestStatus = 'pending' | 'accepted' | 'declined';
+// Booking statuses used across Cubby:
+//   pending_payment — created, awaiting traveller payment via PayFast
+//   pending         — legacy status (pre-PayFast) / fallback
+//   confirmed       — payment received; bags may be dropped off
+//   active          — bags physically dropped off (future use)
+//   completed       — bags collected, split recorded for manual payout
+//   cancelled       — payment failed, user cancelled, or host declined
 
-interface StorageRequest {
+type BookingStatus = 'pending_payment' | 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled';
+
+interface HostBooking {
   id: string;
-  traveller: string;
-  bags: number;
-  dropOff: string;
-  pickUp: string;
-  date: string;
-  total: number;
-  status: RequestStatus;
+  traveller_id: string;
+  traveller_name: string;
+  traveller_email: string;
+  bag_count: number;
+  drop_off_date: string;
+  drop_off_time: string;
+  pick_up_time: string;
+  total_price: number;
+  status: BookingStatus;
+  pin_code: string;
+  created_at: string;
+  host_id: string;
 }
 
-const INITIAL_REQUESTS: StorageRequest[] = [
-  { id: '1', traveller: 'Sarah T.', bags: 2, dropOff: '09:00', pickUp: '15:00', date: 'Today', total: 160, status: 'pending' },
-  { id: '2', traveller: 'Luca B.', bags: 3, dropOff: '11:00', pickUp: '19:00', date: 'Today', total: 240, status: 'pending' },
-  { id: '3', traveller: 'Anika R.', bags: 1, dropOff: '08:30', pickUp: '14:00', date: 'Yesterday', total: 80, status: 'accepted' },
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  pending_payment: { label: '💳 Awaiting payment', color: '#6B7280', bg: '#F3F4F6' },
+  pending:   { label: '⏳ Pending',   color: '#D97706', bg: '#FEF3C7' },
+  confirmed: { label: '✓ Confirmed', color: '#059669', bg: '#D1FAE5' },
+  active:    { label: '📦 Active',    color: '#2563EB', bg: '#DBEAFE' },
+  completed: { label: '✔ Completed', color: '#6B7280', bg: '#F3F4F6' },
+  cancelled: { label: '✕ Declined',  color: '#DC2626', bg: '#FEE2E2' },
+};
+
+// Demo fallback when Supabase is not configured
+const DEMO_REQUESTS: HostBooking[] = [
+  {
+    id: 'demo-1', traveller_id: 'demo', traveller_name: 'Sarah T.', traveller_email: 'sarah@example.com',
+    bag_count: 2, drop_off_date: 'Today', drop_off_time: '09:00', pick_up_time: '15:00',
+    total_price: 160, status: 'pending', pin_code: '4821', created_at: new Date().toISOString(), host_id: '',
+  },
+  {
+    id: 'demo-2', traveller_id: 'demo', traveller_name: 'Luca B.', traveller_email: 'luca@example.com',
+    bag_count: 3, drop_off_date: 'Today', drop_off_time: '11:00', pick_up_time: '19:00',
+    total_price: 240, status: 'pending', pin_code: '7203', created_at: new Date().toISOString(), host_id: '',
+  },
+  {
+    id: 'demo-3', traveller_id: 'demo', traveller_name: 'Anika R.', traveller_email: 'anika@example.com',
+    bag_count: 1, drop_off_date: 'Yesterday', drop_off_time: '08:30', pick_up_time: '14:00',
+    total_price: 80, status: 'confirmed', pin_code: '3391', created_at: new Date().toISOString(), host_id: '',
+  },
 ];
 
 export default function Requests() {
-  const [requests, setRequests] = useState<StorageRequest[]>(INITIAL_REQUESTS);
+  const [bookings, setBookings] = useState<HostBooking[]>([]);
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [confirmDeclineId, setConfirmDeclineId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
 
-  function accept(id: string) {
-    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'accepted' } : req));
-  }
-  function decline(id: string) {
-    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'declined' } : req));
-  }
+  useFocusEffect(useCallback(() => {
+    loadBookings();
+  }, []));
 
-  function renderItem({ item }: { item: StorageRequest }) {
-    const statusColor = item.status === 'accepted' ? Colors.success : item.status === 'declined' ? Colors.error : Colors.warning;
-    const statusLabel = item.status === 'accepted' ? '✓ Accepted' : item.status === 'declined' ? '✕ Declined' : '⏳ Pending';
-
-    return (
-      <View style={styles.card}>
-        <View style={styles.cardTop}>
-          <View style={styles.avatar}>
-            <Text style={{ fontSize: 22 }}>👤</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{item.traveller}</Text>
-            <Text style={styles.sub}>{item.bags} bag{item.bags > 1 ? 's' : ''} · {item.dropOff} – {item.pickUp}</Text>
-            <Text style={styles.date}>{item.date}</Text>
-          </View>
-          <View>
-            <Text style={styles.amount}>R{item.total}</Text>
-            <Text style={[styles.status, { color: statusColor }]}>{statusLabel}</Text>
-          </View>
-        </View>
-
-        {item.status === 'pending' && (
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.acceptBtn} onPress={() => accept(item.id)}>
-              <Text style={styles.acceptText}>✓ Accept</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.declineBtn} onPress={() => decline(item.id)}>
-              <Text style={styles.declineText}>✕ Decline</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    );
+  function showToast(msg: string, error = false) {
+    setToast({ msg, error });
+    setTimeout(() => setToast(null), 2500);
   }
 
-  const pending = requests.filter(r => r.status === 'pending').length;
+  async function loadBookings() {
+    setLoading(true);
+    try {
+      if (isSupabaseConfigured) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Get this host's listing id
+          const { data: hostRow } = await supabase
+            .from('hosts')
+            .select('id')
+            .eq('assigned_user_id', user.id)
+            .single();
+
+          if (!hostRow) {
+            // Host profile not set up yet — show empty state
+            setBookings([]);
+            return;
+          }
+
+          // Fetch bookings for this host, join traveller profile for name/email
+          const { data, error } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              host_id,
+              traveller_id,
+              bag_count,
+              drop_off_date,
+              drop_off_time,
+              pick_up_time,
+              total_price,
+              status,
+              pin_code,
+              created_at
+            `)
+            .eq('host_id', hostRow.id)
+            .in('status', ['pending_payment', 'pending', 'confirmed', 'active', 'completed'])
+            .order('created_at', { ascending: false });
+
+          if (error) { showToast('Could not load bookings.', true); return; }
+
+          // Fetch traveller names separately (avoids RLS join issue on profiles)
+          const travellerIds = [...new Set((data ?? []).map((b: any) => b.traveller_id).filter(Boolean))];
+          let profileMap: Record<string, { full_name: string; email: string }> = {};
+          if (travellerIds.length > 0) {
+            const { data: profs } = await supabase
+              .from('profiles')
+              .select('id, full_name, email')
+              .in('id', travellerIds);
+            for (const p of profs ?? []) profileMap[p.id] = p;
+          }
+
+          const mapped: HostBooking[] = (data ?? []).map((b: any) => {
+            const prof = profileMap[b.traveller_id];
+            return {
+            id: b.id,
+            traveller_id: b.traveller_id ?? '',
+            traveller_name: prof?.full_name?.trim() || prof?.email?.split('@')[0] || 'Traveller',
+            traveller_email: prof?.email || '',
+            bag_count: b.bag_count,
+            drop_off_date: b.drop_off_date,
+            drop_off_time: b.drop_off_time,
+            pick_up_time: b.pick_up_time,
+            total_price: b.total_price,
+            status: b.status,
+            pin_code: b.pin_code,
+            created_at: b.created_at,
+            host_id: b.host_id,
+          };});
+          setBookings(mapped);
+
+          // Track which completed bookings the host has already reviewed
+          const completedIds = mapped.filter(b => b.status === 'completed').map(b => b.id);
+          if (completedIds.length > 0) {
+            const { data: reviewed } = await supabase
+              .from('traveller_reviews').select('booking_id').in('booking_id', completedIds);
+            setReviewedBookingIds(new Set((reviewed ?? []).map((r: any) => r.booking_id)));
+          }
+          return;
+        }
+      }
+      // Demo fallback
+      setBookings(DEMO_REQUESTS);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updateStatus(bookingId: string, newStatus: BookingStatus) {
+    setActionId(bookingId);
+    try {
+      if (isSupabaseConfigured) {
+        const respondedAt = new Date().toISOString();
+        const booking = bookings.find(b => b.id === bookingId);
+
+        // Record response time when accepting or declining a pending booking
+        const isResponse = newStatus === 'confirmed' || newStatus === 'cancelled';
+        const responseMinutes = (isResponse && booking?.status === 'pending' && booking?.created_at)
+          ? minutesBetween(booking.created_at, respondedAt)
+          : undefined;
+
+        const update: Record<string, unknown> = { status: newStatus };
+        if (isResponse && booking?.status === 'pending') {
+          update.host_responded_at = respondedAt;
+          if (responseMinutes !== undefined) update.response_time_minutes = responseMinutes;
+        }
+
+        const { error } = await supabase.from('bookings').update(update).eq('id', bookingId);
+        if (error) { showToast('Could not update booking. Please try again.', true); return; }
+
+        // Recalculate host response rate after responding
+        if (isResponse && booking?.host_id) {
+          recalculateHostResponseRate(supabase, booking.host_id).catch(() => {});
+        }
+      }
+
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+
+      if (newStatus === 'confirmed') showToast('Booking accepted ✓');
+      if (newStatus === 'cancelled') showToast('Booking declined');
+
+      // Notify the traveller of the host's decision
+      if (booking?.traveller_id && isSupabaseConfigured) {
+        sendNotification({
+          userId: booking.traveller_id,
+          type: newStatus === 'confirmed' ? 'booking_confirmed' : 'booking_declined',
+          title: newStatus === 'confirmed' ? 'Booking confirmed ✅' : 'Booking declined',
+          body: newStatus === 'confirmed'
+            ? 'Your booking has been accepted. Check your bookings for the PIN.'
+            : 'Your booking request was not accepted. Try another host nearby!',
+          relatedBookingId: bookingId,
+        }).catch(() => {});
+      }
+    } finally {
+      setActionId(null);
+      setConfirmDeclineId(null);
+    }
+  }
+
+  const pending = bookings.filter(b => b.status === 'pending').length;
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Toast */}
+      {toast && (
+        <View style={[styles.toast, toast.error && styles.toastError]}>
+          <Text style={styles.toastText}>{toast.msg}</Text>
+        </View>
+      )}
+
       <View style={styles.header}>
         <Text style={styles.heading}>Booking Requests</Text>
-        {pending > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{pending} new</Text>
-          </View>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {pending > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{pending} new</Text>
+            </View>
+          )}
+          <NotificationBell variant="host" />
+        </View>
       </View>
 
-      <FlatList
-        data={requests}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      ) : bookings.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>📭</Text>
+          <Text style={styles.emptyTitle}>No booking requests yet</Text>
+          <Text style={styles.emptySub}>
+            When travellers book your storage spot, their requests will appear here.
+          </Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+          {bookings.map(item => {
+            const cfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.pending;
+            const isActioning = actionId === item.id;
+
+            return (
+              <View key={item.id} style={styles.card}>
+                {/* Card header */}
+                <View style={styles.cardTop}>
+                  <View style={styles.avatar}>
+                    <Text style={{ fontSize: 22 }}>👤</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name}>{item.traveller_name}</Text>
+                    {!!item.traveller_email && (
+                      <Text style={styles.email}>{item.traveller_email}</Text>
+                    )}
+                    <Text style={styles.sub}>
+                      {item.bag_count} bag{item.bag_count !== 1 ? 's' : ''} · {item.drop_off_time} – {item.pick_up_time}
+                    </Text>
+                    {!!item.drop_off_date && (
+                      <Text style={styles.date}>{item.drop_off_date}</Text>
+                    )}
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.amount}>R{item.total_price}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
+                      <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* PIN for confirmed/active bookings */}
+                {(item.status === 'confirmed' || item.status === 'active') && !!item.pin_code && (
+                  <View style={styles.pinRow}>
+                    <Text style={styles.pinLabel}>Traveller PIN:</Text>
+                    <Text style={styles.pinCode}>{item.pin_code}</Text>
+                  </View>
+                )}
+
+                {/* View Traveller Profile */}
+                <TouchableOpacity
+                  style={styles.viewProfileBtn}
+                  onPress={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.traveller_id, bookingId: item.id } })}
+                  // @ts-ignore
+                  onClick={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.traveller_id, bookingId: item.id } })}
+                >
+                  <Text style={styles.viewProfileBtnText}>👤 View Traveller Profile</Text>
+                </TouchableOpacity>
+
+                {/* Review traveller for completed bookings */}
+                {item.status === 'completed' && (
+                  reviewedBookingIds.has(item.id)
+                    ? <View style={styles.reviewedBadge}><Text style={styles.reviewedBadgeText}>✓ Traveller reviewed</Text></View>
+                    : (
+                      <TouchableOpacity
+                        style={styles.reviewTravellerBtn}
+                        onPress={() => router.push({ pathname: '/(host)/review-traveller', params: { travellerId: item.traveller_id, travellerName: item.traveller_name, bookingId: item.id } })}
+                        // @ts-ignore
+                        onClick={() => router.push({ pathname: '/(host)/review-traveller', params: { travellerId: item.traveller_id, travellerName: item.traveller_name, bookingId: item.id } })}
+                      >
+                        <Text style={styles.reviewTravellerBtnText}>✏️ Review traveller</Text>
+                      </TouchableOpacity>
+                    )
+                )}
+
+                {/* Accept / Decline for pending */}
+                {item.status === 'pending' && (
+                  confirmDeclineId === item.id ? (
+                    <View style={styles.confirmRow}>
+                      <Text style={styles.confirmText}>Decline this booking?</Text>
+                      <View style={styles.actions}>
+                        <TouchableOpacity
+                          style={[styles.declineConfirmBtn, isActioning && styles.btnDisabled]}
+                          onPress={() => updateStatus(item.id, 'cancelled')}
+                          // @ts-ignore
+                          onClick={() => updateStatus(item.id, 'cancelled')}
+                          disabled={isActioning}
+                        >
+                          <Text style={styles.declineConfirmText}>{isActioning ? 'Declining…' : 'Yes, decline'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.keepBtn}
+                          onPress={() => setConfirmDeclineId(null)}
+                          // @ts-ignore
+                          onClick={() => setConfirmDeclineId(null)}
+                        >
+                          <Text style={styles.keepText}>Keep</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.actions}>
+                      <TouchableOpacity
+                        style={[styles.acceptBtn, isActioning && styles.btnDisabled]}
+                        onPress={() => updateStatus(item.id, 'confirmed')}
+                        // @ts-ignore
+                        onClick={() => updateStatus(item.id, 'confirmed')}
+                        disabled={isActioning}
+                      >
+                        <Text style={styles.acceptText}>{isActioning ? 'Accepting…' : '✓ Accept'}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.declineBtn}
+                        onPress={() => setConfirmDeclineId(item.id)}
+                        // @ts-ignore
+                        onClick={() => setConfirmDeclineId(item.id)}
+                        disabled={isActioning}
+                      >
+                        <Text style={styles.declineText}>✕ Decline</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )
+                )}
+              </View>
+            );
+          })}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  toast: {
+    position: 'absolute', top: 16, left: 24, right: 24,
+    backgroundColor: Colors.textPrimary, borderRadius: 12,
+    paddingVertical: 14, paddingHorizontal: 20, zIndex: 100, alignItems: 'center',
+  },
+  toastError: { backgroundColor: Colors.error },
+  toastText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 20, paddingTop: 8 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
-  badge: {
-    backgroundColor: Colors.accent,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  badgeText: { fontSize: 12, fontWeight: '700', color: Colors.white },
+  badge: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeText: { fontSize: 12, fontWeight: '700', color: '#1A1A1A' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  reviewTravellerBtn: { borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 8 },
+  reviewTravellerBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  reviewedBadge: { backgroundColor: Colors.successBg, borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 8 },
+  reviewedBadgeText: { fontSize: 14, fontWeight: '700', color: Colors.successText },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  emptyEmoji: { fontSize: 56, marginBottom: 16 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8, textAlign: 'center' },
+  emptySub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
   list: { padding: 20, gap: 14 },
   card: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
+    backgroundColor: Colors.white, borderRadius: Radius.lg, padding: 14,
+    borderWidth: 1, borderColor: Colors.border,
+    ...CardShadow, gap: 12,
   },
-  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: Colors.border, alignItems: 'center', justifyContent: 'center',
   },
   name: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  sub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  viewProfileBtn: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  viewProfileBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
+  email: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
+  sub: { fontSize: 13, color: Colors.textSecondary, marginTop: 3 },
   date: { fontSize: 12, color: Colors.textLight, marginTop: 2 },
-  amount: { fontSize: 16, fontWeight: '800', color: Colors.primary, textAlign: 'right' },
-  status: { fontSize: 12, fontWeight: '600', textAlign: 'right', marginTop: 4 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  amount: { fontSize: 16, fontWeight: '800', color: Colors.primary },
+  statusBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 4 },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  pinRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.successBg, borderRadius: 10, padding: 10,
+  },
+  pinLabel: { fontSize: 13, color: Colors.successText, fontWeight: '600' },
+  pinCode: { fontSize: 22, fontWeight: '900', color: Colors.successText, letterSpacing: 4 },
+  actions: { flexDirection: 'row', gap: 10 },
   acceptBtn: {
     flex: 1, backgroundColor: Colors.primary, borderRadius: 10,
     paddingVertical: 12, alignItems: 'center',
@@ -138,4 +440,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12, alignItems: 'center',
   },
   declineText: { color: Colors.textSecondary, fontWeight: '700', fontSize: 15 },
+  confirmRow: { gap: 8 },
+  confirmText: { fontSize: 13, color: Colors.error, fontWeight: '600', textAlign: 'center' },
+  declineConfirmBtn: {
+    flex: 1, backgroundColor: Colors.error, borderRadius: 10,
+    paddingVertical: 12, alignItems: 'center',
+  },
+  declineConfirmText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
+  keepBtn: {
+    flex: 1, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 10,
+    paddingVertical: 12, alignItems: 'center',
+  },
+  keepText: { color: Colors.textSecondary, fontWeight: '700', fontSize: 14 },
+  btnDisabled: { opacity: 0.6 },
 });

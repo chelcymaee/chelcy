@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import Btn from '../../src/components/Btn';
 
 const SECTIONS = [
   {
@@ -28,7 +29,9 @@ export default function Safety() {
     <SafeAreaView style={styles.container}>
       <ScrollView>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(traveller)/profile')}>
+          <TouchableOpacity onPress={() => router.replace('/(traveller)/profile')}
+            // @ts-ignore
+            onClick={() => router.replace('/(traveller)/profile')}>
             <Text style={styles.back}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.heading}>Safety & Trust</Text>
@@ -55,9 +58,7 @@ export default function Safety() {
         <View style={styles.emergencyCard}>
           <Text style={styles.emergencyTitle}>🚨 Emergency?</Text>
           <Text style={styles.emergencyText}>If you feel unsafe or something has gone wrong, contact us immediately.</Text>
-          <TouchableOpacity style={styles.emergencyBtn} onPress={() => Linking.openURL('mailto:safety@cubby.app')}>
-            <Text style={styles.emergencyBtnText}>Contact safety team</Text>
-          </TouchableOpacity>
+          <Btn label="Contact safety team" onPress={() => Linking.openURL('mailto:safety@mycubby.co.za')} variant="destructive" />
         </View>
 
         <View style={{ height: 40 }} />
@@ -79,9 +80,7 @@ const styles = StyleSheet.create({
   itemEmoji: { fontSize: 24, width: 32 },
   itemTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary, marginBottom: 2 },
   itemDesc: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
-  emergencyCard: { backgroundColor: '#FFF1F1', marginHorizontal: 20, borderRadius: 18, padding: 20, marginTop: 16, borderWidth: 1, borderColor: '#FFD0D0' },
+  emergencyCard: { backgroundColor: Colors.errorBg, marginHorizontal: 20, borderRadius: 18, padding: 20, marginTop: 16, borderWidth: 1, borderColor: '#FECACA' },
   emergencyTitle: { fontSize: 18, fontWeight: '800', color: Colors.error, marginBottom: 6 },
   emergencyText: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20, marginBottom: 16 },
-  emergencyBtn: { backgroundColor: Colors.error, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  emergencyBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
 });

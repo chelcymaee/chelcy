@@ -1,28 +1,39 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert,
+  StyleSheet, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import Btn from '../../src/components/Btn';
+import Banner from '../../src/components/Banner';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   async function handleLogin() {
     if (!email || !password) {
-      Alert.alert('Please fill in all fields');
+      setErrorMsg('Please fill in all fields');
       return;
     }
+    setErrorMsg('');
     setLoading(true);
     try {
       if (isSupabaseConfigured) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) { Alert.alert('Sign in failed', error.message); return; }
+        if (error) {
+          if (error.message.toLowerCase().includes('email not confirmed')) {
+            setErrorMsg('Please confirm your email before signing in — check your inbox for the confirmation link.');
+          } else {
+            setErrorMsg(error.message);
+          }
+          return;
+        }
         const user = data.user;
         let role = 'traveller';
         if (user) {
@@ -41,10 +52,10 @@ export default function Login() {
             return;
           }
         }
-        Alert.alert('Sign in failed', 'No account found. Please sign up first.');
+        setErrorMsg('No account found. Please sign up first.');
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Something went wrong');
+      setErrorMsg(err?.message ?? 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -63,7 +74,9 @@ export default function Login() {
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
         {/* Header */}
-        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/')}>
+        <TouchableOpacity style={styles.back} onPress={() => router.replace('/')}
+          // @ts-ignore
+          onClick={() => router.replace('/')}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 
@@ -74,6 +87,8 @@ export default function Login() {
 
         <Text style={styles.heading}>Welcome back</Text>
         <Text style={styles.subheading}>Sign in to your Cubby account</Text>
+
+        {!!errorMsg && <Banner message={errorMsg} variant="error" />}
 
         <View style={styles.form}>
           <Text style={styles.label}>Email</Text>
@@ -98,14 +113,16 @@ export default function Login() {
             secureTextEntry
           />
 
-          <TouchableOpacity
-            style={[styles.btn, loading && styles.btnDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.btnText}>{loading ? 'Signing in…' : 'Sign in'}</Text>
+          <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')} style={styles.forgotLink}>
+            <Text style={styles.forgotLinkText}>Forgot password?</Text>
           </TouchableOpacity>
+
+          <Btn
+            label={loading ? 'Signing in…' : 'Sign in'}
+            onPress={handleLogin}
+            loading={loading}
+            style={styles.btn}
+          />
         </View>
 
         <View style={styles.footer}>
@@ -141,15 +158,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textPrimary,
   },
-  btn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  btn: { marginTop: 24 },
+  forgotLink: { alignSelf: 'flex-end', marginTop: 10 },
+  forgotLinkText: { color: Colors.primary, fontSize: 14, fontWeight: '600' },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 32 },
   footerText: { color: Colors.textSecondary, fontSize: 15 },
   footerLink: { color: Colors.primary, fontSize: 15, fontWeight: '700' },

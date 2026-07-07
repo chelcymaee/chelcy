@@ -28,19 +28,26 @@ export default function BankDetails() {
     async function loadBankDetails() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data } = await supabase
-          .from('bank_details')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-        if (data) {
-          setBank(data.bank ?? '');
-          setAccountHolder(data.account_holder ?? '');
-          setAccountNumber(data.account_number ?? '');
-          setBranchCode(data.branch_code ?? '');
-          setAccountType(data.account_type ?? 'Cheque / Current');
-          setSaved(true);
-          return;
+        const { data: hostRow } = await supabase
+          .from('hosts')
+          .select('id')
+          .or(`assigned_user_id.eq.${user.id},user_id.eq.${user.id}`)
+          .maybeSingle();
+        if (hostRow) {
+          const { data } = await supabase
+            .from('host_bank_details')
+            .select('*')
+            .eq('host_id', hostRow.id)
+            .maybeSingle();
+          if (data) {
+            setBank(data.bank_name ?? '');
+            setAccountHolder(data.account_holder ?? '');
+            setAccountNumber(data.account_number ?? '');
+            setBranchCode(data.branch_code ?? '');
+            setAccountType(data.account_type ?? 'Cheque / Current');
+            setSaved(true);
+            return;
+          }
         }
       }
       // Fallback to AsyncStorage
@@ -70,15 +77,24 @@ export default function BankDetails() {
     }
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { error } = await supabase.from('bank_details').upsert({
-        user_id: user.id,
-        bank,
+      const { data: hostRow, error: hostError } = await supabase
+        .from('hosts')
+        .select('id')
+        .or(`assigned_user_id.eq.${user.id},user_id.eq.${user.id}`)
+        .maybeSingle();
+      if (hostError || !hostRow) {
+        Alert.alert('Save failed', 'No host listing found for your account yet. Set up your host listing first, then add bank details.');
+        return;
+      }
+      const { error } = await supabase.from('host_bank_details').upsert({
+        host_id: hostRow.id,
+        bank_name: bank,
         account_holder: accountHolder,
         account_number: accountNumber,
         branch_code: branchCode,
         account_type: accountType,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
+      }, { onConflict: 'host_id' });
       if (error) {
         Alert.alert('Save failed', error.message);
         return;

@@ -29,8 +29,13 @@ export interface Host {
   available_days: string[];      // ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
   rating: number;
   review_count: number;
-  response_rate: number;         // 0-100
+  response_rate: number | null;  // null = new host, no data yet
+  avg_response_time_minutes: number | null;
+  total_requests: number;
+  responded_requests: number;
   is_active: boolean;
+  storage_features: string[];    // e.g. ['cctv', 'indoor', 'staffed', 'secure_storage']
+  owner_is_verified?: boolean;   // from profiles.is_verified of the host owner
   created_at: string;
 }
 

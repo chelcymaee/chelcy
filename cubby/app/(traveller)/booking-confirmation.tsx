@@ -1,14 +1,29 @@
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Share } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Share, Animated } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { useRef, useEffect } from 'react';
 import { Colors } from '../../src/constants/colors';
+import Btn from '../../src/components/Btn';
+import { formatDateLabel, todayISO } from '../../src/components/DatePickerModal';
 
 export default function BookingConfirmation() {
-  const { hostName, dropOff, pickUp, bags, total, pin } = useLocalSearchParams<{
+  const { hostName, dropOff, pickUp, bags, total, pin, date } = useLocalSearchParams<{
     hostName: string; dropOff: string; pickUp: string;
-    bags: string; total: string; pin: string;
+    bags: string; total: string; pin: string; date: string;
   }>();
 
   const pinCode = pin ?? '4821';
+
+  const enterOpacity = useRef(new Animated.Value(0)).current;
+  const enterY = useRef(new Animated.Value(24)).current;
+  const iconScale = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(enterOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(enterY, { toValue: 0, useNativeDriver: true, speed: 18, bounciness: 8 }),
+      Animated.spring(iconScale, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 14 }),
+    ]).start();
+  }, []);
 
   async function shareBooking() {
     await Share.share({
@@ -20,13 +35,13 @@ export default function BookingConfirmation() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
         {/* Success header */}
-        <View style={styles.successHeader}>
-          <View style={styles.successIcon}>
+        <Animated.View style={[styles.successHeader, { opacity: enterOpacity, transform: [{ translateY: enterY }] }]}>
+          <Animated.View style={[styles.successIcon, { transform: [{ scale: iconScale }] }]}>
             <Text style={styles.successEmoji}>✅</Text>
-          </View>
+          </Animated.View>
           <Text style={styles.successTitle}>Booking confirmed!</Text>
           <Text style={styles.successSub}>Your bags are as good as stored. Head to the host and show your PIN.</Text>
-        </View>
+        </Animated.View>
 
         {/* PIN code - most important element */}
         <View style={styles.pinCard}>
@@ -41,6 +56,10 @@ export default function BookingConfirmation() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Host</Text>
             <Text style={styles.summaryValue}>{hostName ?? 'Your host'}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Date</Text>
+            <Text style={styles.summaryValue}>{formatDateLabel(date ?? todayISO())}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Drop-off</Text>
@@ -81,21 +100,28 @@ export default function BookingConfirmation() {
         {/* Trust badge */}
         <View style={styles.trustRow}>
           <Text style={styles.trustBadge}>🔒 Payment secured via PayFast</Text>
-          <Text style={styles.trustBadge}>🛡️ Up to R2,000 coverage per bag</Text>
+          <Text style={styles.trustBadge}>🛡️ ID-verified host</Text>
         </View>
 
         {/* Actions */}
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => router.replace('/(traveller)/bookings')}>
-          <Text style={styles.primaryBtnText}>View my bookings</Text>
-        </TouchableOpacity>
+        <Btn
+          label="View my bookings"
+          onPress={() => router.replace('/(traveller)/bookings')}
+          style={styles.primaryBtn}
+        />
 
-        <TouchableOpacity style={styles.secondaryBtn} onPress={shareBooking}>
+        <TouchableOpacity style={styles.secondaryBtn} onPress={shareBooking}
+          // @ts-ignore
+          onClick={shareBooking}>
           <Text style={styles.secondaryBtnText}>📤 Share Cubby with a friend</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.ghostBtn} onPress={() => router.replace('/(traveller)/explore')}>
-          <Text style={styles.ghostBtnText}>Back to explore</Text>
-        </TouchableOpacity>
+        <Btn
+          label="Back to explore"
+          onPress={() => router.replace('/(traveller)/explore')}
+          variant="ghost"
+          style={styles.ghostBtn}
+        />
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -108,7 +134,7 @@ const styles = StyleSheet.create({
   inner: { padding: 24, paddingTop: 32 },
   successHeader: { alignItems: 'center', marginBottom: 28 },
   successIcon: {
-    width: 80, height: 80, borderRadius: 40, backgroundColor: '#F0FFF4',
+    width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.successBg,
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
   successEmoji: { fontSize: 40 },
@@ -146,16 +172,11 @@ const styles = StyleSheet.create({
   stepText: { fontSize: 14, color: Colors.textPrimary, flex: 1 },
   trustRow: { gap: 8, marginBottom: 20 },
   trustBadge: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center' },
-  primaryBtn: {
-    backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18,
-    alignItems: 'center', marginBottom: 12,
-  },
-  primaryBtnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  primaryBtn: { marginBottom: 12 },
   secondaryBtn: {
-    backgroundColor: Colors.accent, borderRadius: 16, paddingVertical: 16,
+    backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 15,
     alignItems: 'center', marginBottom: 12,
   },
-  secondaryBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
-  ghostBtn: { paddingVertical: 14, alignItems: 'center' },
-  ghostBtnText: { fontSize: 15, color: Colors.textSecondary },
+  secondaryBtnText: { fontSize: 16, fontWeight: '700', color: Colors.white },
+  ghostBtn: { marginBottom: 4 },
 });
