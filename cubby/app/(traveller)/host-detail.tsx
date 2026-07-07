@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Animated,
+  TouchableOpacity, Animated, Image,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -52,6 +52,7 @@ function normalizeHost(raw: any, ownerIsVerified?: boolean) {
     available_days: raw.available_days ?? raw.availableDays ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
     max_bags: raw.max_bags ?? raw.maxBags ?? 10,
     storage_features: raw.storage_features ?? [],
+    photos: raw.photos ?? [],
     owner_is_verified: ownerIsVerified ?? false,
     created_at: raw.created_at ?? new Date().toISOString(),
   };
@@ -65,6 +66,7 @@ export default function HostDetail() {
   const [savedReviews, setSavedReviews] = useState<any[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [savingSpot, setSavingSpot] = useState(false);
+  const [photoFailed, setPhotoFailed] = useState(false);
   const heartScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -219,7 +221,11 @@ export default function HostDetail() {
           {/* Icon + name block */}
           <View style={styles.headerBlock}>
             <View style={styles.iconBox}>
-              <Text style={styles.iconEmoji}>🧳</Text>
+              {host.photos?.[0] && !photoFailed ? (
+                <Image source={{ uri: host.photos[0] }} style={styles.iconImage} onError={() => setPhotoFailed(true)} />
+              ) : (
+                <Text style={styles.iconEmoji}>🧳</Text>
+              )}
             </View>
             <Text style={styles.storageLabel}>STORAGE IN</Text>
             <Text style={styles.hostName}>{host.display_name}</Text>
@@ -537,6 +543,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   iconEmoji: { fontSize: 36 },
+  iconImage: { width: 72, height: 72, borderRadius: 16 },
   storageLabel: {
     fontSize: 11,
     color: Colors.textSecondary,
