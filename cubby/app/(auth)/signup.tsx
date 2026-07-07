@@ -93,11 +93,12 @@ export default function Signup() {
     }
   }
 
+  // Bag Runner intentionally not offered during private beta — the runner
+  // dashboard/deliveries/earnings screens aren't wired to real data yet.
   const roleOptions: { value: Role; label: string; emoji: string; desc: string }[] = [
     { value: 'traveller', emoji: '🧳', label: 'Traveller', desc: 'I need to store my bags' },
     { value: 'host', emoji: '🏠', label: 'Host', desc: 'I want to earn by storing bags' },
     { value: 'both', emoji: '✌️', label: 'Both', desc: 'I travel and host' },
-    { value: 'runner', emoji: '🚗', label: 'Bag Runner', desc: 'I pick up & deliver bags' },
   ];
 
   return (

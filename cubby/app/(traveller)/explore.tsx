@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity, Image,
   StyleSheet, SafeAreaView, ScrollView, Platform, Modal,
   Animated, PanResponder, Dimensions,
 } from 'react-native';
@@ -367,6 +367,8 @@ function ResultCard({ host, sortBy, onPress, userLocation, isClosest }: {
   const responseTimeShort = formatResponseTimeShort(host.avg_response_time_minutes ?? null, host.responded_requests ?? 0);
   const rlabel = rankingLabel(host.ranking_signals, host);
   const reason = sortBy === 'recommended' ? rankingReason(host.ranking_signals, host) : null;
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const photoUrl = host.photos?.[0];
 
   const distInfo = useMemo(() => {
     if (!userLocation || !host.latitude || !host.longitude) return null;
@@ -380,7 +382,11 @@ function ResultCard({ host, sortBy, onPress, userLocation, isClosest }: {
       onClick={onPress} activeOpacity={0.92}>
       <View style={S.resultCardLeft}>
         <View style={S.resultEmojiBox}>
-          <Text style={S.resultEmoji}>{typeEmoji[host.business_type] ?? '📦'}</Text>
+          {photoUrl && !photoFailed ? (
+            <Image source={{ uri: photoUrl }} style={S.resultCardImage} onError={() => setPhotoFailed(true)} />
+          ) : (
+            <Text style={S.resultEmoji}>{typeEmoji[host.business_type] ?? '📦'}</Text>
+          )}
         </View>
       </View>
       <View style={S.resultCardBody}>
@@ -1071,6 +1077,7 @@ const S = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   resultEmoji: { fontSize: 26 },
+  resultCardImage: { width: 52, height: 52, borderRadius: 14 },
   resultCardBody: { flex: 1 },
   resultLabel: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.8, marginBottom: 2 },
   resultName: { fontSize: 17, fontWeight: '800', color: '#1A1A1A', marginBottom: 2 },

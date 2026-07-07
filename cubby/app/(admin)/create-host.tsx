@@ -1,8 +1,24 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { isSupabaseConfigured } from '../../src/lib/supabase';
 import LocationPicker, { LocationResult } from '../../src/components/LocationPicker.web';
+
+const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
+
+async function adminFetch(body: object) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-hosts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-secret': ADMIN_SECRET,
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
 
 type BusinessType = 'café' | 'hotel' | 'hostel' | 'guesthouse' | 'airbnb' | 'tour_operator' | 'home' | 'other';
 
@@ -62,57 +78,21 @@ export default function CreateHost() {
     setSaving(true);
     try {
       if (isSupabaseConfigured) {
-        log('Getting current Supabase user...');
-        const { data: { user } } = await supabase.auth.getUser();
-        log('User ID: ' + (user?.id ?? 'NONE — not logged in'));
-        if (!user) {
-          setErrorMsg('Not signed in to Supabase. Go to the traveller app and sign in first, then return here.');
-          return;
-        }
-        // Look up assigned user by email — read their current verification status
-        let assignedUserId: string | null = null;
-        let assignedUserIsVerified = false;
-        if (partnerEmail.trim()) {
-          const { data: assignedProfile } = await supabase
-            .from('profiles')
-            .select('id, is_verified')
-            .eq('email', partnerEmail.trim().toLowerCase())
-            .single();
-          if (!assignedProfile) {
-            setErrorMsg(`No account found for ${partnerEmail.trim()}. Ask them to sign up first.`);
-            return;
-          }
-          assignedUserId = assignedProfile.id;
-          assignedUserIsVerified = assignedProfile.is_verified ?? false;
-          log('Assigning to user: ' + assignedUserId + ' (verified: ' + assignedUserIsVerified + ')');
-        }
-
         const payload = {
-          user_id: assignedUserId ?? user.id,
-          assigned_user_id: assignedUserId,
           display_name: displayName.trim(), bio: bio.trim(), location_name: locationName.trim(),
           latitude: latitude || null, longitude: longitude || null,
-          owner_is_verified: assignedUserIsVerified,
           business_type: businessType, price_per_bag_per_day: parseInt(pricePerBag), max_bags: parseInt(maxBags),
           available_from: availableFrom.trim() || '08:00', available_until: availableUntil.trim() || '20:00',
           available_days: availableDays, is_active: active,
         };
-        log('Inserting into hosts table...');
-        const { data: inserted, error } = await supabase.from('hosts').insert(payload).select();
-        if (error) {
-          log('INSERT ERROR: ' + error.message + ' | code: ' + error.code);
-          setErrorMsg('Supabase error: ' + error.message);
+        log('Calling admin-hosts create action...');
+        const result = await adminFetch({ action: 'create', payload, partnerEmail: partnerEmail.trim() || undefined });
+        if (result.error) {
+          log('CREATE ERROR: ' + result.error);
+          setErrorMsg(result.error);
           return;
         }
-        log('Insert success! Row ID: ' + (inserted?.[0]?.id ?? 'unknown'));
-
-        // Mark partner as an approved host
-        if (assignedUserId) {
-          await supabase.from('profiles')
-            .update({ is_host_approved: true })
-            .eq('id', assignedUserId);
-          log('Host approved for user: ' + assignedUserId);
-        }
+        log('Create success! Row ID: ' + (result.data?.id ?? 'unknown'));
         setSuccessMsg('Host profile created!');
         setTimeout(() => router.replace('/(admin)/manage-hosts'), 1500);
       } else {

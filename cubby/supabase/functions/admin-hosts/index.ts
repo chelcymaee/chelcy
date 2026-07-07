@@ -158,12 +158,56 @@ serve(async (req) => {
       return json({ success: true });
     }
 
-    // ── POST — actions (assign, remove_user, delete) ─────────────────────────
+    // ── POST — actions (create, assign, remove_user, delete) ─────────────────
     if (req.method === 'POST') {
       const body = await req.json();
-      const { action, hostId: id } = body as { action: string; hostId: string };
-      if (!id) return badRequest('hostId required');
+      const { action } = body as { action: string };
       if (!action) return badRequest('action required');
+
+      // Create a new host listing, optionally assigning + approving a partner
+      if (action === 'create') {
+        const { payload, partnerEmail } = body as { payload: Record<string, unknown>; partnerEmail?: string };
+        if (!payload) return badRequest('payload required');
+
+        let assignedUserId: string | null = null;
+        let ownerIsVerified = false;
+        if (partnerEmail?.trim()) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, is_verified')
+            .eq('email', partnerEmail.trim().toLowerCase())
+            .single();
+          if (!profile) return json({ error: `No account found for ${partnerEmail.trim()}. Ask them to sign up first.` }, 404);
+          assignedUserId = profile.id;
+          ownerIsVerified = profile.is_verified ?? false;
+        }
+
+        const safePayload: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(payload)) {
+          if (ALLOWED_HOST_FIELDS[k]) safePayload[k] = v;
+        }
+
+        const { data: inserted, error } = await supabase
+          .from('hosts')
+          .insert({
+            ...safePayload,
+            user_id: assignedUserId,
+            assigned_user_id: assignedUserId,
+            owner_is_verified: ownerIsVerified,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+
+        if (assignedUserId) {
+          await supabase.from('profiles').update({ is_host_approved: true }).eq('id', assignedUserId);
+        }
+
+        return json({ success: true, data: inserted });
+      }
+
+      const { hostId: id } = body as { hostId: string };
+      if (!id) return badRequest('hostId required');
 
       // Assign user by email
       if (action === 'assign') {

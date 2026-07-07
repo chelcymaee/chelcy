@@ -1,6 +1,24 @@
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
-import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { isSupabaseConfigured } from '../../src/lib/supabase';
+
+const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
+
+async function adminFetch(method: string, params?: Record<string, string>, body?: object) {
+  const url = new URL(`${SUPABASE_URL}/functions/v1/admin-reviews`);
+  if (params) for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const res = await fetch(url.toString(), {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-secret': ADMIN_SECRET,
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return res.json();
+}
 
 export default function AdminReviews() {
   const [reviews, setReviews] = useState<any[]>([]);
@@ -14,12 +32,7 @@ export default function AdminReviews() {
     setLoading(true);
     try {
       if (!isSupabaseConfigured) { setReviews([]); return; }
-      let q = supabase
-        .from('reviews')
-        .select('id, reviewer_name, host_id, rating, comment, tags, reported, created_at, hosts(display_name)')
-        .order('created_at', { ascending: false });
-      if (filter === 'reported') q = q.eq('reported', true);
-      const { data } = await q;
+      const { data } = await adminFetch('GET', filter === 'reported' ? { reported: 'true' } : undefined);
       setReviews(data ?? []);
     } finally {
       setLoading(false);
@@ -28,15 +41,15 @@ export default function AdminReviews() {
 
   async function removeReview(id: string) {
     if (!confirm('Permanently delete this review?')) return;
-    const { error } = await supabase.from('reviews').delete().eq('id', id);
-    if (error) { setMsg('Error: ' + error.message); return; }
+    const result = await adminFetch('DELETE', { id });
+    if (result.error) { setMsg('Error: ' + result.error); return; }
     setReviews(prev => prev.filter(r => r.id !== id));
     setMsg('Review removed ✓');
     setTimeout(() => setMsg(''), 3000);
   }
 
   async function clearReport(id: string) {
-    await supabase.from('reviews').update({ reported: false }).eq('id', id);
+    await adminFetch('PATCH', undefined, { id });
     setReviews(prev => prev.filter(r => r.id !== id));
     setMsg('Report cleared ✓');
     setTimeout(() => setMsg(''), 3000);
