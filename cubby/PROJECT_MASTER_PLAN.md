@@ -1,6 +1,6 @@
 # CUBBY — PROJECT MASTER PLAN
 > Single source of truth for all development, product decisions, and launch planning.
-> Last updated: 2026-07-06
+> Last updated: 2026-07-07
 
 ---
 
@@ -139,7 +139,7 @@ If it does not, question whether it should exist.
 ## 🛡️ LEGAL & TRUST SPRINT — Sprint 1 ✅ Done & Approved
 
 > Goal: close the legal/trust gaps blocking real users, without adding new features.
-> Status: approved by founder. PR #38 still open (not yet merged — holding for Sprint 2 review too).
+> Status: approved by founder. Merged into `main` via PR #38 (2026-07-07).
 
 | Item | Status | Notes |
 |---|---|---|
@@ -167,7 +167,7 @@ If it does not, question whether it should exist.
 ## 🔐 ACCOUNT ACCESS & SECURITY SPRINT — Sprint 2 ✅ Done & Approved
 
 > Goal: close the remaining private-beta-blocking auth/security gaps. No new features.
-> Status: approved by founder, verified working (password reset + admin PIN tested manually). PR #38 still open — holding for Sprint 3 review too.
+> Status: approved by founder, verified working (password reset + admin PIN tested manually). Merged into `main` via PR #38 (2026-07-07).
 
 | Item | Status | Notes |
 |---|---|---|
@@ -186,7 +186,7 @@ If it does not, question whether it should exist.
 ## 🚧 PRIVATE BETA BLOCKERS SPRINT — Sprint 3 ✅ Done (awaiting review)
 
 > Goal: remove the remaining critical Private Beta blockers. No new features, no Bag Runners work.
-> Status: implemented, pending founder review. PR #38 not merged yet.
+> Status: implemented, founder-verified live. Merged into `main` via PR #38 (2026-07-07).
 
 | Item | Status | Notes |
 |---|---|---|
@@ -865,16 +865,16 @@ supabase functions deploy complete-booking
 
 ## NEXT RECOMMENDED TASK
 
-> **Sprint 3 is fully complete** — awaiting founder review before merging PR #38.
-> Sprint 1 (Legal & Trust), Sprint 2 (Account Access & Security), and Sprint 3 (payout bug, notifications, MOCK_REVIEWS, admin Partner Applications/Support Messages fix) are all done on the branch.
+> **PR #38 merged into `main`** (merge commit `afc1ccf`, 2026-07-07) — Sprint 1 (Legal & Trust), the SDK 56 dependency fix, Sprint 2 (Account Access & Security), and Sprint 3 (payout bug, notifications, MOCK_REVIEWS, admin Partner Applications/Support Messages fix) are all now on `main`.
 >
-> Founder has manually verified in the live Supabase project: `notify-new-message` webhook (was already wired), the `host_bank_details` RLS migration (applied), the password reset redirect URL (works end-to-end), and — via direct SQL diagnostics — confirmed the Partner Applications/Support Messages RLS bug was real, not stale docs. That last one is now fixed with two new edge functions, pending deployment.
+> Founder manually verified live: `notify-new-message` webhook, the `host_bank_details` RLS migration, the password reset flow, and the two new admin edge functions (`admin-partner-applications`, `admin-support-messages`) — all deployed and working.
 >
-> Once reviewed/approved, what's left:
-> 1. Manual: re-enable Supabase email confirmation (Dashboard toggle)
-> 2. Manual: deploy `admin-partner-applications` and `admin-support-messages`, confirm `ADMIN_SECRET` is set, test both admin screens live
-> 3. Bag Runners mock screen (explicitly deferred so far)
-> 4. Everything else in the Private Beta / Public Beta checklists below
+> **Current work has moved to a fresh branch, `claude/private-beta-polish`**, cut from `main` post-merge. Do not continue work on the old `claude/cubby-legal-trust-sprint-tzxr4o` branch — it's merged and done.
+>
+> Next up — **Private Beta Polish** (FINISH MODE): a systematic audit of the app for loading states, empty states, error handling, consistency, dead links, placeholder/mock content, accessibility, and stability/security issues, fixing only genuine problems one at a time with founder approval between each. Remaining known manual items:
+> 1. Re-enable Supabase email confirmation (Dashboard toggle) — still pending
+> 2. Bag Runners mock screen (explicitly deferred so far)
+> 3. Everything else in the Private Beta / Public Beta checklists below
 
 ---
 
