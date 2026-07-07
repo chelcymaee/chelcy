@@ -144,7 +144,7 @@ export default function HostProfile() {
       if (!user) { showToast('Not logged in', true); return; }
 
       const ext = file.name.split('.').pop();
-      const path = `host-photos/${user.id}/${Date.now()}.${ext}`;
+      const path = `${user.id}/${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from('host-photos')
         .upload(path, file, { upsert: false });
