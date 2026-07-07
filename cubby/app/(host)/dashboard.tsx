@@ -8,6 +8,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
+import HostOnboardingChecklist from '../../src/components/HostOnboardingChecklist';
 import { recalculateHostResponseRate, minutesBetween, formatResponseRate, formatResponseTime } from '../../src/lib/response-rate';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -103,6 +104,8 @@ export default function Dashboard() {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
   const [togglingStatus, setTogglingStatus] = useState(false);
+  const [pendingHost, setPendingHost] = useState(false);
+  const [isHostApproved, setIsHostApproved] = useState(false);
 
   useFocusEffect(useCallback(() => {
     loadDashboard();
@@ -124,10 +127,20 @@ export default function Dashboard() {
         .single();
 
       if (hostErr || !host) {
-        setError('Host profile not found. Set up your host profile first.');
+        // No hosts row assigned yet — admin hasn't approved/set up this account
+        // as a host. Show onboarding status instead of stats for a listing
+        // that doesn't exist.
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_host_approved')
+          .eq('id', user.id)
+          .maybeSingle();
+        setIsHostApproved(profile?.is_host_approved ?? false);
+        setPendingHost(true);
         return;
       }
 
+      setPendingHost(false);
       const hostId = host.id;
       const today = isoDate(new Date());
       const now = new Date();
@@ -358,6 +371,10 @@ export default function Dashboard() {
           </View>
         )}
 
+        {!loading && pendingHost ? (
+          <HostOnboardingChecklist isApproved={isHostApproved} />
+        ) : (
+        <>
         {/* ── Earnings card ─────────────────────────────────────────────────── */}
         <View style={styles.earningsCard}>
           {loading ? (
@@ -646,6 +663,8 @@ export default function Dashboard() {
             Hosts who respond within 1 hour earn 40% more bookings. Keep your availability up to date!
           </Text>
         </View>
+        </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>

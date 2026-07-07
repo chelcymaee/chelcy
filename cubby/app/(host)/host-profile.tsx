@@ -8,6 +8,7 @@ import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import Btn from '../../src/components/Btn';
 import LocationPicker, { LocationResult } from '../../src/components/LocationPicker';
+import HostOnboardingChecklist from '../../src/components/HostOnboardingChecklist';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -50,6 +51,9 @@ export default function HostProfile() {
   const [loading, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
   const [priceError, setPriceError] = useState('');
+  const [checkingProfile, setCheckingProfile] = useState(true);
+  const [noHostRow, setNoHostRow] = useState(false);
+  const [isHostApproved, setIsHostApproved] = useState(false);
 
   const showToast = useCallback((msg: string, error = false) => {
     setToast({ msg, error });
@@ -84,12 +88,26 @@ export default function HostProfile() {
           setIsActive(data.is_active ?? true);
           setStorageFeatures(data.storage_features ?? []);
           setPhotos(data.photos ?? []);
+          setCheckingProfile(false);
           return;
         }
+
+        // No hosts row assigned yet — this account hasn't been approved/set
+        // up as a host by Cubby. Don't show an edit form that can't save.
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_host_approved')
+          .eq('id', user.id)
+          .maybeSingle();
+        setIsHostApproved(profile?.is_host_approved ?? false);
+        setNoHostRow(true);
+        setCheckingProfile(false);
+        return;
       }
     }
-    // Fallback: AsyncStorage
+    // Fallback: AsyncStorage (demo/offline mode, no Supabase account)
     const raw = await AsyncStorage.getItem('cubby_host_profile');
+    setCheckingProfile(false);
     if (!raw) return;
     try {
       const d = JSON.parse(raw);
@@ -236,6 +254,10 @@ export default function HostProfile() {
           <Text style={styles.heading}>My Host Profile</Text>
         </View>
 
+        {checkingProfile ? null : noHostRow ? (
+          <HostOnboardingChecklist isApproved={isHostApproved} />
+        ) : (
+        <>
         {/* Active toggle */}
         <View style={styles.activeCard}>
           <View>
@@ -430,6 +452,8 @@ export default function HostProfile() {
 
         {/* Save */}
         <Btn label={loading ? 'Saving…' : 'Save listing'} onPress={save} loading={loading} style={styles.saveBtn} />
+        </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>

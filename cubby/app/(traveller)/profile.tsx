@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import HostOnboardingChecklist from '../../src/components/HostOnboardingChecklist';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MenuItem {
@@ -53,6 +54,7 @@ export default function Profile() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [isHostApproved, setIsHostApproved] = useState(false);
+  const [wantsToHost, setWantsToHost] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
   const [travellerRating, setTravellerRating] = useState(0);
   const [travellerReviewCount, setTravellerReviewCount] = useState(-1); // -1 = not loaded yet
@@ -90,6 +92,7 @@ export default function Profile() {
           setPhone(profile.phone ?? '');
           if (profile.avatar_url) setAvatar(profile.avatar_url);
           setIsHostApproved(profile.is_host_approved ?? false);
+          setWantsToHost(profile.role === 'host' || profile.role === 'both');
           setTravellerRating(profile.traveller_rating ?? 0);
           setTravellerReviewCount(profile.traveller_review_count ?? 0);
 
@@ -426,8 +429,14 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* Become a Host banner — only shown to non-hosts */}
-        {!isHostApproved && <TouchableOpacity
+        {/* Host status: pending-approval checklist for host/both signups, or a
+            generic CTA for travellers who haven't shown interest yet */}
+        {!isHostApproved && wantsToHost && (
+          <View style={{ marginBottom: 16 }}>
+            <HostOnboardingChecklist isApproved={false} />
+          </View>
+        )}
+        {!isHostApproved && !wantsToHost && <TouchableOpacity
           style={styles.becomeHostCard}
           onPress={() => router.push('/(traveller)/partner-apply')}
           // @ts-ignore

@@ -1,6 +1,6 @@
 # CUBBY — PROJECT MASTER PLAN
 > Single source of truth for all development, product decisions, and launch planning.
-> Last updated: 2026-07-06
+> Last updated: 2026-07-07
 
 ---
 
@@ -139,7 +139,7 @@ If it does not, question whether it should exist.
 ## 🛡️ LEGAL & TRUST SPRINT — Sprint 1 ✅ Done & Approved
 
 > Goal: close the legal/trust gaps blocking real users, without adding new features.
-> Status: approved by founder. PR #38 still open (not yet merged — holding for Sprint 2 review too).
+> Status: approved by founder. Merged into `main` via PR #38 (2026-07-07).
 
 | Item | Status | Notes |
 |---|---|---|
@@ -167,7 +167,7 @@ If it does not, question whether it should exist.
 ## 🔐 ACCOUNT ACCESS & SECURITY SPRINT — Sprint 2 ✅ Done & Approved
 
 > Goal: close the remaining private-beta-blocking auth/security gaps. No new features.
-> Status: approved by founder, verified working (password reset + admin PIN tested manually). PR #38 still open — holding for Sprint 3 review too.
+> Status: approved by founder, verified working (password reset + admin PIN tested manually). Merged into `main` via PR #38 (2026-07-07).
 
 | Item | Status | Notes |
 |---|---|---|
@@ -186,7 +186,7 @@ If it does not, question whether it should exist.
 ## 🚧 PRIVATE BETA BLOCKERS SPRINT — Sprint 3 ✅ Done (awaiting review)
 
 > Goal: remove the remaining critical Private Beta blockers. No new features, no Bag Runners work.
-> Status: implemented, pending founder review. PR #38 not merged yet.
+> Status: implemented, founder-verified live. Merged into `main` via PR #38 (2026-07-07).
 
 | Item | Status | Notes |
 |---|---|---|
@@ -199,6 +199,43 @@ If it does not, question whether it should exist.
 **Verified:** `tsc --noEmit` — zero new errors. Playwright headless checks confirm `bookings.tsx`, `bank-details.tsx`, `partner-applications.tsx`, and `support-messages.tsx` all render with zero console errors — the two admin screens correctly show their empty state rather than crashing when the new (undeployed-from-this-sandbox) edge functions are unreachable. Full live behavior needs testing after deployment — see Manual Testing Steps.
 
 **Sprint 3 is now fully complete** — all five items done, including the one that started as an open audit question.
+
+---
+
+## 🧹 PRIVATE BETA POLISH — Sprint 4 ✅ Done
+
+> Goal: audit and fix genuine production-readiness issues (loading states, dead buttons, mock data, error handling) without redesigning or adding features. PR #38 merged first; this work is on `claude/private-beta-polish`.
+
+| Item | Status | Notes |
+|---|---|---|
+| Global error boundary | ✅ Done | New `src/components/ErrorBoundary.tsx` (class component, `getDerivedStateFromError`/`componentDidCatch`) wraps the entire app in `app/_layout.tsx`, outside `AuthProvider`, so a crash anywhere shows a "Something went wrong" screen with **Try again** (resets and re-renders) and **Back to home** buttons instead of a blank/frozen app. New `src/lib/error-logging.ts` adds a global handler for errors React's render boundary can't catch (async code, event handlers, unhandled promise rejections) — logs them with a `[GlobalError]` tag without changing crash behavior. **Verified live**: forced a real render crash on the Explore screen, confirmed the boundary caught it with zero blank screen and zero leaked console error, confirmed "Try again" correctly re-renders. |
+| Fake Cubby Runners removed | ✅ Done | Found this was two separate bugs, not one: (1) `app/(traveller)/runners.tsx` had 4 fully fabricated profiles (names, ratings, availability) with a "Book" button that only revealed via alert it wasn't real — replaced with an honest "Bag Runners is coming soon" empty state, all fake data and dead code removed. (2) `app/(traveller)/explore.tsx`'s "🚗 Cubby Runners near you" section mapped over a *different*, always-empty `MOCK_RUNNERS` array from `src/lib/mock-data.ts` — not fake profiles, but a dead section header+subtitle promising a feature with zero content beneath it, forever, on the main Explore screen. Removed that section and its now-unused `RunnerCard` component/styles entirely. |
+| Email confirmation flow — verified, one real bug found and fixed | ✅ Code verified + fixed | Re-confirmed `signup.tsx`/`login.tsx` correctly branch on both confirmed/unconfirmed states (from Sprint 2). Found a genuine bug while re-checking: the "check your email" message used a bare `alert(...)` call with no `Alert` import — `alert` is a browser-only global and does not exist in the React Native runtime, so this would throw `ReferenceError: Can't find variable: alert` on native iOS/Android the moment a user signs up with email confirmation enabled (now caught by the new error boundary instead of a blank screen, but still broke the intended flow). Fixed by using React Native's `Alert.alert(...)` instead. **Exact Supabase Dashboard steps to actually enable this** (still not done — code is ready, feature is not live): Dashboard → Authentication → Sign In / Providers → Email → toggle **"Confirm email"** on. No other configuration needed; the app already handles both states. |
+| Orphaned `bank_details` table — audited, not deleted | ✅ Audited | Searched the entire codebase (app, src, edge functions, `schema.sql`) for every reference. Confirmed: **zero screens read or write it** (the only screen that ever did, `bank-details.tsx`, was already fixed in Sprint 3 to use `host_bank_details`); the only remaining reference is a cleanup line in `supabase/functions/delete-user-account/index.ts` that deletes a user's row from it on account deletion; no other table has a foreign key into it. **Recommendation: safe to drop**, but two things first — (1) run `SELECT count(*) FROM bank_details;` to check for real historical data that would need migrating into `host_bank_details` before dropping, since Sprint 3's fix means anything already in this table is currently invisible to admin and would be permanently lost otherwise; (2) if dropped, remove the now-dead cleanup line in `delete-user-account/index.ts` at the same time, or it will start erroring on every account deletion. **Not deleted automatically per instruction** — this needs a founder decision. |
+| First-time host onboarding checklist | ✅ Done — **Option B: Admin-gated host onboarding** | Discovered an architectural contradiction while building this (see Decisions & Context Log): the self-serve `host-profile.tsx` save was `.update(...)`-only (never `.insert()`), so a self-registered host with no `hosts` row would "successfully" save nothing, and `dashboard.tsx` showed a real `DEMO_STATS`/`DEMO_BOOKINGS` demo-data leak (fake R1,240 earnings + fake "Sarah T."/"James M." bookings) rendered *simultaneously* with a "Host profile not found" error banner. Founder chose **Option B — keep the admin-gated model** (matches the existing `assigned_user_id` design intent already documented below) rather than building self-serve creation. Implemented: (1) new shared `src/components/HostOnboardingChecklist.tsx` — a lightweight 5-step status card (Apply → Await approval → Complete verification → Add bank details → Listing goes live), no fake data, step 2 highlighted until `profiles.is_host_approved` is true; (2) `app/(host)/dashboard.tsx` — when no `hosts` row is assigned to the user, it now shows this checklist **instead of** `DEMO_STATS`/`DEMO_BOOKINGS` (previously both rendered at once — that leak is fixed); (3) `app/(host)/host-profile.tsx` — when no `hosts` row exists, shows the same checklist instead of an edit form that could never actually save (fixes the silent-no-op bug without needing to add an insert path, since self-serve creation is intentionally not supported under Option B); (4) `app/(traveller)/profile.tsx` — **found and fixed the actual entry-point gap**: `app/(host)/_layout.tsx` already redirects any signed-in host/both-role user with `is_host_approved = false` straight to `/(traveller)/profile` (it always has — self-serve users could never actually reach the host tabs), but that landing screen showed a generic "Become a Cubby Host" CTA identical to what a plain traveller sees, with no acknowledgement they'd already signed up wanting to host. Profile now reads the user's own `role` and shows the same `HostOnboardingChecklist` (not-yet-approved state) instead of the CTA whenever `role` is `host`/`both` and `is_host_approved` is false; (5) `app/(auth)/signup.tsx` — host/both signups now route to `/(traveller)/profile` (where they immediately see the pending checklist) instead of `/(host)/bank-details`, which used to send a brand-new, unapproved signup straight into a bank-details form for a listing that doesn't exist yet. Once an admin actually approves the user (`users.tsx`) and assigns a `hosts` row to them (`create-host.tsx`/`manage-hosts.tsx`), `assigned_user_id` resolves normally and the dashboard/host-profile/checklist screens all revert to their existing, unmodified behavior — no changes were needed there since that path already worked correctly. |
+
+**Verified:** `tsc --noEmit` — zero new errors from any Sprint 4 change (same pre-existing unrelated errors as before, none in any file touched this sprint). Playwright headless test confirms the error boundary and both Runners fixes work live. The new `HostOnboardingChecklist` was first visually verified in this sandbox (forced local component state, since this sandbox cannot reach the real Supabase project). **Founder then verified the full live, Supabase-backed path end-to-end on 2026-07-07**, running the exact 4-step checklist below against the real project: fresh signup (`chelcymae1+testhost@gmail.com`, role Host) landed cleanly on the "Host application pending" checklist with zero fake data; admin-approved via Users → "Host access approved" flipped the same screen to "You're approved!" with step 3 highlighted; the account correctly passed the `(host)/_layout.tsx` `is_host_approved` gate into the real host tabs while still showing the pending checklist (not `DEMO_STATS`) since no `hosts` row existed yet; after admin-assigning a listing, the dashboard/profile reverted to normal real (zero-state) behavior. All steps passed as designed. This sprint is confirmed fully working, not just implemented.
+
+**Sprint 4 is now fully complete** — all five priorities done.
+
+#### Testing steps for the Option B host onboarding change
+
+No new Supabase config or SQL is required — this reuses the existing `profiles.is_host_approved` column and the existing admin approve/assign screens. To verify live:
+
+1. **Fresh unapproved host signup shows the pending checklist, not a broken dashboard:**
+   - Sign up a brand-new account, choosing role "Host" or "Both".
+   - Expect: lands on the Account/Profile screen, and instead of the red "Become a Cubby Host" banner, sees a white card titled **"Host application pending"** with a 5-step checklist (Apply ✓ → Await approval [highlighted] → Complete verification → Add bank details → Listing goes live). No fake earnings or bookings anywhere.
+   - Confirm in Supabase: `select role, is_host_approved from profiles where email = '<test email>';` → `role` is `host`/`both`, `is_host_approved` is `false`.
+2. **Admin approves the user (but hasn't assigned a listing yet):**
+   - In the admin panel → Users, find the test account, tap "Host access approved" (sets `is_host_approved = true`).
+   - Reload the traveller Profile screen for that user: checklist should now say **"You're approved!"** with step 2 (Await approval) checked and step 3 (Complete verification) highlighted as current.
+   - The user still cannot reach `/(host)/dashboard` navigation items from this screen because no `hosts` row exists yet — this is expected; `(host)/_layout.tsx`'s own gate only checks `is_host_approved`, so if they *do* navigate directly to a host tab URL, `dashboard.tsx`/`host-profile.tsx` will now show the same pending checklist (not fake stats, not a silently-broken save) since there's still no `hosts` row assigned.
+3. **Admin creates and assigns a host listing:**
+   - In admin → Create Host, create a listing and assign it to the test user's account (`assigned_user_id`), or use Manage Hosts to assign an existing listing.
+   - Reload the app as that user: Profile screen now shows the normal "Hosting" section (Switch to Host Dashboard / My host listing / Bank details) instead of the checklist. Dashboard shows real (zero-state, not fake) stats. Host Profile screen shows the real edit form and actually saves.
+4. **Regression check:** an existing, already-working host (has an assigned `hosts` row) should see zero behavior change on Dashboard or Host Profile — confirm their real stats and listing still load normally.
+
+This was implemented and type-checked (`tsc --noEmit`) in this sandbox, and the new `HostOnboardingChecklist` component was visually verified with forced local state (screenshotted, both copy variants), but the real Supabase-backed data path (steps 1–3 above) could not be exercised end-to-end here because this sandbox cannot reach the live Supabase project — please run through the 4 steps above for final sign-off.
 
 ---
 
@@ -865,16 +902,16 @@ supabase functions deploy complete-booking
 
 ## NEXT RECOMMENDED TASK
 
-> **Sprint 3 is fully complete** — awaiting founder review before merging PR #38.
-> Sprint 1 (Legal & Trust), Sprint 2 (Account Access & Security), and Sprint 3 (payout bug, notifications, MOCK_REVIEWS, admin Partner Applications/Support Messages fix) are all done on the branch.
+> **PR #38 merged into `main`** (merge commit `afc1ccf`, 2026-07-07) — Sprint 1 (Legal & Trust), the SDK 56 dependency fix, Sprint 2 (Account Access & Security), and Sprint 3 (payout bug, notifications, MOCK_REVIEWS, admin Partner Applications/Support Messages fix) are all now on `main`.
 >
-> Founder has manually verified in the live Supabase project: `notify-new-message` webhook (was already wired), the `host_bank_details` RLS migration (applied), the password reset redirect URL (works end-to-end), and — via direct SQL diagnostics — confirmed the Partner Applications/Support Messages RLS bug was real, not stale docs. That last one is now fixed with two new edge functions, pending deployment.
+> **Sprint 4 (Private Beta Polish) is now done** on branch `claude/private-beta-polish`: global error boundary, fake Cubby Runners removed, email confirmation flow verified + one real native crash fixed, admin-gated host onboarding checklist (Option B) implemented + the dashboard demo-data leak fixed, and the orphaned `bank_details` table audited (recommend-only, not dropped). Per founder instruction, **Sprint 5 has not been started** — stopping here for review/approval.
 >
-> Once reviewed/approved, what's left:
-> 1. Manual: re-enable Supabase email confirmation (Dashboard toggle)
-> 2. Manual: deploy `admin-partner-applications` and `admin-support-messages`, confirm `ADMIN_SECRET` is set, test both admin screens live
-> 3. Bag Runners mock screen (explicitly deferred so far)
-> 4. Everything else in the Private Beta / Public Beta checklists below
+> Founder manually verified live: `notify-new-message` webhook, the `host_bank_details` RLS migration, the password reset flow, the two new admin edge functions (`admin-partner-applications`, `admin-support-messages`), and (2026-07-07) the full Sprint 4 host onboarding flow end-to-end — all deployed and working.
+>
+> Remaining known manual items before Private Beta:
+> 1. Re-enable Supabase email confirmation (Dashboard toggle) — still pending
+> 2. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
+> 3. Everything else in the Private Beta / Public Beta checklists below
 
 ---
 
@@ -989,6 +1026,7 @@ Also create a private `verifications` storage bucket in Supabase Dashboard → S
 | ~~ADMIN_SECRET hardcoded fallback in 13 locations~~ | ✅ Fixed (Sprint 2) | `app/(admin)/*.tsx`, `src/lib/review-service.ts`, 6 edge functions |
 | ~~`notify-new-message` Edge Function exists but DB webhook not wired~~ | ✅ Confirmed working (was already wired) | Supabase Dashboard |
 | ~~4 navigation dead ends crash or blank on tap~~ | ✅ Fixed | All 4 screens implemented |
+| ~~Host dashboard showed fake `DEMO_STATS`/`DEMO_BOOKINGS` alongside "Host profile not found" error, and `host-profile.tsx` silently no-op'd saves, for any host with no assigned `hosts` row~~ | ✅ Fixed (Sprint 4, Option B) | `app/(host)/dashboard.tsx`, `app/(host)/host-profile.tsx`, `app/(traveller)/profile.tsx`, `app/(auth)/signup.tsx` |
 | `MOCK_REVIEWS` shown as real reviews on empty host profiles | 🟡 High | `app/(traveller)/host-detail.tsx` |
 | Verification signed URLs expire after 7 days — admin needs edge fn to refresh for long-pending reviews | 🟠 Medium | `app/(admin)/verifications.tsx` |
 | Response rate always shows 100% (never updated) | 🟠 Medium | `supabase/schema.sql` |
@@ -1010,3 +1048,4 @@ Also create a private `verifications` storage bucket in Supabase Dashboard → S
 | 2026 | No card storage | PCI compliance — Peach handles all card data |
 | 2026 | R2,000 bag coverage claim | Marketing trust signal. No claims mechanism exists. Must be resolved before launch. |
 | 2026 | Cape Town first | Initial geographic focus. Hardcoded throughout. Will need refactoring for expansion. |
+| 2026-07 | Host onboarding: Option B — admin-gated, no self-serve listing creation | Sprint 4 found `host-profile.tsx` could never actually create a `hosts` row (UPDATE-only) and `dashboard.tsx` leaked `DEMO_STATS` for any host with no row. Rather than build self-serve creation (which would have contradicted the original `assigned_user_id` "admin creates, then assigns" design above), founder chose to keep the admin-gated model and instead fix the broken/misleading UI: unapproved host/both signups now see an honest "Host application pending" checklist (`HostOnboardingChecklist`) wherever they'd otherwise have hit a broken or fake-data screen. Admin still approves via `users.tsx` (`is_host_approved`) and assigns listings via `create-host.tsx`/`manage-hosts.tsx` — unchanged. |

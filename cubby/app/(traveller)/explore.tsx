@@ -8,7 +8,6 @@ import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
-import { MOCK_RUNNERS, Runner } from '../../src/lib/mock-data';
 import { Host } from '../../src/types';
 import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
 import NotificationBell from '../../src/components/NotificationBell';
@@ -425,34 +424,6 @@ function ResultCard({ host, sortBy, onPress, userLocation, isClosest }: {
 
 // ─── Runner Card ──────────────────────────────────────────────────────────────
 
-function RunnerCard({ runner }: { runner: Runner }) {
-  return (
-    <View style={S.runnerCard}>
-      <View style={S.runnerAvatarBox}>
-        <Text style={S.runnerAvatarText}>{runner.name[0]}</Text>
-      </View>
-      <View style={S.runnerBody}>
-        <View style={S.runnerTopRow}>
-          <Text style={S.runnerName}>{runner.name}</Text>
-          <View style={S.runnerAvailBadge}><Text style={S.runnerAvailText}>AVAILABLE</Text></View>
-        </View>
-        <Text style={S.runnerVehicle}>🚗 {runner.vehicle} · {runner.location_name}</Text>
-        <View style={S.runnerStatsRow}>
-          <Text style={S.runnerStar}>★ {runner.rating.toFixed(1)}</Text>
-          <Text style={S.runnerSep}>·</Text>
-          <Text style={S.runnerStat}>{runner.review_count} reviews</Text>
-          <Text style={S.runnerSep}>·</Text>
-          <Text style={S.runnerStat}>⏱ {runner.eta_minutes} min away</Text>
-        </View>
-        <View style={S.runnerBottomRow}>
-          <Text style={S.runnerPrice}>R{runner.price_per_bag}/bag</Text>
-          <Text style={S.runnerRadius}>Up to {runner.delivery_radius_km}km delivery</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export default function Explore() {
@@ -810,13 +781,6 @@ export default function Explore() {
             <ScrollView style={S.sheetList} showsVerticalScrollIndicator={false}
               nestedScrollEnabled contentContainerStyle={{ padding: 16, paddingBottom: 60, gap: 12 }}>
               {hostListContent}
-
-              {/* Cubby Runners section */}
-              <View style={{ marginTop: 20 }}>
-                <Text style={S.sectionHeader}>🚗 Cubby Runners near you</Text>
-                <Text style={S.sectionSub}>Drivers who store your bags & deliver on demand</Text>
-                {MOCK_RUNNERS.map(runner => <RunnerCard key={runner.id} runner={runner} />)}
-              </View>
               <View style={{ height: 20 }} />
             </ScrollView>
           </Animated.View>
@@ -900,11 +864,6 @@ export default function Explore() {
       {/* Host list */}
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60, gap: 12 }} showsVerticalScrollIndicator={false}>
         {hostListContent}
-        <View style={{ marginTop: 20 }}>
-          <Text style={S.sectionHeader}>🚗 Cubby Runners near you</Text>
-          <Text style={S.sectionSub}>Drivers who store your bags & deliver on demand</Text>
-          {MOCK_RUNNERS.map(runner => <RunnerCard key={runner.id} runner={runner} />)}
-        </View>
       </ScrollView>
 
       {/* Modals */}
@@ -1131,35 +1090,6 @@ const S = StyleSheet.create({
   closestBadgeText: { fontSize: 10, fontWeight: '800', color: '#4F46E5', letterSpacing: 0.5 },
   trustChip: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
   trustChipText: { fontSize: 10, fontWeight: '700' },
-
-  // ── Runner cards ──
-  runnerCard: {
-    flexDirection: 'row', gap: 14, backgroundColor: '#FFFFFF', borderRadius: 18, padding: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-    borderLeftWidth: 3, borderLeftColor: '#FF5C5C',
-  },
-  runnerAvatarBox: {
-    width: 52, height: 52, borderRadius: 26, backgroundColor: '#FF5C5C',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  runnerAvatarText: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
-  runnerBody: { flex: 1 },
-  runnerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
-  runnerName: { fontSize: 17, fontWeight: '800', color: '#1A1A1A' },
-  runnerAvailBadge: { backgroundColor: '#DCFCE7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  runnerAvailText: { fontSize: 10, fontWeight: '800', color: '#16A34A', letterSpacing: 0.5 },
-  runnerVehicle: { fontSize: 13, color: '#6B7280', marginBottom: 6 },
-  runnerStatsRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 8 },
-  runnerStar: { fontSize: 12, fontWeight: '700', color: '#F59E0B' },
-  runnerSep: { fontSize: 12, color: '#D1D5DB' },
-  runnerStat: { fontSize: 12, color: '#6B7280' },
-  runnerBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  runnerPrice: { fontSize: 14, fontWeight: '800', color: '#FF5C5C' },
-  runnerRadius: { fontSize: 12, color: '#9CA3AF' },
-
-  // ── Sections ──
-  sectionHeader: { fontSize: 15, fontWeight: '800', color: '#1A1A1A', marginBottom: 6, marginTop: 4 },
-  sectionSub: { fontSize: 13, color: '#6B7280', marginBottom: 12 },
 
   // ── Empty state ──
   empty: { alignItems: 'center', paddingTop: 40, paddingHorizontal: 20 },
