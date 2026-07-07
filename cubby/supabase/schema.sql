@@ -501,3 +501,46 @@ CREATE POLICY "Participants can mark messages as read" ON messages
         )
     )
   );
+
+-- -------------------------------------------------------------------------
+-- Fix 5 (Sprint 5 launch audit): hosts — self-service INSERT was possible
+-- -------------------------------------------------------------------------
+-- "Hosts can manage own listing" was FOR ALL USING (auth.uid() = user_id).
+-- Postgres applies a FOR ALL policy's USING clause as the WITH CHECK clause
+-- too when no WITH CHECK is given — so on INSERT, it only verified the new
+-- row's user_id equalled auth.uid(). Any signed-in user could satisfy that
+-- by inserting a row with their own id as user_id, creating a live, publicly
+-- visible host listing with zero admin approval — bypassing the entire
+-- admin-hosts create/assign flow. Confirmed live via RLS_VERIFICATION.sql
+-- block #3 (2026-07-07): an ordinary traveller account's INSERT succeeded
+-- with no policy error.
+--
+-- Host creation/assignment only happens through the ADMIN_SECRET-gated
+-- admin-hosts edge function, which uses the service-role key and bypasses
+-- RLS entirely — removing self-service INSERT here does not affect it.
+-- Self-service editing (host-profile.tsx, dashboard.tsx toggling is_active)
+-- still works: admin-hosts always sets user_id and assigned_user_id to the
+-- same value together (both its `create` and `assign` actions), so the
+-- UPDATE policy below still matches every existing host's own account.
+-- Confirmed via grep: no client-side code anywhere in app/ or src/ calls
+-- `.from('hosts').insert(...)` or `.from('hosts').delete(...)` — both only
+-- happen server-side in admin-hosts (service role), so no legitimate path
+-- is broken by removing self-service INSERT/DELETE policies.
+
+DROP POLICY IF EXISTS "Hosts can manage own listing" ON hosts;
+
+DROP POLICY IF EXISTS "Hosts can update own listing" ON hosts;
+CREATE POLICY "Hosts can update own listing" ON hosts
+  FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Hosts can delete own listing" ON hosts;
+CREATE POLICY "Hosts can delete own listing" ON hosts
+  FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Deliberately no INSERT policy for the authenticated/anon roles — with no
+-- permissive INSERT policy, RLS denies all direct INSERTs into hosts by
+-- default. SELECT is unaffected: "Hosts are publicly viewable" (line 56)
+-- already grants public SELECT independently of this policy.
