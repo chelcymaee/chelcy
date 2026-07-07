@@ -50,6 +50,32 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
 
+    // Verify the caller is signed in and actually owns this booking —
+    // without this, anyone who knows a bookingId could flip another
+    // traveller's booking status via this endpoint.
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const { data: existingBooking } = await supabase
+      .from('bookings')
+      .select('traveller_id')
+      .eq('id', bookingId)
+      .single();
+
+    if (!existingBooking || existingBooking.traveller_id !== user.id) {
+      return new Response(
+        JSON.stringify({ error: 'Not authorized for this booking' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     // Mark the booking with PayFast as the provider
     const { error: updateError } = await supabase
       .from('bookings')

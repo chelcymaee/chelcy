@@ -96,6 +96,20 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
 
+    // Verify the caller is signed in and actually owns the host listing for
+    // this booking — without this, any authenticated user who knows a
+    // bookingId could mark someone else's booking complete and queue a
+    // real payout for it.
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select('id, total_price, host_id, traveller_id, status, payment_provider')
@@ -106,6 +120,20 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Booking not found', details: bookingError }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const { data: hostRow } = await supabase
+      .from('hosts')
+      .select('assigned_user_id, user_id')
+      .eq('id', booking.host_id)
+      .single();
+
+    const ownsHost = hostRow && (hostRow.assigned_user_id === user.id || hostRow.user_id === user.id);
+    if (!ownsHost) {
+      return new Response(
+        JSON.stringify({ error: 'Not authorized for this booking' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 

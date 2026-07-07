@@ -122,6 +122,21 @@ export default function Booking() {
         const { data: { user } } = await supabase.auth.getUser();
         const travellerEmail = user?.email ?? '';
 
+        // Capacity check — block if this booking would push the host over
+        // max_bags for the day. Day-level, not precise time-interval overlap
+        // (keeps this simple and correct-enough for private beta scale).
+        const { data: sameDayBookings } = await supabase
+          .from('bookings')
+          .select('bag_count')
+          .eq('host_id', host.id)
+          .eq('drop_off_date', bookingDate)
+          .in('status', ['pending_payment', 'pending', 'confirmed', 'active']);
+        const bookedBags = (sameDayBookings ?? []).reduce((sum, b) => sum + (b.bag_count ?? 0), 0);
+        if (bookedBags + bags > host.max_bags) {
+          setErrorMsg(`This host only has ${Math.max(0, host.max_bags - bookedBags)} bag space${host.max_bags - bookedBags === 1 ? '' : 's'} left for this date. Please choose fewer bags or a different date.`);
+          return;
+        }
+
         const { data: booking, error: bookingError } = await supabase
           .from('bookings')
           .insert({

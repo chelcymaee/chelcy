@@ -417,3 +417,87 @@ FOR EACH ROW EXECUTE FUNCTION recalculate_traveller_rating();
 -- Add traveller_rating + traveller_review_count to profiles (safe — no-op if already present)
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS traveller_rating NUMERIC(3,1) DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS traveller_review_count INTEGER DEFAULT 0;
+
+-- -------------------------------------------------------------------------
+-- Fix 4 (Sprint 5 launch audit): messaging RLS
+-- -------------------------------------------------------------------------
+-- `conversations` and `messages` had ENABLE ROW LEVEL SECURITY with ZERO
+-- policies committed anywhere in this repo. If nothing was added directly
+-- in the Dashboard, RLS with no policies means deny-all for anon/
+-- authenticated roles (messaging would be totally broken, not insecure).
+-- If something WAS added out-of-band in the Dashboard, its correctness was
+-- never verified — the client code (chat.tsx) derives conversation
+-- participants from a booking id with no ownership check of its own, so it
+-- relies entirely on RLS being correct. Run the verification queries in
+-- RLS_VERIFICATION.sql (same folder) BEFORE and AFTER applying this to
+-- confirm what the actual live behavior was, and that this fixes it.
+--
+-- Safe to run even if equivalent policies already exist under different
+-- names — this only touches policies with these exact names.
+
+DROP POLICY IF EXISTS "Participants can read own conversations" ON conversations;
+CREATE POLICY "Participants can read own conversations" ON conversations
+  FOR SELECT USING (
+    auth.uid() = traveller_id
+    OR auth.uid() IN (
+      SELECT COALESCE(assigned_user_id, user_id) FROM hosts WHERE id = conversations.host_id
+    )
+  );
+
+DROP POLICY IF EXISTS "Participants can create own conversations" ON conversations;
+CREATE POLICY "Participants can create own conversations" ON conversations
+  FOR INSERT WITH CHECK (
+    auth.uid() = traveller_id
+    OR auth.uid() IN (
+      SELECT COALESCE(assigned_user_id, user_id) FROM hosts WHERE id = conversations.host_id
+    )
+  );
+
+DROP POLICY IF EXISTS "Participants can update own conversations" ON conversations;
+CREATE POLICY "Participants can update own conversations" ON conversations
+  FOR UPDATE USING (
+    auth.uid() = traveller_id
+    OR auth.uid() IN (
+      SELECT COALESCE(assigned_user_id, user_id) FROM hosts WHERE id = conversations.host_id
+    )
+  );
+
+DROP POLICY IF EXISTS "Participants can read messages in own conversations" ON messages;
+CREATE POLICY "Participants can read messages in own conversations" ON messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM conversations c
+      WHERE c.id = messages.conversation_id
+        AND (
+          c.traveller_id = auth.uid()
+          OR c.host_id IN (SELECT id FROM hosts WHERE assigned_user_id = auth.uid() OR user_id = auth.uid())
+        )
+    )
+  );
+
+DROP POLICY IF EXISTS "Participants can send messages in own conversations" ON messages;
+CREATE POLICY "Participants can send messages in own conversations" ON messages
+  FOR INSERT WITH CHECK (
+    sender_id = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM conversations c
+      WHERE c.id = messages.conversation_id
+        AND (
+          c.traveller_id = auth.uid()
+          OR c.host_id IN (SELECT id FROM hosts WHERE assigned_user_id = auth.uid() OR user_id = auth.uid())
+        )
+    )
+  );
+
+DROP POLICY IF EXISTS "Participants can mark messages as read" ON messages;
+CREATE POLICY "Participants can mark messages as read" ON messages
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM conversations c
+      WHERE c.id = messages.conversation_id
+        AND (
+          c.traveller_id = auth.uid()
+          OR c.host_id IN (SELECT id FROM hosts WHERE assigned_user_id = auth.uid() OR user_id = auth.uid())
+        )
+    )
+  );
