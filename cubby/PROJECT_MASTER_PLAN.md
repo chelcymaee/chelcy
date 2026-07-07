@@ -239,7 +239,7 @@ This was implemented and type-checked (`tsc --noEmit`) in this sandbox, and the 
 
 ---
 
-## 🔎 FINAL QA — Sprint 5 🟡 Critical fixes done, audit-only items still pending approval
+## 🔎 FINAL QA — Sprint 5 ✅ Merged into `main` (PR #40, commit `abf2fa3`) — deploy + live RLS verification still pending
 
 > Goal: audit Cubby as a first private beta tester across all three roles (traveller, host, admin) — no redesigns, no new features, fix only genuine bugs. Full audit findings (Critical/Medium/Low) were reported first; founder approved fixing **Critical only** in this pass. Medium/Low items and the route-collision investigation are intentionally deferred.
 
@@ -979,16 +979,26 @@ supabase functions deploy complete-booking
 >
 > **PR #39 merged into `main`** (merge commit `4a4ba3f`, 2026-07-07) — Sprint 4 (Private Beta Polish) is now on `main`: global error boundary, fake Cubby Runners removed, email confirmation flow verified + one real native crash fixed, admin-gated host onboarding checklist (Option B) implemented + the dashboard demo-data leak fixed, and the orphaned `bank_details` table audited (recommend-only, not dropped). Founder approved Sprint 4 and live-verified the full host onboarding flow end-to-end against the real Supabase project before merging.
 >
-> **Sprint 5 (Final QA) is in progress on branch `claude/private-beta-final-qa`** (not yet merged): a full audit-as-first-beta-tester pass across traveller/host/admin found 3 critical, 4 medium, and 3 low issues (see Final QA section above). Founder approved fixing **critical only** in this pass — all 3 are done: the admin PIN bypass (only `dashboard.tsx` was gated; now the whole `(admin)` layout is), 4 unprotected admin screens (all-bookings/revenue/reviews/create-host moved onto the `ADMIN_SECRET`-gated edge function pattern, two new functions deployed: `admin-bookings`, `admin-reviews`), and the fake Bag Runner beta flow (removed from signup, runner screens now show an honest coming-soon state). Medium/low items and the route-collision investigation are explicitly deferred — **not started**, stopping here for review/approval.
+> **PR #40 merged into `main`** (merge commit `abf2fa3`, 2026-07-07) — Sprint 5 (Final QA) is now on `main`: the admin PIN bypass fix, 4 admin screens moved onto `ADMIN_SECRET`-gated edge functions (`admin-bookings`, `admin-reviews` new; `admin-hosts` gained a `create` action), the fake Bag Runner beta flow replaced with an honest coming-soon state, the host photo upload + display pipeline fixes, and the launch-readiness audit's approved fixes: server-side ownership authorization added to `complete-booking` and `payfast-create`. Per founder direction, the same-day capacity check was implemented then fully reverted (bookings are time-based; false rejections were judged worse than no enforcement — proper overlap-based capacity is deferred to a later sprint if beta feedback justifies it), and the messaging/database RLS findings were reframed from "confirmed vulnerabilities" to open verification questions with a ready-to-run diagnostic script (`supabase/RLS_VERIFICATION.sql`), since this sandbox has no network access to the live database.
 >
-> Founder manually verified live: `notify-new-message` webhook, the `host_bank_details` RLS migration, the password reset flow, the two Sprint 3 admin edge functions (`admin-partner-applications`, `admin-support-messages`), and the full Sprint 4 host onboarding flow end-to-end — all deployed and working.
+> Founder manually verified live: `notify-new-message` webhook, the `host_bank_details` RLS migration, the password reset flow, the two Sprint 3 admin edge functions (`admin-partner-applications`, `admin-support-messages`), the full Sprint 4 host onboarding flow, and the Sprint 5 admin-layout/photo-pipeline fixes end-to-end — all deployed and working.
 >
-> Remaining known manual items before Private Beta:
-> 1. Deploy `admin-bookings` and `admin-reviews`, redeploy `admin-hosts` (gained a `create` action) — see Sprint 5 section above
-> 2. Live RLS check on `hosts`/`reviews` tables (same method as the Sprint 3 discovery) — see Sprint 5 section above
+> Remaining known manual items before Private Beta (founder's explicit next priority — deploy + verify, no new feature work):
+> 1. **Deploy the 5 edge functions touched in PR #40** — exact commands below.
+> 2. **Run `supabase/RLS_VERIFICATION.sql`** live in the Supabase SQL Editor (5 numbered blocks) and report back which results are safe vs. unsafe — see Final QA section above. If block #2 (messaging) comes back unsafe, apply the "Fix 4 (Sprint 5 launch audit)" policies already appended to `schema.sql`, then re-run block #2 to confirm.
 > 3. Re-enable Supabase email confirmation (Dashboard toggle) — still pending
 > 4. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
-> 5. Everything else in the Private Beta / Public Beta checklists below
+> 5. Once PayFast is actually configured: run a dedicated payment QA sprint (see Payment QA Checklist in Final QA section) — explicitly deferred until real transactions are possible
+> 6. Everything else in the Private Beta / Public Beta checklists below
+>
+> **Edge function deploy commands** (run from `cubby/`, requires Supabase CLI logged in and linked to the project):
+> ```
+> supabase functions deploy admin-bookings
+> supabase functions deploy admin-reviews
+> supabase functions deploy admin-hosts
+> supabase functions deploy complete-booking
+> supabase functions deploy payfast-create
+> ```
 
 ---
 
