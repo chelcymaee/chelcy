@@ -8,6 +8,10 @@ import { Colors } from '../src/constants/colors';
 import { AuthProvider } from '../src/lib/auth-context';
 import { setupNotificationHandler, registerPushToken } from '../src/lib/notifications';
 import { supabase } from '../src/lib/supabase';
+import { setupGlobalErrorLogging } from '../src/lib/error-logging';
+import ErrorBoundary from '../src/components/ErrorBoundary';
+
+setupGlobalErrorLogging();
 
 // Handle cubby://payment-result and cubby://reset-password deep links
 function usePaymentDeepLink() {
@@ -55,15 +59,17 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <AuthProvider>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(traveller)" />
-        <Stack.Screen name="(host)" />
-      </Stack>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <StatusBar style="light" />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(traveller)" />
+          <Stack.Screen name="(host)" />
+        </Stack>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ScrollView,
+  StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -68,7 +68,7 @@ export default function Signup() {
           console.log('[signup] no session — email confirmation required. Trigger will create profile.');
           setErrorMsg('');
           setLoading(false);
-          alert('Account created! Please check your email and confirm your address before signing in.');
+          Alert.alert('Account created!', 'Please check your email and confirm your address before signing in.');
           return;
         }
       } else {
