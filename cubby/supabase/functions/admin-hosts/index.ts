@@ -17,6 +17,7 @@ const ALLOWED_HOST_FIELDS: Record<string, true> = {
   display_name: true, bio: true, location_name: true, business_type: true,
   price_per_bag_per_day: true, max_bags: true, available_from: true,
   available_until: true, available_days: true, is_active: true,
+  owner_is_verified: true,
 };
 
 serve(async (req) => {

@@ -4,6 +4,21 @@ import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 const SUPABASE_URL = 'https://gqgxahqmndkaeyuvhliv.supabase.co';
 const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
+const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxZ3hhaHFtbmRrYWV5dXZobGl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NzczNjIsImV4cCI6MjA5NzM1MzM2Mn0.EVuPdC3L_eFrCAGKVCDYPpuuSUiNXOvAkBf-Uc5NqyM';
+
+async function callAdminHosts(method: 'GET' | 'POST' | 'PATCH', body?: unknown): Promise<any> {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-hosts`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': ANON_KEY,
+      'Authorization': `Bearer ${ANON_KEY}`,
+      'x-admin-secret': ADMIN_SECRET,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return res.json();
+}
 
 interface Verification {
   id: string;
@@ -82,10 +97,17 @@ export default function Verifications() {
       .eq('id', id);
     if (error) { setMsg('Error: ' + error.message); return; }
 
-    // Update profile is_verified flag + sync all host listings for this user
+    // Update profile is_verified flag + sync the host listing for this user
     const isApproved = status === 'approved';
     await supabase.from('profiles').update({ is_verified: isApproved }).eq('id', userId);
-    await supabase.from('hosts').update({ owner_is_verified: isApproved }).eq('assigned_user_id', userId);
+
+    // Host row update goes through the service-role admin-hosts edge function
+    // (not a direct client write) — the admin's own session has no special
+    // RLS standing on the hosts table, only its own row via user_id.
+    const { data: hostRow } = await supabase.from('hosts').select('id').eq('assigned_user_id', userId).maybeSingle();
+    if (hostRow) {
+      await callAdminHosts('PATCH', { hostId: hostRow.id, updates: { owner_is_verified: isApproved } });
+    }
 
     // Notify the traveller
     await supabase.from('notifications').insert({

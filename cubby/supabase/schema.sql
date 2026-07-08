@@ -501,3 +501,106 @@ CREATE POLICY "Participants can mark messages as read" ON messages
         )
     )
   );
+
+-- -------------------------------------------------------------------------
+-- Fix 5 (Sprint 5 launch audit): hosts — self-service INSERT was possible
+-- -------------------------------------------------------------------------
+-- "Hosts can manage own listing" was FOR ALL USING (auth.uid() = user_id).
+-- Postgres applies a FOR ALL policy's USING clause as the WITH CHECK clause
+-- too when no WITH CHECK is given — so on INSERT, it only verified the new
+-- row's user_id equalled auth.uid(). Any signed-in user could satisfy that
+-- by inserting a row with their own id as user_id, creating a live, publicly
+-- visible host listing with zero admin approval — bypassing the entire
+-- admin-hosts create/assign flow. Confirmed live via RLS_VERIFICATION.sql
+-- block #3 (2026-07-07): an ordinary traveller account's INSERT succeeded
+-- with no policy error.
+--
+-- Host creation/assignment only happens through the ADMIN_SECRET-gated
+-- admin-hosts edge function, which uses the service-role key and bypasses
+-- RLS entirely — removing self-service INSERT here does not affect it.
+-- Self-service editing (host-profile.tsx, dashboard.tsx toggling is_active)
+-- still works: admin-hosts always sets user_id and assigned_user_id to the
+-- same value together (both its `create` and `assign` actions), so the
+-- UPDATE policy below still matches every existing host's own account.
+-- Confirmed via grep: no client-side code anywhere in app/ or src/ calls
+-- `.from('hosts').insert(...)` or `.from('hosts').delete(...)` — both only
+-- happen server-side in admin-hosts (service role), so no legitimate path
+-- is broken by removing self-service INSERT/DELETE policies.
+
+DROP POLICY IF EXISTS "Hosts can manage own listing" ON hosts;
+
+DROP POLICY IF EXISTS "Hosts can update own listing" ON hosts;
+CREATE POLICY "Hosts can update own listing" ON hosts
+  FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Hosts can delete own listing" ON hosts;
+CREATE POLICY "Hosts can delete own listing" ON hosts
+  FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Deliberately no INSERT policy for the authenticated/anon roles — with no
+-- permissive INSERT policy, RLS denies all direct INSERTs into hosts by
+-- default. SELECT is unaffected: "Hosts are publicly viewable" (line 56)
+-- already grants public SELECT independently of this policy.
+
+-- -------------------------------------------------------------------------
+-- Fix 6 (Sprint 5 launch audit, continued): hosts — "Admin can manage all
+-- hosts" was a dead-simple bypass, not a real admin check
+-- -------------------------------------------------------------------------
+-- Discovered by querying pg_policies directly against production (this
+-- policy was never in this repo — added out-of-band in the Dashboard).
+-- It read: FOR ALL, roles {public}, USING (true), WITH CHECK (true).
+-- Despite the name, it checks nothing about the caller — `true` grants
+-- every command (SELECT/INSERT/UPDATE/DELETE) to every role, including
+-- ordinary signed-in travellers. This is why Fix 5 alone didn't close
+-- RLS_VERIFICATION.sql block #3: Postgres OR-combines permissive
+-- policies, so this one alone still let the INSERT through regardless
+-- of what Fix 5 changed.
+--
+-- There is no admin identity at the database level in this project at
+-- all — admin access is a client-side PIN (checkAdminSession(),
+-- AsyncStorage-based) with zero corresponding auth.uid()/claim, so no
+-- RLS policy can actually distinguish "the founder's account" from any
+-- other authenticated user. Real admin mutations on hosts already go
+-- through the service-role admin-hosts edge function (bypasses RLS
+-- entirely, gated by ADMIN_SECRET instead) — this policy was pure
+-- unused risk, not a working feature. The one remaining direct client
+-- write to hosts from an admin screen (app/(admin)/verifications.tsx,
+-- syncing owner_is_verified after approving an ID verification) has
+-- been migrated onto the same admin-hosts edge function pattern
+-- (owner_is_verified added to ALLOWED_HOST_FIELDS) as part of this fix,
+-- so nothing depends on this policy anymore.
+
+DROP POLICY IF EXISTS "Admin can manage all hosts" ON hosts;
+
+-- -------------------------------------------------------------------------
+-- Fix 7 (Sprint 5 launch audit, continued): bookings — same fake-admin
+-- policy pattern as Fix 6, on a more sensitive table
+-- -------------------------------------------------------------------------
+-- Discovered the same way as Fix 6: RLS_VERIFICATION.sql block #5 showed
+-- a non-host traveller account (1 real booking of its own) could see 8 of
+-- the platform's 8 total bookings. `bookings` already has correctly scoped
+-- policies committed in this file ("Travellers can view own bookings",
+-- "Hosts can view bookings for their listing") — neither explains the
+-- leak. Querying pg_policies live turned up a third, undocumented one:
+-- "Admin can view all bookings" — FOR ALL, roles {public}, USING (true).
+-- Same shape as the hosts bug: the name implies an admin check, `true`
+-- performs none, and there is no admin identity at the database level in
+-- this project to check against anyway (see Fix 6 for the full reasoning).
+--
+-- Before dropping it, audited every direct client-side read of bookings
+-- to confirm nothing legitimately depended on it. Found one:
+-- app/(admin)/dashboard.tsx read all bookings directly (for stats +
+-- recent-activity widgets) using the admin's own session — the other two
+-- admin bookings screens (all-bookings.tsx, revenue.tsx) were already
+-- migrated onto the service-role admin-bookings edge function back in the
+-- original Sprint 5 pass, dashboard.tsx was simply missed at the time.
+-- Migrated it onto the same admin-bookings edge function here. The one
+-- other direct read (src/lib/review-service.ts, fetching a booking's
+-- host_id to send a reciprocal review prompt) is called by the host who
+-- owns that booking, already covered by "Hosts can view bookings for
+-- their listing" — unaffected by this policy either way.
+
+DROP POLICY IF EXISTS "Admin can view all bookings" ON bookings;

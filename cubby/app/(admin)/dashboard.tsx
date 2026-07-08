@@ -3,6 +3,20 @@ import { router } from 'expo-router';
 import { checkAdminSession, clearAdminSession } from '../../src/lib/admin-auth';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
+const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
+
+async function adminFetchBookings() {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-bookings`, {
+    method: 'GET',
+    headers: {
+      'x-admin-secret': ADMIN_SECRET,
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    },
+  });
+  return res.json();
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ActivityItem {
@@ -134,8 +148,7 @@ export default function AdminDashboard() {
         { count: openSupport },
         { count: pendingVerifs },
         { count: totalUsers },
-        { data: bookings },
-        { data: recentBookings },
+        bookingsResult,
         { data: recentApplications },
         { data: recentSupport },
       ] = await Promise.all([
@@ -146,13 +159,13 @@ export default function AdminDashboard() {
         supabase.from('support_messages').select('*', { count: 'exact', head: true }).neq('status', 'resolved'),
         supabase.from('verifications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('bookings').select('status, total_price, created_at'),
-        supabase.from('bookings').select('id, status, total_price, created_at').order('created_at', { ascending: false }).limit(10),
+        adminFetchBookings(),
         supabase.from('partner_applications').select('id, business_name, created_at, status').order('created_at', { ascending: false }).limit(5),
         supabase.from('support_messages').select('id, subject, created_at, status, user_email').order('created_at', { ascending: false }).limit(5),
       ]);
 
-      const allBookings = bookings ?? [];
+      const allBookings = bookingsResult.data ?? [];
+      const recentBookings = allBookings.slice(0, 10);
       const activeBookings = allBookings.filter((b: any) => ['confirmed', 'active'].includes(b.status)).length;
       const revenueTotal = allBookings
         .filter((b: any) => ['confirmed', 'completed'].includes(b.status))
