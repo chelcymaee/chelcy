@@ -544,3 +544,33 @@ CREATE POLICY "Hosts can delete own listing" ON hosts
 -- permissive INSERT policy, RLS denies all direct INSERTs into hosts by
 -- default. SELECT is unaffected: "Hosts are publicly viewable" (line 56)
 -- already grants public SELECT independently of this policy.
+
+-- -------------------------------------------------------------------------
+-- Fix 6 (Sprint 5 launch audit, continued): hosts — "Admin can manage all
+-- hosts" was a dead-simple bypass, not a real admin check
+-- -------------------------------------------------------------------------
+-- Discovered by querying pg_policies directly against production (this
+-- policy was never in this repo — added out-of-band in the Dashboard).
+-- It read: FOR ALL, roles {public}, USING (true), WITH CHECK (true).
+-- Despite the name, it checks nothing about the caller — `true` grants
+-- every command (SELECT/INSERT/UPDATE/DELETE) to every role, including
+-- ordinary signed-in travellers. This is why Fix 5 alone didn't close
+-- RLS_VERIFICATION.sql block #3: Postgres OR-combines permissive
+-- policies, so this one alone still let the INSERT through regardless
+-- of what Fix 5 changed.
+--
+-- There is no admin identity at the database level in this project at
+-- all — admin access is a client-side PIN (checkAdminSession(),
+-- AsyncStorage-based) with zero corresponding auth.uid()/claim, so no
+-- RLS policy can actually distinguish "the founder's account" from any
+-- other authenticated user. Real admin mutations on hosts already go
+-- through the service-role admin-hosts edge function (bypasses RLS
+-- entirely, gated by ADMIN_SECRET instead) — this policy was pure
+-- unused risk, not a working feature. The one remaining direct client
+-- write to hosts from an admin screen (app/(admin)/verifications.tsx,
+-- syncing owner_is_verified after approving an ID verification) has
+-- been migrated onto the same admin-hosts edge function pattern
+-- (owner_is_verified added to ALLOWED_HOST_FIELDS) as part of this fix,
+-- so nothing depends on this policy anymore.
+
+DROP POLICY IF EXISTS "Admin can manage all hosts" ON hosts;
