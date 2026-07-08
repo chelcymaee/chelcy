@@ -574,3 +574,33 @@ CREATE POLICY "Hosts can delete own listing" ON hosts
 -- so nothing depends on this policy anymore.
 
 DROP POLICY IF EXISTS "Admin can manage all hosts" ON hosts;
+
+-- -------------------------------------------------------------------------
+-- Fix 7 (Sprint 5 launch audit, continued): bookings — same fake-admin
+-- policy pattern as Fix 6, on a more sensitive table
+-- -------------------------------------------------------------------------
+-- Discovered the same way as Fix 6: RLS_VERIFICATION.sql block #5 showed
+-- a non-host traveller account (1 real booking of its own) could see 8 of
+-- the platform's 8 total bookings. `bookings` already has correctly scoped
+-- policies committed in this file ("Travellers can view own bookings",
+-- "Hosts can view bookings for their listing") — neither explains the
+-- leak. Querying pg_policies live turned up a third, undocumented one:
+-- "Admin can view all bookings" — FOR ALL, roles {public}, USING (true).
+-- Same shape as the hosts bug: the name implies an admin check, `true`
+-- performs none, and there is no admin identity at the database level in
+-- this project to check against anyway (see Fix 6 for the full reasoning).
+--
+-- Before dropping it, audited every direct client-side read of bookings
+-- to confirm nothing legitimately depended on it. Found one:
+-- app/(admin)/dashboard.tsx read all bookings directly (for stats +
+-- recent-activity widgets) using the admin's own session — the other two
+-- admin bookings screens (all-bookings.tsx, revenue.tsx) were already
+-- migrated onto the service-role admin-bookings edge function back in the
+-- original Sprint 5 pass, dashboard.tsx was simply missed at the time.
+-- Migrated it onto the same admin-bookings edge function here. The one
+-- other direct read (src/lib/review-service.ts, fetching a booking's
+-- host_id to send a reciprocal review prompt) is called by the host who
+-- owns that booking, already covered by "Hosts can view bookings for
+-- their listing" — unaffected by this policy either way.
+
+DROP POLICY IF EXISTS "Admin can view all bookings" ON bookings;
