@@ -1002,7 +1002,7 @@ supabase functions deploy complete-booking
 >
 > **Current active priority — production consistency, nothing else until this is closed:**
 > 1. Redeploy `admin-hosts` (gained `owner_is_verified` in its allowlist) — see exact command below. **Done 2026-07-08.**
-> 2. **Run "Fix 8" in `schema.sql` live** — restores traveller booking cancellation. Not yet applied.
+> 2. ~~Run "Fix 8" in `schema.sql` live~~ — **Applied 2026-07-08.** Restores traveller booking cancellation. Not yet re-tested end to end (see QA checklist).
 > 3. Rebuild/redeploy the client app so the merged `verifications.tsx` and `dashboard.tsx` code goes live.
 > 4. Manually verify, in this order: admin verification badge sync → admin dashboard stats → host creation/assignment via `admin-hosts` → booking visibility for a regular signed-in user → **traveller booking cancellation (re-test after Fix 8)** → anything else touching `hosts`/`bookings`.
 >
@@ -1141,7 +1141,7 @@ Also create a private `verifications` storage bucket in Supabase Dashboard → S
 | ~~Admin PIN only gated `dashboard.tsx` — every other admin screen was reachable by direct URL with zero session check~~ | ✅ Fixed (Sprint 5) | `app/(admin)/_layout.tsx` |
 | ~~4 admin screens (all-bookings, revenue, reviews, create-host) had no `ADMIN_SECRET` gating at all, querying/writing Supabase directly from the client~~ | ✅ Fixed (Sprint 5) | `app/(admin)/all-bookings.tsx`, `revenue.tsx`, `reviews.tsx`, `create-host.tsx`, new `admin-bookings`/`admin-reviews` edge functions, `admin-hosts` `create` action |
 | ~~"Bag Runner" signup role led to a fully fake, hardcoded earnings/deliveries dashboard~~ | ✅ Fixed (Sprint 5) | `app/(auth)/signup.tsx`, `app/(runner)/dashboard.tsx`, `deliveries.tsx`, `earnings.tsx` |
-| Traveller booking cancellation silently stopped working — regression from Fix 7 dropping the `FOR ALL` policy that was accidentally the only thing granting cancel-UPDATE access | 🔴 Critical (found 2026-07-08, fix written as "Fix 8" in `schema.sql`, not yet applied live) | `app/(traveller)/bookings.tsx`, `supabase/schema.sql` |
+| ~~Traveller booking cancellation silently stopped working — regression from Fix 7 dropping the `FOR ALL` policy that was accidentally the only thing granting cancel-UPDATE access~~ | ✅ Fixed — "Fix 8" applied live 2026-07-08, not yet re-tested end to end | `app/(traveller)/bookings.tsx`, `supabase/schema.sql` |
 | `cancelBooking()` in `bookings.tsx` never checks the update call's error — any future RLS/permission failure on cancellation will fail silently again the same way | 🟡 Low, related but not fixed (out of scope of the Fix 8 regression fix — flagged for a future small hardening pass) | `app/(traveller)/bookings.tsx` line ~80 |
 | Route collisions: `chat.tsx`, `dashboard.tsx`, `messages.tsx`, `notifications.tsx`, `reviews.tsx`, `review-detail.tsx`, `login.tsx` each exist in 2-3 route groups and resolve to the wrong role's screen on a bare URL/refresh | 🟡 Medium (found Sprint 5, not yet fixed) | 7 filenames across `app/(traveller)`, `app/(host)`, `app/(admin)` |
 | `host-detail.tsx` shows a permanent loading skeleton (never an error) for a bad/deleted host ID | 🟠 Medium (found Sprint 5, not yet fixed) | `app/(traveller)/host-detail.tsx` |
