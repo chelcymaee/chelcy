@@ -985,6 +985,8 @@ supabase functions deploy complete-booking
 >
 > **PR #40 merged into `main`** (merge commit `abf2fa3`, 2026-07-07) — Sprint 5 (Final QA) is now on `main`: the admin PIN bypass fix, 4 admin screens moved onto `ADMIN_SECRET`-gated edge functions (`admin-bookings`, `admin-reviews` new; `admin-hosts` gained a `create` action), the fake Bag Runner beta flow replaced with an honest coming-soon state, the host photo upload + display pipeline fixes, and the launch-readiness audit's approved fixes: server-side ownership authorization added to `complete-booking` and `payfast-create`. Per founder direction, the same-day capacity check was implemented then fully reverted (bookings are time-based; false rejections were judged worse than no enforcement — proper overlap-based capacity is deferred to a later sprint if beta feedback justifies it), and the messaging/database RLS findings were reframed from "confirmed vulnerabilities" to open verification questions with a ready-to-run diagnostic script (`supabase/RLS_VERIFICATION.sql`), since this sandbox has no network access to the live database.
 >
+> **PR #41 merged into `main`** (merge commit `7aa5278`, 2026-07-08) — the two RLS fixes below (Fix 6 `hosts`, Fix 7 `bookings`) plus their client-code migrations (`verifications.tsx`, `dashboard.tsx`) and the `admin-hosts` field-allowlist change are now on `main`. **Important sequencing note:** the RLS policy drops were applied directly to the live database *during* the review, before this PR merged — meaning the code that stops depending on those policies was, for a window, live-in-database but not live-in-app. Until `admin-hosts` is redeployed and the client is rebuilt (next two manual steps), `verifications.tsx`'s badge sync and `dashboard.tsx`'s stats/activity feed should be assumed non-functional in production, not just "not yet improved." This is a known, expected, temporary state — not a new bug — but it's the reason deploy + rebuild is the single active priority right now, ahead of any of the other items below.
+>
 > Founder manually verified live: `notify-new-message` webhook, the `host_bank_details` RLS migration, the password reset flow, the two Sprint 3 admin edge functions (`admin-partner-applications`, `admin-support-messages`), the full Sprint 4 host onboarding flow, and the Sprint 5 admin-layout/photo-pipeline fixes end-to-end — all deployed and working.
 >
 > **Live RLS verification is COMPLETE (2026-07-07 → 2026-07-08), all 5 blocks of `RLS_VERIFICATION.sql` run directly against production:**
@@ -996,14 +998,19 @@ supabase functions deploy complete-booking
 >
 > Pattern worth remembering for future RLS work on this project: `schema.sql` is not authoritative on its own — three policies (`hosts`, `bookings` ×1 each found so far) were added directly in the Supabase Dashboard outside version control, all with reassuring "Admin can ..." names that actually enforced nothing (`USING (true)`), because **this project has no admin identity at the database level at all** — admin access is purely a client-side PIN with no corresponding `auth.uid()`/claim. Always cross-check `pg_policies` live against a table before trusting `schema.sql` alone.
 >
-> Remaining known manual items before Private Beta (founder's explicit next priority — deploy + verify, no new feature work):
-> 1. **Deploy the 5 edge functions touched in PR #40, plus redeploy `admin-hosts`** (gained `owner_is_verified` in its field allowlist as part of the Fix 6 migration) — exact commands below. (`admin-bookings` itself is unchanged — no redeploy needed for Fix 7, just a normal client rebuild for `dashboard.tsx`.)
-> 2. **Manually verify two flows** now that both are live: (a) `verifications.tsx`'s approve/reject still updates a host's verified badge correctly (routed through `admin-hosts`), and (b) the admin dashboard's stats/recent-activity widgets still populate correctly (routed through `admin-bookings`) — this sandbox can't reach production to test either.
-> 3. Re-enable Supabase email confirmation (Dashboard toggle) — still pending
-> 4. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
-> 5. Once PayFast is actually configured: run a dedicated payment QA sprint (see Payment QA Checklist in Final QA section) — explicitly deferred until real transactions are possible
-> 6. Follow up on the flagged-but-unverified `profiles` RLS question in `verifications.tsx` (see Final QA section row above) — same live-`pg_policies` method as blocks #3/#5
-> 7. Everything else in the Private Beta / Public Beta checklists below
+> **Current active priority — production consistency, nothing else until this is closed:**
+> 1. Redeploy `admin-hosts` (gained `owner_is_verified` in its allowlist) — see exact command below.
+> 2. Rebuild/redeploy the client app so the merged `verifications.tsx` and `dashboard.tsx` code goes live.
+> 3. Manually verify, in this order: admin verification badge sync → admin dashboard stats → host creation/assignment via `admin-hosts` → booking visibility for a regular signed-in user → anything else touching `hosts`/`bookings`.
+>
+> Everything below this is intentionally on hold until the above is confirmed clean.
+>
+> Remaining known manual items before Private Beta (queued behind the production-consistency check above):
+> 1. Re-enable Supabase email confirmation (Dashboard toggle) — still pending
+> 2. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
+> 3. Once PayFast is actually configured: run a dedicated payment QA sprint (see Payment QA Checklist in Final QA section) — explicitly deferred until real transactions are possible
+> 4. Follow up on the flagged-but-unverified `profiles` RLS question in `verifications.tsx` (see Final QA section row above) — same live-`pg_policies` method as blocks #3/#5
+> 5. Everything else in the Private Beta / Public Beta checklists below
 >
 > **Edge function deploy commands** (run from `cubby/`, requires Supabase CLI logged in and linked to the project):
 > ```
