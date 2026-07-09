@@ -4,12 +4,18 @@ import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Sentry from '@sentry/react-native';
 import { Colors } from '../src/constants/colors';
 import { AuthProvider } from '../src/lib/auth-context';
 import { setupNotificationHandler, registerPushToken } from '../src/lib/notifications';
 import { supabase } from '../src/lib/supabase';
 import { setupGlobalErrorLogging } from '../src/lib/error-logging';
 import ErrorBoundary from '../src/components/ErrorBoundary';
+
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (SENTRY_DSN) {
+  Sentry.init({ dsn: SENTRY_DSN, tracesSampleRate: 0 });
+}
 
 setupGlobalErrorLogging();
 
@@ -50,7 +56,7 @@ function usePaymentDeepLink() {
   }, []);
 }
 
-export default function RootLayout() {
+function RootLayout() {
   usePaymentDeepLink();
 
   useEffect(() => {
@@ -73,3 +79,5 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
+
+export default SENTRY_DSN ? Sentry.wrap(RootLayout) : RootLayout;
