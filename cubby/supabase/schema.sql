@@ -604,3 +604,31 @@ DROP POLICY IF EXISTS "Admin can manage all hosts" ON hosts;
 -- their listing" — unaffected by this policy either way.
 
 DROP POLICY IF EXISTS "Admin can view all bookings" ON bookings;
+
+-- -------------------------------------------------------------------------
+-- Fix 8 (regression, found immediately after Fix 7 deployed): travellers
+-- could no longer cancel their own bookings
+-- -------------------------------------------------------------------------
+-- schema.sql has always defined "Travellers can update own bookings" (see
+-- the CREATE TABLE bookings section above), but a live pg_policies query
+-- during the Fix 7 investigation showed it was never actually applied to
+-- production — only 5 policies existed on bookings, and this wasn't one
+-- of them. The only thing granting UPDATE to a traveller cancelling their
+-- own booking was the incidental side effect of "Admin can view all
+-- bookings" being FOR ALL (not just SELECT) with USING (true). Fix 7
+-- correctly closed the read-visibility leak that policy caused, but
+-- removing a FOR ALL policy removes all four commands it covered, not
+-- just the one the audit was focused on (SELECT) — so it silently took
+-- traveller cancellation down with it. The client's cancelBooking() never
+-- checked the update's error, so the failure was invisible: the booking
+-- simply stayed in "confirmed" and never moved to Past.
+--
+-- This restores exactly the access travellers need — nothing broader —
+-- so it doesn't reopen the Fix 7 leak. Host-side booking updates
+-- ("Hosts can update bookings for their listing") and completed bookings
+-- (set via the service-role complete-booking edge function, which
+-- bypasses RLS) are both untouched by this and by Fix 7.
+
+DROP POLICY IF EXISTS "Travellers can update own bookings" ON bookings;
+CREATE POLICY "Travellers can update own bookings" ON bookings
+  FOR UPDATE USING (auth.uid() = traveller_id);

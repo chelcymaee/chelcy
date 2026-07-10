@@ -1,6 +1,7 @@
 import { Component, ReactNode } from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
+import * as Sentry from '@sentry/react-native';
 import { Colors } from '../constants/colors';
 import Btn from './Btn';
 
@@ -25,6 +26,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     console.error('[ErrorBoundary] Caught render error:', error, info.componentStack);
+    Sentry.captureException(error, { contexts: { react: { componentStack: info.componentStack } } });
   }
 
   handleRetry = () => {

@@ -985,6 +985,8 @@ supabase functions deploy complete-booking
 >
 > **PR #40 merged into `main`** (merge commit `abf2fa3`, 2026-07-07) — Sprint 5 (Final QA) is now on `main`: the admin PIN bypass fix, 4 admin screens moved onto `ADMIN_SECRET`-gated edge functions (`admin-bookings`, `admin-reviews` new; `admin-hosts` gained a `create` action), the fake Bag Runner beta flow replaced with an honest coming-soon state, the host photo upload + display pipeline fixes, and the launch-readiness audit's approved fixes: server-side ownership authorization added to `complete-booking` and `payfast-create`. Per founder direction, the same-day capacity check was implemented then fully reverted (bookings are time-based; false rejections were judged worse than no enforcement — proper overlap-based capacity is deferred to a later sprint if beta feedback justifies it), and the messaging/database RLS findings were reframed from "confirmed vulnerabilities" to open verification questions with a ready-to-run diagnostic script (`supabase/RLS_VERIFICATION.sql`), since this sandbox has no network access to the live database.
 >
+> **PR #41 merged into `main`** (merge commit `7aa5278`, 2026-07-08) — the two RLS fixes below (Fix 6 `hosts`, Fix 7 `bookings`) plus their client-code migrations (`verifications.tsx`, `dashboard.tsx`) and the `admin-hosts` field-allowlist change are now on `main`. **Important sequencing note:** the RLS policy drops were applied directly to the live database *during* the review, before this PR merged — meaning the code that stops depending on those policies was, for a window, live-in-database but not live-in-app. Until `admin-hosts` is redeployed and the client is rebuilt (next two manual steps), `verifications.tsx`'s badge sync and `dashboard.tsx`'s stats/activity feed should be assumed non-functional in production, not just "not yet improved." This is a known, expected, temporary state — not a new bug — but it's the reason deploy + rebuild is the single active priority right now, ahead of any of the other items below.
+>
 > Founder manually verified live: `notify-new-message` webhook, the `host_bank_details` RLS migration, the password reset flow, the two Sprint 3 admin edge functions (`admin-partner-applications`, `admin-support-messages`), the full Sprint 4 host onboarding flow, and the Sprint 5 admin-layout/photo-pipeline fixes end-to-end — all deployed and working.
 >
 > **Live RLS verification is COMPLETE (2026-07-07 → 2026-07-08), all 5 blocks of `RLS_VERIFICATION.sql` run directly against production:**
@@ -996,14 +998,22 @@ supabase functions deploy complete-booking
 >
 > Pattern worth remembering for future RLS work on this project: `schema.sql` is not authoritative on its own — three policies (`hosts`, `bookings` ×1 each found so far) were added directly in the Supabase Dashboard outside version control, all with reassuring "Admin can ..." names that actually enforced nothing (`USING (true)`), because **this project has no admin identity at the database level at all** — admin access is purely a client-side PIN with no corresponding `auth.uid()`/claim. Always cross-check `pg_policies` live against a table before trusting `schema.sql` alone.
 >
-> Remaining known manual items before Private Beta (founder's explicit next priority — deploy + verify, no new feature work):
-> 1. **Deploy the 5 edge functions touched in PR #40, plus redeploy `admin-hosts`** (gained `owner_is_verified` in its field allowlist as part of the Fix 6 migration) — exact commands below. (`admin-bookings` itself is unchanged — no redeploy needed for Fix 7, just a normal client rebuild for `dashboard.tsx`.)
-> 2. **Manually verify two flows** now that both are live: (a) `verifications.tsx`'s approve/reject still updates a host's verified badge correctly (routed through `admin-hosts`), and (b) the admin dashboard's stats/recent-activity widgets still populate correctly (routed through `admin-bookings`) — this sandbox can't reach production to test either.
-> 3. Re-enable Supabase email confirmation (Dashboard toggle) — still pending
-> 4. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
-> 5. Once PayFast is actually configured: run a dedicated payment QA sprint (see Payment QA Checklist in Final QA section) — explicitly deferred until real transactions are possible
-> 6. Follow up on the flagged-but-unverified `profiles` RLS question in `verifications.tsx` (see Final QA section row above) — same live-`pg_policies` method as blocks #3/#5
-> 7. Everything else in the Private Beta / Public Beta checklists below
+> **Regression found during manual QA (2026-07-08): travellers could no longer cancel bookings.** Direct, unintended side effect of Fix 7 — `"Admin can view all bookings"` was `FOR ALL`, not just `SELECT`, and turned out to be the *only* thing granting traveller cancel-UPDATE access in production, because the correctly-scoped `"Travellers can update own bookings"` policy in `schema.sql` had never actually been applied live. Dropping the leak took cancellation down with it; the client's `cancelBooking()` never checked the update's error, so it failed silently — booking just stayed in "confirmed" instead of moving to Past. **Fix:** "Fix 8" in `schema.sql` applies the missing policy (scoped, not broad — doesn't reopen the Fix 7 leak). Not yet applied live. Lesson for future RLS work here: when dropping a `FOR ALL` policy, audit all four commands it covers, not just the one the investigation was originally about.
+>
+> **Current active priority — production consistency, nothing else until this is closed:**
+> 1. Redeploy `admin-hosts` (gained `owner_is_verified` in its allowlist) — see exact command below. **Done 2026-07-08.**
+> 2. ~~Run "Fix 8" in `schema.sql` live~~ — **Applied and founder-verified live 2026-07-08.** Traveller booking cancellation confirmed working again.
+> 3. Rebuild/redeploy the client app so the merged `verifications.tsx` and `dashboard.tsx` code goes live.
+> 4. Manually verify, in this order: admin verification badge sync → admin dashboard stats → host creation/assignment via `admin-hosts` → booking visibility for a regular signed-in user → **traveller booking cancellation (re-test after Fix 8)** → anything else touching `hosts`/`bookings`.
+>
+> Everything below this is intentionally on hold until the above is confirmed clean.
+>
+> Remaining known manual items before Private Beta (queued behind the production-consistency check above):
+> 1. Re-enable Supabase email confirmation (Dashboard toggle) — still pending
+> 2. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
+> 3. Once PayFast is actually configured: run a dedicated payment QA sprint (see Payment QA Checklist in Final QA section) — explicitly deferred until real transactions are possible
+> 4. Follow up on the flagged-but-unverified `profiles` RLS question in `verifications.tsx` (see Final QA section row above) — same live-`pg_policies` method as blocks #3/#5
+> 5. Everything else in the Private Beta / Public Beta checklists below
 >
 > **Edge function deploy commands** (run from `cubby/`, requires Supabase CLI logged in and linked to the project):
 > ```
@@ -1131,6 +1141,8 @@ Also create a private `verifications` storage bucket in Supabase Dashboard → S
 | ~~Admin PIN only gated `dashboard.tsx` — every other admin screen was reachable by direct URL with zero session check~~ | ✅ Fixed (Sprint 5) | `app/(admin)/_layout.tsx` |
 | ~~4 admin screens (all-bookings, revenue, reviews, create-host) had no `ADMIN_SECRET` gating at all, querying/writing Supabase directly from the client~~ | ✅ Fixed (Sprint 5) | `app/(admin)/all-bookings.tsx`, `revenue.tsx`, `reviews.tsx`, `create-host.tsx`, new `admin-bookings`/`admin-reviews` edge functions, `admin-hosts` `create` action |
 | ~~"Bag Runner" signup role led to a fully fake, hardcoded earnings/deliveries dashboard~~ | ✅ Fixed (Sprint 5) | `app/(auth)/signup.tsx`, `app/(runner)/dashboard.tsx`, `deliveries.tsx`, `earnings.tsx` |
+| ~~Traveller booking cancellation silently stopped working — regression from Fix 7 dropping the `FOR ALL` policy that was accidentally the only thing granting cancel-UPDATE access~~ | ✅ Fixed & founder-verified live 2026-07-08 — cancelled booking correctly moves to Past | `app/(traveller)/bookings.tsx`, `supabase/schema.sql` |
+| `cancelBooking()` in `bookings.tsx` never checks the update call's error — any future RLS/permission failure on cancellation will fail silently again the same way | 🟡 Low, related but not fixed (out of scope of the Fix 8 regression fix — flagged for a future small hardening pass) | `app/(traveller)/bookings.tsx` line ~80 |
 | Route collisions: `chat.tsx`, `dashboard.tsx`, `messages.tsx`, `notifications.tsx`, `reviews.tsx`, `review-detail.tsx`, `login.tsx` each exist in 2-3 route groups and resolve to the wrong role's screen on a bare URL/refresh | 🟡 Medium (found Sprint 5, not yet fixed) | 7 filenames across `app/(traveller)`, `app/(host)`, `app/(admin)` |
 | `host-detail.tsx` shows a permanent loading skeleton (never an error) for a bad/deleted host ID | 🟠 Medium (found Sprint 5, not yet fixed) | `app/(traveller)/host-detail.tsx` |
 | Push notification taps don't deep-link anywhere — no response listener exists | 🟠 Medium (found Sprint 5, not yet fixed) | `src/lib/notifications.ts` |
