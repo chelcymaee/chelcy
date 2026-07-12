@@ -1000,20 +1000,24 @@ supabase functions deploy complete-booking
 >
 > **Regression found during manual QA (2026-07-08): travellers could no longer cancel bookings.** Direct, unintended side effect of Fix 7 — `"Admin can view all bookings"` was `FOR ALL`, not just `SELECT`, and turned out to be the *only* thing granting traveller cancel-UPDATE access in production, because the correctly-scoped `"Travellers can update own bookings"` policy in `schema.sql` had never actually been applied live. Dropping the leak took cancellation down with it; the client's `cancelBooking()` never checked the update's error, so it failed silently — booking just stayed in "confirmed" instead of moving to Past. **Fix:** "Fix 8" in `schema.sql` applies the missing policy (scoped, not broad — doesn't reopen the Fix 7 leak). Not yet applied live. Lesson for future RLS work here: when dropping a `FOR ALL` policy, audit all four commands it covers, not just the one the investigation was originally about.
 >
-> **Current active priority — production consistency, nothing else until this is closed:**
-> 1. Redeploy `admin-hosts` (gained `owner_is_verified` in its allowlist) — see exact command below. **Done 2026-07-08.**
-> 2. ~~Run "Fix 8" in `schema.sql` live~~ — **Applied and founder-verified live 2026-07-08.** Traveller booking cancellation confirmed working again.
-> 3. Rebuild/redeploy the client app so the merged `verifications.tsx` and `dashboard.tsx` code goes live.
-> 4. Manually verify, in this order: admin verification badge sync → admin dashboard stats → host creation/assignment via `admin-hosts` → booking visibility for a regular signed-in user → **traveller booking cancellation (re-test after Fix 8)** → anything else touching `hosts`/`bookings`.
+> **Production consistency check — CLOSED (2026-07-08).** All four items resolved and founder-verified live: `admin-hosts` redeployed with `owner_is_verified`; "Fix 8" applied (traveller booking cancellation confirmed working again); client app rebuilt/redeployed with merged `verifications.tsx`/`dashboard.tsx`; full manual verification pass (admin verification badge sync, admin dashboard stats, host creation/assignment, booking visibility, traveller cancellation) all confirmed clean.
 >
-> Everything below this is intentionally on hold until the above is confirmed clean.
+> **EAS build pipeline — VERIFIED AND COMPLETE (2026-07-12).** `eas.json` created with development/preview/production profiles, Expo account + project linked (`extra.eas.projectId` in `app.json`), preview profile builds for iOS Simulator (no Apple Developer account needed). A real build was run end-to-end and confirmed "Finished" on the Expo dashboard. Merged via PR #43 and PR #44. **No further work planned unless a genuine bug appears.**
 >
-> Remaining known manual items before Private Beta (queued behind the production-consistency check above):
-> 1. Re-enable Supabase email confirmation (Dashboard toggle) — still pending
-> 2. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
-> 3. Once PayFast is actually configured: run a dedicated payment QA sprint (see Payment QA Checklist in Final QA section) — explicitly deferred until real transactions are possible
-> 4. Follow up on the flagged-but-unverified `profiles` RLS question in `verifications.tsx` (see Final QA section row above) — same live-`pg_policies` method as blocks #3/#5
-> 5. Everything else in the Private Beta / Public Beta checklists below
+> **Sentry crash reporting — VERIFIED AND COMPLETE (2026-07-12).** `@sentry/react-native` wired into `app/_layout.tsx` (`Sentry.init` + `Sentry.wrap` around the root component), `src/lib/error-logging.ts` (web `error`/`unhandledrejection` listeners + native `ErrorUtils` handler), and `src/components/ErrorBoundary.tsx` (`componentDidCatch`) — all alongside the existing `console.error` calls, not replacing them. DSN supplied via `EXPO_PUBLIC_SENTRY_DSN` in the founder's local `.env` (documented in `.env.example`). A live test error was triggered and confirmed received in the Sentry dashboard. Merged via PR #43. **No further work planned unless a genuine bug appears.**
+>
+> **Current active priority — Auth configuration, nothing else until this is closed:**
+> 1. Turn Supabase email confirmation ON (Authentication → Providers → Email → "Confirm email" toggle) — currently OFF.
+> 2. Add every Redirect URL Cubby needs to the currently-empty allow-list (Authentication → URL Configuration), including at minimum `cubby://reset-password` and `cubby://payment-result` (both handled in `app/_layout.tsx`'s `usePaymentDeepLink()`).
+> 3. Run a real, complete password-reset test end to end: trigger reset from the app → confirm the email arrives → confirm the link opens Cubby via the `cubby://reset-password` deep link → confirm the password can actually be changed.
+>
+> Everything below this is intentionally on hold until the above is confirmed clean. Do not move to app identity (`app.json`), Apple/Google developer accounts, push notification credentials, or PayFast configuration until Auth is fully configured and tested.
+>
+> Remaining known manual items before Private Beta (queued behind Auth configuration above):
+> 1. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
+> 2. Once PayFast is actually configured: run a dedicated payment QA sprint (see Payment QA Checklist in Final QA section) — explicitly deferred until real transactions are possible
+> 3. Follow up on the flagged-but-unverified `profiles` RLS question in `verifications.tsx` (see Final QA section row above) — same live-`pg_policies` method as blocks #3/#5
+> 4. Everything else in the Private Beta / Public Beta checklists below
 >
 > **Edge function deploy commands** (run from `cubby/`, requires Supabase CLI logged in and linked to the project):
 > ```
