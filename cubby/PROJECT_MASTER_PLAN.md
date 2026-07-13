@@ -1006,14 +1006,11 @@ supabase functions deploy complete-booking
 >
 > **Sentry crash reporting — VERIFIED AND COMPLETE (2026-07-12).** `@sentry/react-native` wired into `app/_layout.tsx` (`Sentry.init` + `Sentry.wrap` around the root component), `src/lib/error-logging.ts` (web `error`/`unhandledrejection` listeners + native `ErrorUtils` handler), and `src/components/ErrorBoundary.tsx` (`componentDidCatch`) — all alongside the existing `console.error` calls, not replacing them. DSN supplied via `EXPO_PUBLIC_SENTRY_DSN` in the founder's local `.env` (documented in `.env.example`). A live test error was triggered and confirmed received in the Sentry dashboard. Merged via PR #43. **No further work planned unless a genuine bug appears.**
 >
-> **Current active priority — Auth configuration, nothing else until this is closed:**
-> 1. Turn Supabase email confirmation ON (Authentication → Providers → Email → "Confirm email" toggle) — currently OFF.
-> 2. Add every Redirect URL Cubby needs to the currently-empty allow-list (Authentication → URL Configuration), including at minimum `cubby://reset-password` and `cubby://payment-result` (both handled in `app/_layout.tsx`'s `usePaymentDeepLink()`).
-> 3. Run a real, complete password-reset test end to end: trigger reset from the app → confirm the email arrives → confirm the link opens Cubby via the `cubby://reset-password` deep link → confirm the password can actually be changed.
+> **Auth configuration — VERIFIED AND COMPLETE (2026-07-13).** Supabase email confirmation turned ON (Authentication → Providers → Email). Redirect URL allow-list populated with `cubby://reset-password` and `cubby://payment-result` (Authentication → URL Configuration), plus the local web dev-server origin used for browser testing. Full live password-reset round trip founder-verified: reset email arrived, the link opened Cubby's reset-password screen correctly, and the new password was successfully set and used to log in. **No further work planned unless a genuine bug appears.**
 >
-> Everything below this is intentionally on hold until the above is confirmed clean. Do not move to app identity (`app.json`), Apple/Google developer accounts, push notification credentials, or PayFast configuration until Auth is fully configured and tested.
+> **Next launch blocker: awaiting founder direction.** Candidates still on hold, not yet started: app identity (`app.json` bundle ID/name/icons), Apple/Google developer accounts, push notification credentials, PayFast configuration. Do not begin any of these until the founder explicitly names the next priority.
 >
-> Remaining known manual items before Private Beta (queued behind Auth configuration above):
+> Remaining known manual items before Private Beta:
 > 1. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
 > 2. Once PayFast is actually configured: run a dedicated payment QA sprint (see Payment QA Checklist in Final QA section) — explicitly deferred until real transactions are possible
 > 3. Follow up on the flagged-but-unverified `profiles` RLS question in `verifications.tsx` (see Final QA section row above) — same live-`pg_policies` method as blocks #3/#5
