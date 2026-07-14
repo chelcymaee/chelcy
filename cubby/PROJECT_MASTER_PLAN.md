@@ -1008,7 +1008,13 @@ supabase functions deploy complete-booking
 >
 > **Auth configuration — VERIFIED AND COMPLETE (2026-07-13).** Supabase email confirmation turned ON (Authentication → Providers → Email). Redirect URL allow-list populated with `cubby://reset-password` and `cubby://payment-result` (Authentication → URL Configuration), plus the local web dev-server origin used for browser testing. Full live password-reset round trip founder-verified: reset email arrived, the link opened Cubby's reset-password screen correctly, and the new password was successfully set and used to log in. **No further work planned unless a genuine bug appears.**
 >
-> **Next launch blocker: awaiting founder direction.** Candidates still on hold, not yet started: app identity (`app.json` bundle ID/name/icons), Apple/Google developer accounts, push notification credentials, PayFast configuration. Do not begin any of these until the founder explicitly names the next priority.
+> **App identity review — COMPLETE (2026-07-13).** Founder reviewed and approved app name (`Cubby`), slug (`cubby`), iOS bundle identifier (`com.cubby.app`), version (`1.0.0`), EAS-managed build numbers, app icon, splash screen, and deep-link scheme (`cubby://`) unchanged. Two gaps found and closed:
+> 1. **Android package identifier** was completely unset in `app.json` — added `"android.package": "com.cubby.app"` to match iOS.
+> 2. **`extra.eas.projectId`** existed only in the founder's local, uncommitted `app.json` — never in the repo. Confirmed via `npx eas-cli@latest init --non-interactive` on the founder's machine (`Project already linked (ID: 3982a56f-c3a1-4f7e-9f9c-8ce56aacbfb7)`) and committed to `app.json` so the EAS↔Expo-account link is now version-controlled and consistent across any machine.
+>
+> **Still open before the first production Android build:** the Android Google Maps API key in `app.json` is still the placeholder `"REPLACE_WITH_ANDROID_MAPS_API_KEY"` — maps will not render on Android until a real key replaces it. (iOS needs no key — `HostMap.tsx` only forces `PROVIDER_GOOGLE` on Android; iOS uses Apple Maps by default.) Founder has agreed this must be configured before the first Android build.
+>
+> **Next launch blocker: awaiting founder direction.** Candidates still on hold, not yet started: Google Maps API key provisioning, Apple/Google developer accounts, push notification credentials, PayFast configuration. Do not begin any of these until the founder explicitly names the next priority.
 >
 > Remaining known manual items before Private Beta:
 > 1. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data

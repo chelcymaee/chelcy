@@ -22,6 +22,7 @@
       }
     },
     "android": {
+      "package": "com.cubby.app",
       "adaptiveIcon": {
         "backgroundColor": "#1A3C34",
         "foregroundImage": "./assets/android-icon-foreground.png"
@@ -52,6 +53,11 @@
     ],
     "experiments": {
       "typedRoutes": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3982a56f-c3a1-4f7e-9f9c-8ce56aacbfb7"
+      }
     }
   }
 }
