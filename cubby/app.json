@@ -18,7 +18,8 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Cubby uses your location to find nearby luggage hosts.",
         "NSPhotoLibraryUsageDescription": "Cubby needs photo access so you can add profile and storage photos.",
-        "NSCameraUsageDescription": "Cubby needs camera access to take photos of your storage space."
+        "NSCameraUsageDescription": "Cubby needs camera access to take photos of your storage space.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -31,7 +32,12 @@
         "googleMaps": {
           "apiKey": "REPLACE_WITH_ANDROID_MAPS_API_KEY"
         }
-      }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -55,6 +61,7 @@
       "typedRoutes": false
     },
     "extra": {
+      "router": {},
       "eas": {
         "projectId": "3982a56f-c3a1-4f7e-9f9c-8ce56aacbfb7"
       }
