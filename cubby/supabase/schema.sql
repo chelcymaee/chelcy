@@ -133,10 +133,12 @@ CREATE TABLE IF NOT EXISTS host_bank_details (
 
 ALTER TABLE host_bank_details ENABLE ROW LEVEL SECURITY;
 -- Hosts can only manage bank details for their own listing.
+-- Matches hosts.user_id (self-registered) or hosts.assigned_user_id (admin-assigned) —
+-- every other host-facing screen resolves ownership via both columns.
 -- Admin reads go through the admin-bank-details Edge Function (service role).
 CREATE POLICY "Hosts can manage own bank details" ON host_bank_details
   FOR ALL USING (
-    host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid())
+    host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid() OR assigned_user_id = auth.uid())
   );
 
 -- Payment & payout columns on bookings
@@ -198,6 +200,15 @@ CREATE POLICY "Hosts can update bookings for their listing" ON bookings FOR UPDA
 -- Fix 2: partner_applications — drop the open SELECT policy
 -- DROP POLICY IF EXISTS "Admins can view all applications" ON partner_applications;
 
+-- Fix 3 (Sprint 3): host_bank_details RLS only matched hosts.user_id, but every
+-- host-facing screen resolves ownership via assigned_user_id (admin-assigned hosts)
+-- as well. Hosts using the self-service bank-details screen with an assigned_user_id
+-- host row would be silently blocked by RLS from saving their own bank details.
+-- RUN THIS ON EXISTING DATABASES:
+-- DROP POLICY IF EXISTS "Hosts can manage own bank details" ON host_bank_details;
+-- CREATE POLICY "Hosts can manage own bank details" ON host_bank_details
+--   FOR ALL USING (host_id IN (SELECT id FROM hosts WHERE user_id = auth.uid() OR assigned_user_id = auth.uid()));
+
 -- -------------------------------------------------------------------------
 -- Avatar storage — run these in Supabase SQL editor / Storage dashboard
 -- -------------------------------------------------------------------------
@@ -232,3 +243,392 @@ CREATE POLICY "Hosts can update bookings for their listing" ON bookings FOR UPDA
 --   ON storage.objects FOR DELETE
 --   TO authenticated
 --   USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- -------------------------------------------------------------------------
+-- Messaging tables
+-- -------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  traveller_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  host_id UUID REFERENCES hosts(id) ON DELETE CASCADE NOT NULL,
+  last_message_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE NOT NULL,
+  sender_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  body TEXT NOT NULL,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- -------------------------------------------------------------------------
+-- Support messages table
+-- -------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS support_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_email TEXT,
+  subject TEXT NOT NULL,
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE support_messages ENABLE ROW LEVEL SECURITY;
+
+-- -------------------------------------------------------------------------
+-- Phase 1: host ownership via assigned_user_id
+-- -------------------------------------------------------------------------
+ALTER TABLE hosts ADD COLUMN IF NOT EXISTS assigned_user_id UUID REFERENCES auth.users(id);
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_host_approved BOOLEAN DEFAULT FALSE;
+
+-- -------------------------------------------------------------------------
+-- RLS FIX: bookings — hosts must be readable by assigned_user_id too
+-- -------------------------------------------------------------------------
+-- (Run the migration SQL block below in Supabase SQL editor)
+
+-- -------------------------------------------------------------------------
+-- Verifications table (Phase 1 — Operations Centre)
+-- -------------------------------------------------------------------------
+-- MANUAL STEP: Run this block in Supabase SQL Editor
+
+CREATE TABLE IF NOT EXISTS verifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  id_photo_url TEXT,   -- 7-day signed URL generated at upload time
+  selfie_url TEXT,     -- 7-day signed URL generated at upload time
+  status TEXT NOT NULL DEFAULT 'pending', -- pending | approved | rejected
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ
+);
+
+-- One pending verification per user (upsert on user_id)
+CREATE UNIQUE INDEX IF NOT EXISTS verifications_user_id_unique ON verifications (user_id);
+
+ALTER TABLE verifications ENABLE ROW LEVEL SECURITY;
+
+-- Travellers can submit and read their own verification
+CREATE POLICY "Users can insert own verification"
+  ON verifications FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can read own verification"
+  ON verifications FOR SELECT USING (auth.uid() = user_id);
+
+-- Users can update their own verification (needed for re-submission after rejection)
+CREATE POLICY "Users can update own verification"
+  ON verifications FOR UPDATE USING (auth.uid() = user_id);
+
+-- NOTE: The above UPDATE policy also allows admin to approve/reject verifications
+-- because the admin runs in the same browser session as the logged-in traveller user.
+-- For a multi-user admin system, replace with a service-role edge function.
+
+-- -------------------------------------------------------------------------
+-- Storage bucket for verifications (MANUAL — Supabase Dashboard)
+-- -------------------------------------------------------------------------
+-- 1. Go to Storage → New bucket
+-- 2. Name: verifications
+-- 3. Public access: OFF (private)
+-- 4. After creating, add these storage policies in Dashboard → Storage → verifications → Policies:
+
+-- Policy: Users can upload to their own folder
+-- INSERT: (auth.uid() = (storage.foldername(name))[1]::uuid)
+
+-- Policy: Users can read their own files
+-- SELECT: (auth.uid() = (storage.foldername(name))[1]::uuid)
+
+-- Policy: Users can overwrite their own files (for re-submission)
+-- UPDATE: (auth.uid() = (storage.foldername(name))[1]::uuid)
+
+-- Storage path format: verifications/{user_id}/id.jpg
+--                      verifications/{user_id}/selfie.jpg
+
+-- -------------------------------------------------------------------------
+-- Traveller reviews (host reviews traveller after a booking)
+-- -------------------------------------------------------------------------
+-- MANUAL STEP: Run this block in Supabase SQL Editor if the table doesn't exist
+
+CREATE TABLE IF NOT EXISTS traveller_reviews (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  reviewer_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  host_id UUID REFERENCES hosts(id) ON DELETE CASCADE NOT NULL,
+  traveller_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  host_name TEXT NOT NULL,
+  rating_respectful INTEGER NOT NULL CHECK (rating_respectful >= 1 AND rating_respectful <= 5),
+  rating_on_time INTEGER NOT NULL CHECK (rating_on_time >= 1 AND rating_on_time <= 5),
+  rating_communication INTEGER NOT NULL CHECK (rating_communication >= 1 AND rating_communication <= 5),
+  comment TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE traveller_reviews ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can read traveller reviews (used on admin + traveller profile views)
+CREATE POLICY "Traveller reviews are publicly viewable"
+  ON traveller_reviews FOR SELECT USING (true);
+
+-- Only the host (matched via auth.uid()) can insert a traveller review
+CREATE POLICY "Hosts can create traveller reviews"
+  ON traveller_reviews FOR INSERT WITH CHECK (auth.uid() = reviewer_id);
+
+-- Trigger: recalculate traveller's average rating after a review is inserted/deleted
+CREATE OR REPLACE FUNCTION recalculate_traveller_rating()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  target_traveller_id UUID;
+  avg_respectful NUMERIC;
+  avg_on_time NUMERIC;
+  avg_communication NUMERIC;
+  overall_avg NUMERIC;
+BEGIN
+  target_traveller_id := COALESCE(NEW.traveller_id, OLD.traveller_id);
+
+  SELECT
+    COALESCE(ROUND(AVG(rating_respectful)::NUMERIC, 1), 0),
+    COALESCE(ROUND(AVG(rating_on_time)::NUMERIC, 1), 0),
+    COALESCE(ROUND(AVG(rating_communication)::NUMERIC, 1), 0)
+  INTO avg_respectful, avg_on_time, avg_communication
+  FROM traveller_reviews
+  WHERE traveller_id = target_traveller_id;
+
+  overall_avg := ROUND(((avg_respectful + avg_on_time + avg_communication) / 3)::NUMERIC, 1);
+
+  -- Update traveller_rating on profiles (column added below if needed)
+  UPDATE profiles
+  SET traveller_rating = overall_avg,
+      traveller_review_count = (SELECT COUNT(*) FROM traveller_reviews WHERE traveller_id = target_traveller_id)
+  WHERE id = target_traveller_id;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_recalculate_traveller_rating
+AFTER INSERT OR DELETE ON traveller_reviews
+FOR EACH ROW EXECUTE FUNCTION recalculate_traveller_rating();
+
+-- Add traveller_rating + traveller_review_count to profiles (safe — no-op if already present)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS traveller_rating NUMERIC(3,1) DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS traveller_review_count INTEGER DEFAULT 0;
+
+-- -------------------------------------------------------------------------
+-- Fix 4 (Sprint 5 launch audit): messaging RLS
+-- -------------------------------------------------------------------------
+-- `conversations` and `messages` had ENABLE ROW LEVEL SECURITY with ZERO
+-- policies committed anywhere in this repo. If nothing was added directly
+-- in the Dashboard, RLS with no policies means deny-all for anon/
+-- authenticated roles (messaging would be totally broken, not insecure).
+-- If something WAS added out-of-band in the Dashboard, its correctness was
+-- never verified — the client code (chat.tsx) derives conversation
+-- participants from a booking id with no ownership check of its own, so it
+-- relies entirely on RLS being correct. Run the verification queries in
+-- RLS_VERIFICATION.sql (same folder) BEFORE and AFTER applying this to
+-- confirm what the actual live behavior was, and that this fixes it.
+--
+-- Safe to run even if equivalent policies already exist under different
+-- names — this only touches policies with these exact names.
+
+DROP POLICY IF EXISTS "Participants can read own conversations" ON conversations;
+CREATE POLICY "Participants can read own conversations" ON conversations
+  FOR SELECT USING (
+    auth.uid() = traveller_id
+    OR auth.uid() IN (
+      SELECT COALESCE(assigned_user_id, user_id) FROM hosts WHERE id = conversations.host_id
+    )
+  );
+
+DROP POLICY IF EXISTS "Participants can create own conversations" ON conversations;
+CREATE POLICY "Participants can create own conversations" ON conversations
+  FOR INSERT WITH CHECK (
+    auth.uid() = traveller_id
+    OR auth.uid() IN (
+      SELECT COALESCE(assigned_user_id, user_id) FROM hosts WHERE id = conversations.host_id
+    )
+  );
+
+DROP POLICY IF EXISTS "Participants can update own conversations" ON conversations;
+CREATE POLICY "Participants can update own conversations" ON conversations
+  FOR UPDATE USING (
+    auth.uid() = traveller_id
+    OR auth.uid() IN (
+      SELECT COALESCE(assigned_user_id, user_id) FROM hosts WHERE id = conversations.host_id
+    )
+  );
+
+DROP POLICY IF EXISTS "Participants can read messages in own conversations" ON messages;
+CREATE POLICY "Participants can read messages in own conversations" ON messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM conversations c
+      WHERE c.id = messages.conversation_id
+        AND (
+          c.traveller_id = auth.uid()
+          OR c.host_id IN (SELECT id FROM hosts WHERE assigned_user_id = auth.uid() OR user_id = auth.uid())
+        )
+    )
+  );
+
+DROP POLICY IF EXISTS "Participants can send messages in own conversations" ON messages;
+CREATE POLICY "Participants can send messages in own conversations" ON messages
+  FOR INSERT WITH CHECK (
+    sender_id = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM conversations c
+      WHERE c.id = messages.conversation_id
+        AND (
+          c.traveller_id = auth.uid()
+          OR c.host_id IN (SELECT id FROM hosts WHERE assigned_user_id = auth.uid() OR user_id = auth.uid())
+        )
+    )
+  );
+
+DROP POLICY IF EXISTS "Participants can mark messages as read" ON messages;
+CREATE POLICY "Participants can mark messages as read" ON messages
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM conversations c
+      WHERE c.id = messages.conversation_id
+        AND (
+          c.traveller_id = auth.uid()
+          OR c.host_id IN (SELECT id FROM hosts WHERE assigned_user_id = auth.uid() OR user_id = auth.uid())
+        )
+    )
+  );
+
+-- -------------------------------------------------------------------------
+-- Fix 5 (Sprint 5 launch audit): hosts — self-service INSERT was possible
+-- -------------------------------------------------------------------------
+-- "Hosts can manage own listing" was FOR ALL USING (auth.uid() = user_id).
+-- Postgres applies a FOR ALL policy's USING clause as the WITH CHECK clause
+-- too when no WITH CHECK is given — so on INSERT, it only verified the new
+-- row's user_id equalled auth.uid(). Any signed-in user could satisfy that
+-- by inserting a row with their own id as user_id, creating a live, publicly
+-- visible host listing with zero admin approval — bypassing the entire
+-- admin-hosts create/assign flow. Confirmed live via RLS_VERIFICATION.sql
+-- block #3 (2026-07-07): an ordinary traveller account's INSERT succeeded
+-- with no policy error.
+--
+-- Host creation/assignment only happens through the ADMIN_SECRET-gated
+-- admin-hosts edge function, which uses the service-role key and bypasses
+-- RLS entirely — removing self-service INSERT here does not affect it.
+-- Self-service editing (host-profile.tsx, dashboard.tsx toggling is_active)
+-- still works: admin-hosts always sets user_id and assigned_user_id to the
+-- same value together (both its `create` and `assign` actions), so the
+-- UPDATE policy below still matches every existing host's own account.
+-- Confirmed via grep: no client-side code anywhere in app/ or src/ calls
+-- `.from('hosts').insert(...)` or `.from('hosts').delete(...)` — both only
+-- happen server-side in admin-hosts (service role), so no legitimate path
+-- is broken by removing self-service INSERT/DELETE policies.
+
+DROP POLICY IF EXISTS "Hosts can manage own listing" ON hosts;
+
+DROP POLICY IF EXISTS "Hosts can update own listing" ON hosts;
+CREATE POLICY "Hosts can update own listing" ON hosts
+  FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Hosts can delete own listing" ON hosts;
+CREATE POLICY "Hosts can delete own listing" ON hosts
+  FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Deliberately no INSERT policy for the authenticated/anon roles — with no
+-- permissive INSERT policy, RLS denies all direct INSERTs into hosts by
+-- default. SELECT is unaffected: "Hosts are publicly viewable" (line 56)
+-- already grants public SELECT independently of this policy.
+
+-- -------------------------------------------------------------------------
+-- Fix 6 (Sprint 5 launch audit, continued): hosts — "Admin can manage all
+-- hosts" was a dead-simple bypass, not a real admin check
+-- -------------------------------------------------------------------------
+-- Discovered by querying pg_policies directly against production (this
+-- policy was never in this repo — added out-of-band in the Dashboard).
+-- It read: FOR ALL, roles {public}, USING (true), WITH CHECK (true).
+-- Despite the name, it checks nothing about the caller — `true` grants
+-- every command (SELECT/INSERT/UPDATE/DELETE) to every role, including
+-- ordinary signed-in travellers. This is why Fix 5 alone didn't close
+-- RLS_VERIFICATION.sql block #3: Postgres OR-combines permissive
+-- policies, so this one alone still let the INSERT through regardless
+-- of what Fix 5 changed.
+--
+-- There is no admin identity at the database level in this project at
+-- all — admin access is a client-side PIN (checkAdminSession(),
+-- AsyncStorage-based) with zero corresponding auth.uid()/claim, so no
+-- RLS policy can actually distinguish "the founder's account" from any
+-- other authenticated user. Real admin mutations on hosts already go
+-- through the service-role admin-hosts edge function (bypasses RLS
+-- entirely, gated by ADMIN_SECRET instead) — this policy was pure
+-- unused risk, not a working feature. The one remaining direct client
+-- write to hosts from an admin screen (app/(admin)/verifications.tsx,
+-- syncing owner_is_verified after approving an ID verification) has
+-- been migrated onto the same admin-hosts edge function pattern
+-- (owner_is_verified added to ALLOWED_HOST_FIELDS) as part of this fix,
+-- so nothing depends on this policy anymore.
+
+DROP POLICY IF EXISTS "Admin can manage all hosts" ON hosts;
+
+-- -------------------------------------------------------------------------
+-- Fix 7 (Sprint 5 launch audit, continued): bookings — same fake-admin
+-- policy pattern as Fix 6, on a more sensitive table
+-- -------------------------------------------------------------------------
+-- Discovered the same way as Fix 6: RLS_VERIFICATION.sql block #5 showed
+-- a non-host traveller account (1 real booking of its own) could see 8 of
+-- the platform's 8 total bookings. `bookings` already has correctly scoped
+-- policies committed in this file ("Travellers can view own bookings",
+-- "Hosts can view bookings for their listing") — neither explains the
+-- leak. Querying pg_policies live turned up a third, undocumented one:
+-- "Admin can view all bookings" — FOR ALL, roles {public}, USING (true).
+-- Same shape as the hosts bug: the name implies an admin check, `true`
+-- performs none, and there is no admin identity at the database level in
+-- this project to check against anyway (see Fix 6 for the full reasoning).
+--
+-- Before dropping it, audited every direct client-side read of bookings
+-- to confirm nothing legitimately depended on it. Found one:
+-- app/(admin)/dashboard.tsx read all bookings directly (for stats +
+-- recent-activity widgets) using the admin's own session — the other two
+-- admin bookings screens (all-bookings.tsx, revenue.tsx) were already
+-- migrated onto the service-role admin-bookings edge function back in the
+-- original Sprint 5 pass, dashboard.tsx was simply missed at the time.
+-- Migrated it onto the same admin-bookings edge function here. The one
+-- other direct read (src/lib/review-service.ts, fetching a booking's
+-- host_id to send a reciprocal review prompt) is called by the host who
+-- owns that booking, already covered by "Hosts can view bookings for
+-- their listing" — unaffected by this policy either way.
+
+DROP POLICY IF EXISTS "Admin can view all bookings" ON bookings;
+
+-- -------------------------------------------------------------------------
+-- Fix 8 (regression, found immediately after Fix 7 deployed): travellers
+-- could no longer cancel their own bookings
+-- -------------------------------------------------------------------------
+-- schema.sql has always defined "Travellers can update own bookings" (see
+-- the CREATE TABLE bookings section above), but a live pg_policies query
+-- during the Fix 7 investigation showed it was never actually applied to
+-- production — only 5 policies existed on bookings, and this wasn't one
+-- of them. The only thing granting UPDATE to a traveller cancelling their
+-- own booking was the incidental side effect of "Admin can view all
+-- bookings" being FOR ALL (not just SELECT) with USING (true). Fix 7
+-- correctly closed the read-visibility leak that policy caused, but
+-- removing a FOR ALL policy removes all four commands it covered, not
+-- just the one the audit was focused on (SELECT) — so it silently took
+-- traveller cancellation down with it. The client's cancelBooking() never
+-- checked the update's error, so the failure was invisible: the booking
+-- simply stayed in "confirmed" and never moved to Past.
+--
+-- This restores exactly the access travellers need — nothing broader —
+-- so it doesn't reopen the Fix 7 leak. Host-side booking updates
+-- ("Hosts can update bookings for their listing") and completed bookings
+-- (set via the service-role complete-booking edge function, which
+-- bypasses RLS) are both untouched by this and by Fix 7.
+
+DROP POLICY IF EXISTS "Travellers can update own bookings" ON bookings;
+CREATE POLICY "Travellers can update own bookings" ON bookings
+  FOR UPDATE USING (auth.uid() = traveller_id);

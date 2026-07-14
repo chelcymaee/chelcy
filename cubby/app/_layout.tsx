@@ -4,10 +4,22 @@ import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Sentry from '@sentry/react-native';
 import { Colors } from '../src/constants/colors';
 import { AuthProvider } from '../src/lib/auth-context';
+import { setupNotificationHandler, registerPushToken } from '../src/lib/notifications';
+import { supabase } from '../src/lib/supabase';
+import { setupGlobalErrorLogging } from '../src/lib/error-logging';
+import ErrorBoundary from '../src/components/ErrorBoundary';
 
-// Handle cubby://payment-result deep links when the app was backgrounded during payment
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (SENTRY_DSN) {
+  Sentry.init({ dsn: SENTRY_DSN, tracesSampleRate: 0 });
+}
+
+setupGlobalErrorLogging();
+
+// Handle cubby://payment-result and cubby://reset-password deep links
 function usePaymentDeepLink() {
   useEffect(() => {
     function handleUrl(event: { url: string }) {
@@ -18,6 +30,15 @@ function usePaymentDeepLink() {
           router.replace('/(traveller)/payment-success');
         } else {
           router.replace('/(traveller)/payment-failed');
+        }
+      } else if (parsed.path === 'reset-password') {
+        const code = parsed.queryParams?.code as string | undefined;
+        if (code) {
+          supabase.auth.exchangeCodeForSession(code).finally(() => {
+            router.replace('/(auth)/reset-password');
+          });
+        } else {
+          router.replace('/(auth)/reset-password');
         }
       }
     }
@@ -35,19 +56,28 @@ function usePaymentDeepLink() {
   }, []);
 }
 
-export default function RootLayout() {
+function RootLayout() {
   usePaymentDeepLink();
 
+  useEffect(() => {
+    setupNotificationHandler();
+    registerPushToken();
+  }, []);
+
   return (
-    <AuthProvider>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(traveller)" />
-        <Stack.Screen name="(host)" />
-      </Stack>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <StatusBar style="light" />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(traveller)" />
+          <Stack.Screen name="(host)" />
+        </Stack>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
+
+export default SENTRY_DSN ? Sentry.wrap(RootLayout) : RootLayout;

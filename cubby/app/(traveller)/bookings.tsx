@@ -4,8 +4,12 @@ import { useFocusEffect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { Colors } from '../../src/constants/colors';
+import NotificationBell from '../../src/components/NotificationBell';
+import { BookingCardSkeleton } from '../../src/components/Skeleton';
+import { sendNotification } from '../../src/lib/notification-service';
 
 const STATUS_COLOR: Record<string, string> = {
+  pending_payment: '#9CA3AF',
   pending: '#F59E0B',
   confirmed: '#3B82F6',
   active: '#10B981',
@@ -14,6 +18,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
+  pending_payment: '⏳ Awaiting payment',
   pending: 'Pending',
   confirmed: 'Confirmed',
   active: 'Active',
@@ -23,31 +28,46 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function Bookings() {
   const [bookings, setBookings] = useState<any[]>([]);
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
     loadBookings();
   }, []));
 
   async function loadBookings() {
+    setLoading(true);
     try {
       if (isSupabaseConfigured) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data } = await supabase
             .from('bookings')
-            .select('*, hosts(display_name, location_name)')
+            .select('*, hosts(display_name, location_name, user_id, assigned_user_id)')
             .eq('traveller_id', user.id)
             .order('created_at', { ascending: false });
-          if (data) { setBookings(data); return; }
+          if (data) {
+            setBookings(data);
+            // Check which completed bookings have already been reviewed
+            const completedIds = data.filter((b: any) => b.status === 'completed').map((b: any) => b.id);
+            if (completedIds.length > 0) {
+              const { data: reviewed } = await supabase
+                .from('reviews').select('booking_id').in('booking_id', completedIds);
+              setReviewedBookingIds(new Set((reviewed ?? []).map((r: any) => r.booking_id)));
+            }
+            return;
+          }
         }
       }
       const raw = await AsyncStorage.getItem('cubby_bookings');
       setBookings(raw ? JSON.parse(raw) : []);
     } catch {
       setBookings([]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -58,6 +78,19 @@ export default function Bookings() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId).eq('traveller_id', user.id);
+
+          // Notify the host that the traveller cancelled
+          const booking = bookings.find(b => b.id === bookingId);
+          const hostUserId = booking?.hosts?.assigned_user_id ?? booking?.hosts?.user_id;
+          if (hostUserId) {
+            sendNotification({
+              userId: hostUserId,
+              type: 'booking_cancelled',
+              title: 'Booking cancelled',
+              body: 'A traveller cancelled their upcoming booking with you.',
+              relatedBookingId: bookingId,
+            }).catch(() => {});
+          }
         }
       }
       // Update AsyncStorage too
@@ -81,8 +114,9 @@ export default function Bookings() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
         <Text style={styles.heading}>My Bookings</Text>
+        <NotificationBell variant="traveller" />
       </View>
 
       <View style={styles.tabBar}>
@@ -109,7 +143,9 @@ export default function Bookings() {
       </View>
 
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {shown.length === 0 ? (
+        {loading ? (
+          [1, 2, 3].map(i => <BookingCardSkeleton key={i} />)
+        ) : shown.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>🎟️</Text>
             <Text style={styles.emptyTitle}>
@@ -181,7 +217,13 @@ export default function Bookings() {
                   </View>
                 </View>
 
-                {!!pinCode && status !== 'completed' && status !== 'cancelled' && (
+                {status === 'pending' && (
+                  <View style={styles.pendingCard}>
+                    <Text style={styles.pendingText}>⏳ Payment pending — your PIN will appear once payment is confirmed</Text>
+                  </View>
+                )}
+
+                {!!pinCode && status === 'confirmed' && (
                   <View style={styles.pinCard}>
                     <Text style={styles.pinLabel}>Your drop-off PIN</Text>
                     <Text style={styles.pinCode}>{pinCode}</Text>
@@ -189,38 +231,53 @@ export default function Bookings() {
                   </View>
                 )}
 
-                {status === 'completed' && (
+                {['pending', 'confirmed', 'active'].includes(status) && (
                   <TouchableOpacity
-                    style={styles.reviewBtn}
-                    onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName, bookingId: booking.id } })}
+                    style={styles.messageBtn}
+                    onPress={() => router.push({ pathname: '/(traveller)/chat', params: { bookingId: booking.id, hostName } })}
                     // @ts-ignore
-                    onClick={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName, bookingId: booking.id } })}
+                    onClick={() => router.push({ pathname: '/(traveller)/chat', params: { bookingId: booking.id, hostName } })}
                   >
-                    <Text style={styles.reviewBtnText}>✏️ Leave a review</Text>
+                    <Text style={styles.messageBtnText}>💬 Message host</Text>
                   </TouchableOpacity>
+                )}
+
+                {status === 'completed' && (
+                  reviewedBookingIds.has(booking.id)
+                    ? <View style={styles.reviewedBadge}><Text style={styles.reviewedBadgeText}>✓ Reviewed</Text></View>
+                    : (
+                      <TouchableOpacity
+                        style={styles.reviewBtn}
+                        onPress={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName, bookingId: booking.id } })}
+                        // @ts-ignore
+                        onClick={() => router.push({ pathname: '/(traveller)/review', params: { hostId: booking.hostId ?? booking.host_id, hostName, bookingId: booking.id } })}
+                      >
+                        <Text style={styles.reviewBtnText}>✏️ Leave a review</Text>
+                      </TouchableOpacity>
+                    )
                 )}
 
                 {['pending', 'confirmed'].includes(status) && (
                   confirmCancelId === booking.id ? (
                     <View style={{ gap: 8 }}>
-                      <Text style={{ fontSize: 13, color: '#DC2626', fontWeight: '600', textAlign: 'center' }}>Cancel this booking?</Text>
+                      <Text style={{ fontSize: 13, color: Colors.error, fontWeight: '600', textAlign: 'center' }}>Cancel this booking?</Text>
                       <View style={{ flexDirection: 'row', gap: 8 }}>
                         <TouchableOpacity
-                          style={{ flex: 1, backgroundColor: '#DC2626', borderRadius: 10, padding: 10, alignItems: 'center', opacity: cancellingId === booking.id ? 0.6 : 1 }}
+                          style={{ flex: 1, backgroundColor: Colors.error, borderRadius: 10, padding: 10, alignItems: 'center', opacity: cancellingId === booking.id ? 0.6 : 1 }}
                           onPress={() => cancelBooking(booking.id)}
                           // @ts-ignore
                           onClick={() => cancelBooking(booking.id)}
                           disabled={cancellingId === booking.id}
                         >
-                          <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>{cancellingId === booking.id ? 'Cancelling…' : 'Yes, cancel'}</Text>
+                          <Text style={{ color: Colors.white, fontWeight: '700', fontSize: 13 }}>{cancellingId === booking.id ? 'Cancelling…' : 'Yes, cancel'}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={{ flex: 1, backgroundColor: 'white', borderRadius: 10, padding: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}
+                          style={{ flex: 1, backgroundColor: Colors.white, borderRadius: 10, padding: 10, alignItems: 'center', borderWidth: 1, borderColor: Colors.border }}
                           onPress={() => setConfirmCancelId(null)}
                           // @ts-ignore
                           onClick={() => setConfirmCancelId(null)}
                         >
-                          <Text style={{ color: '#6B7280', fontWeight: '700', fontSize: 13 }}>Keep</Text>
+                          <Text style={{ color: Colors.textSecondary, fontWeight: '700', fontSize: 13 }}>Keep</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -262,16 +319,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2.5,
     borderBottomColor: 'transparent',
   },
-  tabActive: { borderBottomColor: '#FF5C5C' },
+  tabActive: { borderBottomColor: Colors.primary },
   tabText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
-  tabTextActive: { color: '#FF5C5C', fontWeight: '800' },
+  tabTextActive: { color: Colors.primary, fontWeight: '800' },
   list: { padding: 16, gap: 16 },
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 20 },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8, textAlign: 'center' },
   emptySub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
-  exploreBtn: { backgroundColor: '#FF5C5C', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28 },
-  exploreBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  exploreBtn: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28 },
+  exploreBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
   card: { backgroundColor: Colors.white, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 12 },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   cardHost: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
@@ -282,12 +339,18 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   detailIcon: { fontSize: 14, width: 20 },
   detailText: { fontSize: 14, color: Colors.textSecondary },
+  pendingCard: { backgroundColor: Colors.warningBg, borderRadius: 14, padding: 14 },
+  pendingText: { fontSize: 13, color: Colors.warningText, fontWeight: '600', textAlign: 'center' },
   pinCard: { backgroundColor: Colors.primary, borderRadius: 14, padding: 14, alignItems: 'center' },
   pinLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
   pinCode: { fontSize: 36, fontWeight: '900', color: '#fff', letterSpacing: 8, marginBottom: 4 },
   pinHint: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
-  reviewBtn: { borderWidth: 1.5, borderColor: '#FF5C5C', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
-  reviewBtnText: { fontSize: 14, fontWeight: '700', color: '#FF5C5C' },
-  cancelBtn: { borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
-  cancelBtnText: { fontSize: 14, fontWeight: '700', color: '#DC2626' },
+  messageBtn: { borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  messageBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  reviewBtn: { borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  reviewBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  reviewedBadge: { backgroundColor: Colors.successBg, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  reviewedBadgeText: { fontSize: 14, fontWeight: '700', color: Colors.successText },
+  cancelBtn: { borderWidth: 1.5, borderColor: Colors.error, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  cancelBtnText: { fontSize: 14, fontWeight: '700', color: Colors.error },
 });

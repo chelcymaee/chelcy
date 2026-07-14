@@ -1,13 +1,23 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, TextInput, Switch,
+  TouchableOpacity, TextInput, Switch, Image, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import Btn from '../../src/components/Btn';
+import LocationPicker, { LocationResult } from '../../src/components/LocationPicker';
+import HostOnboardingChecklist from '../../src/components/HostOnboardingChecklist';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const STORAGE_FEATURES = [
+  { value: 'secure_storage', emoji: '🛡', label: 'Secure Storage' },
+  { value: 'cctv', emoji: '📷', label: 'CCTV' },
+  { value: 'staffed', emoji: '🏢', label: 'Staffed Location' },
+  { value: 'indoor', emoji: '🏠', label: 'Indoor Storage' },
+];
 const TYPES = [
   { value: 'cafe', label: 'Café', emoji: '☕' },
   { value: 'hotel', label: 'Hotel', emoji: '🏨' },
@@ -23,6 +33,8 @@ export default function HostProfile() {
   const [displayName, setDisplayName] = useState('My Cubby Spot');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
+  const [latitude, setLatitude] = useState<number>(0);
+  const [longitude, setLongitude] = useState<number>(0);
   const [type, setType] = useState('home');
   const [pricePerBag, setPricePerBag] = useState('100');
   const [maxBags, setMaxBags] = useState('4');
@@ -30,10 +42,18 @@ export default function HostProfile() {
   const [untilTime, setUntilTime] = useState('20:00');
   const [days, setDays] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
   const [isActive, setIsActive] = useState(true);
+  const [storageFeatures, setStorageFeatures] = useState<string[]>([]);
+
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<any>(null);
 
   const [loading, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
   const [priceError, setPriceError] = useState('');
+  const [checkingProfile, setCheckingProfile] = useState(true);
+  const [noHostRow, setNoHostRow] = useState(false);
+  const [isHostApproved, setIsHostApproved] = useState(false);
 
   const showToast = useCallback((msg: string, error = false) => {
     setToast({ msg, error });
@@ -51,12 +71,14 @@ export default function HostProfile() {
         const { data, error } = await supabase
           .from('hosts')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('assigned_user_id', user.id)
           .single();
         if (!error && data) {
           setDisplayName(data.display_name ?? 'My Cubby Spot');
           setBio(data.bio ?? '');
           setLocation(data.location_name ?? '');
+          setLatitude(data.latitude ?? 0);
+          setLongitude(data.longitude ?? 0);
           setType(data.business_type ?? 'home');
           setPricePerBag(String(data.price_per_bag_per_day ?? 100));
           setMaxBags(String(data.max_bags ?? 4));
@@ -64,12 +86,28 @@ export default function HostProfile() {
           setUntilTime(data.available_until ?? '20:00');
           setDays(data.available_days ?? DAYS);
           setIsActive(data.is_active ?? true);
+          setStorageFeatures(data.storage_features ?? []);
+          setPhotos(data.photos ?? []);
+          setCheckingProfile(false);
           return;
         }
+
+        // No hosts row assigned yet — this account hasn't been approved/set
+        // up as a host by Cubby. Don't show an edit form that can't save.
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_host_approved')
+          .eq('id', user.id)
+          .maybeSingle();
+        setIsHostApproved(profile?.is_host_approved ?? false);
+        setNoHostRow(true);
+        setCheckingProfile(false);
+        return;
       }
     }
-    // Fallback: AsyncStorage
+    // Fallback: AsyncStorage (demo/offline mode, no Supabase account)
     const raw = await AsyncStorage.getItem('cubby_host_profile');
+    setCheckingProfile(false);
     if (!raw) return;
     try {
       const d = JSON.parse(raw);
@@ -90,7 +128,56 @@ export default function HostProfile() {
     setDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
   }
 
+  function toggleFeature(f: string) {
+    setStorageFeatures(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
+  }
+
+  async function handlePhotoSelect(e: any) {
+    const file: File = e.target.files?.[0];
+    if (!file) return;
+    if (!isSupabaseConfigured) { showToast('Photo upload requires Supabase', true); return; }
+    if (photos.length >= 5) { showToast('Maximum 5 photos allowed', true); return; }
+
+    setUploadingPhoto(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { showToast('Not logged in', true); return; }
+
+      const ext = file.name.split('.').pop();
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('host-photos')
+        .upload(path, file, { upsert: false });
+      if (upErr) { showToast('Upload failed: ' + upErr.message, true); return; }
+
+      const { data: { publicUrl } } = supabase.storage.from('host-photos').getPublicUrl(path);
+      const newPhotos = [...photos, publicUrl];
+      setPhotos(newPhotos);
+
+      // persist to host row immediately
+      await supabase.from('hosts').update({ photos: newPhotos }).eq('assigned_user_id', user.id);
+      showToast('Photo added ✓');
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function removePhoto(url: string) {
+    const newPhotos = photos.filter(p => p !== url);
+    setPhotos(newPhotos);
+    if (isSupabaseConfigured) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) await supabase.from('hosts').update({ photos: newPhotos }).eq('assigned_user_id', user.id);
+    }
+  }
+
   async function save() {
+    if (location.trim() && (!latitude || !longitude)) {
+      showToast('Please select a location from the suggestions — do not type manually.', true);
+      return;
+    }
+
     const price = parseInt(pricePerBag);
     if (isNaN(price) || price < 10 || price > 1000) {
       setPriceError('Price must be between R10 and R1,000 per bag per day.');
@@ -111,6 +198,8 @@ export default function HostProfile() {
               display_name: displayName.trim(),
               bio: bio.trim(),
               location_name: location.trim(),
+              latitude: latitude || null,
+              longitude: longitude || null,
               business_type: type,
               price_per_bag_per_day: price,
               max_bags: bags,
@@ -118,8 +207,9 @@ export default function HostProfile() {
               available_until: untilTime,
               available_days: days,
               is_active: isActive,
+              storage_features: storageFeatures,
             })
-            .eq('user_id', user.id);
+            .eq('assigned_user_id', user.id);
 
           if (error) {
             showToast('Could not save. Please try again.', true);
@@ -164,6 +254,10 @@ export default function HostProfile() {
           <Text style={styles.heading}>My Host Profile</Text>
         </View>
 
+        {checkingProfile ? null : noHostRow ? (
+          <HostOnboardingChecklist isApproved={isHostApproved} />
+        ) : (
+        <>
         {/* Active toggle */}
         <View style={styles.activeCard}>
           <View>
@@ -207,13 +301,11 @@ export default function HostProfile() {
           placeholderTextColor={Colors.textLight}
         />
 
-        <Text style={styles.sectionTitle}>Location</Text>
-        <TextInput
-          style={styles.input}
+        <LocationPicker
+          label="Location"
           value={location}
-          onChangeText={setLocation}
-          placeholder="e.g. Sea Point, Cape Town"
-          placeholderTextColor={Colors.textLight}
+          placeholder="Search address or area…"
+          onSelect={(r: LocationResult) => { setLocation(r.address); setLatitude(r.latitude); setLongitude(r.longitude); }}
         />
 
         <Text style={styles.sectionTitle}>About your space</Text>
@@ -292,25 +384,76 @@ export default function HostProfile() {
           ))}
         </View>
 
-        {/* Photos placeholder */}
+        {/* Storage features */}
+        <Text style={styles.sectionTitle}>Storage features</Text>
+        <Text style={styles.sectionSub}>Tick what applies — these appear as trust badges on your listing.</Text>
+        <View style={styles.featuresGrid}>
+          {STORAGE_FEATURES.map(f => {
+            const active = storageFeatures.includes(f.value);
+            return (
+              <TouchableOpacity
+                key={f.value}
+                style={[styles.featureChip, active && styles.featureChipActive]}
+                onPress={() => toggleFeature(f.value)}
+                // @ts-ignore
+                onClick={() => toggleFeature(f.value)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.featureEmoji}>{f.emoji}</Text>
+                <Text style={[styles.featureLabel, active && styles.featureLabelActive]}>{f.label}</Text>
+                {active && <Text style={styles.featureCheck}>✓</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Photos */}
         <Text style={styles.sectionTitle}>Photos of your storage space</Text>
-        <TouchableOpacity style={styles.photosPlaceholder}>
-          <Text style={styles.photosIcon}>📷</Text>
-          <Text style={styles.photosText}>Add photos</Text>
-          <Text style={styles.photosSub}>Hosts with photos earn 3× more bookings</Text>
-        </TouchableOpacity>
+        {Platform.OS === 'web' && (
+          // @ts-ignore
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handlePhotoSelect}
+          />
+        )}
+        <View style={styles.photosGrid}>
+          {photos.map((uri, i) => (
+            <View key={i} style={styles.photoThumb}>
+              <Image source={{ uri }} style={styles.photoImg} />
+              <TouchableOpacity
+                style={styles.photoRemove}
+                onPress={() => removePhoto(uri)}
+                // @ts-ignore
+                onClick={() => removePhoto(uri)}
+              >
+                <Text style={styles.photoRemoveText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+          {photos.length < 5 && (
+            <TouchableOpacity
+              style={styles.photosPlaceholder}
+              onPress={() => fileInputRef.current?.click()}
+              // @ts-ignore
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPhoto}
+            >
+              <Text style={styles.photosIcon}>{uploadingPhoto ? '⏳' : '📷'}</Text>
+              <Text style={styles.photosText}>{uploadingPhoto ? 'Uploading…' : 'Add photo'}</Text>
+              {photos.length === 0 && (
+                <Text style={styles.photosSub}>Hosts with photos earn 3× more bookings</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Save */}
-        <TouchableOpacity
-          style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
-          onPress={save}
-          // @ts-ignore
-          onClick={save}
-          activeOpacity={0.85}
-          disabled={loading}
-        >
-          <Text style={styles.saveBtnText}>{loading ? 'Saving…' : 'Save listing'}</Text>
-        </TouchableOpacity>
+        <Btn label={loading ? 'Saving…' : 'Save listing'} onPress={save} loading={loading} style={styles.saveBtn} />
+        </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -325,14 +468,14 @@ const styles = StyleSheet.create({
     top: 16,
     left: 24,
     right: 24,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: Colors.textPrimary,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 20,
     zIndex: 100,
     alignItems: 'center',
   },
-  toastError: { backgroundColor: '#DC2626' },
+  toastError: { backgroundColor: Colors.error },
   toastText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   header: { padding: 20, paddingTop: 8 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
@@ -372,9 +515,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
   },
-  inputError: { borderColor: '#DC2626' },
+  inputError: { borderColor: Colors.error },
   textArea: { height: 100, textAlignVertical: 'top' },
-  errorText: { fontSize: 13, color: '#DC2626', marginHorizontal: 20, marginTop: -14, marginBottom: 16 },
+  errorText: { fontSize: 13, color: Colors.error, marginHorizontal: 20, marginTop: -14, marginBottom: 16 },
   priceRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 20 },
   pricePrefix: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginRight: 4 },
   priceInput: { width: 120, marginLeft: 0 },
@@ -402,18 +545,37 @@ const styles = StyleSheet.create({
   dayChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   dayText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
   dayTextActive: { color: Colors.white },
+  photosGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+    paddingHorizontal: 20, marginBottom: 24,
+  },
+  photoThumb: { width: 100, height: 100, borderRadius: 12, overflow: 'hidden', position: 'relative' },
+  photoImg: { width: 100, height: 100 },
+  photoRemove: {
+    position: 'absolute', top: 4, right: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10,
+    width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
+  },
+  photoRemoveText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   photosPlaceholder: {
-    marginHorizontal: 20, borderRadius: 16, borderWidth: 2,
-    borderColor: Colors.border, borderStyle: 'dashed', padding: 28,
-    alignItems: 'center', backgroundColor: Colors.white, marginBottom: 24,
+    width: 100, height: 100, borderRadius: 12, borderWidth: 2,
+    borderColor: Colors.border, borderStyle: 'dashed',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.white,
   },
-  photosIcon: { fontSize: 36, marginBottom: 8 },
-  photosText: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  photosSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4, textAlign: 'center' },
-  saveBtn: {
-    backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18,
-    alignItems: 'center', marginHorizontal: 20,
+  photosIcon: { fontSize: 28, marginBottom: 4 },
+  photosText: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center' },
+  photosSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 4, textAlign: 'center', paddingHorizontal: 4 },
+  sectionSub: { fontSize: 12, color: Colors.textSecondary, paddingHorizontal: 20, marginTop: -6, marginBottom: 12 },
+  featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 20, marginBottom: 24 },
+  featureChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10, backgroundColor: Colors.white,
   },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  featureChipActive: { borderColor: Colors.primary, backgroundColor: Colors.offWhite },
+  featureEmoji: { fontSize: 18 },
+  featureLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  featureLabelActive: { color: Colors.primary },
+  featureCheck: { fontSize: 13, color: Colors.primary, fontWeight: '800', marginLeft: 2 },
+  saveBtn: { marginHorizontal: 20 },
 });

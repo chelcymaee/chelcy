@@ -1,7 +1,24 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { isSupabaseConfigured } from '../../src/lib/supabase';
+import LocationPicker, { LocationResult } from '../../src/components/LocationPicker.web';
+
+const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
+
+async function adminFetch(body: object) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-hosts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-secret': ADMIN_SECRET,
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
 
 type BusinessType = 'café' | 'hotel' | 'hostel' | 'guesthouse' | 'airbnb' | 'tour_operator' | 'home' | 'other';
 
@@ -22,6 +39,8 @@ export default function CreateHost() {
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [locationName, setLocationName] = useState('');
+  const [latitude, setLatitude] = useState<number>(0);
+  const [longitude, setLongitude] = useState<number>(0);
   const [businessType, setBusinessType] = useState<BusinessType>('café');
   const [pricePerBag, setPricePerBag] = useState('');
   const [maxBags, setMaxBags] = useState('');
@@ -32,6 +51,10 @@ export default function CreateHost() {
   const [active, setActive] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  function log(msg: string) {
+    console.log('[create-host]', msg);
+  }
   const [successMsg, setSuccessMsg] = useState('');
 
   function toggleDay(day: string) {
@@ -40,24 +63,36 @@ export default function CreateHost() {
 
   async function handleSave() {
     setErrorMsg(''); setSuccessMsg('');
-    if (!displayName.trim()) { setErrorMsg('Display name is required.'); return; }
-    if (!locationName.trim()) { setErrorMsg('Location name is required.'); return; }
-    const price = parseFloat(pricePerBag);
-    if (isNaN(price) || price < 100 || price > 300) { setErrorMsg('Price must be between R100 and R300.'); return; }
-    const bags = parseInt(maxBags);
-    if (isNaN(bags) || bags < 1 || bags > 50) { setErrorMsg('Max bags must be between 1 and 50.'); return; }
+    log('Button pressed');
+    log('Supabase mode: ' + (isSupabaseConfigured ? 'ON' : 'OFF'));
 
+    if (!displayName.trim()) { setErrorMsg('Display name is required.'); log('FAIL: no display name'); return; }
+    if (!locationName.trim()) { setErrorMsg('Location name is required.'); log('FAIL: no location name'); return; }
+    if (!latitude || !longitude) { setErrorMsg('Please select a location from the autocomplete suggestions — do not type manually.'); log('FAIL: no coordinates'); return; }
+    const price = parseFloat(pricePerBag);
+    if (isNaN(price) || price < 1 || price > 1000) { setErrorMsg('Price must be between R1 and R1000. Got: ' + pricePerBag); log('FAIL: invalid price: ' + pricePerBag); return; }
+    const bags = parseInt(maxBags);
+    if (isNaN(bags) || bags < 1 || bags > 200) { setErrorMsg('Max bags must be between 1 and 200. Got: ' + maxBags); log('FAIL: invalid bags: ' + maxBags); return; }
+
+    log('Validation passed');
     setSaving(true);
     try {
       if (isSupabaseConfigured) {
         const payload = {
           display_name: displayName.trim(), bio: bio.trim(), location_name: locationName.trim(),
-          business_type: businessType, price_per_bag: parseInt(pricePerBag), max_bags: parseInt(maxBags),
+          latitude: latitude || null, longitude: longitude || null,
+          business_type: businessType, price_per_bag_per_day: parseInt(pricePerBag), max_bags: parseInt(maxBags),
           available_from: availableFrom.trim() || '08:00', available_until: availableUntil.trim() || '20:00',
-          available_days: availableDays, partner_email: partnerEmail.trim(), active: false,
+          available_days: availableDays, is_active: active,
         };
-        const { error } = await supabase.from('hosts').insert(payload).select();
-        if (error) { setErrorMsg('Error: ' + error.message); return; }
+        log('Calling admin-hosts create action...');
+        const result = await adminFetch({ action: 'create', payload, partnerEmail: partnerEmail.trim() || undefined });
+        if (result.error) {
+          log('CREATE ERROR: ' + result.error);
+          setErrorMsg(result.error);
+          return;
+        }
+        log('Create success! Row ID: ' + (result.data?.id ?? 'unknown'));
         setSuccessMsg('Host profile created!');
         setTimeout(() => router.replace('/(admin)/manage-hosts'), 1500);
       } else {
@@ -81,7 +116,7 @@ export default function CreateHost() {
   }
 
   const s: any = {
-    page: { minHeight: '100vh', backgroundColor: '#FAF9F6', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
+    page: { minHeight: '100vh', backgroundColor: '#FAF9F6', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingBottom: 100 },
     header: { padding: '16px 20px 8px' },
     backBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#2D6A4F', fontWeight: 600, padding: 0, marginBottom: 8, display: 'block' },
     title: { fontSize: 24, fontWeight: 800, color: '#1a1a1a', margin: 0 },
@@ -125,7 +160,7 @@ export default function CreateHost() {
   return (
     <div style={s.page}>
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.replace('/(admin)/dashboard')}>← Back</button>
+        <button style={s.backBtn} onClick={() => router.replace('/(admin)/dashboard')}>← Back to Dashboard</button>
         <h1 style={s.title}>Create Host Profile</h1>
       </div>
 
@@ -136,8 +171,13 @@ export default function CreateHost() {
         <label style={s.fieldLabel}>Bio</label>
         <textarea style={s.textarea} value={bio} onChange={(e: any) => setBio(e.target.value)} placeholder="A short description of the hosting spot..." />
 
-        <label style={s.fieldLabel}>Location Name *</label>
-        <input style={s.input} value={locationName} onChange={e => setLocationName(e.target.value)} placeholder="e.g. Cape Town City Bowl" />
+        <LocationPicker
+          label="Location *"
+          value={locationName}
+          placeholder="Search address or area…"
+          onSelect={(r: LocationResult) => { setLocationName(r.address); setLatitude(r.latitude); setLongitude(r.longitude); }}
+          inputStyle={s.input}
+        />
 
         <label style={s.fieldLabel}>Business Type</label>
         <div style={s.typeGrid}>
@@ -167,8 +207,8 @@ export default function CreateHost() {
           ))}
         </div>
 
-        <label style={s.fieldLabel}>Partner Email</label>
-        <input style={s.input} type="email" value={partnerEmail} onChange={e => setPartnerEmail(e.target.value)} placeholder="partner@example.com" />
+        <label style={s.fieldLabel}>Assign to User (Email) — optional</label>
+        <input style={s.input} type="email" value={partnerEmail} onChange={e => setPartnerEmail(e.target.value)} placeholder="host@example.com — must already have a Cubby account" />
 
         <div style={s.switchRow}>
           <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a' }}>Active on launch</span>
@@ -184,6 +224,15 @@ export default function CreateHost() {
 
         <button onClick={handleSave} disabled={saving} style={s.saveBtn(saving)}>
           {saving ? 'Saving...' : 'Create Host Profile'}
+        </button>
+      </div>
+
+      {/* Sticky footer: error + save button always visible */}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 20px', backgroundColor: '#FAF9F6', borderTop: '1px solid #F0EAEA' }}>
+        {!!errorMsg && <div style={{ ...s.errorBox, marginBottom: 8 }}>{errorMsg}</div>}
+        {!!successMsg && <div style={{ ...s.successBox, marginBottom: 8 }}>{successMsg}</div>}
+        <button onClick={handleSave} disabled={saving} style={s.saveBtn(saving)}>
+          {saving ? 'Saving…' : 'Create Host Profile'}
         </button>
       </div>
     </div>

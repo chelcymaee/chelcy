@@ -3,21 +3,27 @@ import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, ActivityIndicator,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import { Radius, CardShadow } from '../../src/constants/theme';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import NotificationBell from '../../src/components/NotificationBell';
+import { recalculateHostResponseRate, minutesBetween } from '../../src/lib/response-rate';
+import { sendNotification } from '../../src/lib/notification-service';
 
 // Booking statuses used across Cubby:
-//   pending   — created by traveller, awaiting host acknowledgement
-//   confirmed — host accepted; bags may be dropped off
-//   active    — bags physically dropped off (future use)
-//   completed — bags collected, payout triggered
-//   cancelled — host declined or traveller cancelled
+//   pending_payment — created, awaiting traveller payment via PayFast
+//   pending         — legacy status (pre-PayFast) / fallback
+//   confirmed       — payment received; bags may be dropped off
+//   active          — bags physically dropped off (future use)
+//   completed       — bags collected, split recorded for manual payout
+//   cancelled       — payment failed, user cancelled, or host declined
 
-type BookingStatus = 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled';
+type BookingStatus = 'pending_payment' | 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled';
 
 interface HostBooking {
   id: string;
+  traveller_id: string;
   traveller_name: string;
   traveller_email: string;
   bag_count: number;
@@ -27,9 +33,12 @@ interface HostBooking {
   total_price: number;
   status: BookingStatus;
   pin_code: string;
+  created_at: string;
+  host_id: string;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  pending_payment: { label: '💳 Awaiting payment', color: '#6B7280', bg: '#F3F4F6' },
   pending:   { label: '⏳ Pending',   color: '#D97706', bg: '#FEF3C7' },
   confirmed: { label: '✓ Confirmed', color: '#059669', bg: '#D1FAE5' },
   active:    { label: '📦 Active',    color: '#2563EB', bg: '#DBEAFE' },
@@ -40,24 +49,25 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 // Demo fallback when Supabase is not configured
 const DEMO_REQUESTS: HostBooking[] = [
   {
-    id: 'demo-1', traveller_name: 'Sarah T.', traveller_email: 'sarah@example.com',
+    id: 'demo-1', traveller_id: 'demo', traveller_name: 'Sarah T.', traveller_email: 'sarah@example.com',
     bag_count: 2, drop_off_date: 'Today', drop_off_time: '09:00', pick_up_time: '15:00',
-    total_price: 160, status: 'pending', pin_code: '4821',
+    total_price: 160, status: 'pending', pin_code: '4821', created_at: new Date().toISOString(), host_id: '',
   },
   {
-    id: 'demo-2', traveller_name: 'Luca B.', traveller_email: 'luca@example.com',
+    id: 'demo-2', traveller_id: 'demo', traveller_name: 'Luca B.', traveller_email: 'luca@example.com',
     bag_count: 3, drop_off_date: 'Today', drop_off_time: '11:00', pick_up_time: '19:00',
-    total_price: 240, status: 'pending', pin_code: '7203',
+    total_price: 240, status: 'pending', pin_code: '7203', created_at: new Date().toISOString(), host_id: '',
   },
   {
-    id: 'demo-3', traveller_name: 'Anika R.', traveller_email: 'anika@example.com',
+    id: 'demo-3', traveller_id: 'demo', traveller_name: 'Anika R.', traveller_email: 'anika@example.com',
     bag_count: 1, drop_off_date: 'Yesterday', drop_off_time: '08:30', pick_up_time: '14:00',
-    total_price: 80, status: 'confirmed', pin_code: '3391',
+    total_price: 80, status: 'confirmed', pin_code: '3391', created_at: new Date().toISOString(), host_id: '',
   },
 ];
 
 export default function Requests() {
   const [bookings, setBookings] = useState<HostBooking[]>([]);
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [confirmDeclineId, setConfirmDeclineId] = useState<string | null>(null);
@@ -82,7 +92,7 @@ export default function Requests() {
           const { data: hostRow } = await supabase
             .from('hosts')
             .select('id')
-            .eq('user_id', user.id)
+            .eq('assigned_user_id', user.id)
             .single();
 
           if (!hostRow) {
@@ -96,6 +106,8 @@ export default function Requests() {
             .from('bookings')
             .select(`
               id,
+              host_id,
+              traveller_id,
               bag_count,
               drop_off_date,
               drop_off_time,
@@ -103,18 +115,32 @@ export default function Requests() {
               total_price,
               status,
               pin_code,
-              profiles:traveller_id ( full_name, email )
+              created_at
             `)
             .eq('host_id', hostRow.id)
-            .in('status', ['pending', 'confirmed', 'active'])
+            .in('status', ['pending_payment', 'pending', 'confirmed', 'active', 'completed'])
             .order('created_at', { ascending: false });
 
           if (error) { showToast('Could not load bookings.', true); return; }
 
-          const mapped: HostBooking[] = (data ?? []).map((b: any) => ({
+          // Fetch traveller names separately (avoids RLS join issue on profiles)
+          const travellerIds = [...new Set((data ?? []).map((b: any) => b.traveller_id).filter(Boolean))];
+          let profileMap: Record<string, { full_name: string; email: string }> = {};
+          if (travellerIds.length > 0) {
+            const { data: profs } = await supabase
+              .from('profiles')
+              .select('id, full_name, email')
+              .in('id', travellerIds);
+            for (const p of profs ?? []) profileMap[p.id] = p;
+          }
+
+          const mapped: HostBooking[] = (data ?? []).map((b: any) => {
+            const prof = profileMap[b.traveller_id];
+            return {
             id: b.id,
-            traveller_name: b.profiles?.full_name?.trim() || b.profiles?.email?.split('@')[0] || 'Traveller',
-            traveller_email: b.profiles?.email || '',
+            traveller_id: b.traveller_id ?? '',
+            traveller_name: prof?.full_name?.trim() || prof?.email?.split('@')[0] || 'Traveller',
+            traveller_email: prof?.email || '',
             bag_count: b.bag_count,
             drop_off_date: b.drop_off_date,
             drop_off_time: b.drop_off_time,
@@ -122,8 +148,18 @@ export default function Requests() {
             total_price: b.total_price,
             status: b.status,
             pin_code: b.pin_code,
-          }));
+            created_at: b.created_at,
+            host_id: b.host_id,
+          };});
           setBookings(mapped);
+
+          // Track which completed bookings the host has already reviewed
+          const completedIds = mapped.filter(b => b.status === 'completed').map(b => b.id);
+          if (completedIds.length > 0) {
+            const { data: reviewed } = await supabase
+              .from('traveller_reviews').select('booking_id').in('booking_id', completedIds);
+            setReviewedBookingIds(new Set((reviewed ?? []).map((r: any) => r.booking_id)));
+          }
           return;
         }
       }
@@ -138,21 +174,47 @@ export default function Requests() {
     setActionId(bookingId);
     try {
       if (isSupabaseConfigured) {
-        const { error } = await supabase
-          .from('bookings')
-          .update({ status: newStatus })
-          .eq('id', bookingId);
+        const respondedAt = new Date().toISOString();
+        const booking = bookings.find(b => b.id === bookingId);
 
+        // Record response time when accepting or declining a pending booking
+        const isResponse = newStatus === 'confirmed' || newStatus === 'cancelled';
+        const responseMinutes = (isResponse && booking?.status === 'pending' && booking?.created_at)
+          ? minutesBetween(booking.created_at, respondedAt)
+          : undefined;
+
+        const update: Record<string, unknown> = { status: newStatus };
+        if (isResponse && booking?.status === 'pending') {
+          update.host_responded_at = respondedAt;
+          if (responseMinutes !== undefined) update.response_time_minutes = responseMinutes;
+        }
+
+        const { error } = await supabase.from('bookings').update(update).eq('id', bookingId);
         if (error) { showToast('Could not update booking. Please try again.', true); return; }
+
+        // Recalculate host response rate after responding
+        if (isResponse && booking?.host_id) {
+          recalculateHostResponseRate(supabase, booking.host_id).catch(() => {});
+        }
       }
 
-      // Update local state immediately for snappy UI
-      setBookings(prev =>
-        prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b)
-      );
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
 
       if (newStatus === 'confirmed') showToast('Booking accepted ✓');
       if (newStatus === 'cancelled') showToast('Booking declined');
+
+      // Notify the traveller of the host's decision
+      if (booking?.traveller_id && isSupabaseConfigured) {
+        sendNotification({
+          userId: booking.traveller_id,
+          type: newStatus === 'confirmed' ? 'booking_confirmed' : 'booking_declined',
+          title: newStatus === 'confirmed' ? 'Booking confirmed ✅' : 'Booking declined',
+          body: newStatus === 'confirmed'
+            ? 'Your booking has been accepted. Check your bookings for the PIN.'
+            : 'Your booking request was not accepted. Try another host nearby!',
+          relatedBookingId: bookingId,
+        }).catch(() => {});
+      }
     } finally {
       setActionId(null);
       setConfirmDeclineId(null);
@@ -172,11 +234,14 @@ export default function Requests() {
 
       <View style={styles.header}>
         <Text style={styles.heading}>Booking Requests</Text>
-        {pending > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{pending} new</Text>
-          </View>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {pending > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{pending} new</Text>
+            </View>
+          )}
+          <NotificationBell variant="host" />
+        </View>
       </View>
 
       {loading ? (
@@ -230,6 +295,32 @@ export default function Requests() {
                     <Text style={styles.pinLabel}>Traveller PIN:</Text>
                     <Text style={styles.pinCode}>{item.pin_code}</Text>
                   </View>
+                )}
+
+                {/* View Traveller Profile */}
+                <TouchableOpacity
+                  style={styles.viewProfileBtn}
+                  onPress={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.traveller_id, bookingId: item.id } })}
+                  // @ts-ignore
+                  onClick={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.traveller_id, bookingId: item.id } })}
+                >
+                  <Text style={styles.viewProfileBtnText}>👤 View Traveller Profile</Text>
+                </TouchableOpacity>
+
+                {/* Review traveller for completed bookings */}
+                {item.status === 'completed' && (
+                  reviewedBookingIds.has(item.id)
+                    ? <View style={styles.reviewedBadge}><Text style={styles.reviewedBadgeText}>✓ Traveller reviewed</Text></View>
+                    : (
+                      <TouchableOpacity
+                        style={styles.reviewTravellerBtn}
+                        onPress={() => router.push({ pathname: '/(host)/review-traveller', params: { travellerId: item.traveller_id, travellerName: item.traveller_name, bookingId: item.id } })}
+                        // @ts-ignore
+                        onClick={() => router.push({ pathname: '/(host)/review-traveller', params: { travellerId: item.traveller_id, travellerName: item.traveller_name, bookingId: item.id } })}
+                      >
+                        <Text style={styles.reviewTravellerBtnText}>✏️ Review traveller</Text>
+                      </TouchableOpacity>
+                    )
                 )}
 
                 {/* Accept / Decline for pending */}
@@ -294,26 +385,29 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   toast: {
     position: 'absolute', top: 16, left: 24, right: 24,
-    backgroundColor: '#1A1A1A', borderRadius: 12,
+    backgroundColor: Colors.textPrimary, borderRadius: 12,
     paddingVertical: 14, paddingHorizontal: 20, zIndex: 100, alignItems: 'center',
   },
-  toastError: { backgroundColor: '#DC2626' },
+  toastError: { backgroundColor: Colors.error },
   toastText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 20, paddingTop: 8 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
   badge: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText: { fontSize: 12, fontWeight: '700', color: '#1A1A1A' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  reviewTravellerBtn: { borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 8 },
+  reviewTravellerBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  reviewedBadge: { backgroundColor: Colors.successBg, borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 8 },
+  reviewedBadgeText: { fontSize: 14, fontWeight: '700', color: Colors.successText },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8, textAlign: 'center' },
   emptySub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
   list: { padding: 20, gap: 14 },
   card: {
-    backgroundColor: Colors.white, borderRadius: 16, padding: 14,
+    backgroundColor: Colors.white, borderRadius: Radius.lg, padding: 14,
     borderWidth: 1, borderColor: Colors.border,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, gap: 12,
+    ...CardShadow, gap: 12,
   },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   avatar: {
@@ -321,6 +415,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border, alignItems: 'center', justifyContent: 'center',
   },
   name: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  viewProfileBtn: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  viewProfileBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   email: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
   sub: { fontSize: 13, color: Colors.textSecondary, marginTop: 3 },
   date: { fontSize: 12, color: Colors.textLight, marginTop: 2 },
@@ -329,10 +425,10 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 11, fontWeight: '700' },
   pinRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#F0FDF4', borderRadius: 10, padding: 10,
+    backgroundColor: Colors.successBg, borderRadius: 10, padding: 10,
   },
-  pinLabel: { fontSize: 13, color: '#059669', fontWeight: '600' },
-  pinCode: { fontSize: 22, fontWeight: '900', color: '#059669', letterSpacing: 4 },
+  pinLabel: { fontSize: 13, color: Colors.successText, fontWeight: '600' },
+  pinCode: { fontSize: 22, fontWeight: '900', color: Colors.successText, letterSpacing: 4 },
   actions: { flexDirection: 'row', gap: 10 },
   acceptBtn: {
     flex: 1, backgroundColor: Colors.primary, borderRadius: 10,
@@ -345,9 +441,9 @@ const styles = StyleSheet.create({
   },
   declineText: { color: Colors.textSecondary, fontWeight: '700', fontSize: 15 },
   confirmRow: { gap: 8 },
-  confirmText: { fontSize: 13, color: '#DC2626', fontWeight: '600', textAlign: 'center' },
+  confirmText: { fontSize: 13, color: Colors.error, fontWeight: '600', textAlign: 'center' },
   declineConfirmBtn: {
-    flex: 1, backgroundColor: '#DC2626', borderRadius: 10,
+    flex: 1, backgroundColor: Colors.error, borderRadius: 10,
     paddingVertical: 12, alignItems: 'center',
   },
   declineConfirmText: { color: Colors.white, fontWeight: '700', fontSize: 14 },

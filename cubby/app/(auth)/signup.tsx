@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ScrollView,
+  StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import Btn from '../../src/components/Btn';
+import Banner from '../../src/components/Banner';
 
 type Role = 'traveller' | 'host' | 'both' | 'runner';
 
@@ -31,11 +33,43 @@ export default function Signup() {
     setLoading(true);
     try {
       if (isSupabaseConfigured) {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName, role } },
+        });
         if (error) { setErrorMsg(error.message); return; }
+
         const user = data.user;
-        if (user) {
-          await supabase.from('profiles').insert({ id: user.id, email, full_name: fullName, role });
+        console.log('[signup] auth.signUp result:', { userId: user?.id, hasSession: !!data.session });
+
+        if (!user) {
+          setErrorMsg('Signup failed — no user returned. Please try again.');
+          return;
+        }
+
+        if (data.session) {
+          // Session is active (email confirmation disabled) — insert profile now.
+          const { error: upsertError } = await supabase
+            .from('profiles')
+            .upsert(
+              { id: user.id, email, full_name: fullName, role },
+              { onConflict: 'id', ignoreDuplicates: true },
+            );
+          if (upsertError) {
+            console.error('[signup] profile upsert failed:', upsertError);
+            // Non-fatal: the DB trigger will create the row. Log and continue.
+          } else {
+            console.log('[signup] profile upsert succeeded for', user.id);
+          }
+        } else {
+          // No session yet — email confirmation is enabled in Supabase.
+          // The on_auth_user_created DB trigger will create the profile row.
+          console.log('[signup] no session — email confirmation required. Trigger will create profile.');
+          setErrorMsg('');
+          setLoading(false);
+          Alert.alert('Account created!', 'Please check your email and confirm your address before signing in.');
+          return;
         }
       } else {
         // Local auth — save account to device
@@ -49,7 +83,7 @@ export default function Signup() {
         await AsyncStorage.setItem('cubby_session', JSON.stringify(user));
         await AsyncStorage.setItem('cubby_traveller_profile', JSON.stringify({ name: fullName, avatarUri: null }));
       }
-      if (role === 'host' || role === 'both') router.replace('/(host)/bank-details');
+      if (role === 'host' || role === 'both') router.replace('/(traveller)/profile');
       else if (role === 'runner') router.replace('/(runner)/dashboard');
       else router.replace('/(traveller)/explore');
     } catch (err: any) {
@@ -59,11 +93,12 @@ export default function Signup() {
     }
   }
 
+  // Bag Runner intentionally not offered during private beta — the runner
+  // dashboard/deliveries/earnings screens aren't wired to real data yet.
   const roleOptions: { value: Role; label: string; emoji: string; desc: string }[] = [
     { value: 'traveller', emoji: '🧳', label: 'Traveller', desc: 'I need to store my bags' },
     { value: 'host', emoji: '🏠', label: 'Host', desc: 'I want to earn by storing bags' },
     { value: 'both', emoji: '✌️', label: 'Both', desc: 'I travel and host' },
-    { value: 'runner', emoji: '🚗', label: 'Bag Runner', desc: 'I pick up & deliver bags' },
   ];
 
   return (
@@ -72,9 +107,9 @@ export default function Signup() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
-        <TouchableOpacity style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/(auth)/login')}
+        <TouchableOpacity style={styles.back} onPress={() => router.replace('/(auth)/login')}
           // @ts-ignore
-          onClick={() => router.canGoBack() ? router.back() : router.replace('/(auth)/login')}>
+          onClick={() => router.replace('/(auth)/login')}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 
@@ -86,11 +121,7 @@ export default function Signup() {
         <Text style={styles.heading}>Create account</Text>
         <Text style={styles.subheading}>Join Cubby — it only takes a minute</Text>
 
-        {!!errorMsg && (
-          <View style={{ backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, marginBottom: 12 }}>
-            <Text style={{ color: '#DC2626', fontWeight: '600' }}>{errorMsg}</Text>
-          </View>
-        )}
+        {!!errorMsg && <Banner message={errorMsg} variant="error" />}
 
         {/* Role picker */}
         <Text style={styles.label}>I am a…</Text>
@@ -145,16 +176,12 @@ export default function Signup() {
             secureTextEntry
           />
 
-          <TouchableOpacity
-            style={[styles.btn, loading && styles.btnDisabled]}
+          <Btn
+            label={loading ? 'Creating account…' : 'Create account'}
             onPress={handleSignup}
-            disabled={loading}
-            activeOpacity={0.85}
-            // @ts-ignore
-            onClick={handleSignup}
-          >
-            <Text style={styles.btnText}>{loading ? 'Creating account…' : 'Create account'}</Text>
-          </TouchableOpacity>
+            loading={loading}
+            style={styles.btn}
+          />
         </View>
 
         <View style={styles.footer}>
@@ -165,7 +192,15 @@ export default function Signup() {
         </View>
 
         <Text style={styles.terms}>
-          By signing up you agree to our Terms of Service and Privacy Policy.
+          By signing up you agree to our{' '}
+          <Text style={styles.termsLink} onPress={() => router.push('/(traveller)/terms')}>
+            Terms of Service
+          </Text>
+          {' '}and{' '}
+          <Text style={styles.termsLink} onPress={() => router.push('/(traveller)/privacy')}>
+            Privacy Policy
+          </Text>
+          .
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -209,17 +244,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textPrimary,
   },
-  btn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  btn: { marginTop: 24 },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
   footerText: { color: Colors.textSecondary, fontSize: 15 },
   footerLink: { color: Colors.primary, fontSize: 15, fontWeight: '700' },
   terms: { textAlign: 'center', color: Colors.textLight, fontSize: 12, marginTop: 16, lineHeight: 18 },
+  termsLink: { color: Colors.primary, fontWeight: '600' },
 });

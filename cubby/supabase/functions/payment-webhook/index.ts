@@ -88,6 +88,109 @@ serve(async (req) => {
       }
 
       console.log(`Booking ${bookingId} confirmed`);
+
+      // Insert in-app notification for the traveller (fire-and-forget)
+      supabase.from('bookings')
+        .select('traveller_id')
+        .eq('id', bookingId)
+        .single()
+        .then(({ data: bk }) => {
+          if (bk?.traveller_id) {
+            supabase.from('notifications').insert({
+              user_id: bk.traveller_id,
+              type: 'booking_confirmed',
+              title: 'Payment confirmed ✅',
+              body: 'Your payment was successful. Check your bookings for the PIN.',
+              related_booking_id: bookingId,
+              read_at: null,
+            }).catch(() => {});
+
+            // Push notification
+            const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+            const adminSecret = Deno.env.get('ADMIN_SECRET') ?? '';
+            fetch(`${supabaseUrl}/functions/v1/send-push`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-admin-secret': adminSecret },
+              body: JSON.stringify({
+                user_id: bk.traveller_id,
+                title: 'Payment confirmed ✅',
+                body: 'Your payment was successful. Check your bookings for the PIN.',
+                data: { type: 'booking_confirmed', booking_id: bookingId },
+              }),
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+
+      // Send booking confirmation + new booking emails (fire-and-forget — never block)
+      try {
+        const { data: booking } = await supabase
+          .from('bookings')
+          .select('traveller_id, host_id, drop_off_date, drop_off_time, pick_up_date, pick_up_time, bag_count, total_price, pin_code')
+          .eq('id', bookingId)
+          .single();
+
+        if (booking) {
+          const [{ data: traveller }, { data: host }] = await Promise.all([
+            supabase.from('profiles').select('full_name, email').eq('id', booking.traveller_id).single(),
+            supabase.from('hosts').select('display_name, location_name, user_id, assigned_user_id').eq('id', booking.host_id).single(),
+          ]);
+
+          const hostOwnerId = host?.assigned_user_id ?? host?.user_id;
+          const { data: hostOwner } = hostOwnerId
+            ? await supabase.from('profiles').select('full_name, email').eq('id', hostOwnerId).single()
+            : { data: null };
+
+          const SUPABASE_URL_LOCAL = Deno.env.get('SUPABASE_URL') ?? '';
+          const ADMIN_SECRET_LOCAL = Deno.env.get('ADMIN_SECRET') ?? '';
+          const emailBase = `${SUPABASE_URL_LOCAL}/functions/v1/send-email`;
+
+          if (traveller?.email) {
+            fetch(emailBase, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET_LOCAL },
+              body: JSON.stringify({
+                emailType: 'booking_confirmed',
+                data: {
+                  travellerEmail: traveller.email,
+                  travellerName: traveller.full_name ?? 'Traveller',
+                  hostName: host?.display_name ?? 'your host',
+                  location: host?.location_name ?? '',
+                  dropOffDate: booking.drop_off_date,
+                  dropOffTime: booking.drop_off_time,
+                  pickUpDate: booking.pick_up_date,
+                  pickUpTime: booking.pick_up_time,
+                  bagCount: booking.bag_count,
+                  totalPrice: booking.total_price,
+                  pinCode: booking.pin_code,
+                },
+              }),
+            }).catch(e => console.error('Email (booking_confirmed) failed:', e));
+          }
+
+          if (hostOwner?.email) {
+            fetch(emailBase, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET_LOCAL },
+              body: JSON.stringify({
+                emailType: 'new_booking_request',
+                data: {
+                  hostEmail: hostOwner.email,
+                  hostName: host?.display_name ?? 'Host',
+                  travellerName: traveller?.full_name ?? 'A traveller',
+                  dropOffDate: booking.drop_off_date,
+                  dropOffTime: booking.drop_off_time,
+                  pickUpDate: booking.pick_up_date,
+                  pickUpTime: booking.pick_up_time,
+                  bagCount: booking.bag_count,
+                  totalPrice: booking.total_price,
+                },
+              }),
+            }).catch(e => console.error('Email (new_booking_request) failed:', e));
+          }
+        }
+      } catch (emailErr) {
+        console.error('Email dispatch error (non-fatal):', emailErr);
+      }
     } else {
       // Payment failed or declined
       const { error } = await supabase

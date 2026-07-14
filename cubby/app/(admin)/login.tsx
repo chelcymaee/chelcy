@@ -6,7 +6,7 @@ const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
 
-const ADMIN_PIN = process.env.EXPO_PUBLIC_ADMIN_PIN ?? '';
+const ADMIN_PIN = process.env.EXPO_PUBLIC_ADMIN_PIN;
 
 export default function AdminLogin() {
   const [pin, setPin] = useState('');

@@ -1,6 +1,6 @@
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
-  Image, TextInput, Modal, KeyboardAvoidingView, Platform, ActivityIndicator,
+  Image, TextInput, Modal, KeyboardAvoidingView, Platform, ActivityIndicator, Animated,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import HostOnboardingChecklist from '../../src/components/HostOnboardingChecklist';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MenuItem {
@@ -52,6 +53,11 @@ export default function Profile() {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [isHostApproved, setIsHostApproved] = useState(false);
+  const [wantsToHost, setWantsToHost] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
+  const [travellerRating, setTravellerRating] = useState(0);
+  const [travellerReviewCount, setTravellerReviewCount] = useState(-1); // -1 = not loaded yet
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -61,6 +67,8 @@ export default function Profile() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarToast, setAvatarToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastY = useRef(new Animated.Value(-8)).current;
 
   // Draft state for modal
   const [draftFirstName, setDraftFirstName] = useState('');
@@ -83,6 +91,22 @@ export default function Profile() {
           setLastName(parts.slice(1).join(' '));
           setPhone(profile.phone ?? '');
           if (profile.avatar_url) setAvatar(profile.avatar_url);
+          setIsHostApproved(profile.is_host_approved ?? false);
+          setWantsToHost(profile.role === 'host' || profile.role === 'both');
+          setTravellerRating(profile.traveller_rating ?? 0);
+          setTravellerReviewCount(profile.traveller_review_count ?? 0);
+
+          // Check verification status
+          const { data: verif } = await supabase
+            .from('verifications')
+            .select('status')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          if (verif) {
+            setVerificationStatus(verif.status);
+          } else if (profile.is_verified) {
+            setVerificationStatus('approved');
+          }
           return;
         }
       }
@@ -103,8 +127,16 @@ export default function Profile() {
 
   function showToast(msg: string, ok: boolean) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastOpacity.setValue(0);
+    toastY.setValue(-8);
     setAvatarToast({ msg, ok });
-    toastTimer.current = setTimeout(() => setAvatarToast(null), 3500);
+    Animated.parallel([
+      Animated.timing(toastOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.spring(toastY, { toValue: 0, useNativeDriver: true, speed: 24, bounciness: 6 }),
+    ]).start();
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(toastOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => setAvatarToast(null));
+    }, 3200);
   }
 
   async function saveProfile(fn: string, ln: string, ph: string, avatarUrl: string | null) {
@@ -268,21 +300,27 @@ export default function Profile() {
   const displayName = [firstName, lastName].filter(Boolean).join(' ');
 
   const SECTIONS: MenuSection[] = [
-    {
+    ...(isHostApproved ? [{
       title: 'Hosting',
       items: [
         { icon: '🏠', label: 'Switch to Host Dashboard', onPress: () => router.replace('/(host)/dashboard') },
         { icon: '📋', label: 'My host listing', onPress: () => router.push('/(host)/host-profile') },
         { icon: '🏦', label: 'Bank details', onPress: () => router.push('/(host)/bank-details') },
       ],
-    },
+    }] : []),
     {
       title: 'General',
       items: [
+        { icon: '⭐', label: 'My Reviews', onPress: () => router.push('/(traveller)/reviews') },
         { icon: '💳', label: 'Payment methods', onPress: () => router.push('/(traveller)/payment-details') },
-        { icon: '🔔', label: 'Notifications', onPress: () => router.push('/(traveller)/notifications') },
+        { icon: '🔔', label: 'Notification Preferences', onPress: () => router.push('/(traveller)/notification-preferences') },
         { icon: '🌐', label: 'Language', onPress: () => router.push('/(traveller)/language') },
-        { icon: '✅', label: 'Get verified ✅', onPress: () => router.push('/(traveller)/verification'), highlight: true },
+        {
+          icon: verificationStatus === 'approved' ? '✅' : verificationStatus === 'pending' ? '⏳' : verificationStatus === 'rejected' ? '❌' : '🪪',
+          label: verificationStatus === 'approved' ? 'Verified ✅' : verificationStatus === 'pending' ? 'Verification pending…' : verificationStatus === 'rejected' ? 'Verification failed — retry' : 'Get verified ✅',
+          onPress: () => router.push('/(traveller)/verification'),
+          highlight: verificationStatus === 'none' || verificationStatus === 'rejected',
+        },
       ],
     },
     {
@@ -293,6 +331,8 @@ export default function Profile() {
         { icon: '💬', label: 'FAQ', onPress: () => router.push('/(traveller)/support') },
         { icon: '🛡️', label: 'Safety & trust', onPress: () => router.push('/(traveller)/safety') },
         { icon: '📞', label: 'Contact support', onPress: () => router.push('/(traveller)/support') },
+        { icon: '📄', label: 'Terms of Service', onPress: () => router.push('/(traveller)/terms') },
+        { icon: '🔒', label: 'Privacy Policy', onPress: () => router.push('/(traveller)/privacy') },
       ],
     },
   ];
@@ -307,9 +347,9 @@ export default function Profile() {
 
         {/* Avatar upload toast */}
         {!!avatarToast && (
-          <View style={[styles.toast, avatarToast.ok ? styles.toastOk : styles.toastErr]}>
+          <Animated.View style={[styles.toast, avatarToast.ok ? styles.toastOk : styles.toastErr, { opacity: toastOpacity, transform: [{ translateY: toastY }] }]}>
             <Text style={styles.toastText}>{avatarToast.ok ? '✅' : '⚠️'} {avatarToast.msg}</Text>
-          </View>
+          </Animated.View>
         )}
 
         {/* Profile row */}
@@ -341,7 +381,30 @@ export default function Profile() {
               )}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.profileName}>{displayName}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Text style={styles.profileName}>{displayName}</Text>
+                {verificationStatus === 'approved' && (
+                  <View style={styles.verifiedBadge}>
+                    <Text style={styles.verifiedBadgeText}>✅ Verified</Text>
+                  </View>
+                )}
+                {verificationStatus === 'pending' && (
+                  <View style={styles.pendingBadge}>
+                    <Text style={styles.pendingBadgeText}>⏳ Pending</Text>
+                  </View>
+                )}
+              </View>
+              {travellerReviewCount === 0 ? (
+                <Text style={styles.profileMember}>New member</Text>
+              ) : travellerReviewCount > 0 ? (
+                <TouchableOpacity onPress={() => router.push('/(traveller)/reviews')}
+                  // @ts-ignore
+                  onClick={() => router.push('/(traveller)/reviews')}>
+                  <Text style={styles.profileRating}>
+                    ⭐ {travellerRating.toFixed(1)} · {travellerReviewCount} review{travellerReviewCount !== 1 ? 's' : ''}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
               <Text style={styles.profileEmail}>{email}</Text>
             </View>
             <TouchableOpacity style={styles.editChip} onPress={openEditModal}>
@@ -366,10 +429,18 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* Become a Host banner */}
-        <TouchableOpacity
+        {/* Host status: pending-approval checklist for host/both signups, or a
+            generic CTA for travellers who haven't shown interest yet */}
+        {!isHostApproved && wantsToHost && (
+          <View style={{ marginBottom: 16 }}>
+            <HostOnboardingChecklist isApproved={false} />
+          </View>
+        )}
+        {!isHostApproved && !wantsToHost && <TouchableOpacity
           style={styles.becomeHostCard}
-          onPress={() => router.push('/(host)/bank-details')}
+          onPress={() => router.push('/(traveller)/partner-apply')}
+          // @ts-ignore
+          onClick={() => router.push('/(traveller)/partner-apply')}
           activeOpacity={0.85}
         >
           <Text style={styles.becomeHostEmoji}>🏠</Text>
@@ -378,7 +449,7 @@ export default function Profile() {
             <Text style={styles.becomeHostSub}>Earn money storing bags →</Text>
           </View>
           <Text style={styles.becomeHostArrow}>›</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>}
 
         {/* Menu sections */}
         {SECTIONS.map(section => (
@@ -438,7 +509,9 @@ export default function Profile() {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity onPress={() => router.push('/(admin)/login')}>
+        <TouchableOpacity onPress={() => router.replace('/(admin)/login')}
+          // @ts-ignore
+          onClick={() => router.replace('/(admin)/login')}>
           <Text style={{ color: 'rgba(0,0,0,0.08)', fontSize: 11, textAlign: 'center', marginTop: 20 }}>v1.0.0</Text>
         </TouchableOpacity>
 
@@ -607,7 +680,13 @@ const styles = StyleSheet.create({
   toastErr: { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FECACA' },
   toastText: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
   profileName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
+  profileRating: { fontSize: 13, color: Colors.star, fontWeight: '700', marginTop: 2 },
+  profileMember: { fontSize: 12, color: Colors.textLight, marginTop: 2, fontStyle: 'italic' },
   profileEmail: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  verifiedBadge: { backgroundColor: '#D1FAE5', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  verifiedBadgeText: { fontSize: 11, fontWeight: '700', color: '#059669' },
+  pendingBadge: { backgroundColor: '#FEF3C7', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  pendingBadgeText: { fontSize: 11, fontWeight: '700', color: '#D97706' },
   editChip: {
     borderWidth: 1.5,
     borderColor: Colors.primary,
@@ -695,7 +774,7 @@ const styles = StyleSheet.create({
 
   // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
     backgroundColor: '#FAFAFA',
     borderTopLeftRadius: 24,

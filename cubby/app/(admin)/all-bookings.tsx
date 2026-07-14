@@ -1,6 +1,20 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isSupabaseConfigured } from '../../src/lib/supabase';
+
+const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
+
+async function adminFetchBookings() {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-bookings`, {
+    method: 'GET',
+    headers: {
+      'x-admin-secret': ADMIN_SECRET,
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    },
+  });
+  return res.json();
+}
 
 const STATUS_COLOR: Record<string, string> = {
   pending: '#F59E0B',
@@ -15,9 +29,12 @@ export default function AdminBookings() {
   const [tab, setTab] = useState<'all' | 'active' | 'completed'>('all');
 
   useFocusEffect(useCallback(() => {
-    AsyncStorage.getItem('cubby_bookings').then(raw => {
-      setBookings(raw ? JSON.parse(raw) : []);
-    });
+    if (!isSupabaseConfigured) return;
+    async function load() {
+      const { data } = await adminFetchBookings();
+      setBookings(data ?? []);
+    }
+    load();
   }, []));
 
   const filtered = tab === 'all' ? bookings
@@ -79,7 +96,7 @@ export default function AdminBookings() {
               <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 10 }}>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 16, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>
-                    {item.host?.display_name ?? item.hostName ?? 'Unknown host'}
+                    {item.host_display_name ?? 'Unknown host'}
                   </p>
                   <p style={{ fontSize: 13, color: '#6B7280', margin: '2px 0 0' }}>
                     👤 {item.traveller_name ?? 'Traveller'}

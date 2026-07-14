@@ -35,6 +35,7 @@ export default function TravellerLayout() {
       <Tabs.Screen name="runners" options={{ href: null }} />
       <Tabs.Screen name="verification" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="notification-preferences" options={{ href: null }} />
       <Tabs.Screen name="safety" options={{ href: null }} />
       <Tabs.Screen name="support" options={{ href: null }} />
       <Tabs.Screen name="booking-confirmation" options={{ href: null }} />
@@ -43,6 +44,10 @@ export default function TravellerLayout() {
       <Tabs.Screen name="payment-success" options={{ href: null }} />
       <Tabs.Screen name="payment-failed" options={{ href: null }} />
       <Tabs.Screen name="partner-apply" options={{ href: null }} />
+      <Tabs.Screen name="reviews" options={{ href: null }} />
+      <Tabs.Screen name="review-detail" options={{ href: null }} />
+      <Tabs.Screen name="terms" options={{ href: null }} />
+      <Tabs.Screen name="privacy" options={{ href: null }} />
     </Tabs>
   );
 }

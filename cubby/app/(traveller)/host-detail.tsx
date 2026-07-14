@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity,
+  TouchableOpacity, Animated, Image,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
-import { MOCK_REVIEWS } from '../../src/lib/mock-data';
+import { computeHostBadges, topBadges, TrustBadge } from '../../src/lib/trust-badges';
+import { formatResponseRate, formatResponseTime, formatResponseTimeShort } from '../../src/lib/response-rate';
+import { HostDetailSkeleton } from '../../src/components/Skeleton';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TODAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -31,7 +33,7 @@ const HOW_IT_WORKS = [
   },
 ];
 
-function normalizeHost(raw: any) {
+function normalizeHost(raw: any, ownerIsVerified?: boolean) {
   return {
     id: raw.id,
     display_name: raw.display_name ?? raw.displayName ?? '',
@@ -41,22 +43,31 @@ function normalizeHost(raw: any) {
     price_per_bag_per_day: raw.price_per_bag_per_day ?? raw.pricePerBag ?? 100,
     rating: raw.rating ?? 0,
     review_count: raw.review_count ?? 0,
-    response_rate: raw.response_rate ?? raw.responseRate ?? 100,
+    response_rate: raw.response_rate ?? null,
+    avg_response_time_minutes: raw.avg_response_time_minutes ?? null,
+    total_requests: raw.total_requests ?? 0,
+    responded_requests: raw.responded_requests ?? 0,
     available_from: raw.available_from ?? raw.availableFrom ?? '08:00',
     available_until: raw.available_until ?? raw.availableUntil ?? '20:00',
     available_days: raw.available_days ?? raw.availableDays ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
     max_bags: raw.max_bags ?? raw.maxBags ?? 10,
+    storage_features: raw.storage_features ?? [],
+    photos: raw.photos ?? [],
+    owner_is_verified: ownerIsVerified ?? false,
+    created_at: raw.created_at ?? new Date().toISOString(),
   };
 }
 
 export default function HostDetail() {
   const { id, selectedDate } = useLocalSearchParams<{ id: string; selectedDate: string }>();
   const [host, setHost] = useState<any>(null);
-  const mockReviews = MOCK_REVIEWS.filter(r => r.host_id === id);
+  const [badges, setBadges] = useState<TrustBadge[]>([]);
   const [bagCount, setBagCount] = useState(1);
   const [savedReviews, setSavedReviews] = useState<any[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [savingSpot, setSavingSpot] = useState(false);
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const heartScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (!id) return;
@@ -68,13 +79,30 @@ export default function HostDetail() {
           .eq('id', id)
           .single();
         if (!error && data) {
-          setHost(normalizeHost(data));
+          // Fetch owner profile for verification status
+          const ownerId = data.assigned_user_id ?? data.user_id;
+          let ownerIsVerified = false;
+          if (ownerId) {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('is_verified')
+              .eq('id', ownerId)
+              .single();
+            ownerIsVerified = prof?.is_verified ?? false;
+          }
+          const normalized = normalizeHost(data, ownerIsVerified);
+          setHost(normalized);
+          setBadges(computeHostBadges(normalized));
         }
       } else {
         const raw = await AsyncStorage.getItem('cubby_hosts');
         if (raw) {
           const found = JSON.parse(raw).find((h: any) => h.id === id);
-          if (found) setHost(normalizeHost(found));
+          if (found) {
+            const normalized = normalizeHost(found);
+            setHost(normalized);
+            setBadges(computeHostBadges(normalized));
+          }
         }
       }
     }
@@ -82,7 +110,7 @@ export default function HostDetail() {
       if (isSupabaseConfigured) {
         const { data } = await supabase
           .from('reviews')
-          .select('id, reviewer_name, rating, comment, tags, created_at')
+          .select('id, reviewer_name, rating, comment, tags, created_at, rating_friendliness, rating_location, rating_drop_off, rating_security')
           .eq('host_id', id)
           .order('created_at', { ascending: false });
         if (data && data.length > 0) { setSavedReviews(data); return; }
@@ -112,8 +140,16 @@ export default function HostDetail() {
     setIsSaved(saved.includes(id));
   }
 
+  function animateHeart() {
+    Animated.sequence([
+      Animated.spring(heartScale, { toValue: 1.4, useNativeDriver: true, speed: 40, bounciness: 12 }),
+      Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 6 }),
+    ]).start();
+  }
+
   async function toggleSave() {
     if (!id) return;
+    animateHeart();
     setSavingSpot(true);
     try {
       if (isSupabaseConfigured) {
@@ -139,9 +175,9 @@ export default function HostDetail() {
     }
   }
 
-  const reviews = [...savedReviews, ...mockReviews];
+  const reviews = savedReviews;
 
-  const goBack = () => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore');
+  const goBack = () => router.replace('/(traveller)/explore');
 
   if (!host) return (
     <SafeAreaView style={styles.container}>
@@ -153,9 +189,9 @@ export default function HostDetail() {
       >
         <Text style={styles.backLinkText}>← Back to results</Text>
       </TouchableOpacity>
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: Colors.textSecondary }}>Loading…</Text>
-      </View>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <HostDetailSkeleton />
+      </ScrollView>
     </SafeAreaView>
   );
 
@@ -185,7 +221,11 @@ export default function HostDetail() {
           {/* Icon + name block */}
           <View style={styles.headerBlock}>
             <View style={styles.iconBox}>
-              <Text style={styles.iconEmoji}>🧳</Text>
+              {host.photos?.[0] && !photoFailed ? (
+                <Image source={{ uri: host.photos[0] }} style={styles.iconImage} onError={() => setPhotoFailed(true)} />
+              ) : (
+                <Text style={styles.iconEmoji}>🧳</Text>
+              )}
             </View>
             <Text style={styles.storageLabel}>STORAGE IN</Text>
             <Text style={styles.hostName}>{host.display_name}</Text>
@@ -199,7 +239,9 @@ export default function HostDetail() {
               disabled={savingSpot}
               style={{ marginBottom: 8 }}
             >
-              <Text style={{ fontSize: 24 }}>{isSaved ? '❤️' : '🤍'}</Text>
+              <Animated.Text style={{ fontSize: 24, transform: [{ scale: heartScale }] }}>
+                {isSaved ? '❤️' : '🤍'}
+              </Animated.Text>
             </TouchableOpacity>
 
           {/* Rating row */}
@@ -208,13 +250,36 @@ export default function HostDetail() {
               <Text style={styles.ratingText}>{host.rating.toFixed(1)}</Text>
               <Text style={styles.ratingCount}>({host.review_count})</Text>
               <Text style={styles.ratingDot}>·</Text>
-              <Text style={styles.responseRate}>{host.response_rate}% response</Text>
+              <Text style={styles.responseRate}>{formatResponseRate(host.response_rate, host.total_requests)} response</Text>
               {isOpen && (
                 <View style={styles.openBadge}>
                   <Text style={styles.openBadgeText}>OPEN</Text>
                 </View>
               )}
             </View>
+
+            {/* Response time row */}
+            {(() => {
+              const rt = formatResponseTime(host.avg_response_time_minutes, host.responded_requests ?? 0);
+              return rt ? (
+                <View style={styles.responseTimeRow}>
+                  <Text style={styles.responseTimeEmoji}>⚡</Text>
+                  <Text style={styles.responseTimeText}>{rt}</Text>
+                </View>
+              ) : null;
+            })()}
+
+            {/* Top trust badges — 2–3 most important only */}
+            {badges.length > 0 && (
+              <View style={styles.headerBadgesRow}>
+                {topBadges(badges, 3).map(b => (
+                  <View key={b.id} style={[styles.headerBadge, { backgroundColor: b.bg }]}>
+                    <Text style={styles.headerBadgeEmoji}>{b.emoji}</Text>
+                    <Text style={[styles.headerBadgeLabel, { color: b.color }]}>{b.label}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
 
           <View style={styles.divider} />
@@ -233,11 +298,41 @@ export default function HostDetail() {
 
           <View style={styles.divider} />
 
-          {/* Trust card */}
+          {/* Trust & Safety section */}
+          <Text style={styles.sectionTitle}>Trust & Safety</Text>
+
+          {/* Cubby guarantee + response time */}
           <View style={styles.trustCard}>
-            <Text style={styles.trustTitle}>🛡️  Each bag is protected up to R2,000!</Text>
-            <Text style={styles.trustSub}>Only when booking online with Cubby.</Text>
+            <Text style={styles.trustTitle}>🛡️  ID-verified host, booked securely through Cubby</Text>
+            <Text style={styles.trustSub}>Payments and messaging stay protected in-app.</Text>
+            {(() => {
+              const rt = formatResponseTime(host.avg_response_time_minutes, host.responded_requests ?? 0);
+              return rt ? (
+                <View style={styles.trustResponseRow}>
+                  <Text style={styles.trustResponseEmoji}>⚡</Text>
+                  <Text style={styles.trustResponseText}>{rt}</Text>
+                </View>
+              ) : (
+                <View style={styles.trustResponseRow}>
+                  <Text style={styles.trustResponseEmoji}>⚡</Text>
+                  <Text style={[styles.trustResponseText, { color: Colors.textLight }]}>New host — response time not yet available</Text>
+                </View>
+              );
+            })()}
           </View>
+
+          {/* Trust badges grid */}
+          {badges.length > 0 && (
+            <View style={styles.badgesGrid}>
+              {badges.map(b => (
+                <View key={b.id} style={[styles.badgeCell, { backgroundColor: b.bg }]}>
+                  <Text style={styles.badgeCellEmoji}>{b.emoji}</Text>
+                  <Text style={[styles.badgeCellLabel, { color: b.color }]}>{b.label}</Text>
+                  <Text style={styles.badgeCellDesc}>{b.description}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           <View style={styles.divider} />
 
@@ -320,9 +415,53 @@ export default function HostDetail() {
             </TouchableOpacity>
           </View>
 
+          {/* Rating distribution */}
+          {reviews.length >= 3 && (() => {
+            const dist = [5, 4, 3, 2, 1].map(star => ({
+              star,
+              count: reviews.filter((r: any) => r.rating === star).length,
+            }));
+            const catAvgs = [
+              { emoji: '😊', label: 'Friendliness', key: 'rating_friendliness' },
+              { emoji: '📍', label: 'Location', key: 'rating_location' },
+              { emoji: '🧳', label: 'Drop-off', key: 'rating_drop_off' },
+              { emoji: '🔒', label: 'Security', key: 'rating_security' },
+            ].map(c => {
+              const vals = reviews.map((r: any) => r[c.key]).filter(Boolean);
+              return { ...c, avg: vals.length ? (vals.reduce((a: number, b: number) => a + b, 0) / vals.length) : null };
+            }).filter(c => c.avg !== null);
+
+            return (
+              <View style={styles.ratingDistBox}>
+                <View style={styles.ratingDistBars}>
+                  {dist.map(({ star, count }) => (
+                    <View key={star} style={styles.distRow}>
+                      <Text style={styles.distStar}>{star}★</Text>
+                      <View style={styles.distBarBg}>
+                        <View style={[styles.distBarFill, { flex: count / reviews.length }]} />
+                      </View>
+                      <Text style={styles.distCount}>{count}</Text>
+                    </View>
+                  ))}
+                </View>
+                {catAvgs.length > 0 && (
+                  <View style={styles.catAvgsRow}>
+                    {catAvgs.map(c => (
+                      <View key={c.key} style={styles.catAvgChip}>
+                        <Text style={styles.catAvgEmoji}>{c.emoji}</Text>
+                        <Text style={styles.catAvgVal}>{(c.avg as number).toFixed(1)}</Text>
+                        <Text style={styles.catAvgLabel}>{c.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          })()}
+
           {reviews.length > 0 && (
             <View style={styles.reviewsList}>
-              {reviews.map(r => (
+              {reviews.map((r: any) => (
                 <View key={r.id} style={styles.review}>
                   <View style={styles.reviewHeaderRow}>
                     <View style={styles.reviewAvatar}>
@@ -338,9 +477,26 @@ export default function HostDetail() {
                     </View>
                     <Text style={styles.reviewDate}>{r.created_at.slice(0, 7)}</Text>
                   </View>
-                  <Text style={styles.reviewComment}>{r.comment}</Text>
+                  {!!r.comment && <Text style={styles.reviewComment}>{r.comment}</Text>}
+                  {r.tags?.length > 0 && (
+                    <View style={styles.reviewTagsRow}>
+                      {r.tags.map((tag: string) => (
+                        <View key={tag} style={styles.reviewTag}>
+                          <Text style={styles.reviewTagText}>{tag}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
               ))}
+            </View>
+          )}
+
+          {reviews.length === 0 && (
+            <View style={styles.noReviewsBox}>
+              <Text style={styles.noReviewsEmoji}>💬</Text>
+              <Text style={styles.noReviewsText}>No reviews yet</Text>
+              <Text style={styles.noReviewsSub}>Be the first to leave a review after your stay.</Text>
             </View>
           )}
 
@@ -368,10 +524,10 @@ export default function HostDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: Colors.background },
 
   backLink: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 4 },
-  backLinkText: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
+  backLinkText: { fontSize: 14, color: Colors.textSecondary, fontWeight: '500' },
 
   body: { paddingHorizontal: 20 },
 
@@ -381,37 +537,38 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 16,
-    backgroundColor: '#FFF0F0',
+    backgroundColor: Colors.offWhite,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   iconEmoji: { fontSize: 36 },
+  iconImage: { width: 72, height: 72, borderRadius: 16 },
   storageLabel: {
     fontSize: 11,
-    color: '#6B7280',
+    color: Colors.textSecondary,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     marginBottom: 4,
   },
-  hostName: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', marginBottom: 4 },
-  locationName: { fontSize: 14, color: '#6B7280', marginBottom: 10 },
+  hostName: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', marginBottom: 4 },
+  locationName: { fontSize: 14, color: Colors.textSecondary, marginBottom: 10 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingStar: { color: '#FFD93D', fontSize: 14 },
-  ratingText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
-  ratingCount: { fontSize: 13, color: '#6B7280' },
-  ratingDot: { fontSize: 13, color: '#6B7280' },
-  responseRate: { fontSize: 13, color: '#6B7280' },
+  ratingStar: { color: Colors.star, fontSize: 14 },
+  ratingText: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  ratingCount: { fontSize: 13, color: Colors.textSecondary },
+  ratingDot: { fontSize: 13, color: Colors.textSecondary },
+  responseRate: { fontSize: 13, color: Colors.textSecondary },
   openBadge: {
-    backgroundColor: '#6BCB77',
+    backgroundColor: Colors.accentAlt,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 2,
     marginLeft: 6,
   },
-  openBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
+  openBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.white, letterSpacing: 0.5 },
 
-  divider: { height: 8, backgroundColor: '#F0EAEA', marginHorizontal: -20, marginVertical: 12 },
+  divider: { height: 8, backgroundColor: Colors.border, marginHorizontal: -20, marginVertical: 12 },
 
   /* Address warning */
   addressWarning: { paddingVertical: 4 },
@@ -419,55 +576,82 @@ const styles = StyleSheet.create({
 
   /* Bag tip card */
   bagTipCard: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: Colors.infoBg,
     borderRadius: 12,
     padding: 14,
   },
-  bagTipText: { fontSize: 13, color: '#1D4ED8', lineHeight: 20 },
+  bagTipText: { fontSize: 13, color: Colors.infoText, lineHeight: 20 },
+
+  /* Response time row (under rating) */
+  responseTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  responseTimeEmoji: { fontSize: 13 },
+  responseTimeText: { fontSize: 13, color: Colors.infoText, fontWeight: '600' },
 
   /* Trust card */
   trustCard: {
     borderWidth: 1,
-    borderColor: '#F0EAEA',
-    borderRadius: 12,
+    borderColor: Colors.border,
+    borderRadius: 14,
     padding: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
+    marginBottom: 12,
   },
-  trustTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 },
-  trustSub: { fontSize: 13, color: '#6B7280' },
+  trustTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
+  trustSub: { fontSize: 13, color: Colors.textSecondary, marginBottom: 10 },
+  trustResponseRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  trustResponseEmoji: { fontSize: 13 },
+  trustResponseText: { fontSize: 13, color: Colors.infoText, fontWeight: '600' },
+
+  /* Header badge chips */
+  headerBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 10 },
+  headerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  headerBadgeEmoji: { fontSize: 12 },
+  headerBadgeLabel: { fontSize: 11, fontWeight: '700' },
+
+  /* Trust badges full grid */
+  badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  badgeCell: {
+    width: '47%',
+    borderRadius: 14,
+    padding: 14,
+    gap: 4,
+  },
+  badgeCellEmoji: { fontSize: 22 },
+  badgeCellLabel: { fontSize: 13, fontWeight: '700' },
+  badgeCellDesc: { fontSize: 11, color: '#6B7280', lineHeight: 15, marginTop: 2 },
 
   /* Section title */
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 },
 
   /* How it works */
   stepsCard: {
     borderWidth: 1,
-    borderColor: '#F0EAEA',
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    borderColor: Colors.border,
+    borderRadius: 14,
+    backgroundColor: Colors.white,
     overflow: 'hidden',
   },
   stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14 },
-  stepRowBorder: { borderBottomWidth: 1, borderBottomColor: '#F0EAEA' },
+  stepRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
   stepNum: {
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#FFF0F0',
+    backgroundColor: Colors.offWhite,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepNumText: { fontSize: 15, fontWeight: '700', color: '#FF5C5C' },
-  stepTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 2 },
-  stepDesc: { fontSize: 13, color: '#6B7280', lineHeight: 18 },
+  stepNumText: { fontSize: 15, fontWeight: '700', color: Colors.primary },
+  stepTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 2 },
+  stepDesc: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
 
   /* Opening hours */
   hoursTable: { gap: 8 },
   hoursRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  hoursDay: { fontSize: 14, color: '#1A1A1A' },
-  hoursTime: { fontSize: 14, color: '#1A1A1A' },
+  hoursDay: { fontSize: 14, color: Colors.textPrimary },
+  hoursTime: { fontSize: 14, color: Colors.textPrimary },
   hoursBold: { fontWeight: '700' },
-  hoursClosed: { fontSize: 14, color: '#6B7280' },
+  hoursClosed: { fontSize: 14, color: Colors.textSecondary },
 
   /* Bag counter */
   counterRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 8 },
@@ -475,38 +659,57 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FF5C5C',
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  counterBtnText: { fontSize: 22, color: '#FFFFFF', fontWeight: '700' },
-  counterVal: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', minWidth: 30, textAlign: 'center' },
-  counterDesc: { fontSize: 14, color: '#6B7280' },
+  counterBtnText: { fontSize: 22, color: Colors.white, fontWeight: '700' },
+  counterVal: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, minWidth: 30, textAlign: 'center' },
+  counterDesc: { fontSize: 14, color: Colors.textSecondary },
 
   /* Reviews */
   reviewsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  writeReviewBtn: { backgroundColor: '#FF5C5C', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
-  writeReviewBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  writeReviewBtn: { backgroundColor: Colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+  writeReviewBtnText: { fontSize: 13, fontWeight: '700', color: Colors.white },
+  ratingDistBox: { backgroundColor: Colors.white, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, padding: 16, marginBottom: 12 },
+  ratingDistBars: { gap: 6 },
+  distRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  distStar: { fontSize: 12, color: Colors.textSecondary, width: 22, textAlign: 'right' },
+  distBarBg: { flex: 1, height: 6, backgroundColor: Colors.border, borderRadius: 3, flexDirection: 'row' },
+  distBarFill: { backgroundColor: Colors.star, borderRadius: 3 },
+  distCount: { fontSize: 12, color: Colors.textSecondary, width: 16, textAlign: 'right' },
+  catAvgsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
+  catAvgChip: { backgroundColor: '#FAFAFA', borderRadius: 10, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  catAvgEmoji: { fontSize: 14 },
+  catAvgVal: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  catAvgLabel: { fontSize: 10, color: Colors.textSecondary },
   reviewsList: { gap: 12 },
+  reviewTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  reviewTag: { backgroundColor: '#FFF0F0', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  reviewTagText: { fontSize: 11, fontWeight: '600', color: Colors.primary },
   review: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#F0EAEA',
+    borderColor: Colors.border,
   },
   reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   reviewAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F0EAEA',
+    backgroundColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  reviewName: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
-  reviewDate: { fontSize: 12, color: '#6B7280' },
-  reviewComment: { fontSize: 14, color: '#6B7280', lineHeight: 20 },
+  reviewName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  reviewDate: { fontSize: 12, color: Colors.textSecondary },
+  reviewComment: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  noReviewsBox: { alignItems: 'center', paddingVertical: 24 },
+  noReviewsEmoji: { fontSize: 32, marginBottom: 8 },
+  noReviewsText: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
+  noReviewsSub: { fontSize: 13, color: Colors.textSecondary },
 
   /* Sticky footer */
   stickyFooter: {
@@ -514,22 +717,22 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     borderTopWidth: 1,
-    borderTopColor: '#F0EAEA',
+    borderTopColor: Colors.border,
     padding: 16,
     paddingBottom: 30,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  footerPrice: { fontSize: 22, fontWeight: '800', color: '#1A1A1A' },
-  footerPriceSub: { fontSize: 14, fontWeight: '400', color: '#6B7280' },
+  footerPrice: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
+  footerPriceSub: { fontSize: 14, fontWeight: '400', color: Colors.textSecondary },
   footerBtn: {
-    backgroundColor: '#FF5C5C',
+    backgroundColor: Colors.primary,
     borderRadius: 14,
     paddingHorizontal: 20,
     paddingVertical: 14,
   },
-  footerBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  footerBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
 });

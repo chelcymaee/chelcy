@@ -1,15 +1,31 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isSupabaseConfigured } from '../../src/lib/supabase';
+
+const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
+
+async function adminFetchBookings() {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-bookings`, {
+    method: 'GET',
+    headers: {
+      'x-admin-secret': ADMIN_SECRET,
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    },
+  });
+  return res.json();
+}
 
 export default function Revenue() {
   const [bookings, setBookings] = useState<any[]>([]);
 
   useFocusEffect(useCallback(() => {
-    AsyncStorage.getItem('cubby_bookings').then(raw => {
-      const all = raw ? JSON.parse(raw) : [];
-      setBookings(all.filter((b: any) => b.status === 'completed'));
-    });
+    if (!isSupabaseConfigured) return;
+    async function load() {
+      const { data } = await adminFetchBookings();
+      setBookings((data ?? []).filter((b: any) => b.status === 'completed'));
+    }
+    load();
   }, []));
 
   const total = bookings.reduce((sum, b) => sum + (b.total_price ?? b.totalPrice ?? 0), 0);
@@ -88,7 +104,7 @@ export default function Revenue() {
               >
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A', margin: 0 }}>
-                    {b.host?.display_name ?? b.hostName ?? 'Host'}
+                    {b.host_display_name ?? 'Host'}
                   </p>
                   <p style={{ fontSize: 12, color: '#6B7280', margin: '2px 0 0' }}>
                     {b.drop_off_date ?? b.date ?? '—'} · {b.bag_count ?? b.bags ?? '—'} bags

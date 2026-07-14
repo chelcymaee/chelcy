@@ -81,7 +81,7 @@ export default function DatePickerModal({ visible, selected, onSelect, onClose }
       <View style={s.overlay}>
         {/* Backdrop — tap to close */}
         <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           activeOpacity={1}
           onPress={onClose}
           // @ts-ignore

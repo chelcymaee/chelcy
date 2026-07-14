@@ -22,9 +22,15 @@
       }
     },
     "android": {
+      "package": "com.cubby.app",
       "adaptiveIcon": {
         "backgroundColor": "#1A3C34",
         "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "config": {
+        "googleMaps": {
+          "apiKey": "REPLACE_WITH_ANDROID_MAPS_API_KEY"
+        }
       }
     },
     "plugins": [
@@ -35,10 +41,23 @@
         {
           "photosPermission": "Cubby needs access to your photos to add storage space images."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FF5C5C",
+          "sounds": []
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3982a56f-c3a1-4f7e-9f9c-8ce56aacbfb7"
+      }
     }
   }
 }

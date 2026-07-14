@@ -23,7 +23,7 @@ function Slide1() {
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={slideStyles.pillsScroll} contentContainerStyle={slideStyles.pillsContent}>
           <View style={slideStyles.trustPill}><Text style={slideStyles.trustPillText}>✓ 100% Secure storage</Text></View>
-          <View style={slideStyles.trustPill}><Text style={slideStyles.trustPillText}>✓ R2,000 per bag coverage</Text></View>
+          <View style={slideStyles.trustPill}><Text style={slideStyles.trustPillText}>✓ ID-verified hosts</Text></View>
         </ScrollView>
       </View>
     </View>

@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
+import Btn from '../../src/components/Btn';
 
 // Landing screen for cubby://payment-result?status=success deep link
 // Used when the app is cold-started or backgrounded during payment
@@ -23,14 +24,7 @@ export default function PaymentSuccess() {
         <Text style={s.title}>Payment successful!</Text>
         <Text style={s.sub}>Your booking is confirmed. Redirecting to your bookings…</Text>
         <ActivityIndicator color={Colors.primary} style={s.spinner} />
-        <TouchableOpacity
-          style={s.btn}
-          onPress={() => router.replace('/(traveller)/bookings')}
-          // @ts-ignore
-          onClick={() => router.replace('/(traveller)/bookings')}
-        >
-          <Text style={s.btnText}>View my bookings</Text>
-        </TouchableOpacity>
+        <Btn label="View my bookings" onPress={() => router.replace('/(traveller)/bookings')} />
       </View>
     </SafeAreaView>
   );
@@ -43,6 +37,4 @@ const s = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '900', color: Colors.textPrimary, marginBottom: 10, textAlign: 'center' },
   sub: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
   spinner: { marginBottom: 28 },
-  btn: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 32 },
-  btnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 });

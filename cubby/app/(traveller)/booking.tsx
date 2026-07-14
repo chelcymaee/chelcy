@@ -133,7 +133,8 @@ export default function Booking() {
             pick_up_time: pickTime,
             bag_count: bags,
             total_price: grandTotal,
-            status: 'pending',
+            status: 'pending_payment',
+            payment_provider: 'payfast',
             pin_code: pin,
           })
           .select('id')
@@ -144,10 +145,10 @@ export default function Booking() {
           return;
         }
 
-        const { data, error } = await supabase.functions.invoke('create-payment', {
+        const { data, error } = await supabase.functions.invoke('payfast-create', {
           body: {
             bookingId: booking.id,
-            amount: grandTotal * 100,
+            amount: grandTotal,
             bagCount: bags,
             hostName: host.display_name,
             travellerId: user?.id,
@@ -156,7 +157,13 @@ export default function Booking() {
         });
 
         if (error || !data?.redirectUrl) {
-          setErrorMsg('Could not start payment. Please try again.');
+          // Clean up the pending booking so it doesn't clutter the user's list
+          await supabase.from('bookings').delete().eq('id', booking.id);
+          if (data?.code === 'PAYFAST_NOT_CONFIGURED') {
+            setErrorMsg('Payments are not available yet. Please contact support.');
+          } else {
+            setErrorMsg('Could not start payment. Please try again.');
+          }
           return;
         }
 
@@ -190,6 +197,8 @@ export default function Booking() {
             });
           } else if (status === 'pending') {
             setErrorMsg('Payment is processing. Check your bookings tab in a few minutes.');
+          } else if (status === 'cancelled') {
+            setErrorMsg('Payment was cancelled. Your booking has been removed.');
           } else {
             setErrorMsg('Payment was not completed. Please try again.');
           }
@@ -239,7 +248,7 @@ export default function Booking() {
     }
   }
 
-  const goBack = () => router.canGoBack() ? router.back() : router.replace('/(traveller)/explore');
+  const goBack = () => router.replace('/(traveller)/explore');
 
   return (
     <SafeAreaView style={styles.container}>
@@ -382,18 +391,18 @@ const styles = StyleSheet.create({
   back: { marginBottom: 16 },
   backText: { fontSize: 16, color: Colors.primary, fontWeight: '600' },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, marginBottom: 20 },
-  errorBanner: { backgroundColor: '#FEE2E2', borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#FECACA' },
-  errorBannerText: { fontSize: 14, color: '#B91C1C', fontWeight: '600' },
+  errorBanner: { backgroundColor: Colors.errorBg, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#FECACA' },
+  errorBannerText: { fontSize: 14, color: Colors.error, fontWeight: '600' },
   hostCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.white, borderRadius: 14, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: Colors.border },
   hostCardEmoji: { fontSize: 32 },
   hostCardName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
   hostCardLocation: { fontSize: 13, color: Colors.textSecondary },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 10, marginTop: 16 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginBottom: 10, marginTop: 16 },
   dateBox: { backgroundColor: Colors.white, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dateText: { fontSize: 14, color: Colors.textPrimary },
   dateChangeHint: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
-  noSlotsBox: { backgroundColor: '#FEF3C7', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#FDE68A' },
-  noSlotsText: { fontSize: 13, color: '#92400E' },
+  noSlotsBox: { backgroundColor: Colors.warningBg, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#FDE68A' },
+  noSlotsText: { fontSize: 13, color: Colors.warningText },
   timeRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
   timeChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
   timeChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
@@ -409,11 +418,11 @@ const styles = StyleSheet.create({
   priceDivider: { height: 1, backgroundColor: Colors.border },
   priceTotalLabel: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
   priceTotalValue: { fontSize: 16, fontWeight: '800', color: Colors.primary },
-  trustNote: { flexDirection: 'row', gap: 10, backgroundColor: '#EFF9F5', borderRadius: 12, padding: 14, marginTop: 20 },
+  trustNote: { flexDirection: 'row', gap: 10, backgroundColor: Colors.trustBg, borderRadius: 12, padding: 14, marginTop: 20 },
   trustIcon: { fontSize: 18 },
   trustText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
   confirmBar: { padding: 20, paddingBottom: 34, backgroundColor: Colors.white, borderTopWidth: 1, borderTopColor: Colors.border },
-  confirmBtn: { backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 18, alignItems: 'center' },
+  confirmBtn: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   confirmBtnDisabled: { opacity: 0.6 },
-  confirmText: { fontSize: 17, fontWeight: '700', color: Colors.white },
+  confirmText: { fontSize: 16, fontWeight: '700', color: Colors.white },
 });

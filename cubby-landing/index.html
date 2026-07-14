@@ -3,8 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cubby — Store. Explore. Collect.</title>
-  <meta name="description" content="Cubby connects travellers with trusted local storage spots in Cape Town — so you can check out early, fly later, and explore freely." />
+  <title>Cubby — Luggage Storage in Cape Town | Store. Explore. Collect.</title>
+  <meta name="description" content="Book trusted luggage storage in Cape Town with Cubby. Drop your bags with verified local hosts — cafés, hotels &amp; guesthouses — check out early, and explore hands-free." />
+  <link rel="canonical" href="https://mycubby.co.za/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://mycubby.co.za/" />
+  <meta property="og:site_name" content="Cubby" />
+  <meta property="og:title" content="Cubby — Luggage Storage in Cape Town" />
+  <meta property="og:description" content="Drop your bags with verified local hosts in Cape Town and explore hands-free. Join the waitlist or become a storage partner." />
+  <meta property="og:image" content="https://mycubby.co.za/og-image.png" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Cubby — Luggage Storage in Cape Town" />
+  <meta name="twitter:description" content="Drop your bags with verified local hosts in Cape Town and explore hands-free. Join the waitlist or become a storage partner." />
+  <meta name="twitter:image" content="https://mycubby.co.za/og-image.png" />
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Cpath d='M18 2C13.03 2 9 6.03 9 11C9 17.25 18 26 18 26C18 26 27 17.25 27 11C27 6.03 22.97 2 18 2Z' fill='%23FF5C5C'/%3E%3Ccircle cx='18' cy='11' r='4' fill='white'/%3E%3Crect x='15' y='7' width='6' height='2.5' rx='1.25' fill='%23FF5C5C' stroke='white' stroke-width='1'/%3E%3Crect x='13' y='28' width='10' height='7' rx='2.5' fill='%23FF5C5C'/%3E%3Cline x1='18' y1='28' x2='18' y2='35' stroke='white' stroke-width='1.2'/%3E%3Cline x1='13' y1='31.5' x2='23' y2='31.5' stroke='white' stroke-width='1.2'/%3E%3C/svg%3E" />
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -427,6 +445,36 @@
     .success-msg h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; color: #166534; }
     .success-msg p { color: #15803D; font-size: 14px; }
 
+    /* FAQ */
+    #faq { background: var(--bg); }
+    .faq-wrap { max-width: 760px; margin: 0 auto; }
+    .faq-group-title {
+      font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+      color: var(--primary); margin: 40px 0 16px;
+    }
+    .faq-group-title:first-of-type { margin-top: 0; }
+    .faq-list { display: flex; flex-direction: column; gap: 12px; }
+    .faq-item {
+      background: var(--white); border: 1px solid rgba(0,0,0,.06);
+      border-radius: var(--radius); overflow: hidden;
+      box-shadow: var(--card-shadow);
+    }
+    .faq-item summary {
+      cursor: pointer; list-style: none; padding: 20px 24px;
+      font-size: 15px; font-weight: 700;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      content: '+'; font-size: 22px; font-weight: 400; color: var(--primary);
+      flex-shrink: 0; line-height: 1;
+    }
+    .faq-item[open] summary::after { content: '−'; }
+    .faq-item p {
+      padding: 0 24px 20px; color: var(--text-muted);
+      font-size: 14px; line-height: 1.7;
+    }
+
     /* FOOTER */
     footer { background: var(--dark); padding: 60px 0 40px; }
     .footer-grid {
@@ -525,14 +573,14 @@
           <span class="tag">📍 Launching in Cape Town</span>
         </div>
         <h1 class="hero-h1">Never drag your<br><span>luggage around</span><br>again.</h1>
-        <p class="hero-sub">Cubby connects travellers with trusted local storage spots — so you can check out early, fly later, and explore freely.</p>
+        <p class="hero-sub">Cubby connects travellers with trusted local luggage storage spots in Cape Town — so you can check out early, fly later, and explore freely, hands-free.</p>
         <div class="hero-ctas">
           <a href="#waitlist" class="btn btn-primary btn-lg">Join the waitlist →</a>
           <a href="#partner-apply" class="btn btn-outline btn-lg">Become a partner</a>
         </div>
         <div class="hero-badges">
-          <span class="badge"><span class="dot"></span> Verified partners</span>
-          <span class="badge"><span class="dot"></span> R2,000 coverage</span>
+          <span class="badge"><span class="dot"></span> ID-verified hosts</span>
+          <span class="badge"><span class="dot"></span> Secure PIN handover</span>
           <span class="badge"><span class="dot"></span> Cape Town</span>
         </div>
       </div>
@@ -640,28 +688,28 @@
     <div class="section-eyebrow fade-up">
       <span class="tag">🛡️ Built for peace of mind</span>
     </div>
-    <h2 class="section-title fade-up">Your bags are safe with us</h2>
-    <p class="section-sub fade-up">Every Cubby partner is verified. Every booking is protected.</p>
+    <h2 class="section-title fade-up">Built on trust, not guesswork</h2>
+    <p class="section-sub fade-up">Hosts complete ID verification before they list. Every booking is PIN-secured and backed by in-app support.</p>
     <div class="trust-grid">
       <div class="trust-card fade-up delay-1">
-        <span class="trust-icon">🛡️</span>
-        <div class="trust-label">Verified Partners</div>
+        <span class="trust-icon">🪪</span>
+        <div class="trust-label">ID-Verified Hosts</div>
       </div>
       <div class="trust-card fade-up delay-2">
-        <span class="trust-icon">🔒</span>
-        <div class="trust-label">Secure Storage</div>
+        <span class="trust-icon">🔑</span>
+        <div class="trust-label">Secure PIN Handover</div>
       </div>
       <div class="trust-card fade-up delay-3">
-        <span class="trust-icon">✅</span>
-        <div class="trust-label">Identity Verification</div>
+        <span class="trust-icon">💬</span>
+        <div class="trust-label">In-App Messaging &amp; Support</div>
       </div>
       <div class="trust-card fade-up delay-4">
-        <span class="trust-icon">💰</span>
-        <div class="trust-label">R2,000 Coverage Per Bag</div>
+        <span class="trust-icon">⭐</span>
+        <div class="trust-label">Reviews &amp; Ratings</div>
       </div>
       <div class="trust-card fade-up delay-4">
-        <span class="trust-icon">📱</span>
-        <div class="trust-label">QR Check-In &amp; Collection</div>
+        <span class="trust-icon">📍</span>
+        <div class="trust-label">Real Local Partners</div>
       </div>
     </div>
   </div>
@@ -709,7 +757,7 @@
               <div style="font-size: 9px; color: #6B7280; margin-top: 6px;">Show this to your host</div>
             </div>
             <div class="app-list-item" style="font-size:10px; font-weight:600; color: #6BCB77;">
-              ✅ Coverage active · R2,000 per bag
+              ✅ Booked with a verified host
             </div>
             <div class="app-confirm">🌍 Go explore!</div>
           </div>
@@ -725,7 +773,7 @@
     <div class="split-grid reverse">
       <div>
         <div class="calc-card fade-up">
-          <div class="calc-title">💸 Earnings calculator</div>
+          <div class="calc-title">💸 Estimated earnings</div>
           <div class="calc-row">
             <span class="calc-label">Bags per day</span>
             <span class="calc-value">5 bags</span>
@@ -738,14 +786,22 @@
             <span class="calc-label">Days per month</span>
             <span class="calc-value">30 days</span>
           </div>
+          <div class="calc-row">
+            <span class="calc-label">Gross monthly total</span>
+            <span class="calc-value">R22,500</span>
+          </div>
+          <div class="calc-row">
+            <span class="calc-label">Cubby service fee (est.)</span>
+            <span class="calc-value">– R2,250</span>
+          </div>
           <div class="calc-total">
             <div>
-              <div class="calc-total-label">Monthly extra income</div>
-              <div style="font-size:12px; opacity:.65; margin-top:2px;">5 bags × R150 × 30 days</div>
+              <div class="calc-total-label">Estimated monthly payout</div>
+              <div style="font-size:12px; opacity:.65; margin-top:2px;">After Cubby's service fee</div>
             </div>
-            <div class="calc-total-value">R22,500</div>
+            <div class="calc-total-value">≈ R20,250</div>
           </div>
-          <p style="font-size:12px; color: var(--text-muted); margin-top:16px; line-height:1.5;">No setup cost. No lock-in. You control your availability and capacity.</p>
+          <p style="font-size:12px; color: var(--text-muted); margin-top:16px; line-height:1.5;">No setup cost. No lock-in. You control your availability and capacity. <strong>This is an illustrative estimate</strong> — Cubby's exact service fee will be confirmed before launch.</p>
         </div>
       </div>
       <div class="split-content">
@@ -799,7 +855,7 @@
         <span class="future-emoji">🌍</span>
         <div class="future-title">Beyond Cape Town</div>
         <div class="future-desc">Joburg, Durban, and beyond — we're building the luggage-free travel network for South Africa.</div>
-        <span class="future-pill">Expanding 2025</span>
+        <span class="future-pill">Expanding soon</span>
       </div>
     </div>
   </div>
@@ -944,6 +1000,67 @@
   </div>
 </section>
 
+<!-- FAQ -->
+<section id="faq" class="section">
+  <div class="container">
+    <div class="section-eyebrow fade-up">
+      <span class="tag">❓ Good questions</span>
+    </div>
+    <h2 class="section-title fade-up">Frequently asked questions</h2>
+    <p class="section-sub fade-up">Straight answers, no fine print surprises.</p>
+
+    <div class="faq-wrap">
+      <div class="faq-group-title fade-up">For travellers</div>
+      <div class="faq-list">
+        <details class="faq-item fade-up">
+          <summary>How does Cubby work?</summary>
+          <p>Find a nearby host — a café, hotel or guesthouse — on the map, book a drop-off window, and bring your bags over. You'll get a unique PIN to check your bags in and collect them later — no cash or paperwork needed.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>How are hosts verified?</summary>
+          <p>Every host completes ID verification before their space can go live on Cubby, and our team reviews each application before it's approved.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>What happens if something goes wrong with my bags?</summary>
+          <p>We vet hosts before they join, and every booking is tracked with a secure PIN and a timestamped check-in and check-out. If anything feels off during your booking, our support team is on hand to help you sort it out directly with your host. Cubby doesn't currently offer a blanket insurance guarantee, so we'd recommend keeping valuables with you and relying on your own travel insurance for high-value items.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>Is my payment and information secure?</summary>
+          <p>Bookings will be processed through a secure payment provider, and hosts never see your card details — only what they need to confirm your drop-off.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>Are Bag Runners or airport collection available yet?</summary>
+          <p>Not yet — those are on our roadmap. Right now Cubby is focused on getting local bag storage right in Cape Town first, before we expand into delivery and collection.</p>
+        </details>
+      </div>
+
+      <div class="faq-group-title fade-up">For hosts</div>
+      <div class="faq-list">
+        <details class="faq-item fade-up">
+          <summary>How do I become a Cubby host?</summary>
+          <p>Apply using the form below with your business details. Our team reviews applications and verifies your identity before your listing goes live.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>How do payouts work?</summary>
+          <p>You set your own rate per bag. Cubby takes a small service fee from each booking to cover platform costs and pays out the rest. Exact payout timing and fee will be confirmed as we finalise our payment provider ahead of launch.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>What does it cost to join?</summary>
+          <p>Nothing upfront — there's no signup or listing fee. You only pay a service fee on bookings you actually complete.</p>
+        </details>
+      </div>
+
+      <div class="faq-group-title fade-up">Launch</div>
+      <div class="faq-list">
+        <details class="faq-item fade-up">
+          <summary>When and where is Cubby launching?</summary>
+          <p>We're launching in Cape Town first. Join the waitlist and we'll email you the moment bookings open in your area, with more South African cities to follow.</p>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- FOOTER -->
 <footer>
   <div class="container">
@@ -958,7 +1075,7 @@
         <div class="footer-links">
           <a href="#" class="footer-link">Privacy Policy</a>
           <a href="#" class="footer-link">Terms of Service</a>
-          <a href="mailto:hello@cubbyapp.co.za" class="footer-link">Contact</a>
+          <a href="mailto:hello@mycubby.co.za" class="footer-link">Contact</a>
         </div>
       </div>
       <div>
@@ -970,13 +1087,16 @@
     </div>
     <hr class="footer-divider" />
     <div class="footer-bottom">
-      <span>© 2025 Cubby. Cape Town, South Africa.</span>
+      <span>© <span id="footer-year">2026</span> Cubby. Cape Town, South Africa.</span>
       <span style="color:rgba(255,255,255,.2);">Built with ❤️ for travellers</span>
     </div>
   </div>
 </footer>
 
 <script>
+  // Keep footer copyright year current
+  document.getElementById('footer-year').textContent = new Date().getFullYear();
+
   // Sticky nav shadow
   const nav = document.getElementById('main-nav');
   window.addEventListener('scroll', () => {

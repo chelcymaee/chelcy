@@ -3,32 +3,41 @@ import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, Alert, ActivityIndicator,
 } from 'react-native';
+import { DashboardSkeleton } from '../../src/components/Skeleton';
 import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import NotificationBell from '../../src/components/NotificationBell';
+import HostOnboardingChecklist from '../../src/components/HostOnboardingChecklist';
+import { recalculateHostResponseRate, minutesBetween, formatResponseRate, formatResponseTime } from '../../src/lib/response-rate';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Booking = {
   id: string;
+  travellerId?: string;
   traveller: string;
   bags: number;
   dropOff: string;
   pickUp: string;
   total: number;
   status: string;
+  created_at?: string;
 };
 
 type WeekDay = { day: string; earnings: number };
 
 type Stats = {
   hostName: string;
+  hostId: string;
   isActive: boolean;
   monthlyEarnings: number;
   monthlyBookings: number;
   avgRating: number;
   reviewCount: number;
-  responseRate: number;
+  responseRate: number | null;
+  avgResponseTimeMinutes: number | null;
+  totalRequests: number;
   pendingCount: number;
   completedCount: number;
   weeklyData: WeekDay[];
@@ -43,12 +52,15 @@ const DEMO_BOOKINGS: Booking[] = [
 
 const DEMO_STATS: Stats = {
   hostName: 'Host',
+  hostId: '',
   isActive: true,
   monthlyEarnings: 1240,
   monthlyBookings: 14,
   avgRating: 4.9,
   reviewCount: 23,
   responseRate: 98,
+  avgResponseTimeMinutes: 45,
+  totalRequests: 15,
   pendingCount: 2,
   completedCount: 12,
   weeklyData: [
@@ -92,6 +104,8 @@ export default function Dashboard() {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
   const [togglingStatus, setTogglingStatus] = useState(false);
+  const [pendingHost, setPendingHost] = useState(false);
+  const [isHostApproved, setIsHostApproved] = useState(false);
 
   useFocusEffect(useCallback(() => {
     loadDashboard();
@@ -108,15 +122,25 @@ export default function Dashboard() {
       // ── 1. Host row ──────────────────────────────────────────────────────
       const { data: host, error: hostErr } = await supabase
         .from('hosts')
-        .select('id, display_name, rating, review_count, is_active, response_rate')
-        .eq('user_id', user.id)
+        .select('id, display_name, rating, review_count, is_active, response_rate, avg_response_time_minutes, total_requests, responded_requests')
+        .eq('assigned_user_id', user.id)
         .single();
 
       if (hostErr || !host) {
-        setError('Host profile not found. Set up your host profile first.');
+        // No hosts row assigned yet — admin hasn't approved/set up this account
+        // as a host. Show onboarding status instead of stats for a listing
+        // that doesn't exist.
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_host_approved')
+          .eq('id', user.id)
+          .maybeSingle();
+        setIsHostApproved(profile?.is_host_approved ?? false);
+        setPendingHost(true);
         return;
       }
 
+      setPendingHost(false);
       const hostId = host.id;
       const today = isoDate(new Date());
       const now = new Date();
@@ -130,7 +154,7 @@ export default function Dashboard() {
         // Today's active bookings (for the card list)
         supabase
           .from('bookings')
-          .select('id, bag_count, drop_off_time, pick_up_time, total_price, status, profiles:traveller_id(full_name, email)')
+          .select('id, traveller_id, bag_count, drop_off_time, pick_up_time, total_price, status, created_at, profiles:traveller_id(full_name, email)')
           .eq('host_id', hostId)
           .eq('drop_off_date', today)
           .in('status', ['pending', 'confirmed', 'active'])
@@ -172,12 +196,14 @@ export default function Dashboard() {
       // ── 3. Process today's bookings ──────────────────────────────────────
       const todayBookings: Booking[] = (todayRes.data ?? []).map((b: any) => ({
         id: b.id,
+        travellerId: b.traveller_id,
         traveller: b.profiles?.full_name?.trim() || b.profiles?.email?.split('@')[0] || 'Traveller',
         bags: b.bag_count,
         dropOff: b.drop_off_time,
         pickUp: b.pick_up_time,
         total: b.total_price,
         status: b.status,
+        created_at: b.created_at,
       }));
       setBookings(todayBookings);
 
@@ -200,12 +226,15 @@ export default function Dashboard() {
       // ── 6. Assemble stats ────────────────────────────────────────────────
       setStats({
         hostName: host.display_name ?? 'Host',
+        hostId: host.id,
         isActive: host.is_active ?? true,
         monthlyEarnings,
         monthlyBookings,
         avgRating: host.rating ?? 0,
         reviewCount: host.review_count ?? 0,
-        responseRate: host.response_rate ?? 100,
+        responseRate: host.response_rate ?? null,
+        avgResponseTimeMinutes: host.avg_response_time_minutes ?? null,
+        totalRequests: host.total_requests ?? 0,
         pendingCount: pendingRes.count ?? 0,
         completedCount: completedRes.count ?? 0,
         weeklyData,
@@ -225,7 +254,7 @@ export default function Dashboard() {
       const next = !stats.isActive;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      await supabase.from('hosts').update({ is_active: next }).eq('user_id', user.id);
+      await supabase.from('hosts').update({ is_active: next }).eq('assigned_user_id', user.id);
       setStats(s => ({ ...s, isActive: next }));
     } finally {
       setTogglingStatus(false);
@@ -236,14 +265,30 @@ export default function Dashboard() {
     setActionId(bookingId);
     try {
       if (isSupabaseConfigured) {
-        const { error } = await supabase.from('bookings').update({ status: newStatus }).eq('id', bookingId);
-        if (error) {
-          Alert.alert('Error', 'Could not update booking. Please try again.');
-          return;
+        const respondedAt = new Date().toISOString();
+        const booking = bookings.find(b => b.id === bookingId);
+        const isResponse = newStatus === 'confirmed' || newStatus === 'cancelled';
+        const responseMinutes = (isResponse && booking?.status === 'pending' && booking?.created_at)
+          ? minutesBetween(booking.created_at as unknown as string, respondedAt)
+          : undefined;
+
+        const update: Record<string, unknown> = { status: newStatus };
+        if (isResponse && booking?.status === 'pending') {
+          update.host_responded_at = respondedAt;
+          if (responseMinutes !== undefined) update.response_time_minutes = responseMinutes;
+        }
+
+        const { error } = await supabase.from('bookings').update(update).eq('id', bookingId);
+        if (error) { Alert.alert('Error', 'Could not update booking. Please try again.'); return; }
+
+        // Fire-and-forget recalculate
+        if (isResponse && stats.hostId) {
+          recalculateHostResponseRate(supabase, stats.hostId)
+            .then(r => setStats(s => ({ ...s, responseRate: r.response_rate, avgResponseTimeMinutes: r.avg_response_time_minutes, totalRequests: r.total_requests })))
+            .catch(() => {});
         }
       }
       setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
-      // Refresh pending count
       if (newStatus !== 'pending') {
         setStats(s => ({ ...s, pendingCount: Math.max(0, s.pendingCount - 1) }));
       }
@@ -302,18 +347,21 @@ export default function Dashboard() {
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>Welcome back 👋</Text>
             <Text style={styles.heading}>Host Dashboard</Text>
           </View>
-          <TouchableOpacity
-            style={styles.switchBtn}
-            onPress={() => router.replace('/(traveller)/explore')}
-            // @ts-ignore
-            onClick={() => router.replace('/(traveller)/explore')}
-          >
-            <Text style={styles.switchBtnText}>🧳 Switch to traveller</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <NotificationBell variant="host" />
+            <TouchableOpacity
+              style={styles.switchBtn}
+              onPress={() => router.replace('/(traveller)/explore')}
+              // @ts-ignore
+              onClick={() => router.replace('/(traveller)/explore')}
+            >
+              <Text style={styles.switchBtnText}>🧳 Traveller</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Error banner ─────────────────────────────────────────────────── */}
@@ -323,10 +371,20 @@ export default function Dashboard() {
           </View>
         )}
 
+        {!loading && pendingHost ? (
+          <HostOnboardingChecklist isApproved={isHostApproved} />
+        ) : (
+        <>
         {/* ── Earnings card ─────────────────────────────────────────────────── */}
         <View style={styles.earningsCard}>
           {loading ? (
-            <ActivityIndicator color="rgba(255,255,255,0.8)" style={{ marginVertical: 12 }} />
+            <View style={{ gap: 10, paddingVertical: 8 }}>
+              <View style={{ width: 120, height: 14, borderRadius: 7, backgroundColor: 'rgba(255,255,255,0.25)' }} />
+              <View style={{ width: 180, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.25)' }} />
+              <View style={{ flexDirection: 'row', gap: 24, marginTop: 4 }}>
+                {[1,2,3].map(i => <View key={i} style={{ width: 60, height: 32, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.2)' }} />)}
+              </View>
+            </View>
           ) : (
             <>
               <Text style={styles.earningsLabel}>This month's earnings</Text>
@@ -347,8 +405,15 @@ export default function Dashboard() {
                 </View>
                 <View style={styles.earningsDivider} />
                 <View style={styles.earningsStat}>
-                  <Text style={styles.earningsStatNum}>{stats.responseRate}%</Text>
-                  <Text style={styles.earningsStatLabel}>Response</Text>
+                  <Text style={styles.earningsStatNum}>
+                    {formatResponseRate(stats.responseRate, stats.totalRequests)}
+                  </Text>
+                  <Text style={styles.earningsStatLabel}>
+                    {(() => {
+                      const rt = formatResponseTime(stats.avgResponseTimeMinutes, stats.totalRequests);
+                      return rt ? rt.replace('Responds ', '') : 'Response rate';
+                    })()}
+                  </Text>
                 </View>
               </View>
             </>
@@ -366,10 +431,16 @@ export default function Dashboard() {
               <Text style={[styles.pillNum, { color: '#7C3AED' }]}>{stats.completedCount}</Text>
               <Text style={styles.pillLabel}>Completed</Text>
             </View>
-            <View style={[styles.pill, { backgroundColor: '#DCFCE7' }]}>
+            <TouchableOpacity
+              style={[styles.pill, { backgroundColor: '#DCFCE7' }]}
+              onPress={() => router.push('/(host)/reviews')}
+              // @ts-ignore
+              onClick={() => router.push('/(host)/reviews')}
+              activeOpacity={0.75}
+            >
               <Text style={[styles.pillNum, { color: Colors.success }]}>{stats.reviewCount}</Text>
-              <Text style={styles.pillLabel}>Reviews</Text>
-            </View>
+              <Text style={styles.pillLabel}>Reviews ›</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -377,7 +448,14 @@ export default function Dashboard() {
         <View style={styles.weekCard}>
           <Text style={styles.weekTitle}>This week's earnings</Text>
           {loading ? (
-            <ActivityIndicator color={Colors.primary} style={{ marginVertical: 24 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 80, marginTop: 8 }}>
+              {[55, 80, 40, 100, 65, 45, 75].map((pct, i) => (
+                <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+                  <View style={{ width: '100%', height: Math.round(pct * 0.7), borderRadius: 4, backgroundColor: '#EDEDEB' }} />
+                  <View style={{ width: 24, height: 10, borderRadius: 4, backgroundColor: '#EDEDEB', marginTop: 5 }} />
+                </View>
+              ))}
+            </View>
           ) : (
             <View style={styles.weekBars}>
               {stats.weeklyData.map((d, i) => {
@@ -440,8 +518,17 @@ export default function Dashboard() {
         <Text style={styles.sectionTitle}>Today's bookings</Text>
 
         {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator color={Colors.primary} />
+          <View style={{ gap: 10 }}>
+            {[1, 2].map(i => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#F0EAEA' }}>
+                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#EDEDEB' }} />
+                <View style={{ flex: 1, gap: 8 }}>
+                  <View style={{ width: '50%', height: 13, borderRadius: 6, backgroundColor: '#EDEDEB' }} />
+                  <View style={{ width: '70%', height: 11, borderRadius: 5, backgroundColor: '#EDEDEB' }} />
+                </View>
+                <View style={{ width: 60, height: 28, borderRadius: 8, backgroundColor: '#EDEDEB' }} />
+              </View>
+            ))}
           </View>
         ) : bookings.length === 0 ? (
           <View style={styles.emptyBox}>
@@ -514,7 +601,7 @@ export default function Dashboard() {
                 )}
 
                 {b.status === 'confirmed' && (
-                  <View style={styles.actionRow}>
+                  <View style={{ gap: 8, marginTop: 12 }}>
                     <TouchableOpacity
                       style={[styles.completeBtn, completingId === b.id && styles.completeBtnDisabled]}
                       onPress={() => handleComplete(b)}
@@ -526,10 +613,46 @@ export default function Dashboard() {
                         {completingId === b.id ? 'Processing…' : '✓ Mark complete & pay out'}
                       </Text>
                     </TouchableOpacity>
+                    {b.travellerId && (
+                      <TouchableOpacity
+                        style={styles.profileBtn}
+                        onPress={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: b.travellerId, bookingId: b.id } })}
+                        // @ts-ignore
+                        onClick={() => router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: b.travellerId, bookingId: b.id } })}
+                      >
+                        <Text style={styles.profileBtnText}>👤 View Traveller Profile</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
               </View>
             ))}
+          </View>
+        )}
+
+        {/* ── Response rate nudge ──────────────────────────────────────────── */}
+        {!loading && stats.totalRequests < 3 && (
+          <View style={styles.nudgeCard}>
+            <Text style={styles.nudgeTitle}>⚡ Build your response stats</Text>
+            <Text style={styles.nudgeText}>
+              Respond to your first {Math.max(1, 3 - stats.totalRequests)} booking request{3 - stats.totalRequests !== 1 ? 's' : ''} to start showing your response rate and time. Hosts who respond quickly earn more bookings.
+            </Text>
+          </View>
+        )}
+        {!loading && stats.totalRequests >= 3 && stats.responseRate !== null && stats.responseRate < 80 && (
+          <View style={[styles.nudgeCard, styles.nudgeCardWarn]}>
+            <Text style={styles.nudgeTitle}>⚠️ Your response rate is low</Text>
+            <Text style={styles.nudgeText}>
+              Respond to all requests within 24 hours to keep your rate healthy. A low rate reduces your visibility in search results.
+            </Text>
+          </View>
+        )}
+        {!loading && stats.totalRequests >= 3 && stats.avgResponseTimeMinutes !== null && stats.avgResponseTimeMinutes > 60 && (stats.responseRate ?? 0) >= 80 && (
+          <View style={styles.nudgeCard}>
+            <Text style={styles.nudgeTitle}>⚡ Respond faster to rank higher</Text>
+            <Text style={styles.nudgeText}>
+              Your average response time is {stats.avgResponseTimeMinutes >= 60 ? `${Math.round(stats.avgResponseTimeMinutes / 60)}h` : `${stats.avgResponseTimeMinutes}min`}. Hosts who respond within 1 hour earn the Fast Responder badge and rank higher in search.
+            </Text>
           </View>
         )}
 
@@ -540,6 +663,8 @@ export default function Dashboard() {
             Hosts who respond within 1 hour earn 40% more bookings. Keep your availability up to date!
           </Text>
         </View>
+        </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -566,10 +691,10 @@ const styles = StyleSheet.create({
   switchBtnText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
 
   errorBanner: {
-    backgroundColor: '#FEE2E2', borderRadius: 12, marginHorizontal: 20,
+    backgroundColor: Colors.errorBg, borderRadius: 12, marginHorizontal: 20,
     padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#FECACA',
   },
-  errorText: { fontSize: 14, color: '#B91C1C', fontWeight: '600' },
+  errorText: { fontSize: 14, color: Colors.error, fontWeight: '600' },
 
   earningsCard: {
     backgroundColor: Colors.primary, marginHorizontal: 20,
@@ -670,7 +795,19 @@ const styles = StyleSheet.create({
   },
   completeBtnDisabled: { opacity: 0.6 },
   completeBtnText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
+  profileBtn: {
+    borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 10,
+    paddingVertical: 9, alignItems: 'center',
+  },
+  profileBtnText: { color: Colors.primary, fontWeight: '600', fontSize: 14 },
 
+  nudgeCard: {
+    backgroundColor: Colors.infoBg, borderRadius: 14, marginHorizontal: 20,
+    padding: 16, borderWidth: 1, borderColor: '#BFDBFE', marginBottom: 12,
+  },
+  nudgeCardWarn: { backgroundColor: Colors.warningBg, borderColor: '#FDE68A' },
+  nudgeTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 },
+  nudgeText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
   tipCard: {
     backgroundColor: '#FFF9EC', borderRadius: 14, marginHorizontal: 20,
     padding: 16, borderWidth: 1, borderColor: '#F59E0B40',

@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
 
 async function adminFetch(method: string, path: string, body?: object) {
   const url = `${SUPABASE_URL}/functions/v1/admin-bank-details${path}`;
@@ -288,7 +288,7 @@ export default function HostPayouts() {
   return (
     <div style={s.page}>
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => router.canGoBack() ? router.back() : router.replace('/(admin)/dashboard')}>
+        <button style={s.backBtn} onClick={() => router.replace('/(admin)/dashboard')}>
           ← Back
         </button>
         <h1 style={s.heading}>Host Bank Details</h1>
