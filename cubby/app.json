@@ -30,7 +30,7 @@
       },
       "config": {
         "googleMaps": {
-          "apiKey": "REPLACE_WITH_ANDROID_MAPS_API_KEY"
+          "apiKey": "AIzaSyDeOlqYoSUFwdPj-LgWqht_5_X2eXauQ2w"
         }
       },
       "permissions": [
