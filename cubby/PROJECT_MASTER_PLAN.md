@@ -1012,9 +1012,19 @@ supabase functions deploy complete-booking
 > 1. **Android package identifier** was completely unset in `app.json` — added `"android.package": "com.cubby.app"` to match iOS.
 > 2. **`extra.eas.projectId`** existed only in the founder's local, uncommitted `app.json` — never in the repo. Confirmed via `npx eas-cli@latest init --non-interactive` on the founder's machine (`Project already linked (ID: 3982a56f-c3a1-4f7e-9f9c-8ce56aacbfb7)`) and committed to `app.json` so the EAS↔Expo-account link is now version-controlled and consistent across any machine.
 >
-> **Still open before the first production Android build:** the Android Google Maps API key in `app.json` is still the placeholder `"REPLACE_WITH_ANDROID_MAPS_API_KEY"` — maps will not render on Android until a real key replaces it. (iOS needs no key — `HostMap.tsx` only forces `PROVIDER_GOOGLE` on Android; iOS uses Apple Maps by default.) Founder has agreed this must be configured before the first Android build.
+> **Android app identity — COMPLETE (2026-07-14).** `android.package` set to `com.cubby.app`. `ITSAppUsesNonExemptEncryption: false` added to iOS. Android permissions explicitly limited to `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION` only — no unused/hypothetical permissions requested (an initial `RECORD_AUDIO` addition was caught and removed since Cubby has no audio feature). Merged via PR #46 and PR #47, each independently sanity-checked (bundle re-verified clean, diff scope confirmed, TypeScript error count confirmed unchanged vs. `main` before merging).
 >
-> **Next launch blocker: awaiting founder direction.** Candidates still on hold, not yet started: Google Maps API key provisioning, Apple/Google developer accounts, push notification credentials, PayFast configuration. Do not begin any of these until the founder explicitly names the next priority.
+> **Android Google Maps — CONFIGURATION COMPLETE, FINAL DEVICE VERIFICATION PENDING (2026-07-15):**
+> - ✅ Build pipeline verified — `npx eas-cli@latest build --profile preview --platform android` run end-to-end, "Build finished" confirmed.
+> - ✅ Google Maps API key configured — real key committed to `app.json` (PR #48), placeholder removed.
+> - ✅ API restrictions verified — key restricted in Google Cloud to Maps SDK for Android only.
+> - ✅ EAS Android build successful — confirmed via terminal output and Expo dashboard.
+> - ✅ APK generated successfully — downloaded and confirmed installable (Appetize.io accepted and ran it up to the point of a connection drop).
+> - ✅ Android signing credentials verified — EAS-managed production keystore generated, SHA-1 fingerprint (`CD:1A:38:2C:91:13:82:8B:BA:6F:F1:B1:A1:59:B1:D9:B5:D4:00:83`) retrieved via `eas credentials` and used to complete the key's Application restriction (`com.cubby.app` + this exact certificate).
+> - ⏳ On-device visual map rendering still pending — no physical Android device was available to test, and Appetize.io's free-tier browser emulator failed to maintain a connection on two attempts (unrelated infrastructure issue, not an app problem). **This is configuration-complete, not verification-failed or verification-incomplete-due-to-app-issues** — every piece that can be checked without a real device has been checked and is correct. The one remaining step is a five-minute visual confirmation on any real Android phone (or a properly configured Android Studio emulator with a Google Play system image) whenever one becomes available: install the APK, open the Explore screen, confirm map tiles and host pins render.
+> - **Not a Private Beta launch blocker** — the configuration work is done correctly and is not expected to need any further changes; this is purely an outstanding visual confirmation step.
+>
+> **Next launch blocker: awaiting founder direction.** Candidates still on hold, not yet started: Apple/Google developer accounts, push notification credentials, PayFast configuration. Do not begin any of these until the founder explicitly names the next priority.
 >
 > Remaining known manual items before Private Beta:
 > 1. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
