@@ -1024,7 +1024,13 @@ supabase functions deploy complete-booking
 > - ⏳ On-device visual map rendering still pending — no physical Android device was available to test, and Appetize.io's free-tier browser emulator failed to maintain a connection on two attempts (unrelated infrastructure issue, not an app problem). **This is configuration-complete, not verification-failed or verification-incomplete-due-to-app-issues** — every piece that can be checked without a real device has been checked and is correct. The one remaining step is a five-minute visual confirmation on any real Android phone (or a properly configured Android Studio emulator with a Google Play system image) whenever one becomes available: install the APK, open the Explore screen, confirm map tiles and host pins render.
 > - **Not a Private Beta launch blocker** — the configuration work is done correctly and is not expected to need any further changes; this is purely an outstanding visual confirmation step.
 >
-> **Next launch blocker: awaiting founder direction.** Candidates still on hold, not yet started: Apple/Google developer accounts, push notification credentials, PayFast configuration. Do not begin any of these until the founder explicitly names the next priority.
+> **Apple Developer Program — ENROLLMENT SUBMITTED, AWAITING APPROVAL (2026-07-15):**
+> - ✅ Founder enrolled as an individual developer — application submitted.
+> - ⏳ Awaiting Apple's approval — external dependency, timeline outside our control.
+> - 🚫 **Not an active blocker requiring work from us while pending.** Nothing to do here until the approval email arrives. Do not attempt to accelerate or work around this.
+> - **When approval arrives, next up:** App Store Connect setup → TestFlight configuration → iOS production builds → internal beta distribution.
+>
+> **Next launch blocker: awaiting founder direction.** With Apple Developer enrollment now in progress (external, non-blocking), remaining candidates for parallel work: Google Play developer account, push notification credentials, PayFast configuration, and the 🟡 remaining launch tasks already catalogued in the Launch Dashboard (ToS acceptance gate, email notification system, Sprint 5 minor bugs, etc.). Do not begin any of these until the founder explicitly names the next priority.
 >
 > Remaining known manual items before Private Beta:
 > 1. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
