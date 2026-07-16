@@ -1030,7 +1030,14 @@ supabase functions deploy complete-booking
 > - 🚫 **Not an active blocker requiring work from us while pending.** Nothing to do here until the approval email arrives. Do not attempt to accelerate or work around this.
 > - **When approval arrives, next up:** App Store Connect setup → TestFlight configuration → iOS production builds → internal beta distribution.
 >
-> **Next launch blocker: awaiting founder direction.** With Apple Developer enrollment now in progress (external, non-blocking), remaining candidates for parallel work: Google Play developer account, push notification credentials, PayFast configuration, and the 🟡 remaining launch tasks already catalogued in the Launch Dashboard (ToS acceptance gate, email notification system, Sprint 5 minor bugs, etc.). Do not begin any of these until the founder explicitly names the next priority.
+> **Google Play Developer account — COMPLETE (2026-07-16).** Account created and active. No longer a launch blocker — Android distribution/submission path is now unblocked, both via direct APK sideload (already proven working) and, once needed, the Play Console internal testing track / public listing.
+>
+> **External platform status summary:**
+> - ✅ Google Play Developer account — created and active
+> - ⏳ Apple Developer Program — enrollment submitted, awaiting Apple's approval (external, non-blocking, no action needed from us)
+> - ⏳ PayFast merchant account — not yet created (external, non-blocking, no action needed from us until submitted)
+>
+> **Next launch blocker: awaiting founder direction.** With both Apple Developer and PayFast now purely external waits, remaining candidates for parallel work: ToS acceptance gate at signup, push notification production credentials, the still-open `profiles` RLS question, Sprint 5 minor bugs (route collisions, `host-detail.tsx` dead end, bag count buttons), admin edge function deployment confirmation, notification DB schema confirmation, and email notification system. Do not begin any of these until the founder explicitly names the next priority.
 >
 > Remaining known manual items before Private Beta:
 > 1. Decide whether to drop the orphaned `bank_details` table (see Sprint 4 audit note) — recommend dropping after confirming it holds no live data
