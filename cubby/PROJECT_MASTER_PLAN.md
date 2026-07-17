@@ -1,6 +1,8 @@
 # CUBBY — PROJECT MASTER PLAN
 > Single source of truth for all development, product decisions, and launch planning.
 > Last updated: 2026-07-07
+>
+> **See also: [`PRIVATE_BETA_LAUNCH_PLAYBOOK.md`](./PRIVATE_BETA_LAUNCH_PLAYBOOK.md)** — the operational counterpart to this file. This document tracks engineering/infrastructure status; the playbook covers host acquisition, beta recruitment, founder operations, and launch risk — added 2026-07-16 once engineering readiness pulled ahead of go-to-market readiness.
 
 ---
 
