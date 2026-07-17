@@ -1,6 +1,6 @@
 # CUBBY — TERMS OF SERVICE (DRAFT)
 
-**Status:** First draft for legal review. Not yet reviewed by a South African attorney. Not yet approved by the founder. Do not treat as final or binding until both have occurred.
+**Status:** Draft for legal review. Not yet reviewed by a South African attorney. Two founder decisions — the fee model and the cancellation policy — were reviewed and confirmed by the founder on 2026-07-17; the remaining open items below are still unresolved. Do not treat as final or binding until attorney review is complete.
 **Drafted:** 2026-07-17
 **Reflects:** Cubby's actual product, code, and operations as they exist today — not planned future functionality. Every substantive claim in this document was checked against the live codebase before being written; where the document states current fee amounts, payout mechanics, or policy enforcement, those figures were pulled directly from `booking.tsx`, `complete-booking/index.ts`, `bookings.tsx`, and `schema.sql`, not from the previous in-app Terms screen, which was found to contain inaccuracies (see Legal Review Notes).
 
@@ -23,7 +23,7 @@ By creating an account or using the Cubby app, you agree to these Terms of Servi
 - **"Booking"** — a confirmed agreement between a Traveller and a Host for storage of a specified number of bags, for a specified drop-off and pick-up window.
 - **"Booking Value"** — the total amount charged to the Traveller for a Booking, including the Platform Fee (defined below).
 - **"Platform Fee"** — the additional amount added to a Host's listed price at checkout, currently calculated as 10% of the Host's listed price.
-- **"Host Payout"** — the amount paid to a Host for a completed Booking, currently calculated as 70% of the Booking Value (see Section 11 — Fees, which explains why this is not the same as 90% of the Host's original listed price).
+- **"Host Payout"** — the amount paid to a Host for a completed Booking, currently calculated as 70% of the Booking Value (the amount the Traveller paid, inclusive of the Platform Fee) — see Section 11 for a worked example.
 - **"Platform"** — the Cubby mobile and web application.
 
 ## 3. Eligibility
@@ -57,7 +57,7 @@ As a Traveller, you agree to:
 As a Host, you agree to:
 - Provide accurate information about your storage location, capacity, and pricing.
 - Store bags securely for the agreed Booking period.
-- Respond to Booking requests in a timely manner. **[Founder Decision Required]** Cubby does not currently enforce a maximum response time or measure this accurately (the in-app "response rate" figure is not yet functioning correctly — see Legal Review Note #6) — decide whether to commit to a specific response-time standard in this document before it is technically measurable.
+- Respond to Booking requests in a timely manner. **[Founder Decision Required]** Cubby does not currently enforce a maximum response time or measure this accurately (the in-app "response rate" figure is not yet functioning correctly — see item 4 in "Founder decisions still required") — decide whether to commit to a specific response-time standard in this document before it is technically measurable.
 - Refuse storage of, and not tamper with, any item reasonably believed to violate Section 13.
 - Not represent Cubby, or make commitments on Cubby's behalf, to Travellers.
 
@@ -65,11 +65,12 @@ Hosts are independent third parties, not Cubby employees, contractors, or agents
 
 ## 8. Booking Process
 
-1. A Traveller selects a Host, a number of bags, and a drop-off/pick-up date and time.
-2. The Host may accept or decline the Booking request.
-3. Once accepted, payment is processed (Section 9) and the Booking is confirmed.
-4. The Traveller drops off their bags at the agreed time; a Booking-specific code is used to verify drop-off and pick-up.
-5. Once the Traveller collects their bags, the Booking is marked complete.
+1. A Traveller selects a Host, a number of bags, and a drop-off/pick-up date and time, and completes payment through PayFast at the time of booking (Section 9).
+2. Once payment is received, the Booking is confirmed.
+3. The Traveller drops off their bags at the agreed time; a Booking-specific code is used to verify drop-off and pick-up.
+4. Once the Traveller collects their bags, the Booking is marked complete and the Host Payout is calculated (Section 11).
+
+Cubby's current booking flow does not include a separate Host accept/decline step before payment — a Host is notified once a Booking is confirmed and paid, rather than approving it beforehand. *(Correction from an earlier version of this draft, which described payment as happening after Host acceptance — verified against the live booking flow, `app/(host)/requests.tsx`, while auditing the cancellation policy in Section 12.)*
 
 **[Founder Decision Required]** There is currently no enforced minimum or maximum notice period for making a Booking, and no enforced limit on how far in advance a Booking can be made.
 
@@ -91,29 +92,29 @@ Cubby does not currently have an automated payout system. Host Payouts are calcu
 
 ## 11. Fees
 
-**This section requires founder attention before publication — see Legal Review Note #4, which is the most important item in this entire document.**
+**Confirmed for Private Beta (2026-07-17):** Cubby uses its currently-implemented fee model (referred to internally during drafting as "Model A") — the model already live in `booking.tsx`, `complete-booking/index.ts`, `revenue.tsx`, and `host-payouts.tsx`. No code changes were required to reach this decision; this section has been rewritten to explain that model clearly, using a worked example rather than percentages alone.
 
-The actual fee mechanics, verified directly against the code (`booking.tsx` and `complete-booking/index.ts`), are:
+**Worked example — a R100 host listing, 1 bag, 1 day:**
 
-1. The Traveller is charged the Host's listed price, plus a Platform Fee of 10% of that listed price. (Example: a Host lists R100/bag/day; the Traveller pays R110 for one bag for one day.)
-2. When the Booking is completed, the **Host Payout is calculated as 70% of the full amount the Traveller paid** (R110 in the example above) — **not 70% of the Host's original R100 listed price.**
-3. In the example above, this means: the Host receives **R77** (77% of their original listed price, not the ~90–100% a Host might reasonably expect from "we add a 10% fee on top"), and Cubby retains **R33** (33% of the Host's listed price — not simply "10%," and not simply "30%" of the Host's own price either).
+| Step | Amount |
+|---|---|
+| Host lists a price of | R100 |
+| Platform Fee added at checkout (10% of R100) | + R10 |
+| **Total the Traveller pays** | **R110** |
+| Host Payout (70% of the R110 the Traveller paid) | **R77** |
+| Cubby retains (30% of the R110 the Traveller paid) | **R33** |
 
-**This is very likely not the intended pricing model**, and as currently implemented, a Host reading "we add a 10% platform fee" alongside "you receive a 70/30 split" could reasonably conclude they keep the vast majority of their listed price, when in fact they keep 77% of it. Publishing fee language that does not match this actual math is a real risk of misleading Hosts about their earnings. **[Founder Decision Required]** — either:
-- (a) Change the code so the 70/30 split applies to the Host's original listed price (not the Traveller-inclusive total), so Hosts receive exactly what "70/30" suggests; or
-- (b) Keep the current code behavior and state the true, compounded numbers plainly to Hosts before they list, as this document now does.
+**In short: a Host currently receives approximately 77% of their listed price**, not their full listed price plus a separate on-top deduction. The 70/30 split is calculated on the full amount the Traveller pays (which already includes the 10% Platform Fee) — not on the Host's original listed price alone. This is the same math shown, in simplified form, to Hosts on the bank details screen in the app.
 
 Cubby may change the Platform Fee percentage or the Host Payout percentage at any time, with the rate in effect at the time of a Booking applying to that Booking.
 
 ## 12. Cancellations
 
-**[Founder Decision Required — see Legal Review Note #5]** The previous version of this document (the in-app Terms screen) stated a cancellation policy — free cancellation up to 1 hour before drop-off, with a fee of up to 50% within 1 hour of drop-off — but this policy **is not currently implemented anywhere in the code.** Cancelling a Booking today simply changes its status to "cancelled," with no time-based check and no fee ever calculated or charged.
+**Confirmed for Private Beta (2026-07-17):** full refund, cancel anytime before drop-off.
 
-Publishing a cancellation-fee policy that the platform does not actually enforce is a real risk — a Traveller who is told a fee "may apply" but is never charged one is a minor issue, but a Traveller who is told free cancellation applies and is then manually charged a fee by a human process, without the app reflecting that, is a real dispute risk. Two safe options for Private Beta, pick one:
+You may cancel a Booking at any time before the scheduled drop-off time, at no charge. If you have already paid, Cubby will refund the full amount you paid. Refunds are currently processed manually by Cubby; there is no fixed guaranteed refund timeframe during the Private Beta, but Cubby will process refunds promptly.
 
-> **Option A (recommended for Private Beta):** "Bookings may be cancelled at any time before drop-off with no cancellation fee. This policy may change as Cubby grows." — matches actual current system behavior exactly.
-
-> **Option B:** Keep the stricter stated policy above, but only if the founder commits to manually enforcing it (checking the drop-off time and manually calculating/withholding a fee via the manual refund process) every time a late cancellation occurs, since the app will not do this automatically.
+This is a deliberate choice, not a placeholder: an earlier version of this document (the in-app Terms screen) described a stricter policy — free cancellation only up to 1 hour before drop-off, with a fee of up to 50% within that window — but that policy was never actually implemented anywhere in the code, and publishing an unenforced fee policy was judged a real dispute risk. This section now matches exactly what the app actually does: cancelling a Booking does not charge a fee, regardless of how close to drop-off the cancellation occurs.
 
 ## 13. Prohibited Items
 
@@ -147,7 +148,7 @@ Cubby acts solely as an intermediary connecting Travellers and Hosts. To the max
 - The accuracy of information provided by a Host or Traveller.
 - Any indirect, incidental, or consequential loss arising from use of the Platform.
 
-Use of the Platform is at your own risk. **[Requires legal review]** This clause should be reviewed against South Africa's Consumer Protection Act (CPA), which limits how far a business can exclude liability toward consumers — a blanket liability exclusion of this kind may not be fully enforceable as written, particularly once real (non-beta) consumers are transacting for real money. See Legal Review Note #7.
+Use of the Platform is at your own risk. **[Requires legal review]** This clause should be reviewed against South Africa's Consumer Protection Act (CPA), which limits how far a business can exclude liability toward consumers — a blanket liability exclusion of this kind may not be fully enforceable as written, particularly once real (non-beta) consumers are transacting for real money. See "Areas requiring legal review" in the Legal Review Notes.
 
 ## 17. Indemnity
 
@@ -175,7 +176,7 @@ You may terminate your own account at any time (Profile → Delete Account).
 
 ## 21. Dispute Resolution
 
-**[Founder Decision Required — see Legal Review Note #8]** Cubby does not currently have a dedicated in-app dispute or reporting mechanism (no "report a problem with this booking" screen exists yet). Until one exists, the safest wording is:
+**[Founder Decision Required — see "Founder decisions still required" in the Legal Review Notes]** Cubby does not currently have a dedicated in-app dispute or reporting mechanism (no "report a problem with this booking" screen exists yet). Until one exists, the safest wording is:
 
 > "If a dispute arises between a Traveller and a Host, or between a user and Cubby, please contact Cubby support at hello@mycubby.co.za or +27 77 460 9484. Cubby will attempt in good faith to help resolve the dispute but is not obligated to act as an arbitrator and makes no guarantee of a particular outcome."
 
@@ -205,16 +206,23 @@ Questions about these Terms: hello@mycubby.co.za or +27 77 460 9484.
 - Formal dispute resolution language (Section 21)
 - Any internal, documented criteria for account suspension decisions (Section 20)
 
-## Founder decisions required (in order of importance)
+## Resolved decisions (2026-07-17)
+
+These two items were the two most consequential open questions in the original draft, both now settled by the founder after a full code + documentation audit:
+
+- **Fee model — confirmed.** Section 11 now reflects the model already implemented in `complete-booking/index.ts`, `revenue.tsx`, and `host-payouts.tsx`: the 70/30 split applies to the full Traveller-paid amount (inclusive of the 10% Platform Fee), meaning Hosts currently net ~77% of their listed price. No code changes were required — the audit found this matches every existing piece of host-facing UI (`bank-details.tsx`) and admin tooling; it was the *previous in-app Terms wording* that was ambiguous/inaccurate, not the underlying system. The host-facing fee explanation in the app has been improved to use the same worked example as this document (see companion PR).
+- **Cancellation policy — confirmed.** Section 12 now states a full refund for any cancellation before drop-off, with no fee — matching exactly what `bookings.tsx`'s cancellation logic already does. The previous in-app Terms' stated 1-hour/50%-fee policy has been dropped rather than kept as an unenforced promise.
+
+A related, uncovered-during-this-audit correction: Section 8 (Booking Process) previously described payment as happening *after* Host acceptance. Auditing the cancellation flow revealed this is backwards — in the live PayFast flow, payment happens immediately at booking creation, with no separate Host accept/decline gate. Section 8 has been corrected to match.
+
+## Founder decisions still required (in order of importance)
 
 1. **Company registration.** Cubby currently has no registered legal entity. Every clause in this document that assumes "Cubby" can enter into a binding contract, hold liability, or be sued/sue is resting on an unregistered trading name. Until this is resolved, the founder should understand they are very likely personally the contracting party with every user. This is the single highest-priority item in this entire review — recommend expediting company registration before any real (non-friends-and-family) user signs up, and it may also be the reason the PayFast merchant account application is taking time, since payment processors typically require a registered entity.
 2. **Age eligibility is stated but not enforced.** No date-of-birth field or age gate exists in the signup flow. Low risk for a beta with a small, known cohort; a real risk if the platform opens to public registration.
 3. **No published payout schedule exists**, and payouts are fully manual. Recommend not committing to a specific cadence in a public document until one is operationally reliable.
-4. **Fee math discrepancy — the most consequential finding in this review.** The previous in-app Terms described a 10% Platform Fee and a "70/30 split" as if these were the whole story. The actual code compounds them: Hosts currently net 77% of their listed price, not ~90-100%. This wasn't a documentation typo — it's the actual, verified behavior of `complete-booking/index.ts`. Decide whether to fix the calculation (apply 70/30 to the Host's base price, not the Traveller-inclusive total) or keep it and be transparent about the true numbers, as this draft now does. Publishing the old, ambiguous wording again would risk misleading Hosts about their real earnings.
-5. **Cancellation policy is currently 100% unenforced in code.** The stated 1-hour/50%-fee policy from the previous Terms does not exist anywhere in `bookings.tsx`'s cancellation logic. Choose Option A or B in Section 12 before publishing.
-6. **Host response-rate tracking is inaccurate** (flagged elsewhere in the engineering roadmap as always showing 100%). Don't commit to a specific response-time standard in the Terms until this is fixed and can actually be measured/enforced.
-7. **No in-app dispute/reporting mechanism exists.** Section 21 uses the safest available wording (direct users to the support channel) until a real reporting flow is built.
-8. **Verification is optional and not required to transact.** Confirm this is the intended trust/safety posture for Public Beta, or decide to make it mandatory for Hosts before then.
+4. **Host response-rate tracking is inaccurate** (flagged elsewhere in the engineering roadmap as always showing 100%). Don't commit to a specific response-time standard in the Terms until this is fixed and can actually be measured/enforced.
+5. **No in-app dispute/reporting mechanism exists.** Section 21 uses the safest available wording (direct users to the support channel) until a real reporting flow is built.
+6. **Verification is optional and not required to transact.** Confirm this is the intended trust/safety posture for Public Beta, or decide to make it mandatory for Hosts before then.
 
 ## Areas requiring legal review (not founder decisions — genuinely need an attorney)
 
@@ -228,7 +236,7 @@ Questions about these Terms: hello@mycubby.co.za or +27 77 460 9484.
 
 - Section 9 (Payments) — must be updated the moment a live PayFast merchant account exists; the current "sandbox only" caveat should not survive into Public Beta.
 - Section 10 (Manual Payouts) — should be replaced with a real, committed schedule once payout volume justifies automating or formalizing it.
-- Section 12 (Cancellations) — if Option A was chosen for Private Beta, revisit once a real cancellation-fee mechanism is actually built.
+- Section 12 (Cancellations) — the no-fee policy was a deliberate choice for Private Beta, not a placeholder; revisit only if cancellation volume/timing data during the beta suggests a fee tier is actually needed, and only once the engineering to enforce it exists.
 - Section 20 (Account Suspension) — should reference documented internal criteria once they exist, rather than "founder's discretion."
 - Section 21 (Dispute Resolution) — should be upgraded once an in-app reporting flow exists.
 
@@ -241,13 +249,15 @@ Questions about these Terms: hello@mycubby.co.za or +27 77 460 9484.
 
 ---
 
-# DOCUMENT QUALITY SCORE: 6.5 / 10
+# DOCUMENT QUALITY SCORE: 7.5 / 10 (up from 6.5)
 
-**What this score means:** this document is structurally complete, uses precise and consistent defined terms, and — unlike the previous in-app Terms — every factual claim about fees, payouts, and cancellations was verified directly against the live code rather than assumed. That accuracy is the main thing separating this draft from a generic template. It is not yet lawyer-ready to publish as-is.
+**What changed:** the two highest-stakes open items — the fee model and the cancellation policy — are now resolved, verified against the code, and stated with a worked example rather than percentages alone. Section 8's booking-process sequence was also corrected after the cancellation audit surfaced it was wrong. These were the items most likely to cause real user-facing harm (a Host misunderstanding their earnings; a Traveller being told about an unenforced cancellation fee), so resolving them is worth more than the raw count (2 of 8 decision items closed) suggests.
+
+**What this score means:** this document is structurally complete, uses precise and consistent defined terms, and every factual claim — including the two now-confirmed ones — was verified directly against the live code rather than assumed or copied from the previous in-app Terms. It is closer to lawyer-ready than before, but still not ready to publish as-is.
 
 **What would be required to reach lawyer-ready (9-10/10):**
-1. Company registration resolved, and Section 1 updated with the actual registered entity name and number (or a deliberate, informed decision to proceed as a sole trader, understood as such).
-2. Founder resolves the 8 `[Founder Decision Required]` items above — a lawyer cannot finalize clauses that depend on business decisions only the founder can make.
+1. Company registration resolved, and Section 1 updated with the actual registered entity name and number (or a deliberate, informed decision to proceed as a sole trader, understood as such). **This remains the single largest gap.**
+2. Founder resolves the 6 remaining `[Founder Decision Required]` items — a lawyer cannot finalize clauses that depend on business decisions only the founder can make.
 3. A South African attorney reviews Sections 16, 17, 18, and 21 specifically against the Consumer Protection Act and standard SA marketplace-platform precedent.
 4. A joint POPIA compliance pass across this document and the existing Privacy Policy.
-5. Once Sections 9–12 are updated to reflect live (not sandbox) payment status and a real payout/cancellation mechanism, a final consistency check between what the Terms say and what the product actually does — the same verification method used to write this draft, repeated after the code changes.
+5. Once Section 9 is updated to reflect a live (not sandbox) PayFast merchant account, a final consistency check between what the Terms say and what the product actually does — the same verification method used to write this draft.
