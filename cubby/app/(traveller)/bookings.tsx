@@ -108,8 +108,8 @@ export default function Bookings() {
     }
   }
 
-  const upcoming = bookings.filter(b => ['pending', 'confirmed', 'active'].includes(b.status ?? 'confirmed'));
-  const past = bookings.filter(b => ['completed', 'cancelled'].includes(b.status ?? ''));
+  const upcoming = bookings.filter(b => ['pending', 'awaiting_host_confirmation', 'confirmed', 'active'].includes(b.status ?? 'confirmed'));
+  const past = bookings.filter(b => ['completed', 'cancelled', 'declined', 'expired'].includes(b.status ?? ''));
   const shown = tab === 'upcoming' ? upcoming : past;
 
   return (

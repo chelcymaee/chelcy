@@ -149,6 +149,45 @@ ALTER TABLE bookings
   ADD COLUMN IF NOT EXISTS payout_status TEXT DEFAULT 'pending',
   ADD COLUMN IF NOT EXISTS payout_id TEXT;
 
+-- PayFast payment/completion columns — confirmed live via direct database
+-- inspection (2026-07-20) but never previously committed here; schema.sql
+-- had drifted from the real database. Read/written by payfast-itn,
+-- payfast-cancel, payfast-create, and complete-booking.
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS payment_provider TEXT DEFAULT 'payfast',
+  ADD COLUMN IF NOT EXISTS payment_reference TEXT,
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS failure_reason TEXT,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
+-- Booking lifecycle redesign (Phase 1) — host-confirmation gate, decline/
+-- expiry tracking, and manual-refund tracking. See PROJECT_MASTER_PLAN.md
+-- for the full state machine. Columns only in this phase — no code reads
+-- or writes them yet; they're activated in later phases.
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS host_response_deadline TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS refund_status TEXT,
+  ADD COLUMN IF NOT EXISTS refund_requested_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS refund_reference TEXT,
+  ADD COLUMN IF NOT EXISTS declined_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS expired_at TIMESTAMPTZ;
+
+DO $$ BEGIN
+  ALTER TABLE bookings
+    ADD CONSTRAINT bookings_refund_status_check
+    CHECK (refund_status IS NULL OR refund_status IN ('pending_manual', 'refunded'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Server-verified admin role, replacing the client-embedded ADMIN_SECRET
+-- pattern for new admin functions going forward (see PROJECT_MASTER_PLAN.md).
+-- Existing admin-* functions are not migrated in this change — tracked
+-- separately as a pre-existing gap, not introduced by this work.
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false;
+
 -- Saved spots (travellers bookmarking hosts)
 CREATE TABLE IF NOT EXISTS saved_spots (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
