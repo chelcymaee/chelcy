@@ -142,29 +142,40 @@ Deno.serve(async (req) => {
 
     // ── 7. Process payment result ──
     if (paymentStatus === 'COMPLETE') {
-      // Idempotent: only update if not already confirmed
-      const { error: updateErr } = await supabase
-        .from('bookings')
-        .update({
-          status: 'confirmed',
-          payment_provider: 'payfast',
-          payment_reference: pfPaymentId ?? null,
-          paid_at: new Date().toISOString(),
-        })
-        .eq('id', bookingId)
-        .in('status', ['pending', 'pending_payment']);
+      // The one authoritative payment-confirmation transition — see
+      // confirm_booking_payment in supabase/schema.sql. This function does
+      // not write to bookings itself; the RPC owns the guarded UPDATE
+      // (status, payment fields, and host_response_deadline set together
+      // atomically) and is idempotent by construction, so a duplicate or
+      // stale ITN naturally resolves to already_resolved rather than a
+      // second transition or a reset deadline.
+      const { data: rpcResult, error: rpcErr } = await supabase.rpc('confirm_booking_payment', {
+        p_booking_id: bookingId,
+        p_payment_reference: pfPaymentId ?? null,
+      });
 
-      if (updateErr) {
-        console.error('[payfast-itn] DB update error:', updateErr);
+      if (rpcErr) {
+        console.error('[payfast-itn] confirm_booking_payment RPC error:', rpcErr);
         return ok();
       }
 
-      console.log('[payfast-itn] Booking confirmed:', bookingId);
-
-      // Send notifications + emails (fire-and-forget)
-      sendConfirmationNotifications(supabase, booking).catch(e =>
-        console.error('[payfast-itn] Notification error:', e)
-      );
+      if (rpcResult?.ok) {
+        console.log('[payfast-itn] Booking now awaiting host confirmation:', bookingId);
+        // Send notifications + emails (fire-and-forget)
+        sendAwaitingHostNotifications(supabase, rpcResult.booking).catch(e =>
+          console.error('[payfast-itn] Notification error:', e)
+        );
+      } else if (rpcResult?.reason === 'already_resolved') {
+        // Duplicate or stale ITN — benign, PayFast retries legitimately.
+        console.log('[payfast-itn] Duplicate/stale ITN, already resolved:', bookingId, rpcResult.status);
+      } else if (rpcResult?.reason === 'reference_reused') {
+        // This payment_reference is already attached to a different
+        // booking — either a data anomaly or a replay attempt. Neither
+        // booking is touched by this call. Logged loudly on purpose.
+        console.error('[payfast-itn] SECURITY: payment_reference already attached to another booking:', bookingId, pfPaymentId);
+      } else {
+        console.warn('[payfast-itn] confirm_booking_payment did not confirm:', bookingId, rpcResult);
+      }
 
     } else if (paymentStatus === 'CANCELLED' || paymentStatus === 'FAILED') {
       await supabase
@@ -190,74 +201,83 @@ Deno.serve(async (req) => {
 });
 
 // ─── Notifications ────────────────────────────────────────────────────────────
+//
+// Fired only when confirm_booking_payment returns a fresh ok:true transition
+// — never on already_resolved or reference_reused. `booking` is the full row
+// the RPC returned (to_jsonb(v_booking)), so no separate fetch is needed for
+// the drop-off/pick-up/bag-count fields the host email uses.
+//
+// Deliberately does NOT send the old PIN-revealing traveller confirmation
+// email at this point: the booking is awaiting_host_confirmation, not
+// confirmed, and the host hasn't accepted yet — sending the PIN now would
+// let a traveller use it before the host ever agreed to the booking,
+// defeating the entire point of the host-confirmation gate. A real
+// confirmation email (with PIN) belongs at accept time instead. That needs
+// its own small server-side trigger, the same way the expiry sweep needed
+// one — deliberately left out of this phase to keep the diff scoped, not
+// silently dropped. Tracked as a follow-up in PROJECT_MASTER_PLAN.md.
 
-async function sendConfirmationNotifications(supabase: any, booking: any): Promise<void> {
+async function sendAwaitingHostNotifications(supabase: any, booking: any): Promise<void> {
   const { data: traveller } = await supabase
     .from('profiles').select('full_name, email').eq('id', booking.traveller_id).single();
   const { data: host } = await supabase
-    .from('hosts').select('display_name, location_name, assigned_user_id').eq('id', booking.host_id).single();
+    .from('hosts').select('display_name, location_name, user_id, assigned_user_id').eq('id', booking.host_id).single();
 
-  const hostOwnerId = host?.assigned_user_id;
+  // Found and fixed alongside this change: the old version resolved the
+  // host's owner via assigned_user_id only, so a self-service host
+  // (user_id set, assigned_user_id null) never got this email at all.
+  const hostOwnerId = host?.assigned_user_id ?? host?.user_id;
   const { data: hostOwner } = hostOwnerId
     ? await supabase.from('profiles').select('full_name, email').eq('id', hostOwnerId).single()
     : { data: null };
 
-  const { data: fullBooking } = await supabase
-    .from('bookings').select('drop_off_date, drop_off_time, pick_up_date, pick_up_time, bag_count, total_price, pin_code')
-    .eq('id', booking.id).single();
-
-  // In-app notification for traveller
+  // In-app + push: traveller — payment received, waiting on host.
   if (booking.traveller_id) {
     await supabase.from('notifications').insert({
       user_id: booking.traveller_id,
-      type: 'booking_confirmed',
-      title: 'Payment confirmed ✅',
-      body: 'Your payment was successful. Check your bookings for your drop-off PIN.',
+      type: 'booking_submitted',
+      title: 'Payment received — waiting on host',
+      body: "Your payment went through. We're waiting for the host to confirm your booking.",
       related_booking_id: booking.id,
     }).catch(() => {});
 
-    // Push
     fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
       body: JSON.stringify({
         user_id: booking.traveller_id,
-        title: 'Payment confirmed ✅',
-        body: 'Your bags are booked! Check the Cubby app for your PIN.',
-        data: { type: 'booking_confirmed', booking_id: booking.id },
+        title: 'Payment received — waiting on host',
+        body: "We're waiting for your host to confirm. You'll be notified as soon as they respond.",
+        data: { type: 'booking_submitted', booking_id: booking.id },
       }),
     }).catch(() => {});
   }
 
-  const emailBase = `${SUPABASE_URL}/functions/v1/send-email`;
+  // In-app + push: host — new request needs a response before the deadline.
+  if (hostOwnerId) {
+    await supabase.from('notifications').insert({
+      user_id: hostOwnerId,
+      type: 'booking_submitted',
+      title: 'New booking request ⏳',
+      body: 'A traveller has paid and is waiting on your response. Accept or decline before the deadline, or it will expire automatically.',
+      related_booking_id: booking.id,
+    }).catch(() => {});
 
-  // Email traveller
-  if (traveller?.email && fullBooking) {
-    fetch(emailBase, {
+    fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
       body: JSON.stringify({
-        emailType: 'booking_confirmed',
-        data: {
-          travellerEmail: traveller.email,
-          travellerName: traveller.full_name ?? 'Traveller',
-          hostName: host?.display_name ?? 'your host',
-          location: host?.location_name ?? '',
-          dropOffDate: fullBooking.drop_off_date,
-          dropOffTime: fullBooking.drop_off_time,
-          pickUpDate: fullBooking.pick_up_date,
-          pickUpTime: fullBooking.pick_up_time,
-          bagCount: fullBooking.bag_count,
-          totalPrice: fullBooking.total_price,
-          pinCode: fullBooking.pin_code,
-        },
+        user_id: hostOwnerId,
+        title: 'New booking request ⏳',
+        body: 'Respond before the deadline or it will expire automatically.',
+        data: { type: 'booking_submitted', booking_id: booking.id },
       }),
     }).catch(() => {});
   }
 
-  // Email host
-  if (hostOwner?.email && fullBooking) {
-    fetch(emailBase, {
+  // Email host — unchanged content, still accurate at this stage.
+  if (hostOwner?.email) {
+    fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
       body: JSON.stringify({
@@ -266,12 +286,12 @@ async function sendConfirmationNotifications(supabase: any, booking: any): Promi
           hostEmail: hostOwner.email,
           hostName: host?.display_name ?? 'Host',
           travellerName: traveller?.full_name ?? 'A traveller',
-          dropOffDate: fullBooking.drop_off_date,
-          dropOffTime: fullBooking.drop_off_time,
-          pickUpDate: fullBooking.pick_up_date,
-          pickUpTime: fullBooking.pick_up_time,
-          bagCount: fullBooking.bag_count,
-          totalPrice: fullBooking.total_price,
+          dropOffDate: booking.drop_off_date,
+          dropOffTime: booking.drop_off_time,
+          pickUpDate: booking.pick_up_date,
+          pickUpTime: booking.pick_up_time,
+          bagCount: booking.bag_count,
+          totalPrice: booking.total_price,
         },
       }),
     }).catch(() => {});
