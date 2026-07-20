@@ -165,6 +165,97 @@ export default function Bookings() {
     }
   }
 
+  // ─── Phase 5: trusted server-side cancel for awaiting_host_confirmation ──
+  // Unlike cancelBooking() above (the legacy direct-write path for
+  // pending/confirmed bookings), this calls the Phase 4 RPC
+  // cancel_awaiting_booking, which independently re-validates ownership and
+  // status server-side. Every structured outcome gets its own message, and
+  // the screen always refetches afterward rather than assuming the tap
+  // succeeded.
+  const [checkedExpiryIds, setCheckedExpiryIds] = useState<Set<string>>(new Set());
+
+  async function cancelAwaitingBooking(bookingId: string) {
+    setCancellingId(bookingId);
+    try {
+      const { data: result, error } = await supabase.rpc('cancel_awaiting_booking', { p_booking_id: bookingId });
+
+      if (error) {
+        showToast("Couldn't reach the server — please try again.");
+        return;
+      }
+
+      if (result?.ok) {
+        if (result.reason === 'already_resolved') {
+          showToast('This booking was already handled.');
+        } else {
+          showToast('Booking cancelled');
+          // Notify the host — only for a fresh cancellation, not a no-op.
+          const booking = bookings.find(b => b.id === bookingId);
+          const hostUserId = booking?.hosts?.assigned_user_id ?? booking?.hosts?.user_id;
+          if (hostUserId) {
+            sendNotification({
+              userId: hostUserId,
+              type: 'booking_cancelled',
+              title: 'Booking cancelled',
+              body: 'A traveller cancelled their upcoming booking with you.',
+              relatedBookingId: bookingId,
+            }).catch(e => console.error('[bookings] notification send failed:', bookingId, e));
+          }
+        }
+      } else {
+        switch (result?.reason) {
+          case 'refused_confirmed':
+            showToast('This booking is already confirmed — use the cancel option below instead.');
+            break;
+          case 'not_owner':
+            showToast("You don't have permission to do this.");
+            break;
+          case 'not_found':
+            showToast('This booking could not be found.');
+            break;
+          default:
+            showToast('Could not cancel this booking. Please try again.');
+        }
+      }
+    } finally {
+      // Always refetch — never assume the requested transition succeeded (or
+      // failed) from the client's own guess about what happened.
+      await loadBookings();
+      setCancellingId(null);
+      setConfirmCancelId(null);
+    }
+  }
+
+  // Defensive expiry check: if a countdown reaches 'ended' while this screen
+  // is open, ask the server once whether it's actually expired yet, rather
+  // than waiting on the scheduled sweep. check_booking_expiry re-validates
+  // everything server-side regardless of what the client's own countdown
+  // showed — this is purely an opportunistic nudge, never authoritative.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const overdue = bookings.filter(b =>
+      b.status === 'awaiting_host_confirmation' &&
+      !checkedExpiryIds.has(b.id) &&
+      formatResponseCountdown(b.host_response_deadline, nowTick).state === 'ended'
+    );
+    if (overdue.length === 0) return;
+
+    setCheckedExpiryIds(prev => {
+      const next = new Set(prev);
+      overdue.forEach(b => next.add(b.id));
+      return next;
+    });
+
+    (async () => {
+      let anyExpired = false;
+      for (const b of overdue) {
+        const { data: result } = await supabase.rpc('check_booking_expiry', { p_booking_id: b.id });
+        if (result?.expired) anyExpired = true;
+      }
+      if (anyExpired) await loadBookings();
+    })();
+  }, [bookings, nowTick, checkedExpiryIds]);
+
   const upcoming = bookings.filter(b => ['pending', 'awaiting_host_confirmation', 'confirmed', 'active'].includes(b.status ?? 'confirmed'));
   const past = bookings.filter(b => ['completed', 'cancelled', 'declined', 'expired'].includes(b.status ?? ''));
   const shown = tab === 'upcoming' ? upcoming : past;
@@ -341,20 +432,48 @@ export default function Bookings() {
                     )
                 )}
 
-                {/* Cancel for awaiting_host_confirmation — Phase 3 dormant preview, kept as
-                    its own block rather than joining the live ['pending', 'confirmed'] array
-                    below. It only ever calls showToast, never cancelBooking, so it cannot
-                    reach the live database-write handler. Wiring to the trusted
-                    booking-traveller-cancel server-side function happens in Phase 4. */}
+                {/* Cancel for awaiting_host_confirmation — wired to cancel_awaiting_booking
+                    (Phase 5). Kept as its own block rather than joining the live
+                    ['pending', 'confirmed'] array below: this RPC only ever transitions a
+                    booking that's still awaiting_host_confirmation, and refuses (rather than
+                    silently handling) a booking that's already confirmed — that stays on the
+                    existing cancelBooking() path below. */}
                 {status === 'awaiting_host_confirmation' && (
-                  <TouchableOpacity
-                    style={styles.cancelBtn}
-                    onPress={() => showToast("Cancel isn't wired up yet — coming in Phase 4.")}
-                    // @ts-ignore
-                    onClick={() => showToast("Cancel isn't wired up yet — coming in Phase 4.")}
-                  >
-                    <Text style={styles.cancelBtnText}>Cancel booking</Text>
-                  </TouchableOpacity>
+                  confirmCancelId === booking.id ? (
+                    <View style={{ gap: 8 }}>
+                      <Text style={{ fontSize: 13, color: Colors.error, fontWeight: '600', textAlign: 'center' }}>
+                        Cancel this booking? Your refund will be queued for processing.
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity
+                          style={{ flex: 1, backgroundColor: Colors.error, borderRadius: 10, padding: 10, alignItems: 'center', opacity: cancellingId === booking.id ? 0.6 : 1 }}
+                          onPress={() => cancelAwaitingBooking(booking.id)}
+                          // @ts-ignore
+                          onClick={() => cancelAwaitingBooking(booking.id)}
+                          disabled={cancellingId === booking.id}
+                        >
+                          <Text style={{ color: Colors.white, fontWeight: '700', fontSize: 13 }}>{cancellingId === booking.id ? 'Cancelling…' : 'Yes, cancel'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{ flex: 1, backgroundColor: Colors.white, borderRadius: 10, padding: 10, alignItems: 'center', borderWidth: 1, borderColor: Colors.border }}
+                          onPress={() => setConfirmCancelId(null)}
+                          // @ts-ignore
+                          onClick={() => setConfirmCancelId(null)}
+                        >
+                          <Text style={{ color: Colors.textSecondary, fontWeight: '700', fontSize: 13 }}>Keep</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.cancelBtn}
+                      onPress={() => setConfirmCancelId(booking.id)}
+                      // @ts-ignore
+                      onClick={() => setConfirmCancelId(booking.id)}
+                    >
+                      <Text style={styles.cancelBtnText}>Cancel booking</Text>
+                    </TouchableOpacity>
+                  )
                 )}
 
                 {['pending', 'confirmed'].includes(status) && (
