@@ -64,16 +64,20 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 // status, write to the database, or trigger a refund. Enforcing the deadline
 // is the `booking-check-expiry` server-side function's job (Phase 4), which
 // uses the database's own clock so it can't be fooled by client clock skew.
+// 'unknown' = no usable deadline data (missing or invalid) — rendered as a
+// neutral fallback, distinct from an active countdown or an ended one.
+type CountdownState = 'active' | 'ended' | 'unknown';
+
 function formatResponseCountdown(
   deadlineIso: string | null | undefined,
   nowMs: number,
-): { text: string; ended: boolean } {
-  if (!deadlineIso) return { text: 'No response deadline set', ended: false };
+): { text: string; state: CountdownState } {
+  if (!deadlineIso) return { text: 'No response deadline set', state: 'unknown' };
   const deadlineMs = new Date(deadlineIso).getTime();
-  if (Number.isNaN(deadlineMs)) return { text: 'No response deadline set', ended: false };
+  if (Number.isNaN(deadlineMs)) return { text: 'No response deadline set', state: 'unknown' };
 
   const diffMs = deadlineMs - nowMs;
-  if (diffMs <= 0) return { text: 'Response window ended', ended: true };
+  if (diffMs <= 0) return { text: 'Response window ended', state: 'ended' };
 
   const totalSeconds = Math.floor(diffMs / 1000);
   const hours = Math.floor(totalSeconds / 3600);
@@ -84,14 +88,16 @@ function formatResponseCountdown(
   const text = hours > 0
     ? `${hours}:${pad(minutes)}:${pad(seconds)} left to respond`
     : `${minutes}:${pad(seconds)} left to respond`;
-  return { text, ended: false };
+  return { text, state: 'active' };
 }
 
 // ─── DRAFT notification copy — Phase 2, NOT wired up ────────────────────────
 // Proposed copy for the notifications Phase 4's trusted server-side functions
 // will actually send. Nothing in this file calls sendNotification() with
 // these yet — they exist here only so copy can be reviewed ahead of wiring.
-export const DRAFT_HOST_CONFIRMATION_NOTIFICATION_COPY = {
+// Not exported: no other module consumes this yet, so it stays local until
+// something actually wires it up (avoids an unused public API surface).
+const DRAFT_HOST_CONFIRMATION_NOTIFICATION_COPY = {
   hostNewRequest: {
     title: 'New booking request ⏳',
     body: 'A traveller has paid and is waiting on your response. Accept or decline before the deadline, or it will expire automatically.',
@@ -133,26 +139,6 @@ const DEMO_REQUESTS: HostBooking[] = [
     bag_count: 1, drop_off_date: 'Yesterday', drop_off_time: '08:30', pick_up_time: '14:00',
     total_price: 80, status: 'confirmed', pin_code: '3391', created_at: new Date().toISOString(), host_id: '',
     host_response_deadline: null,
-  },
-  // Phase 2 preview fixtures — exercise the awaiting_host_confirmation card
-  // across the three deadline states: plenty of time, near expiry, expired.
-  {
-    id: 'demo-4', traveller_id: 'demo', traveller_name: 'Priya N.', traveller_email: 'priya@example.com',
-    bag_count: 2, drop_off_date: 'Today', drop_off_time: '13:00', pick_up_time: '18:00',
-    total_price: 160, status: 'awaiting_host_confirmation', pin_code: '9012', created_at: new Date().toISOString(), host_id: '',
-    host_response_deadline: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'demo-5', traveller_id: 'demo', traveller_name: 'Jono K.', traveller_email: 'jono@example.com',
-    bag_count: 1, drop_off_date: 'Today', drop_off_time: '13:30', pick_up_time: '17:00',
-    total_price: 80, status: 'awaiting_host_confirmation', pin_code: '5544', created_at: new Date().toISOString(), host_id: '',
-    host_response_deadline: new Date(Date.now() + 45 * 1000).toISOString(),
-  },
-  {
-    id: 'demo-6', traveller_id: 'demo', traveller_name: 'Bianca F.', traveller_email: 'bianca@example.com',
-    bag_count: 4, drop_off_date: 'Today', drop_off_time: '10:00', pick_up_time: '16:00',
-    total_price: 320, status: 'awaiting_host_confirmation', pin_code: '6677', created_at: new Date().toISOString(), host_id: '',
-    host_response_deadline: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
   },
 ];
 
@@ -275,9 +261,13 @@ export default function Requests() {
   async function updateStatus(bookingId: string, newStatus: BookingStatus) {
     setActionId(bookingId);
     try {
+      // Looked up once, outside the isSupabaseConfigured block, so it's also
+      // in scope for the notification send below (fixes a pre-existing bug
+      // where `booking` was referenced outside the block it was declared in).
+      const booking = bookings.find(b => b.id === bookingId);
+
       if (isSupabaseConfigured) {
         const respondedAt = new Date().toISOString();
-        const booking = bookings.find(b => b.id === bookingId);
 
         // Record response time when accepting or declining a pending booking
         const isResponse = newStatus === 'confirmed' || newStatus === 'cancelled';
@@ -363,6 +353,10 @@ export default function Requests() {
           {bookings.map(item => {
             const cfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.pending;
             const isActioning = actionId === item.id;
+            const countdown = item.status === 'awaiting_host_confirmation'
+              ? formatResponseCountdown(item.host_response_deadline, nowTick)
+              : null;
+            const responseWindowEnded = countdown?.state === 'ended';
 
             return (
               <View key={item.id} style={styles.card}>
@@ -400,21 +394,18 @@ export default function Requests() {
                 )}
 
                 {/* Response deadline — Phase 2 dormant UI, display only (see formatResponseCountdown) */}
-                {item.status === 'awaiting_host_confirmation' && (() => {
-                  const countdown = formatResponseCountdown(item.host_response_deadline, nowTick);
-                  return (
-                    <View style={[styles.deadlineBox, countdown.ended && styles.deadlineBoxEnded]}>
-                      <Text style={[styles.deadlineText, countdown.ended && styles.deadlineTextEnded]}>
-                        {countdown.text}
+                {item.status === 'awaiting_host_confirmation' && countdown && (
+                  <View style={[styles.deadlineBox, countdown.state !== 'active' && styles.deadlineBoxEnded]}>
+                    <Text style={[styles.deadlineText, countdown.state !== 'active' && styles.deadlineTextEnded]}>
+                      {countdown.text}
+                    </Text>
+                    {countdown.state === 'active' && !!item.host_response_deadline && (
+                      <Text style={styles.deadlineSub}>
+                        Respond by {new Date(item.host_response_deadline).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
                       </Text>
-                      {!!item.host_response_deadline && !countdown.ended && (
-                        <Text style={styles.deadlineSub}>
-                          Respond by {new Date(item.host_response_deadline).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
-                        </Text>
-                      )}
-                    </View>
-                  );
-                })()}
+                    )}
+                  </View>
+                )}
 
                 {/* View Traveller Profile */}
                 <TouchableOpacity
@@ -492,23 +483,29 @@ export default function Requests() {
                 )}
 
                 {/* Accept / Decline for awaiting_host_confirmation — Phase 2 dormant preview.
-                    These buttons do NOT write to the database or call any edge function yet.
-                    Wiring to the trusted server-side transition functions happens in Phase 4. */}
+                    These buttons do NOT write to the database or call any edge function — they
+                    only ever call showToast, never updateStatus, so they cannot reach the legacy
+                    write handler above. Wiring to the trusted server-side transition functions
+                    happens in Phase 4. Disabled once the displayed countdown has ended: the
+                    countdown itself is still just a display, but a live-looking button that can't
+                    do anything once the window has closed would be misleading. */}
                 {item.status === 'awaiting_host_confirmation' && (
                   <View style={styles.actions}>
                     <TouchableOpacity
-                      style={styles.acceptBtn}
+                      style={[styles.acceptBtn, responseWindowEnded && styles.btnDisabled]}
                       onPress={() => showToast("Accept isn't wired up yet — coming in Phase 4.")}
                       // @ts-ignore
                       onClick={() => showToast("Accept isn't wired up yet — coming in Phase 4.")}
+                      disabled={responseWindowEnded}
                     >
                       <Text style={styles.acceptText}>✓ Accept</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.declineBtn}
+                      style={[styles.declineBtn, responseWindowEnded && styles.btnDisabled]}
                       onPress={() => showToast("Decline isn't wired up yet — coming in Phase 4.")}
                       // @ts-ignore
                       onClick={() => showToast("Decline isn't wired up yet — coming in Phase 4.")}
+                      disabled={responseWindowEnded}
                     >
                       <Text style={styles.declineText}>✕ Decline</Text>
                     </TouchableOpacity>
