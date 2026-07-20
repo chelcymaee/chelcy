@@ -118,7 +118,7 @@ export default function Requests() {
               created_at
             `)
             .eq('host_id', hostRow.id)
-            .in('status', ['pending_payment', 'pending', 'confirmed', 'active', 'completed'])
+            .in('status', ['pending_payment', 'pending', 'awaiting_host_confirmation', 'confirmed', 'active', 'completed', 'declined', 'expired'])
             .order('created_at', { ascending: false });
 
           if (error) { showToast('Could not load bookings.', true); return; }
