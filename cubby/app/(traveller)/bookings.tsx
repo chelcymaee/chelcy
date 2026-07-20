@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,20 +11,63 @@ import { sendNotification } from '../../src/lib/notification-service';
 const STATUS_COLOR: Record<string, string> = {
   pending_payment: '#9CA3AF',
   pending: '#F59E0B',
+  awaiting_host_confirmation: '#F59E0B',
   confirmed: '#3B82F6',
   active: '#10B981',
   completed: '#6B7280',
   cancelled: '#EF4444',
+  declined: '#EF4444',
+  expired: '#9CA3AF',
 };
 
 const STATUS_LABEL: Record<string, string> = {
   pending_payment: '⏳ Awaiting payment',
   pending: 'Pending',
+  awaiting_host_confirmation: '🕒 Awaiting host confirmation',
   confirmed: 'Confirmed',
   active: 'Active',
   completed: 'Completed',
   cancelled: 'Cancelled',
+  declined: 'Declined',
+  expired: 'Expired',
 };
+
+// ─── Response countdown — DISPLAY ONLY, duplicated from the host Requests
+// screen (app/(host)/requests.tsx) rather than shared. Founder-flagged
+// follow-up: extract formatResponseCountdown and the deadline-state helpers
+// into a shared utility module once the full booking lifecycle is
+// implemented — not a Phase 3 change.
+//
+// Never authoritative. Renders a live countdown to `host_response_deadline`
+// purely so the traveller knows roughly how long the host has left to
+// respond. When the deadline passes it shows "Response window ended"
+// locally — it must NOT change the booking's status or trigger a refund.
+// That stays the `booking-check-expiry` server-side function's job (Phase 4),
+// which uses the database's own clock.
+type CountdownState = 'active' | 'ended' | 'unknown';
+
+function formatResponseCountdown(
+  deadlineIso: string | null | undefined,
+  nowMs: number,
+): { text: string; state: CountdownState } {
+  if (!deadlineIso) return { text: 'No response deadline set', state: 'unknown' };
+  const deadlineMs = new Date(deadlineIso).getTime();
+  if (Number.isNaN(deadlineMs)) return { text: 'No response deadline set', state: 'unknown' };
+
+  const diffMs = deadlineMs - nowMs;
+  if (diffMs <= 0) return { text: 'Response window ended', state: 'ended' };
+
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  const text = hours > 0
+    ? `${hours}:${pad(minutes)}:${pad(seconds)} left for host to respond`
+    : `${minutes}:${pad(seconds)} left for host to respond`;
+  return { text, state: 'active' };
+}
 
 export default function Bookings() {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -33,10 +76,24 @@ export default function Bookings() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
+  // Ticks once a second so the awaiting_host_confirmation countdowns stay
+  // live. Display only — see formatResponseCountdown above.
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   useFocusEffect(useCallback(() => {
     loadBookings();
   }, []));
+
+  useEffect(() => {
+    const interval = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  }
 
   async function loadBookings() {
     setLoading(true);
@@ -114,6 +171,12 @@ export default function Bookings() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {toast && (
+        <View style={styles.toast}>
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      )}
+
       <View style={[styles.header, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
         <Text style={styles.heading}>My Bookings</Text>
         <NotificationBell variant="traveller" />
@@ -179,6 +242,9 @@ export default function Bookings() {
             const bags = booking.bag_count ?? booking.bags ?? 1;
             const total = booking.total_price ?? booking.totalPrice ?? 0;
             const pinCode = booking.pin_code ?? booking.pin ?? '';
+            const countdown = status === 'awaiting_host_confirmation'
+              ? formatResponseCountdown(booking.host_response_deadline, nowTick)
+              : null;
 
             return (
               <View key={booking.id} style={styles.card}>
@@ -223,6 +289,24 @@ export default function Bookings() {
                   </View>
                 )}
 
+                {/* Waiting-state card for awaiting_host_confirmation — Phase 3 dormant UI.
+                    The countdown is display only (see formatResponseCountdown above) and
+                    the PIN is deliberately withheld here: it's only ever shown once the
+                    booking reaches 'confirmed' below, never while still awaiting the host. */}
+                {status === 'awaiting_host_confirmation' && countdown && (
+                  <View style={[styles.awaitingCard, countdown.state !== 'active' && styles.awaitingCardEnded]}>
+                    <Text style={styles.awaitingText}>
+                      Payment received — we're waiting for your host to confirm this booking.
+                    </Text>
+                    <Text style={[styles.awaitingCountdown, countdown.state !== 'active' && styles.awaitingCountdownEnded]}>
+                      {countdown.text}
+                    </Text>
+                  </View>
+                )}
+
+                {/* PIN is only ever shown once payment AND host confirmation are both done
+                    (status === 'confirmed') — never while pending payment or awaiting host
+                    confirmation. */}
                 {!!pinCode && status === 'confirmed' && (
                   <View style={styles.pinCard}>
                     <Text style={styles.pinLabel}>Your drop-off PIN</Text>
@@ -255,6 +339,22 @@ export default function Bookings() {
                         <Text style={styles.reviewBtnText}>✏️ Leave a review</Text>
                       </TouchableOpacity>
                     )
+                )}
+
+                {/* Cancel for awaiting_host_confirmation — Phase 3 dormant preview, kept as
+                    its own block rather than joining the live ['pending', 'confirmed'] array
+                    below. It only ever calls showToast, never cancelBooking, so it cannot
+                    reach the live database-write handler. Wiring to the trusted
+                    booking-traveller-cancel server-side function happens in Phase 4. */}
+                {status === 'awaiting_host_confirmation' && (
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={() => showToast("Cancel isn't wired up yet — coming in Phase 4.")}
+                    // @ts-ignore
+                    onClick={() => showToast("Cancel isn't wired up yet — coming in Phase 4.")}
+                  >
+                    <Text style={styles.cancelBtnText}>Cancel booking</Text>
+                  </TouchableOpacity>
                 )}
 
                 {['pending', 'confirmed'].includes(status) && (
@@ -304,6 +404,12 @@ export default function Bookings() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  toast: {
+    position: 'absolute', top: 16, left: 24, right: 24,
+    backgroundColor: Colors.textPrimary, borderRadius: 12,
+    paddingVertical: 14, paddingHorizontal: 20, zIndex: 100, alignItems: 'center',
+  },
+  toastText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
   tabBar: {
@@ -341,6 +447,11 @@ const styles = StyleSheet.create({
   detailText: { fontSize: 14, color: Colors.textSecondary },
   pendingCard: { backgroundColor: Colors.warningBg, borderRadius: 14, padding: 14 },
   pendingText: { fontSize: 13, color: Colors.warningText, fontWeight: '600', textAlign: 'center' },
+  awaitingCard: { backgroundColor: Colors.warningBg, borderRadius: 14, padding: 14, gap: 6 },
+  awaitingCardEnded: { backgroundColor: '#F3F4F6' },
+  awaitingText: { fontSize: 13, color: Colors.warningText, fontWeight: '600', textAlign: 'center' },
+  awaitingCountdown: { fontSize: 13, color: Colors.warningText, fontWeight: '800', textAlign: 'center' },
+  awaitingCountdownEnded: { color: Colors.textSecondary },
   pinCard: { backgroundColor: Colors.primary, borderRadius: 14, padding: 14, alignItems: 'center' },
   pinLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
   pinCode: { fontSize: 36, fontWeight: '900', color: '#fff', letterSpacing: 8, marginBottom: 4 },
