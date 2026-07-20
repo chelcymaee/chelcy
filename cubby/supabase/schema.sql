@@ -671,3 +671,344 @@ DROP POLICY IF EXISTS "Admin can view all bookings" ON bookings;
 DROP POLICY IF EXISTS "Travellers can update own bookings" ON bookings;
 CREATE POLICY "Travellers can update own bookings" ON bookings
   FOR UPDATE USING (auth.uid() = traveller_id);
+
+-- -------------------------------------------------------------------------
+-- Booking lifecycle redesign — Phase 4: trusted server-side transitions
+-- -------------------------------------------------------------------------
+-- Six Postgres functions (SECURITY DEFINER) are the only things allowed to
+-- move a booking out of `awaiting_host_confirmation`. No React Native
+-- screen writes to `bookings.status`, `refund_status`, or any deadline
+-- column directly for this state — see PROJECT_MASTER_PLAN.md and the
+-- Phase 4 sequence-diagram review for the full design rationale.
+--
+-- Every function below follows the same guarded-UPDATE pattern used since
+-- payfast-itn: `UPDATE ... WHERE <starting state>` either succeeds and
+-- returns the new row, or matches zero rows, in which case a follow-up
+-- SELECT determines *why* (not found / not owner / wrong status / deadline
+-- passed) purely to shape a useful response — the guarded UPDATE itself,
+-- not that follow-up SELECT, is what makes concurrent calls safe. Two
+-- racing calls against the same row are serialized by ordinary Postgres
+-- row-level locking: whichever UPDATE's WHERE clause matches first commits
+-- first, and the second transaction's WHERE clause no longer matches the
+-- now-committed row, so it cleanly returns a "no rows" response instead of
+-- a second transition. This was verified locally with two genuinely
+-- concurrent sessions racing a decline against a cancel on the same row —
+-- not just asserted from reading the SQL.
+--
+-- All deadline comparisons use the database's own now() inside the
+-- function body, never a client-supplied timestamp — this is exactly why
+-- these are Postgres functions rather than plain PostgREST `.update()`
+-- calls from an Edge Function: Supabase's REST filter builder can only
+-- compare a column to a value the caller sends, which would reopen the
+-- clock-skew risk this design has avoided from the start.
+--
+-- Known pre-existing gap, not fixed here: the existing RLS policy "Hosts
+-- can update bookings for their listing" (above) only checks
+-- hosts.user_id, not hosts.assigned_user_id, so an admin-assigned host
+-- cannot update bookings via plain RLS. These six functions are all
+-- SECURITY DEFINER and perform their own ownership check internally
+-- (checking both user_id and assigned_user_id), so they are unaffected by
+-- that gap — but the underlying RLS policy itself still has it, for any
+-- future direct-write code path that might rely on it.
+
+-- accept_booking(p_booking_id) — host accepts within the response window.
+-- Guard: status = 'awaiting_host_confirmation' AND host_response_deadline
+-- IS NOT NULL AND host_response_deadline > now(). The deadline condition
+-- (not just status) is deliberate: it makes the deadline authoritative
+-- rather than depending on how promptly the expiry sweep runs — an accept
+-- can never land during the gap between the true deadline and the next
+-- sweep invocation.
+CREATE OR REPLACE FUNCTION accept_booking(p_booking_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_booking bookings;
+  v_is_owner boolean;
+BEGIN
+  UPDATE bookings b
+  SET status = 'confirmed'
+  WHERE b.id = p_booking_id
+    AND b.status = 'awaiting_host_confirmation'
+    AND b.host_response_deadline IS NOT NULL
+    AND b.host_response_deadline > now()
+    AND b.host_id IN (
+      SELECT id FROM hosts WHERE user_id = auth.uid() OR assigned_user_id = auth.uid()
+    )
+  RETURNING * INTO v_booking;
+
+  IF FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'booking', to_jsonb(v_booking));
+  END IF;
+
+  SELECT * INTO v_booking FROM bookings WHERE id = p_booking_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_found');
+  END IF;
+
+  SELECT EXISTS(
+    SELECT 1 FROM hosts
+    WHERE id = v_booking.host_id AND (user_id = auth.uid() OR assigned_user_id = auth.uid())
+  ) INTO v_is_owner;
+  IF NOT v_is_owner THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_owner');
+  END IF;
+
+  IF v_booking.status <> 'awaiting_host_confirmation' THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'already_resolved', 'status', v_booking.status);
+  END IF;
+
+  -- Only remaining possibility: status still matches but the deadline
+  -- condition didn't (missing or already elapsed).
+  RETURN jsonb_build_object('ok', false, 'reason', 'deadline_passed');
+END;
+$$;
+
+-- decline_booking(p_booking_id) — host declines within the response window.
+-- Same deadline-authoritative guard as accept_booking. Status, declined_at,
+-- and the refund-queue fields are written in the SAME guarded UPDATE — a
+-- decline can never land without its refund obligation recorded alongside
+-- it in one atomic statement.
+CREATE OR REPLACE FUNCTION decline_booking(p_booking_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_booking bookings;
+  v_is_owner boolean;
+BEGIN
+  UPDATE bookings b
+  SET status = 'declined',
+      declined_at = now(),
+      refund_status = 'pending_manual',
+      refund_requested_at = now()
+  WHERE b.id = p_booking_id
+    AND b.status = 'awaiting_host_confirmation'
+    AND b.host_response_deadline IS NOT NULL
+    AND b.host_response_deadline > now()
+    AND b.host_id IN (
+      SELECT id FROM hosts WHERE user_id = auth.uid() OR assigned_user_id = auth.uid()
+    )
+  RETURNING * INTO v_booking;
+
+  IF FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'booking', to_jsonb(v_booking));
+  END IF;
+
+  SELECT * INTO v_booking FROM bookings WHERE id = p_booking_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_found');
+  END IF;
+
+  SELECT EXISTS(
+    SELECT 1 FROM hosts
+    WHERE id = v_booking.host_id AND (user_id = auth.uid() OR assigned_user_id = auth.uid())
+  ) INTO v_is_owner;
+  IF NOT v_is_owner THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_owner');
+  END IF;
+
+  IF v_booking.status <> 'awaiting_host_confirmation' THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'already_resolved', 'status', v_booking.status);
+  END IF;
+
+  RETURN jsonb_build_object('ok', false, 'reason', 'deadline_passed');
+END;
+$$;
+
+-- cancel_awaiting_booking(p_booking_id) — traveller cancels while still
+-- awaiting host confirmation. Guard is deliberately status-only (no
+-- deadline condition): the client-side countdown is display-only and must
+-- never decide whether cancellation is allowed, and a traveller should be
+-- able to cancel regardless of how close to (or past) the deadline the
+-- booking is, right up until the moment it actually transitions away from
+-- this state.
+--
+-- Three distinct outcomes on a non-match, not one generic "already
+-- handled": already expired/declined/cancelled is a harmless idempotent
+-- no-op (ok:true) since there's nothing left to do; already confirmed is a
+-- genuine refusal (ok:false) — this function intentionally does not handle
+-- cancelling a confirmed booking, that stays on the existing, untouched
+-- cancelBooking() direct-write path in app/(traveller)/bookings.tsx for now.
+CREATE OR REPLACE FUNCTION cancel_awaiting_booking(p_booking_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_booking bookings;
+BEGIN
+  UPDATE bookings b
+  SET status = 'cancelled',
+      refund_status = 'pending_manual',
+      refund_requested_at = now()
+  WHERE b.id = p_booking_id
+    AND b.status = 'awaiting_host_confirmation'
+    AND b.traveller_id = auth.uid()
+  RETURNING * INTO v_booking;
+
+  IF FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'booking', to_jsonb(v_booking));
+  END IF;
+
+  SELECT * INTO v_booking FROM bookings WHERE id = p_booking_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_found');
+  END IF;
+
+  IF v_booking.traveller_id <> auth.uid() THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_owner');
+  END IF;
+
+  IF v_booking.status = 'confirmed' THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'refused_confirmed', 'status', v_booking.status);
+  END IF;
+
+  RETURN jsonb_build_object('ok', true, 'reason', 'already_resolved',
+                             'status', v_booking.status, 'booking', to_jsonb(v_booking));
+END;
+$$;
+
+-- expire_overdue_booking(p_booking_id) — the ONE authoritative expiry
+-- transition. p_booking_id NULL sweeps every eligible row (used by the
+-- scheduled booking-expiry-sweep Edge Function); a specific id scopes the
+-- identical guarded UPDATE to that one row (used by check_booking_expiry
+-- below). Nothing about this transition exists anywhere else — both
+-- callers share this exact implementation, not a re-implementation of it.
+--
+-- Eligibility is deliberately conservative: a NULL host_response_deadline
+-- can never match `host_response_deadline <= now()`, so a booking with no
+-- deadline set is never treated as expired. This mirrors the same rule the
+-- dormant Phase 2/3 UI already enforces on the display side.
+--
+-- Not directly callable by end users — see the REVOKE/GRANT block below.
+CREATE OR REPLACE FUNCTION expire_overdue_booking(p_booking_id UUID DEFAULT NULL)
+RETURNS SETOF bookings
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE bookings
+  SET status = 'expired',
+      expired_at = now(),
+      refund_status = 'pending_manual',
+      refund_requested_at = now()
+  WHERE status = 'awaiting_host_confirmation'
+    AND host_response_deadline IS NOT NULL
+    AND host_response_deadline <= now()
+    AND (p_booking_id IS NULL OR id = p_booking_id)
+  RETURNING *;
+$$;
+
+-- check_booking_expiry(p_booking_id) — thin, ownership-checked wrapper
+-- around expire_overdue_booking, for a client to call defensively when it
+-- opens or refreshes a booking that looks overdue. Verifies the caller is
+-- actually a party to this specific booking (the traveller, or the
+-- listing's owning/assigned host), then delegates to the exact same
+-- shared expiry implementation used by the scheduled sweep — this
+-- function adds an authorization check, it does not add or duplicate any
+-- transition logic.
+CREATE OR REPLACE FUNCTION check_booking_expiry(p_booking_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row bookings;
+  v_is_party boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM bookings b
+    LEFT JOIN hosts h ON h.id = b.host_id
+    WHERE b.id = p_booking_id
+      AND (b.traveller_id = auth.uid() OR h.user_id = auth.uid() OR h.assigned_user_id = auth.uid())
+  ) INTO v_is_party;
+
+  IF NOT v_is_party THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_owner');
+  END IF;
+
+  SELECT * INTO v_row FROM expire_overdue_booking(p_booking_id);
+  IF FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'expired', true, 'booking', to_jsonb(v_row));
+  END IF;
+  RETURN jsonb_build_object('ok', true, 'expired', false);
+END;
+$$;
+
+-- mark_refunded(p_booking_id, p_refund_reference) — admin closes out a
+-- queued manual refund. Gated on profiles.is_admin = true, checked via
+-- auth.uid() inside the function body — replacing the client-embedded
+-- ADMIN_SECRET pattern for this function specifically, per the Phase 1
+-- decision. No service-role key or admin secret is ever sent to or stored
+-- in the client for this to work.
+CREATE OR REPLACE FUNCTION mark_refunded(p_booking_id UUID, p_refund_reference TEXT DEFAULT NULL)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_booking bookings;
+  v_is_admin boolean;
+BEGIN
+  SELECT COALESCE((SELECT is_admin FROM profiles WHERE id = auth.uid()), false) INTO v_is_admin;
+  IF NOT v_is_admin THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_admin');
+  END IF;
+
+  UPDATE bookings b
+  SET refund_status = 'refunded',
+      refunded_at = now(),
+      refund_reference = p_refund_reference
+  WHERE b.id = p_booking_id
+    AND b.refund_status = 'pending_manual'
+  RETURNING * INTO v_booking;
+
+  IF FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'booking', to_jsonb(v_booking));
+  END IF;
+
+  SELECT * INTO v_booking FROM bookings WHERE id = p_booking_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_found');
+  END IF;
+
+  RETURN jsonb_build_object('ok', false, 'reason', 'already_resolved', 'refund_status', v_booking.refund_status);
+END;
+$$;
+
+-- Grants: everything except expire_overdue_booking is callable directly by
+-- any authenticated user (each function performs its own ownership/role
+-- check internally, exactly like RLS-backed tables would, just enforced in
+-- the function body instead). expire_overdue_booking is deliberately
+-- restricted to service_role only — the scheduled sweep is the one caller
+-- allowed to invoke it with no per-row ownership check, since it runs with
+-- no end user attached. A normal authenticated client can only reach it
+-- indirectly through check_booking_expiry's ownership check above. This
+-- was verified locally: a non-privileged role attempting to call
+-- expire_overdue_booking directly gets a Postgres insufficient_privilege
+-- error, not a silent bypass.
+REVOKE ALL ON FUNCTION accept_booking(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION decline_booking(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION cancel_awaiting_booking(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION expire_overdue_booking(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION check_booking_expiry(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION mark_refunded(UUID, TEXT) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION accept_booking(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION decline_booking(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION cancel_awaiting_booking(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION check_booking_expiry(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION mark_refunded(UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION expire_overdue_booking(UUID) TO service_role;
+
+-- Not wired to any screen yet. The Phase 2/3 dormant Accept / Decline /
+-- Cancel buttons still only call showToast() — connecting them to these
+-- functions is future, separately-reviewed work, not part of this change.
