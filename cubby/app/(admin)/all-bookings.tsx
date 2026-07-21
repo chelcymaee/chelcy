@@ -1,18 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
 import { isSupabaseConfigured } from '../../src/lib/supabase';
-
-const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
+import { adminFetch } from '../../src/lib/admin-auth';
 
 async function adminFetchBookings() {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-bookings`, {
-    method: 'GET',
-    headers: {
-      'x-admin-secret': ADMIN_SECRET,
-      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
-    },
-  });
+  const res = await adminFetch('/admin-bookings', { method: 'GET' });
   return res.json();
 }
 

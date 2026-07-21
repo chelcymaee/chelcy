@@ -2,19 +2,12 @@ import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { adminFetch } from '../../src/lib/admin-auth';
 
-const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
-
-async function adminFetch(method: string, path: string, body?: object) {
-  const url = `${SUPABASE_URL}/functions/v1/admin-bank-details${path}`;
-  const res = await fetch(url, {
+async function adminFetchBankDetails(method: string, path: string, body?: object) {
+  const res = await adminFetch(`/admin-bank-details${path}`, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-admin-secret': ADMIN_SECRET,
-      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   });
   return res.json();
@@ -94,7 +87,7 @@ export default function HostPayouts() {
         })));
       }
       // Bank details go through the admin edge function (service role)
-      const result = await adminFetch('GET', '');
+      const result = await adminFetchBankDetails('GET', '');
       if (result.data) {
         const map: Record<string, BankDetails> = {};
         for (const row of result.data) {
@@ -146,7 +139,7 @@ export default function HostPayouts() {
     try {
       const host = hosts.find(h => h.id === editingHostId);
       if (isSupabaseConfigured) {
-        const result = await adminFetch('POST', '', {
+        const result = await adminFetchBankDetails('POST', '', {
           host_id: editingHostId!,
           account_holder: form.accountHolder,
           bank_name: form.bank,
@@ -191,7 +184,7 @@ export default function HostPayouts() {
     const updated = { ...bankDetails };
     delete updated[hostId];
     if (isSupabaseConfigured) {
-      await adminFetch('DELETE', `?hostId=${hostId}`);
+      await adminFetchBankDetails('DELETE', `?hostId=${hostId}`);
     } else {
       await AsyncStorage.setItem('cubby_host_bank_details', JSON.stringify(updated));
     }

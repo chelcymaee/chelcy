@@ -2,14 +2,21 @@
 //
 // Single entry point for all Cubby transactional emails via Resend.
 //
-// Called in two ways:
+// Called in three ways:
 //
 //   1. Direct HTTP call from another edge function:
 //      POST /functions/v1/send-email
 //      Header: x-admin-secret: <ADMIN_SECRET>
 //      Body: { emailType: 'booking_confirmed', data: { ... } }
 //
-//   2. Supabase Database Webhook (automatic, no auth header):
+//   2. Direct HTTP call from the client — currently only
+//      src/lib/review-service.ts, for review-received/milestone emails.
+//      A signed-in user has no server secret to send, so this path
+//      accepts their own Supabase JWT instead:
+//      Header: Authorization: Bearer <supabase session token>
+//      Body: { emailType: 'review_received', data: { ... } }
+//
+//   3. Supabase Database Webhook (automatic, no auth header):
 //      Body: { type: 'INSERT'|'UPDATE', table: string, record: {...}, old_record: {...} }
 //      The function detects the table and fires the right email.
 //
@@ -550,9 +557,24 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }
 
-    // Direct call: requires admin secret
+    // Direct call: either a server secret (other Edge Functions) or the
+    // caller's own Supabase JWT (the one client caller — review-service.ts
+    // — always has a signed-in user at this point, unlike the admin panel,
+    // so their own session is a valid credential here).
     const secret = req.headers.get('x-admin-secret');
-    if (!ADMIN_SECRET || secret !== ADMIN_SECRET) {
+    const authHeader = req.headers.get('authorization');
+    let authed = false;
+
+    if (ADMIN_SECRET && secret === ADMIN_SECRET) {
+      authed = true;
+    } else if (authHeader) {
+      const token = authHeader.replace(/^Bearer\s+/i, '');
+      const authClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+      const { data: { user } } = await authClient.auth.getUser(token);
+      authed = !!user;
+    }
+
+    if (!authed) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 

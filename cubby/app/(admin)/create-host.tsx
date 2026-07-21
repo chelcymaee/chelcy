@@ -3,18 +3,12 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isSupabaseConfigured } from '../../src/lib/supabase';
 import LocationPicker, { LocationResult } from '../../src/components/LocationPicker.web';
+import { adminFetch as adminHostsFetch } from '../../src/lib/admin-auth';
 
-const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
-
-async function adminFetch(body: object) {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-hosts`, {
+async function createHost(body: object) {
+  const res = await adminHostsFetch('/admin-hosts', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-admin-secret': ADMIN_SECRET,
-      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   return res.json();
@@ -86,7 +80,7 @@ export default function CreateHost() {
           available_days: availableDays, is_active: active,
         };
         log('Calling admin-hosts create action...');
-        const result = await adminFetch({ action: 'create', payload, partnerEmail: partnerEmail.trim() || undefined });
+        const result = await createHost({ action: 'create', payload, partnerEmail: partnerEmail.trim() || undefined });
         if (result.error) {
           log('CREATE ERROR: ' + result.error);
           setErrorMsg(result.error);

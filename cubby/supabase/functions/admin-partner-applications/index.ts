@@ -1,9 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireAdminSession } from '../_shared/admin-session.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-secret',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
@@ -19,18 +20,17 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  // partner_applications only has a public INSERT policy — admin reads/updates
-  // must go through this service-role function, gated by ADMIN_SECRET.
-  const expectedSecret = Deno.env.get('ADMIN_SECRET');
-  const providedSecret = req.headers.get('x-admin-secret');
-  if (!expectedSecret || providedSecret !== expectedSecret) {
-    return unauthorized();
-  }
-
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   );
+
+  // partner_applications only has a public INSERT policy — admin reads/updates
+  // must go through this service-role function, gated by a valid admin session.
+  const session = await requireAdminSession(req, supabase);
+  if (!session.ok) {
+    return unauthorized();
+  }
 
   try {
     if (req.method === 'GET') {
