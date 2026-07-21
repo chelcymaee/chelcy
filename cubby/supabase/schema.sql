@@ -1028,6 +1028,24 @@ GRANT EXECUTE ON FUNCTION expire_overdue_booking(UUID) TO service_role;
 ALTER TABLE bookings
   ADD CONSTRAINT bookings_payment_reference_unique UNIQUE (payment_reference);
 
+-- payment_provider allowlist: confirm_booking_payment takes p_payment_provider
+-- as a plain TEXT argument from whichever Edge Function calls it, so the
+-- column itself is the enforcement point rather than trusting each caller —
+-- the same defense-in-depth shape as the guarded UPDATE + restricted GRANT
+-- already used for every trusted transition. The two values here are the
+-- complete set actually ever written anywhere in the codebase (verified by
+-- grep across supabase/functions and app/): 'payfast' (payfast-create,
+-- app/(traveller)/booking.tsx, and confirm_booking_payment's own default)
+-- and 'peach' (payment-webhook, payment-result). NULL stays allowed for
+-- pre-payment rows. DO block makes this safe to re-run.
+DO $$ BEGIN
+  ALTER TABLE bookings
+    ADD CONSTRAINT bookings_payment_provider_check
+    CHECK (payment_provider IS NULL OR payment_provider IN ('payfast', 'peach'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 -- confirm_booking_payment(p_booking_id, p_payment_reference, p_payment_provider)
 -- — the one authoritative payment-confirmation transition, shared by every
 -- payment provider's webhook (payfast-itn, and the legacy Peach
@@ -1101,6 +1119,13 @@ BEGIN
 EXCEPTION
   WHEN unique_violation THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'reference_reused');
+  WHEN check_violation THEN
+    -- Almost certainly the bookings_payment_provider_check allowlist
+    -- above (payment_reference has no CHECK, only the UNIQUE handled
+    -- separately): an unrecognised p_payment_provider from a caller.
+    -- Returned as a structured outcome, same as every other rejection
+    -- here, rather than letting a raw Postgres error reach the caller.
+    RETURN jsonb_build_object('ok', false, 'reason', 'invalid_provider');
 END;
 $$;
 
