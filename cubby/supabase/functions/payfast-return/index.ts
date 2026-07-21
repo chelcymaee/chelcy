@@ -24,9 +24,16 @@ Deno.serve(async (req) => {
       const { data: booking } = await supabase
         .from('bookings').select('status').eq('id', bookingId).single();
 
-      if (booking?.status === 'confirmed') status = 'success';
-      else if (booking?.status === 'cancelled') status = 'failed';
-      else status = 'pending'; // ITN may not have fired yet — show pending
+      // A successful ITN moves the booking to awaiting_host_confirmation,
+      // not straight to confirmed (see confirm_booking_payment in
+      // supabase/schema.sql) — so "payment succeeded" here means "no
+      // longer pending_payment and not cancelled", not "status is exactly
+      // confirmed". Anything the booking does after that (accepted,
+      // declined, expired) is a separate lifecycle stage this return page
+      // isn't reporting on; it only answers "did the payment go through".
+      if (!booking?.status || booking.status === 'pending_payment') status = 'pending';
+      else if (booking.status === 'cancelled') status = 'failed';
+      else status = 'success';
     } catch {
       status = 'pending';
     }
@@ -37,7 +44,7 @@ Deno.serve(async (req) => {
   const icon = status === 'success' ? '✅' : status === 'pending' ? '⏳' : '❌';
   const heading = status === 'success' ? 'Payment successful!' : status === 'pending' ? 'Processing payment…' : 'Payment failed';
   const body = status === 'success'
-    ? 'Your bags are booked. Tap below to see your drop-off PIN.'
+    ? "Your bags are booked. We're waiting for your host to confirm — you'll be notified as soon as they respond."
     : status === 'pending'
     ? 'Your payment is being confirmed. Return to the Cubby app to check status.'
     : 'Something went wrong. Tap below to try again.';

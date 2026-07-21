@@ -1028,15 +1028,22 @@ GRANT EXECUTE ON FUNCTION expire_overdue_booking(UUID) TO service_role;
 ALTER TABLE bookings
   ADD CONSTRAINT bookings_payment_reference_unique UNIQUE (payment_reference);
 
--- confirm_booking_payment(p_booking_id, p_payment_reference) — the one
--- authoritative payment-confirmation transition. Guard is deliberately
--- status-only (pending_payment), not an ownership check: unlike every
--- other Phase 4 function, the caller here is PayFast's server via the
--- payfast-itn Edge Function, not an authenticated Cubby user — there is no
--- auth.uid() to check. Authorization instead comes entirely from the
--- restricted GRANT below (service_role only), the same pattern already
--- used for expire_overdue_booking and for the same reason: no end-user JWT
--- exists in this call path.
+-- confirm_booking_payment(p_booking_id, p_payment_reference, p_payment_provider)
+-- — the one authoritative payment-confirmation transition, shared by every
+-- payment provider's webhook (payfast-itn, and the legacy Peach
+-- payment-webhook / payment-result, both hardened to call this instead of
+-- writing to bookings directly — see those files under supabase/functions).
+-- Guard is deliberately status-only (pending_payment), not an ownership
+-- check: the caller here is a payment provider's server, not an
+-- authenticated Cubby user — there is no auth.uid() to check. Authorization
+-- instead comes entirely from the restricted GRANT below (service_role
+-- only), the same pattern already used for expire_overdue_booking and for
+-- the same reason: no end-user JWT exists in this call path.
+--
+-- p_payment_provider defaults to 'payfast' so the original payfast-itn call
+-- site (which only ever passes the first two arguments) is unaffected;
+-- Peach callers pass p_payment_provider := 'peach' explicitly so a Peach
+-- payment is never mislabeled as a PayFast one.
 --
 -- host_response_deadline is derived from now() + a single hardcoded
 -- interval (30 minutes, Private Beta value) — the only place this
@@ -1046,16 +1053,23 @@ ALTER TABLE bookings
 -- email_address, merchant_id, signature) has no payment timestamp field —
 -- confirmed against PayFast's own documented parameter list and their
 -- reference WHMCS integration, which itself uses the receiving server's
--- clock rather than anything from the payload.
+-- clock rather than anything from the payload. The same now()-based
+-- approach is used for every provider for consistency, since none of
+-- Peach's webhook payloads carry a timestamp either.
 --
 -- Idempotent by the same guarded-UPDATE mechanism as every other
--- transition: a duplicate ITN (PayFast retries on anything but a prompt
--- 200) or a stale ITN arriving after the booking already moved on both
--- resolve to zero rows / already_resolved, never a second transition, never
--- a reset deadline. A payment_reference collision with a different booking
--- (data anomaly or replay) is caught explicitly via the UNIQUE constraint
--- above rather than silently succeeding or throwing a raw DB error.
-CREATE OR REPLACE FUNCTION confirm_booking_payment(p_booking_id UUID, p_payment_reference TEXT)
+-- transition: a duplicate/stale webhook call from any provider (PayFast
+-- retries on anything but a prompt 200; Peach may retry similarly) resolves
+-- to zero rows / already_resolved, never a second transition, never a
+-- reset deadline or a resent notification (callers only notify when
+-- ok = true). A payment_reference collision with a different booking (data
+-- anomaly or replay) is caught explicitly via the UNIQUE constraint above
+-- rather than silently succeeding or throwing a raw DB error.
+CREATE OR REPLACE FUNCTION confirm_booking_payment(
+  p_booking_id UUID,
+  p_payment_reference TEXT,
+  p_payment_provider TEXT DEFAULT 'payfast'
+)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1066,7 +1080,7 @@ DECLARE
 BEGIN
   UPDATE bookings b
   SET status = 'awaiting_host_confirmation',
-      payment_provider = 'payfast',
+      payment_provider = p_payment_provider,
       payment_reference = p_payment_reference,
       paid_at = now(),
       host_response_deadline = now() + interval '30 minutes'
@@ -1090,8 +1104,8 @@ EXCEPTION
 END;
 $$;
 
-REVOKE ALL ON FUNCTION confirm_booking_payment(UUID, TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION confirm_booking_payment(UUID, TEXT) TO service_role;
+REVOKE ALL ON FUNCTION confirm_booking_payment(UUID, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION confirm_booking_payment(UUID, TEXT, TEXT) TO service_role;
 
 -- The Phase 2/3 dormant Accept / Decline / Cancel buttons are wired to
 -- accept_booking / decline_booking / cancel_awaiting_booking as part of

@@ -15,13 +15,13 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { createHash } from 'https://deno.land/std@0.168.0/node/crypto.ts';
+import { sendAwaitingHostNotifications } from '../_shared/awaiting-host-notifications.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const PAYFAST_MERCHANT_ID = Deno.env.get('PAYFAST_MERCHANT_ID') ?? '';
 const PAYFAST_PASSPHRASE = Deno.env.get('PAYFAST_PASSPHRASE') ?? '';
 const PAYFAST_SANDBOX = Deno.env.get('PAYFAST_SANDBOX') !== 'false';
-const ADMIN_SECRET = Deno.env.get('ADMIN_SECRET') ?? '';
 
 // PayFast production server IPs (skip validation in sandbox)
 const PAYFAST_IPS = ['41.74.179.194', '41.74.179.195', '41.74.179.196', '41.74.179.197'];
@@ -200,100 +200,8 @@ Deno.serve(async (req) => {
   }
 });
 
-// ─── Notifications ────────────────────────────────────────────────────────────
-//
-// Fired only when confirm_booking_payment returns a fresh ok:true transition
-// — never on already_resolved or reference_reused. `booking` is the full row
-// the RPC returned (to_jsonb(v_booking)), so no separate fetch is needed for
-// the drop-off/pick-up/bag-count fields the host email uses.
-//
-// Deliberately does NOT send the old PIN-revealing traveller confirmation
-// email at this point: the booking is awaiting_host_confirmation, not
-// confirmed, and the host hasn't accepted yet — sending the PIN now would
-// let a traveller use it before the host ever agreed to the booking,
-// defeating the entire point of the host-confirmation gate. A real
-// confirmation email (with PIN) belongs at accept time instead. That needs
-// its own small server-side trigger, the same way the expiry sweep needed
-// one — deliberately left out of this phase to keep the diff scoped, not
-// silently dropped. Tracked as a follow-up in PROJECT_MASTER_PLAN.md.
-
-async function sendAwaitingHostNotifications(supabase: any, booking: any): Promise<void> {
-  const { data: traveller } = await supabase
-    .from('profiles').select('full_name, email').eq('id', booking.traveller_id).single();
-  const { data: host } = await supabase
-    .from('hosts').select('display_name, location_name, user_id, assigned_user_id').eq('id', booking.host_id).single();
-
-  // Found and fixed alongside this change: the old version resolved the
-  // host's owner via assigned_user_id only, so a self-service host
-  // (user_id set, assigned_user_id null) never got this email at all.
-  const hostOwnerId = host?.assigned_user_id ?? host?.user_id;
-  const { data: hostOwner } = hostOwnerId
-    ? await supabase.from('profiles').select('full_name, email').eq('id', hostOwnerId).single()
-    : { data: null };
-
-  // In-app + push: traveller — payment received, waiting on host.
-  if (booking.traveller_id) {
-    await supabase.from('notifications').insert({
-      user_id: booking.traveller_id,
-      type: 'booking_submitted',
-      title: 'Payment received — waiting on host',
-      body: "Your payment went through. We're waiting for the host to confirm your booking.",
-      related_booking_id: booking.id,
-    }).catch(() => {});
-
-    fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
-      body: JSON.stringify({
-        user_id: booking.traveller_id,
-        title: 'Payment received — waiting on host',
-        body: "We're waiting for your host to confirm. You'll be notified as soon as they respond.",
-        data: { type: 'booking_submitted', booking_id: booking.id },
-      }),
-    }).catch(() => {});
-  }
-
-  // In-app + push: host — new request needs a response before the deadline.
-  if (hostOwnerId) {
-    await supabase.from('notifications').insert({
-      user_id: hostOwnerId,
-      type: 'booking_submitted',
-      title: 'New booking request ⏳',
-      body: 'A traveller has paid and is waiting on your response. Accept or decline before the deadline, or it will expire automatically.',
-      related_booking_id: booking.id,
-    }).catch(() => {});
-
-    fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
-      body: JSON.stringify({
-        user_id: hostOwnerId,
-        title: 'New booking request ⏳',
-        body: 'Respond before the deadline or it will expire automatically.',
-        data: { type: 'booking_submitted', booking_id: booking.id },
-      }),
-    }).catch(() => {});
-  }
-
-  // Email host — unchanged content, still accurate at this stage.
-  if (hostOwner?.email) {
-    fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
-      body: JSON.stringify({
-        emailType: 'new_booking_request',
-        data: {
-          hostEmail: hostOwner.email,
-          hostName: host?.display_name ?? 'Host',
-          travellerName: traveller?.full_name ?? 'A traveller',
-          dropOffDate: booking.drop_off_date,
-          dropOffTime: booking.drop_off_time,
-          pickUpDate: booking.pick_up_date,
-          pickUpTime: booking.pick_up_time,
-          bagCount: booking.bag_count,
-          totalPrice: booking.total_price,
-        },
-      }),
-    }).catch(() => {});
-  }
-}
+// sendAwaitingHostNotifications now lives in ../_shared/awaiting-host-notifications.ts
+// — payment-webhook and payment-result call the exact same function after
+// their own confirm_booking_payment success, so the notification copy and
+// the deliberate absence of a PIN-revealing email can't drift between
+// payment providers the way the transition logic itself no longer can.
