@@ -69,14 +69,20 @@ Deno.serve(async (req) => {
 
   if (bErr || !booking) return errHtml('Booking not found.');
 
-  if (booking.status === 'confirmed') {
-    // Already paid — redirect back to success
+  // A successful payment moves the booking to awaiting_host_confirmation,
+  // not straight to confirmed (see confirm_booking_payment in
+  // supabase/schema.sql), so "already paid, don't re-show the form" now
+  // means "anything past pending_payment" rather than "status is exactly
+  // confirmed" — otherwise a traveller who already paid and is merely
+  // awaiting host confirmation would incorrectly fall through to the
+  // payable-status check below and see "this booking cannot be paid".
+  if (booking.status !== 'pending_payment' && booking.status !== 'pending') {
+    if (booking.status === 'cancelled') {
+      return errHtml('This booking cannot be paid at this time.');
+    }
+    // awaiting_host_confirmation, confirmed, declined, expired, completed, ...
     const deepLink = `cubby://payment-result?status=success&bookingId=${encodeURIComponent(bookingId)}`;
     return new Response(null, { status: 302, headers: { Location: deepLink } });
-  }
-
-  if (booking.status !== 'pending_payment' && booking.status !== 'pending') {
-    return errHtml('This booking cannot be paid at this time.');
   }
 
   const [{ data: traveller }, { data: host }] = await Promise.all([

@@ -1009,6 +1009,134 @@ GRANT EXECUTE ON FUNCTION check_booking_expiry(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION mark_refunded(UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION expire_overdue_booking(UUID) TO service_role;
 
--- Not wired to any screen yet. The Phase 2/3 dormant Accept / Decline /
--- Cancel buttons still only call showToast() — connecting them to these
--- functions is future, separately-reviewed work, not part of this change.
+-- -------------------------------------------------------------------------
+-- Booking lifecycle redesign — Phase 5: PayFast payment confirmation
+-- -------------------------------------------------------------------------
+-- A successful PayFast ITN no longer transitions a booking straight to
+-- 'confirmed'. It transitions to 'awaiting_host_confirmation' and starts
+-- the host-response clock — the same gate every other entry into that
+-- state goes through. `payfast-itn` calls this RPC instead of writing to
+-- `bookings` directly; see supabase/functions/payfast-itn/index.ts.
+--
+-- Diagnostic query to run before applying the UNIQUE constraint below, in
+-- case any live data already has a duplicate payment_reference (would
+-- otherwise make the ALTER TABLE fail):
+--   SELECT payment_reference, COUNT(*) FROM bookings
+--   WHERE payment_reference IS NOT NULL
+--   GROUP BY payment_reference HAVING COUNT(*) > 1;
+
+ALTER TABLE bookings
+  ADD CONSTRAINT bookings_payment_reference_unique UNIQUE (payment_reference);
+
+-- payment_provider allowlist: confirm_booking_payment takes p_payment_provider
+-- as a plain TEXT argument from whichever Edge Function calls it, so the
+-- column itself is the enforcement point rather than trusting each caller —
+-- the same defense-in-depth shape as the guarded UPDATE + restricted GRANT
+-- already used for every trusted transition. The two values here are the
+-- complete set actually ever written anywhere in the codebase (verified by
+-- grep across supabase/functions and app/): 'payfast' (payfast-create,
+-- app/(traveller)/booking.tsx, and confirm_booking_payment's own default)
+-- and 'peach' (payment-webhook, payment-result). NULL stays allowed for
+-- pre-payment rows. DO block makes this safe to re-run.
+DO $$ BEGIN
+  ALTER TABLE bookings
+    ADD CONSTRAINT bookings_payment_provider_check
+    CHECK (payment_provider IS NULL OR payment_provider IN ('payfast', 'peach'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+-- confirm_booking_payment(p_booking_id, p_payment_reference, p_payment_provider)
+-- — the one authoritative payment-confirmation transition, shared by every
+-- payment provider's webhook (payfast-itn, and the legacy Peach
+-- payment-webhook / payment-result, both hardened to call this instead of
+-- writing to bookings directly — see those files under supabase/functions).
+-- Guard is deliberately status-only (pending_payment), not an ownership
+-- check: the caller here is a payment provider's server, not an
+-- authenticated Cubby user — there is no auth.uid() to check. Authorization
+-- instead comes entirely from the restricted GRANT below (service_role
+-- only), the same pattern already used for expire_overdue_booking and for
+-- the same reason: no end-user JWT exists in this call path.
+--
+-- p_payment_provider defaults to 'payfast' so the original payfast-itn call
+-- site (which only ever passes the first two arguments) is unaffected;
+-- Peach callers pass p_payment_provider := 'peach' explicitly so a Peach
+-- payment is never mislabeled as a PayFast one.
+--
+-- host_response_deadline is derived from now() + a single hardcoded
+-- interval (30 minutes, Private Beta value) — the only place this
+-- duration is defined. paid_at also uses now(): PayFast's ITN payload
+-- (m_payment_id, pf_payment_id, payment_status, amount_gross, amount_fee,
+-- amount_net, custom_str1-5, custom_int1-5, name_first, name_last,
+-- email_address, merchant_id, signature) has no payment timestamp field —
+-- confirmed against PayFast's own documented parameter list and their
+-- reference WHMCS integration, which itself uses the receiving server's
+-- clock rather than anything from the payload. The same now()-based
+-- approach is used for every provider for consistency, since none of
+-- Peach's webhook payloads carry a timestamp either.
+--
+-- Idempotent by the same guarded-UPDATE mechanism as every other
+-- transition: a duplicate/stale webhook call from any provider (PayFast
+-- retries on anything but a prompt 200; Peach may retry similarly) resolves
+-- to zero rows / already_resolved, never a second transition, never a
+-- reset deadline or a resent notification (callers only notify when
+-- ok = true). A payment_reference collision with a different booking (data
+-- anomaly or replay) is caught explicitly via the UNIQUE constraint above
+-- rather than silently succeeding or throwing a raw DB error.
+CREATE OR REPLACE FUNCTION confirm_booking_payment(
+  p_booking_id UUID,
+  p_payment_reference TEXT,
+  p_payment_provider TEXT DEFAULT 'payfast'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_booking bookings;
+BEGIN
+  UPDATE bookings b
+  SET status = 'awaiting_host_confirmation',
+      payment_provider = p_payment_provider,
+      payment_reference = p_payment_reference,
+      paid_at = now(),
+      host_response_deadline = now() + interval '30 minutes'
+  WHERE b.id = p_booking_id
+    AND b.status = 'pending_payment'
+  RETURNING * INTO v_booking;
+
+  IF FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'booking', to_jsonb(v_booking));
+  END IF;
+
+  SELECT * INTO v_booking FROM bookings WHERE id = p_booking_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_found');
+  END IF;
+
+  RETURN jsonb_build_object('ok', false, 'reason', 'already_resolved', 'status', v_booking.status);
+EXCEPTION
+  WHEN unique_violation THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'reference_reused');
+  WHEN check_violation THEN
+    -- Almost certainly the bookings_payment_provider_check allowlist
+    -- above (payment_reference has no CHECK, only the UNIQUE handled
+    -- separately): an unrecognised p_payment_provider from a caller.
+    -- Returned as a structured outcome, same as every other rejection
+    -- here, rather than letting a raw Postgres error reach the caller.
+    RETURN jsonb_build_object('ok', false, 'reason', 'invalid_provider');
+END;
+$$;
+
+REVOKE ALL ON FUNCTION confirm_booking_payment(UUID, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION confirm_booking_payment(UUID, TEXT, TEXT) TO service_role;
+
+-- The Phase 2/3 dormant Accept / Decline / Cancel buttons are wired to
+-- accept_booking / decline_booking / cancel_awaiting_booking as part of
+-- this same phase — see app/(host)/requests.tsx and
+-- app/(traveller)/bookings.tsx. check_booking_expiry is wired as a
+-- defensive, opportunistic check on both screens when a countdown's local
+-- display reaches 'ended'. None of this makes the client-side call the
+-- authority — every RPC re-validates its own guard server-side regardless
+-- of what the client believed was true when it called.

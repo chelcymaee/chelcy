@@ -91,32 +91,20 @@ function formatResponseCountdown(
   return { text, state: 'active' };
 }
 
-// ─── DRAFT notification copy — Phase 2, NOT wired up ────────────────────────
-// Proposed copy for the notifications Phase 4's trusted server-side functions
-// will actually send. Nothing in this file calls sendNotification() with
-// these yet — they exist here only so copy can be reviewed ahead of wiring.
-// Not exported: no other module consumes this yet, so it stays local until
-// something actually wires it up (avoids an unused public API surface).
-const DRAFT_HOST_CONFIRMATION_NOTIFICATION_COPY = {
-  hostNewRequest: {
-    title: 'New booking request ⏳',
-    body: 'A traveller has paid and is waiting on your response. Accept or decline before the deadline, or it will expire automatically.',
-  },
-  travellerAwaitingHost: {
-    title: 'Payment received — waiting on host',
-    body: "Your payment went through. We're waiting for the host to confirm your booking.",
-  },
+// ─── Notification copy — used by respondToRequest() below (Phase 5) ─────────
+// hostNewRequest/travellerAwaitingHost moved to payfast-itn/index.ts, since
+// payment confirmation (not accept/decline) is what triggers those now.
+// travellerExpired lives in booking-expiry-sweep/index.ts, next to the
+// transition that actually produces it. This file only needs the two
+// outcomes a host's own Accept/Decline tap can cause.
+const NOTIFICATION_COPY = {
   travellerAccepted: {
     title: 'Booking confirmed ✅',
     body: 'Your host accepted your booking. Check your bookings for the drop-off PIN.',
   },
   travellerDeclined: {
     title: 'Booking declined',
-    body: "Your host wasn't able to accept this booking. You'll be refunded — try another host nearby!",
-  },
-  travellerExpired: {
-    title: 'Response window ended',
-    body: "Your host didn't respond in time, so this booking has expired. You'll be refunded — try another host nearby!",
+    body: "Your host wasn't able to accept this booking. Your refund has been queued for processing — try another host nearby!",
   },
 } as const;
 
@@ -313,6 +301,99 @@ export default function Requests() {
     }
   }
 
+  // ─── Phase 5: trusted server-side transitions for awaiting_host_confirmation ──
+  // Unlike updateStatus() above (the legacy direct-write path for the pending
+  // status), these call the Phase 4 RPCs — accept_booking / decline_booking —
+  // which independently re-validate ownership, status, and the deadline
+  // server-side. The client never assumes a tap succeeded: every branch below
+  // refetches from the database rather than optimistically mutating local
+  // state, and every structured outcome gets its own message instead of one
+  // generic failure.
+  const [checkedExpiryIds, setCheckedExpiryIds] = useState<Set<string>>(new Set());
+
+  async function respondToRequest(bookingId: string, action: 'accept' | 'decline') {
+    setActionId(bookingId);
+    try {
+      const { data: result, error } = await supabase.rpc(
+        action === 'accept' ? 'accept_booking' : 'decline_booking',
+        { p_booking_id: bookingId }
+      );
+
+      if (error) {
+        showToast("Couldn't reach the server — please try again.", true);
+        return;
+      }
+
+      if (result?.ok) {
+        showToast(action === 'accept' ? 'Booking accepted ✓' : 'Booking declined');
+        const booking = bookings.find(b => b.id === bookingId);
+        if (booking?.traveller_id) {
+          const copy = action === 'accept' ? NOTIFICATION_COPY.travellerAccepted : NOTIFICATION_COPY.travellerDeclined;
+          sendNotification({
+            userId: booking.traveller_id,
+            type: action === 'accept' ? 'booking_confirmed' : 'booking_declined',
+            title: copy.title,
+            body: copy.body,
+            relatedBookingId: bookingId,
+          }).catch(e => console.error('[requests] notification send failed:', bookingId, e));
+        }
+      } else {
+        switch (result?.reason) {
+          case 'already_resolved':
+            showToast('This request was already handled.', true);
+            break;
+          case 'deadline_passed':
+            showToast('The response window has closed.', true);
+            break;
+          case 'not_owner':
+            showToast("You don't have permission to do this.", true);
+            break;
+          case 'not_found':
+            showToast('This booking could not be found.', true);
+            break;
+          default:
+            showToast('Could not complete this action. Please try again.', true);
+        }
+      }
+    } finally {
+      // Always refetch — never assume the requested transition succeeded (or
+      // failed) from the client's own guess about what happened.
+      await loadBookings();
+      setActionId(null);
+      setConfirmDeclineId(null);
+    }
+  }
+
+  // Defensive expiry check: if a countdown reaches 'ended' while this screen
+  // is open, ask the server once whether it's actually expired yet, rather
+  // than waiting on the scheduled sweep. check_booking_expiry re-validates
+  // everything server-side regardless of what the client's own countdown
+  // showed — this is purely an opportunistic nudge, never authoritative.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const overdue = bookings.filter(b =>
+      b.status === 'awaiting_host_confirmation' &&
+      !checkedExpiryIds.has(b.id) &&
+      formatResponseCountdown(b.host_response_deadline, nowTick).state === 'ended'
+    );
+    if (overdue.length === 0) return;
+
+    setCheckedExpiryIds(prev => {
+      const next = new Set(prev);
+      overdue.forEach(b => next.add(b.id));
+      return next;
+    });
+
+    (async () => {
+      let anyExpired = false;
+      for (const b of overdue) {
+        const { data: result } = await supabase.rpc('check_booking_expiry', { p_booking_id: b.id });
+        if (result?.expired) anyExpired = true;
+      }
+      if (anyExpired) await loadBookings();
+    })();
+  }, [bookings, nowTick, checkedExpiryIds]);
+
   const pending = bookings.filter(b => b.status === 'pending' || b.status === 'awaiting_host_confirmation').length;
 
   return (
@@ -482,34 +563,60 @@ export default function Requests() {
                   )
                 )}
 
-                {/* Accept / Decline for awaiting_host_confirmation — Phase 2 dormant preview.
-                    These buttons do NOT write to the database or call any edge function — they
-                    only ever call showToast, never updateStatus, so they cannot reach the legacy
-                    write handler above. Wiring to the trusted server-side transition functions
-                    happens in Phase 4. Disabled once the displayed countdown has ended: the
-                    countdown itself is still just a display, but a live-looking button that can't
-                    do anything once the window has closed would be misleading. */}
+                {/* Accept / Decline for awaiting_host_confirmation — wired to the Phase 4 RPCs
+                    (Phase 5). Neither the accept nor the decline path trusts the client: both
+                    accept_booking and decline_booking re-validate ownership, status, and the
+                    deadline server-side, and every outcome (success, already resolved, deadline
+                    passed, forbidden, not found) is handled distinctly rather than assumed.
+                    Disabled once the displayed countdown has ended — the countdown is still only
+                    a display, but a live-looking button that can't do anything once the window
+                    has closed would be misleading. */}
                 {item.status === 'awaiting_host_confirmation' && (
-                  <View style={styles.actions}>
-                    <TouchableOpacity
-                      style={[styles.acceptBtn, responseWindowEnded && styles.btnDisabled]}
-                      onPress={() => showToast("Accept isn't wired up yet — coming in Phase 4.")}
-                      // @ts-ignore
-                      onClick={() => showToast("Accept isn't wired up yet — coming in Phase 4.")}
-                      disabled={responseWindowEnded}
-                    >
-                      <Text style={styles.acceptText}>✓ Accept</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.declineBtn, responseWindowEnded && styles.btnDisabled]}
-                      onPress={() => showToast("Decline isn't wired up yet — coming in Phase 4.")}
-                      // @ts-ignore
-                      onClick={() => showToast("Decline isn't wired up yet — coming in Phase 4.")}
-                      disabled={responseWindowEnded}
-                    >
-                      <Text style={styles.declineText}>✕ Decline</Text>
-                    </TouchableOpacity>
-                  </View>
+                  confirmDeclineId === item.id ? (
+                    <View style={styles.confirmRow}>
+                      <Text style={styles.confirmText}>Decline this booking? The traveller's refund will be queued for processing.</Text>
+                      <View style={styles.actions}>
+                        <TouchableOpacity
+                          style={[styles.declineConfirmBtn, isActioning && styles.btnDisabled]}
+                          onPress={() => respondToRequest(item.id, 'decline')}
+                          // @ts-ignore
+                          onClick={() => respondToRequest(item.id, 'decline')}
+                          disabled={isActioning}
+                        >
+                          <Text style={styles.declineConfirmText}>{isActioning ? 'Declining…' : 'Yes, decline'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.keepBtn}
+                          onPress={() => setConfirmDeclineId(null)}
+                          // @ts-ignore
+                          onClick={() => setConfirmDeclineId(null)}
+                        >
+                          <Text style={styles.keepText}>Keep</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.actions}>
+                      <TouchableOpacity
+                        style={[styles.acceptBtn, (responseWindowEnded || isActioning) && styles.btnDisabled]}
+                        onPress={() => respondToRequest(item.id, 'accept')}
+                        // @ts-ignore
+                        onClick={() => respondToRequest(item.id, 'accept')}
+                        disabled={responseWindowEnded || isActioning}
+                      >
+                        <Text style={styles.acceptText}>{isActioning ? 'Accepting…' : '✓ Accept'}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.declineBtn, (responseWindowEnded || isActioning) && styles.btnDisabled]}
+                        onPress={() => setConfirmDeclineId(item.id)}
+                        // @ts-ignore
+                        onClick={() => setConfirmDeclineId(item.id)}
+                        disabled={responseWindowEnded || isActioning}
+                      >
+                        <Text style={styles.declineText}>✕ Decline</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )
                 )}
               </View>
             );

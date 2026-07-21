@@ -1,5 +1,27 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { sendAwaitingHostNotifications } from '../_shared/awaiting-host-notifications.ts';
+
+// ─── Legacy Peach Payments return-URL handler — defensive hardening ───────────
+//
+// A second, independent legacy Peach payment-success path (the first is
+// payment-webhook — a server-to-server call, generally the more reliable of
+// the two; this one is a browser redirect the user's device hits). Its live
+// external registration cannot be verified from this development
+// environment, so it is kept working rather than deleted, but a successful
+// payment here now routes through the same authoritative
+// confirm_booking_payment RPC every other payment path uses, rather than
+// writing `status: 'confirmed'` directly — the same reasoning as
+// payment-webhook's fix applies (see that file's header comment).
+//
+// Because payment-webhook and payment-result can both fire for the same
+// booking in either order, notifications are sent here too, on the same
+// ok === true condition — never on already_resolved. Whichever of the two
+// calls actually performs the transition is the one whose branch runs;
+// the other resolves to already_resolved and stays silent. This avoids a
+// race where the webhook is dropped (e.g. Peach never calls it, or it's
+// misconfigured) and this redirect is the only signal that ever arrives,
+// yet nothing gets notified.
 
 // Peach result codes that indicate a successful payment
 // https://developer.peachpayments.com/docs/checkout-response-codes
@@ -44,18 +66,32 @@ serve(async (req) => {
     status = 'failed';
   }
 
-  // If success, update booking status to confirmed (webhook may already have done this)
+  // If success, confirm payment via the shared RPC (payment-webhook, hitting
+  // the same booking via the actual Peach webhook, may already have done
+  // this — confirm_booking_payment's guarded UPDATE makes either order
+  // safe and idempotent; whichever call arrives second just resolves to
+  // already_resolved with no second transition or reset deadline).
   if (status === 'success') {
     try {
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       );
-      await supabase
-        .from('bookings')
-        .update({ status: 'confirmed' })
-        .eq('id', bookingId)
-        .eq('status', 'pending'); // only update if still pending (idempotent)
+      const { data: rpcResult, error: rpcErr } = await supabase.rpc('confirm_booking_payment', {
+        p_booking_id: bookingId,
+        p_payment_reference: id || null,
+        p_payment_provider: 'peach',
+      });
+
+      if (rpcErr) {
+        console.error('confirm_booking_payment RPC error:', rpcErr);
+      } else if (rpcResult?.ok) {
+        sendAwaitingHostNotifications(supabase, rpcResult.booking).catch(e =>
+          console.error('Notification error:', e)
+        );
+      } else if (rpcResult?.reason !== 'already_resolved') {
+        console.warn('confirm_booking_payment did not confirm:', bookingId, rpcResult);
+      }
     } catch (err) {
       console.error('Supabase update error:', err);
     }
