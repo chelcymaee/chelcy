@@ -8,6 +8,15 @@ async function adminFetchBookings() {
   return res.json();
 }
 
+async function adminMarkRefunded(bookingId: string) {
+  const res = await adminFetch('/admin-bookings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookingId }),
+  });
+  return res.json();
+}
+
 const STATUS_COLOR: Record<string, string> = {
   pending: '#F59E0B',
   confirmed: '#3B82F6',
@@ -18,7 +27,8 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function AdminBookings() {
   const [bookings, setBookings] = useState<any[]>([]);
-  const [tab, setTab] = useState<'all' | 'active' | 'completed'>('all');
+  const [tab, setTab] = useState<'all' | 'active' | 'completed' | 'refunds'>('all');
+  const [refunding, setRefunding] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => {
     if (!isSupabaseConfigured) return;
@@ -29,8 +39,25 @@ export default function AdminBookings() {
     load();
   }, []));
 
+  async function handleMarkRefunded(bookingId: string) {
+    setRefunding(bookingId);
+    try {
+      const { data, error } = await adminMarkRefunded(bookingId);
+      if (error) {
+        window.alert(`Could not mark refunded: ${error}`);
+        return;
+      }
+      setBookings(prev => prev.map(b => (b.id === bookingId ? { ...b, ...data } : b)));
+    } finally {
+      setRefunding(null);
+    }
+  }
+
+  const refundsPending = bookings.filter(b => b.refund_status === 'pending_manual');
+
   const filtered = tab === 'all' ? bookings
     : tab === 'active' ? bookings.filter(b => ['pending', 'confirmed', 'active'].includes(b.status))
+    : tab === 'refunds' ? refundsPending
     : bookings.filter(b => b.status === 'completed');
 
   return (
@@ -46,7 +73,7 @@ export default function AdminBookings() {
       </div>
 
       <div style={{ display: 'flex', borderBottom: '1px solid #F0EAEA', backgroundColor: '#fff' }}>
-        {(['all', 'active', 'completed'] as const).map(t => (
+        {(['all', 'active', 'completed', 'refunds'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -62,7 +89,7 @@ export default function AdminBookings() {
               color: tab === t ? '#2D6A4F' : '#6B7280',
             }}
           >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'refunds' ? `Refunds${refundsPending.length ? ` (${refundsPending.length})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -119,6 +146,36 @@ export default function AdminBookings() {
                   💰 R{item.total_price ?? item.totalPrice ?? '—'}
                 </span>
               </div>
+
+              {item.refund_status === 'pending_manual' && (
+                <div style={{
+                  marginTop: 12, paddingTop: 12, borderTop: '1px solid #F0EAEA',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#D97706' }}>
+                    ⏳ Refund owed — pay manually, then confirm here
+                  </span>
+                  <button
+                    onClick={() => handleMarkRefunded(item.id)}
+                    disabled={refunding === item.id}
+                    style={{
+                      background: '#2D6A4F', color: '#fff', border: 'none', borderRadius: 8,
+                      padding: '8px 14px', fontSize: 12, fontWeight: 700,
+                      cursor: refunding === item.id ? 'default' : 'pointer',
+                      opacity: refunding === item.id ? 0.6 : 1,
+                    }}
+                  >
+                    {refunding === item.id ? 'Marking…' : 'Mark refunded'}
+                  </button>
+                </div>
+              )}
+              {item.refund_status === 'refunded' && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F0EAEA' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#2D6A4F' }}>
+                    ✓ Refunded{item.refunded_at ? ` on ${new Date(item.refunded_at).toLocaleDateString()}` : ''}
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}

@@ -943,11 +943,18 @@ END;
 $$;
 
 -- mark_refunded(p_booking_id, p_refund_reference) — admin closes out a
--- queued manual refund. Gated on profiles.is_admin = true, checked via
--- auth.uid() inside the function body — replacing the client-embedded
--- ADMIN_SECRET pattern for this function specifically, per the Phase 1
--- decision. No service-role key or admin secret is ever sent to or stored
--- in the client for this to work.
+-- queued manual refund. Originally gated on profiles.is_admin = true via
+-- auth.uid(), but the admin panel has run entirely on the service-role +
+-- session-token model since the PIN hardening (see admin-session.ts) and
+-- has no Supabase Auth session to check auth.uid() against — a
+-- service-role caller always has NULL auth.uid(), so this function was
+-- unreachable from the real admin panel until this fix. The actual
+-- security boundary for admin writes is requireAdminSession() in the
+-- calling Edge Function (see admin-bookings), same as every other
+-- admin-* write path; a service_role caller is trusted to have already
+-- passed that check, exactly like admin-support-messages' direct
+-- service-role table writes. The is_admin check is kept for any future
+-- caller that genuinely holds a Supabase Auth session.
 CREATE OR REPLACE FUNCTION mark_refunded(p_booking_id UUID, p_refund_reference TEXT DEFAULT NULL)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -958,9 +965,11 @@ DECLARE
   v_booking bookings;
   v_is_admin boolean;
 BEGIN
-  SELECT COALESCE((SELECT is_admin FROM profiles WHERE id = auth.uid()), false) INTO v_is_admin;
-  IF NOT v_is_admin THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'not_admin');
+  IF auth.role() <> 'service_role' THEN
+    SELECT COALESCE((SELECT is_admin FROM profiles WHERE id = auth.uid()), false) INTO v_is_admin;
+    IF NOT v_is_admin THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'not_admin');
+    END IF;
   END IF;
 
   UPDATE bookings b
