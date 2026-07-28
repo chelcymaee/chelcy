@@ -10,12 +10,17 @@ import { supabase } from './supabase';
 import { sendNotification } from './notification-service';
 
 const SUPABASE_URL = 'https://gqgxahqmndkaeyuvhliv.supabase.co';
-const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
 
-function fireEmail(body: object) {
+// The caller submitting a review is always a signed-in traveller or host —
+// send-email accepts their own Supabase session as a credential for this
+// one client-facing call site, same shape as send-push's admin-session
+// path for the admin panel. See supabase/functions/send-email/index.ts.
+async function fireEmail(body: object) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) return;
   fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
     body: JSON.stringify(body),
   }).catch(() => {});
 }

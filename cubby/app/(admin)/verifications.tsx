@@ -1,20 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
-
-const SUPABASE_URL = 'https://gqgxahqmndkaeyuvhliv.supabase.co';
-const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
-const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxZ3hhaHFtbmRrYWV5dXZobGl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NzczNjIsImV4cCI6MjA5NzM1MzM2Mn0.EVuPdC3L_eFrCAGKVCDYPpuuSUiNXOvAkBf-Uc5NqyM';
+import { adminFetch } from '../../src/lib/admin-auth';
 
 async function callAdminHosts(method: 'GET' | 'POST' | 'PATCH', body?: unknown): Promise<any> {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-hosts`, {
+  const res = await adminFetch('/admin-hosts', {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': ANON_KEY,
-      'Authorization': `Bearer ${ANON_KEY}`,
-      'x-admin-secret': ADMIN_SECRET,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   });
   return res.json();
@@ -123,10 +115,12 @@ export default function Verifications() {
     setVerifications(prev => prev.map(v => v.id === id ? { ...v, status, reviewedAt: now } : v));
     setMsg(`Verification ${status} ✓`);
 
-    // Fire-and-forget push notification to the user
-    fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+    // Fire-and-forget push notification to the user. send-push accepts an
+    // admin session token as one of its valid auth methods specifically
+    // for this call site — see supabase/functions/send-push/index.ts.
+    adminFetch('/send-push', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         user_id: userId,
         title: status === 'approved' ? 'You\'re verified! ✅' : 'Verification unsuccessful',

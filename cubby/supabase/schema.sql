@@ -1140,3 +1140,54 @@ GRANT EXECUTE ON FUNCTION confirm_booking_payment(UUID, TEXT, TEXT) TO service_r
 -- display reaches 'ended'. None of this makes the client-side call the
 -- authority — every RPC re-validates its own guard server-side regardless
 -- of what the client believed was true when it called.
+
+-- -------------------------------------------------------------------------
+-- Admin authentication hardening — server-side PIN + session tokens
+-- -------------------------------------------------------------------------
+-- Replaces two secrets that used to ship inside the client bundle —
+-- EXPO_PUBLIC_ADMIN_PIN (gated the login screen) and
+-- EXPO_PUBLIC_ADMIN_SECRET (gated every admin-* Edge Function call, i.e.
+-- the actual data access — including every host's real bank account
+-- details). Both were extractable from the shipped app/web bundle by
+-- design of the EXPO_PUBLIC_ prefix. Neither replacement table below is
+-- ever meant to be reached by a client role directly — RLS is enabled
+-- with no policies (default-deny), the same convention already used
+-- elsewhere in this schema for tables only service-role Edge Functions
+-- should touch. All reads/writes happen from verify-admin-pin or the
+-- shared supabase/functions/_shared/admin-session.ts helper the admin-*
+-- functions all now call through — see that file for the session
+-- lifecycle (issue, validate, revoke, opportunistic cleanup).
+
+-- admin_login_attempts — append-only log, never updated in place. Rate
+-- limiting is a COUNT(*) over the trailing window, not a read-modify-write
+-- counter, so there's no lock contention or race to reason about. Rows
+-- older than a day are opportunistically deleted on each login attempt
+-- (see cleanupExpiredAdminAuth in the shared helper) — no scheduled job
+-- needed for Private Beta scale.
+CREATE TABLE IF NOT EXISTS admin_login_attempts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ip TEXT NOT NULL,
+  success BOOLEAN NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE admin_login_attempts ENABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_admin_login_attempts_ip_created_at
+  ON admin_login_attempts (ip, created_at);
+
+-- admin_sessions — the token itself is never stored, only its SHA-256
+-- hash (token_hash is the primary key: a stolen row is useless without
+-- the original random token, and lookup is a direct equality match, no
+-- table scan). 60-minute lifetime for Private Beta, enforced by
+-- expires_at, not by anything the client asserts.
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  token_hash TEXT PRIMARY KEY,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE admin_sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at
+  ON admin_sessions (expires_at);

@@ -1,19 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { router } from 'expo-router';
-import { checkAdminSession, clearAdminSession } from '../../src/lib/admin-auth';
+import { checkAdminSession, logoutAdmin, adminFetch } from '../../src/lib/admin-auth';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
-const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
-
 async function adminFetchBookings() {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-bookings`, {
-    method: 'GET',
-    headers: {
-      'x-admin-secret': ADMIN_SECRET,
-      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
-    },
-  });
+  const res = await adminFetch('/admin-bookings', { method: 'GET' });
   return res.json();
 }
 
@@ -229,7 +220,7 @@ export default function AdminDashboard() {
   }
 
   async function handleSignOut() {
-    await clearAdminSession();
+    await logoutAdmin();
     router.replace('/(traveller)/explore');
   }
 

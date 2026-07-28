@@ -1,9 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireAdminSession } from '../_shared/admin-session.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-secret',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
 };
 
@@ -15,10 +16,6 @@ const unauthorized = () => json({ error: 'Unauthorized' }, 401);
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
-  const expectedSecret = Deno.env.get('ADMIN_SECRET');
-  const providedSecret = req.headers.get('x-admin-secret');
-  if (!expectedSecret || providedSecret !== expectedSecret) return unauthorized();
-
   if (req.method !== 'GET') {
     return new Response('Method not allowed', { status: 405, headers: cors });
   }
@@ -27,6 +24,9 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   );
+
+  const session = await requireAdminSession(req, supabase);
+  if (!session.ok) return unauthorized();
 
   try {
     // Bookings + host display name, used by both the All Bookings list and

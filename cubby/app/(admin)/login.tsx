@@ -1,46 +1,31 @@
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { loginAdmin } from '../../src/lib/admin-auth';
 
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
-const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
-
-const ADMIN_PIN = process.env.EXPO_PUBLIC_ADMIN_PIN;
+// The PIN comparison, attempt counting, and lockout enforcement all moved
+// server-side (verify-admin-pin — see src/lib/admin-auth.ts and
+// supabase/functions/_shared/admin-session.ts). This screen no longer
+// knows the correct PIN, no longer counts attempts itself, and no longer
+// decides when to lock — it only reflects what the server just reported.
+// Clearing local state early can't grant an extra attempt or shorten a
+// lockout; the next submit still hits the same server-enforced check.
 
 export default function AdminLogin() {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
-  const [shaking, setShaking] = useState(false);
-  const [attempts, setAttempts] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [countdown, setCountdown] = useState('');
 
-  // Load lockout state on mount
-  useEffect(() => {
-    AsyncStorage.getItem('cubby_admin_lockout').then(raw => {
-      if (!raw) return;
-      const { until, count } = JSON.parse(raw);
-      if (Date.now() < until) {
-        setLockedUntil(until);
-        setAttempts(count);
-      } else {
-        // Lockout expired — clear it
-        AsyncStorage.removeItem('cubby_admin_lockout');
-      }
-    });
-  }, []);
-
-  // Countdown timer when locked
+  // Countdown timer while locked — cosmetic only, driven by the
+  // retryAfterSeconds the server returned with its 429.
   useEffect(() => {
     if (!lockedUntil) return;
     const tick = setInterval(() => {
       const remaining = lockedUntil - Date.now();
       if (remaining <= 0) {
         setLockedUntil(null);
-        setAttempts(0);
         setError('');
-        AsyncStorage.removeItem('cubby_admin_lockout');
         clearInterval(tick);
       } else {
         const mins = Math.floor(remaining / 60000);
@@ -51,57 +36,43 @@ export default function AdminLogin() {
     return () => clearInterval(tick);
   }, [lockedUntil]);
 
-  function shake() {
-    setShaking(true);
-    setTimeout(() => setShaking(false), 500);
-  }
-
-  async function recordFailedAttempt() {
-    const next = attempts + 1;
-    setAttempts(next);
-    if (next >= MAX_ATTEMPTS) {
-      const until = Date.now() + LOCKOUT_MS;
-      setLockedUntil(until);
-      await AsyncStorage.setItem('cubby_admin_lockout', JSON.stringify({ until, count: next }));
-      setError(`Too many attempts. Locked for 15 minutes.`);
-    } else {
-      setError(`Incorrect PIN. ${MAX_ATTEMPTS - next} attempt${MAX_ATTEMPTS - next === 1 ? '' : 's'} remaining.`);
-    }
-  }
-
   async function handleDigit(digit: string) {
-    if (lockedUntil || pin.length >= 4) return;
+    if (lockedUntil || submitting || pin.length >= 4) return;
     const newPin = pin + digit;
     setPin(newPin);
     setError('');
 
     if (newPin.length === 4) {
-      if (!ADMIN_PIN) {
-        // No PIN configured — block access entirely
-        shake();
-        setError('Admin PIN not configured. Set EXPO_PUBLIC_ADMIN_PIN.');
-        setTimeout(() => setPin(''), 600);
+      setSubmitting(true);
+      const result = await loginAdmin(newPin);
+      setSubmitting(false);
+      setTimeout(() => setPin(''), 600);
+
+      if (result.ok) {
+        router.replace('/(admin)/dashboard');
         return;
       }
-      if (newPin === ADMIN_PIN) {
-        // Clear lockout on success
-        await AsyncStorage.removeItem('cubby_admin_lockout');
-        setAttempts(0);
-        // Store session with expiry
-        await AsyncStorage.setItem('cubby_admin_session', JSON.stringify({
-          expiresAt: Date.now() + SESSION_TTL_MS,
-        }));
-        router.replace('/(admin)/dashboard');
+
+      if (result.reason === 'locked') {
+        setLockedUntil(Date.now() + result.retryAfterSeconds * 1000);
+        setError('Too many attempts. Locked for a while — try again shortly.');
+      } else if (result.reason === 'not_configured') {
+        setError('Admin PIN not configured on the server. Contact the founder.');
+      } else if (result.reason === 'invalid_pin') {
+        const remaining = result.attemptsRemaining;
+        setError(
+          remaining != null
+            ? `Incorrect PIN. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
+            : 'Incorrect PIN.',
+        );
       } else {
-        shake();
-        await recordFailedAttempt();
-        setTimeout(() => setPin(''), 600);
+        setError("Couldn't reach the server. Please try again.");
       }
     }
   }
 
   function handleDelete() {
-    if (lockedUntil) return;
+    if (lockedUntil || submitting) return;
     setPin(p => p.slice(0, -1));
     setError('');
   }
@@ -114,6 +85,7 @@ export default function AdminLogin() {
   ];
 
   const isLocked = !!lockedUntil;
+  const disabled = isLocked || submitting;
 
   return (
     <div style={{
@@ -151,7 +123,7 @@ export default function AdminLogin() {
           </p>
         )}
 
-        <div style={{ width: '100%', maxWidth: 280, marginTop: 16 }}>
+        <div style={{ width: '100%', maxWidth: 280, marginTop: 16, opacity: submitting ? 0.6 : 1 }}>
           {KEYS.map((row, ri) => (
             <div key={ri} style={{ display: 'flex', justifyContent: 'center', marginBottom: 12, gap: 20 }}>
               {row.map((key, ki) => (
@@ -162,16 +134,16 @@ export default function AdminLogin() {
                     if (key === '⌫') handleDelete();
                     else handleDigit(key);
                   }}
-                  disabled={isLocked && key !== ''}
+                  disabled={disabled && key !== ''}
                   style={{
                     width: 72, height: 72, borderRadius: 36,
-                    backgroundColor: key === '' ? 'transparent' : isLocked ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.2)',
+                    backgroundColor: key === '' ? 'transparent' : disabled ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.2)',
                     border: 'none',
-                    cursor: key === '' || isLocked ? 'default' : 'pointer',
+                    cursor: key === '' || disabled ? 'default' : 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: key === '⌫' ? 20 : 24,
                     fontWeight: 600,
-                    color: isLocked ? 'rgba(255,255,255,0.3)' : 'white',
+                    color: disabled ? 'rgba(255,255,255,0.3)' : 'white',
                   }}
                 >
                   {key}

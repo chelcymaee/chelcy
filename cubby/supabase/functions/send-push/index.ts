@@ -1,11 +1,22 @@
 // Edge Function: send-push
 // Generic Expo push notification sender.
 // Accepts: { user_id, title, body, data? }
-// Auth: x-admin-secret header (server-to-server) OR valid Supabase JWT (client)
+// Auth, tried in order until one matches:
+//   1. x-admin-secret header — server-to-server callers (other Edge
+//      Functions notifying someone after their own transition, e.g.
+//      _shared/awaiting-host-notifications.ts, booking-expiry-sweep).
+//      ADMIN_SECRET here is a server-only secret, read from Deno.env,
+//      never sent by a client.
+//   2. Admin session bearer token — the one client-facing caller,
+//      app/(admin)/verifications.tsx, sending a push after an admin
+//      approves/rejects a verification. See
+//      supabase/functions/_shared/admin-session.ts.
+//   3. Supabase JWT — any other signed-in client caller.
 //
 // Deploy: npx supabase functions deploy send-push
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireAdminSession } from '../_shared/admin-session.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -21,18 +32,22 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    // Authenticate: x-admin-secret (server) or Supabase JWT (client)
     const adminSecret = req.headers.get('x-admin-secret');
     const authHeader = req.headers.get('authorization');
+    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     let authed = false;
 
     if (ADMIN_SECRET && adminSecret === ADMIN_SECRET) {
       authed = true;
     } else if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
-      const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      const { data: { user } } = await adminClient.auth.getUser(token);
-      authed = !!user;
+      const adminSession = await requireAdminSession(req, adminClient);
+      if (adminSession.ok) {
+        authed = true;
+      } else {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user } } = await adminClient.auth.getUser(token);
+        authed = !!user;
+      }
     }
 
     if (!authed) {

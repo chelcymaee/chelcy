@@ -1,9 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useFocusEffect, router } from 'expo-router';
-
-const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gqgxahqmndkaeyuvhliv.supabase.co';
-const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxZ3hhaHFtbmRrYWV5dXZobGl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NzczNjIsImV4cCI6MjA5NzM1MzM2Mn0.EVuPdC3L_eFrCAGKVCDYPpuuSUiNXOvAkBf-Uc5NqyM';
+import { adminFetch } from '../../src/lib/admin-auth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,20 +30,16 @@ async function callAdminUsers(
   params?: Record<string, string>,
   body?: unknown,
 ): Promise<{ data?: User[]; success?: boolean; error?: string }> {
-  const url = new URL(`${SUPABASE_URL}/functions/v1/admin-users`);
+  const qs = new URLSearchParams();
   if (params) {
     for (const [k, v] of Object.entries(params)) {
-      if (v !== '') url.searchParams.set(k, v);
+      if (v !== '') qs.set(k, v);
     }
   }
-  const res = await fetch(url.toString(), {
+  const query = qs.toString();
+  const res = await adminFetch(`/admin-users${query ? `?${query}` : ''}`, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': ANON_KEY,
-      'Authorization': `Bearer ${ANON_KEY}`,
-      'x-admin-secret': ADMIN_SECRET,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   });
   return res.json();

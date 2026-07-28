@@ -1,9 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireAdminSession } from '../_shared/admin-session.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-secret',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
 };
 
@@ -19,17 +20,18 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  // Verify admin secret — stored in Supabase edge function secrets as ADMIN_SECRET
-  const expectedSecret = Deno.env.get('ADMIN_SECRET');
-  const providedSecret = req.headers.get('x-admin-secret');
-  if (!expectedSecret || providedSecret !== expectedSecret) {
-    return unauthorized();
-  }
-
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   );
+
+  // Session check — see supabase/functions/_shared/admin-session.ts. This
+  // function is the highest-stakes of the seven (real bank account
+  // details), so it gets the same session requirement as every other
+  // admin-* function, not a stronger or weaker one — the token itself is
+  // the security boundary, not which endpoint is being called.
+  const session = await requireAdminSession(req, supabase);
+  if (!session.ok) return unauthorized();
 
   const url = new URL(req.url);
 
