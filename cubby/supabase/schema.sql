@@ -1032,19 +1032,33 @@ ALTER TABLE bookings
 -- as a plain TEXT argument from whichever Edge Function calls it, so the
 -- column itself is the enforcement point rather than trusting each caller —
 -- the same defense-in-depth shape as the guarded UPDATE + restricted GRANT
--- already used for every trusted transition. The two values here are the
--- complete set actually ever written anywhere in the codebase (verified by
--- grep across supabase/functions and app/): 'payfast' (payfast-create,
+-- already used for every trusted transition. 'payfast' (payfast-create,
 -- app/(traveller)/booking.tsx, and confirm_booking_payment's own default)
--- and 'peach' (payment-webhook, payment-result). NULL stays allowed for
--- pre-payment rows. DO block makes this safe to re-run.
-DO $$ BEGIN
-  ALTER TABLE bookings
-    ADD CONSTRAINT bookings_payment_provider_check
-    CHECK (payment_provider IS NULL OR payment_provider IN ('payfast', 'peach'));
-EXCEPTION
-  WHEN duplicate_object THEN NULL;
-END $$;
+-- and 'peach' (payment-webhook, payment-result) are the values actually
+-- written today; 'paygate' is added ahead of the paygate-* Edge Functions
+-- (not yet built) so the schema change and the code change can land as
+-- separate, independently reviewable steps. NULL stays allowed for
+-- pre-payment rows. DROP+ADD (rather than a bare ADD CONSTRAINT) makes this
+-- safe to re-run AND lets the allowlist actually change on a second run,
+-- unlike a duplicate_object-guarded DO block, which would silently keep
+-- whatever definition already existed.
+ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_payment_provider_check;
+ALTER TABLE bookings
+  ADD CONSTRAINT bookings_payment_provider_check
+  CHECK (payment_provider IS NULL OR payment_provider IN ('payfast', 'peach', 'paygate'));
+
+-- paygate_pay_request_id: PayGate's PAY_REQUEST_ID, stored between
+-- paygate-initiate and paygate-notify/paygate-return. Not just a
+-- convenience — PayGate's own docs confirm PAY_REQUEST_ID is a required
+-- field for query.trans (the reconciliation fallback when notify/return
+-- is missed), and paygate-return's checksum can only be validated by
+-- looking up our own REFERENCE/PAYGATE_ID via this column first, since
+-- PayGate's return redirect carries PAY_REQUEST_ID + TRANSACTION_STATUS
+-- only — not REFERENCE. Nullable, overwritten freely on a retried
+-- initiate (no UNIQUE constraint, unlike payment_reference, which is only
+-- ever set once by confirm_booking_payment after real confirmation).
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS paygate_pay_request_id TEXT;
 
 -- confirm_booking_payment(p_booking_id, p_payment_reference, p_payment_provider)
 -- — the one authoritative payment-confirmation transition, shared by every
