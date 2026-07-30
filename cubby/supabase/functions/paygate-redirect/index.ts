@@ -24,10 +24,31 @@
 
 import { PAYGATE_PROCESS_URL, isValidPayRequestId, isValidChecksumShape, escapeHtml } from '../_shared/paygate.ts';
 
+// This response embeds a live PAY_REQUEST_ID/CHECKSUM tied to one specific
+// in-progress payment attempt — a cached or replayed copy could resubmit a
+// stale attempt, so it must never be cached. The rest are standard
+// hardening for a page whose only job is to auto-submit a form to exactly
+// one external host: nosniff blocks MIME-sniffing, no-referrer keeps this
+// URL's query string (which contains the checksum) out of the Referer
+// header PayGate would otherwise receive, frame-ancestors/X-Frame-Options
+// rule out this ever being framed, and the CSP restricts the page to only
+// being able to do the one thing it's meant to do — submit a form to
+// PayGate — even in the hypothetical case the escaping above had a bug.
+const securityHeaders = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate',
+  Pragma: 'no-cache',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+  'X-Frame-Options': 'DENY',
+  'Content-Security-Policy':
+    "default-src 'none'; form-action https://secure.paygate.co.za; " +
+    "script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+};
+
 function jsonError(message: string, code: string, status = 400) {
   return new Response(JSON.stringify({ error: message, code }), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...securityHeaders, 'Content-Type': 'application/json' },
   });
 }
 
@@ -92,6 +113,6 @@ Deno.serve((req) => {
 </html>`;
 
   return new Response(html, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    headers: { ...securityHeaders, 'Content-Type': 'text/html; charset=utf-8' },
   });
 });
