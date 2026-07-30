@@ -413,7 +413,9 @@ Full 10-category audit (Security → Payments → Booking reliability → Notifi
 - [x] Mock data for demo mode (`mock-data.ts`)
 - [x] Supabase Storage: `avatars` bucket, `host-photos` bucket
 
-### Payments (PayFast — Phase 5)
+### Payments (PayFast — Phase 5) — superseded, see PayGate section below
+> The actual merchant account being pursued is **PayGate** (PayGate Plus Hospitality), not PayFast — confirmed 2026-07. This PayFast section is kept as-is for the architectural reference it already served (the paygate-* functions mirror this design, adapted for PayWeb3's different API), but no further PayFast work is planned unless the business decision changes again.
+
 - [x] Provider-agnostic booking columns: `payment_provider`, `payment_reference`, `paid_at`, `failure_reason`
 - [x] `pending_payment` booking status — booking exists but payment not yet received
 - [x] `payfast-create` edge function — validates booking, marks provider, returns checkout URL
@@ -437,6 +439,26 @@ Full 10-category audit (Security → Payments → Booking reliability → Notifi
 - [ ] ⏸ SQL migration (`payment_provider`, `payment_reference`, `paid_at`, `failure_reason` columns) — run when ready to test
 
 > Do not continue payment work until PayFast account setup is confirmed.
+
+### Payments (PayGate — Phase 5, in progress)
+Built against PayGate's official PayWeb3 documentation and test credentials, reviewed page-by-page directly from the live developer portal (Security & Checksum, Initiate Request, Redirect to PayWeb, Notify URL Response, Return to Merchant, Query Transaction Status, Testing) rather than only archived third-party sample code.
+
+- [x] `bookings_payment_provider_check` allowlist extended to accept `'paygate'` (PR #63)
+- [x] `paygate_pay_request_id` column added — required for `query.trans` reconciliation and for validating `paygate-return`'s checksum (PayGate's return redirect doesn't include `REFERENCE`, only `PAY_REQUEST_ID` + `TRANSACTION_STATUS`) (PR #63)
+- [x] Phase 4/5 booking-lifecycle RPCs (`accept_booking`, `decline_booking`, `confirm_booking_payment`, etc.) found missing from production despite being merged in PR #56-#58 — synced via `supabase/PHASE4_5_PRODUCTION_SYNC.sql`, verified live (PR #64)
+- [x] `_shared/paygate.ts` — checksum build/verify + official field-order constants, shared across every paygate-* function
+- [x] `paygate-initiate` edge function — authenticates caller, validates booking, calls `initiate.trans`, verifies PayGate's response checksum, stores `PAY_REQUEST_ID` + `payment_provider='paygate'`. Never touches `booking.status`. Checksum algorithm verified against PayGate's own official worked examples (byte-for-byte match); eligibility/ownership/update logic verified against real local Postgres (PR #65)
+- [ ] `paygate-redirect` — thin auto-submit page to `process.trans` (next up)
+- [ ] `paygate-notify` — webhook handler, first function to call `confirm_booking_payment`
+- [ ] `paygate-return` — browser return handler with `query.trans` reconciliation fallback
+- [ ] No separate cancel function planned — PayWeb3 has no `CANCEL_URL`; cancellation arrives as `TRANSACTION_STATUS` on the same return leg
+
+**Known limitation, accepted for Private Beta (2026-07-30):** `paygate-initiate` has no protection against a booking being re-initiated while an earlier attempt is still outstanding. Concretely:
+- Repeated initiation can create multiple live PayGate transaction attempts for the same booking.
+- Only the most recent `paygate_pay_request_id` is retained — each retry overwrites it.
+- An older, abandoned attempt that somehow still gets completed can still be resolved correctly, because `paygate-notify`/`paygate-return` look the booking up by `REFERENCE` (always `booking.id`), not by the stored `paygate_pay_request_id`.
+- The one real gap: the `query.trans` reconciliation fallback (used when notify/return never arrive) can only query the *most recently stored* attempt — an older completed-but-unnotified attempt would not be reconcilable that way.
+- No `UNIQUE` constraint on `paygate_pay_request_id` (unlike `payment_reference`) — deliberate, since retries are meant to overwrite it and the value is PayGate-generated, not forgeable by us. A `UNIQUE` constraint would be reasonable defense-in-depth consistency later, not a currently-exploitable gap.
 
 ### Payments (Peach — deprecated)
 - [~] `create-payment`, `payment-page`, `payment-result`, `payment-webhook` — kept for reference, no longer called by the app
