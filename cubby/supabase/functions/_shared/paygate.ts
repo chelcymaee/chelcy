@@ -87,3 +87,32 @@ export function parseFormEncoded(text: string): Record<string, string> {
   for (const [k, v] of new URLSearchParams(text)) out[k] = v;
   return out;
 }
+
+// PAY_REQUEST_ID is a GUID per PayGate's field spec (varchar(36)) — this is
+// deliberately a shape check (hex + hyphens, bounded length), not a strict
+// GUID-format assertion, since PayGate hasn't documented a stricter
+// contract than "GUID-shaped" and being over-strict here would just be a
+// new way for a genuine value to be wrongly rejected.
+export function isValidPayRequestId(value: string): boolean {
+  return /^[A-Za-z0-9-]{1,36}$/.test(value);
+}
+
+// CHECKSUM is always exactly 32 lowercase-or-uppercase hex characters —
+// unlike PAY_REQUEST_ID, this one is an exact, well-defined invariant of
+// MD5 output, not a heuristic.
+export function isValidChecksumShape(value: string): boolean {
+  return /^[a-fA-F0-9]{32}$/.test(value);
+}
+
+// Minimal HTML-escaping for values interpolated into an auto-submit form.
+// Defense-in-depth alongside the shape checks above — every caller of this
+// validates its inputs first, but escaping too costs nothing and means a
+// validation bug can't become an HTML/script-injection bug.
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
