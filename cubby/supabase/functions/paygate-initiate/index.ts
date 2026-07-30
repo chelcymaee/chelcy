@@ -133,10 +133,24 @@ Deno.serve(async (req) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: requestBody.toString(),
+        // Deno's fetch has no default timeout — without this, a PayGate
+        // server that accepts the connection but never responds would hang
+        // the function until the platform's own execution ceiling kills it
+        // ungracefully, instead of returning our structured error. 15s is
+        // generous for a payment-gateway API call.
+        signal: AbortSignal.timeout(15_000),
       });
     } catch (fetchErr) {
-      console.error('[paygate-initiate] Network error calling initiate.trans:', bookingId, fetchErr);
-      return json({ error: 'Could not reach PayGate', code: 'PAYGATE_UNREACHABLE' }, 502);
+      const isTimeout = fetchErr instanceof Error
+        && (fetchErr.name === 'TimeoutError' || fetchErr.name === 'AbortError');
+      console.error(
+        `[paygate-initiate] ${isTimeout ? 'Timed out calling' : 'Network error calling'} initiate.trans:`,
+        bookingId, fetchErr,
+      );
+      return json(
+        { error: 'Could not reach PayGate', code: isTimeout ? 'PAYGATE_TIMEOUT' : 'PAYGATE_UNREACHABLE' },
+        502,
+      );
     }
 
     const responseText = await payGateRes.text();
