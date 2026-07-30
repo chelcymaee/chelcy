@@ -10,38 +10,52 @@
 // or Query for confirmation." So — same principle payfast-return already
 // uses — this function is pure READ-ONLY reporting: it never writes to
 // the booking, never calls confirm_booking_payment, and never trusts
-// PayGate's own claimed TRANSACTION_STATUS for its decision. It only
-// reports whatever our own database already says (which paygate-notify,
-// the actually authoritative signal, should already have set), then
-// deep-links back into the app.
+// PayGate's own claimed TRANSACTION_STATUS for its decision.
 //
-// query.trans reconciliation (asking PayGate directly when our own DB
-// state is still ambiguous — e.g. notify hasn't landed yet) is
-// deliberately NOT included in this PR — a dedicated follow-up, kept
-// separate so this stays a small, reviewable, read-only function.
+// query.trans reconciliation is deliberately NOT included in this PR — a
+// dedicated follow-up, kept separate so this stays a small, reviewable,
+// read-only function.
 //
-// Checksum handling: verified (using OUR OWN known PAYGATE_ID, same
-// principle as paygate-initiate/paygate-notify) and logged if invalid,
-// but a failure does NOT block the response. This isn't a gap — because
-// this function never acts on PAY_REQUEST_ID or TRANSACTION_STATUS (the
-// only fields the checksum protects here), a tampered/corrupted return
-// URL literally cannot change this function's output: bookingId comes
-// from our own RETURN_URL construction, and the reported status comes
-// entirely from our own DB read. The checksum check exists for tamper
-// *detection* and to follow PayGate's documented validation guidance,
-// not because an invalid one would let an attacker influence anything.
+// ── Identity binding (fixed after a real IDOR was found in review) ──
+// This is a PUBLIC, unauthenticated endpoint by necessity — PayGate's
+// browser redirect can't carry a Supabase JWT. That means the checksum is
+// the *only* possible authorization mechanism here, and it must actually
+// gate disclosure, not just be logged. The query string's own `bookingId`
+// param is never trustworthy on its own: it's fully attacker-controlled
+// (the browser can rewrite any part of this URL), so it is NEVER used to
+// look up or disclose a specific booking's status. Instead:
+//
+//   1. The booking is looked up by the PayGate-issued PAY_REQUEST_ID
+//      (bookings.paygate_pay_request_id) — a value only PayGate and our
+//      own paygate-initiate ever see, never exposed in any client UI.
+//   2. The checksum is then verified using REFERENCE = that DB row's own
+//      `id` (never the URL's bookingId param) + the received
+//      PAY_REQUEST_ID/TRANSACTION_STATUS + our own known PAYGATE_ID.
+//   3. Only if that checksum verifies is that booking's real status ever
+//      disclosed, using its own DB-verified id for the deep link.
+//
+// Any failure at any step (missing params, unknown PAY_REQUEST_ID, or a
+// checksum that doesn't verify) falls through to one single generic
+// response — status "pending", no bookingId, nothing looked up or
+// disclosed. This means the URL's bookingId param is now provably
+// irrelevant to what this endpoint discloses: changing it, removing all
+// PayGate params, or supplying someone else's UUID with no valid
+// PayGate params attached all produce the exact same generic, non-
+// disclosing response — there is no code path where an arbitrary or
+// guessed bookingId alone yields another traveller's real status.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { PAYGATE_ID, PAYGATE_ENCRYPTION_KEY, RETURN_FIELD_ORDER, verifyChecksum } from '../_shared/paygate.ts';
+import { PAYGATE_ID, PAYGATE_ENCRYPTION_KEY, RETURN_FIELD_ORDER, verifyChecksum, escapeHtml } from '../_shared/paygate.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-// Same rationale as paygate-redirect: this page reports one specific
-// booking's payment status at one point in time — a cached or replayed
-// copy could show stale information — plus standard hardening for an
-// auto-redirecting page whose only external destination is a fixed
-// cubby:// deep link, not an arbitrary one.
+// Same rationale as paygate-redirect: this page can report one specific
+// booking's payment status — a cached or replayed copy could show stale
+// or (before this fix) wrong information — plus standard hardening for
+// an auto-redirecting page whose only external destination is a fixed
+// cubby:// deep link, never an arbitrary one (no open-redirect surface:
+// nothing here reads a caller-supplied redirect target).
 const securityHeaders = {
   'Cache-Control': 'no-store, no-cache, must-revalidate',
   Pragma: 'no-cache',
@@ -51,55 +65,29 @@ const securityHeaders = {
   'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'",
 };
 
-Deno.serve(async (req) => {
-  const url = new URL(req.url);
-  const bookingId = url.searchParams.get('bookingId') ?? '';
-  const payRequestId = url.searchParams.get('PAY_REQUEST_ID') ?? '';
-  const transactionStatus = url.searchParams.get('TRANSACTION_STATUS') ?? '';
-  const checksum = url.searchParams.get('CHECKSUM') ?? '';
+// Escapes a value for safe interpolation inside a single-quoted JS string
+// literal — deliberately NOT the same escaping as escapeHtml (which
+// targets HTML attribute/text context and would turn '&' into the
+// *literal 5 characters* "&amp;" inside a JS string, corrupting the URL
+// rather than protecting it — caught in review by actually testing this
+// path, not just assuming one escape function covers both contexts).
+function escapeJsString(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+}
 
-  if (payRequestId && transactionStatus && checksum) {
-    if (!PAYGATE_ID || !PAYGATE_ENCRYPTION_KEY) {
-      console.warn('[paygate-return] PayGate credentials not configured — skipping checksum check');
-    } else {
-      const fields = {
-        PAYGATE_ID, PAY_REQUEST_ID: payRequestId,
-        TRANSACTION_STATUS: transactionStatus, REFERENCE: bookingId,
-      };
-      const valid = verifyChecksum(fields, RETURN_FIELD_ORDER, PAYGATE_ENCRYPTION_KEY, checksum);
-      if (!valid) {
-        // Logged, not blocking — see file header for why this is safe.
-        console.warn('[paygate-return] Checksum verification failed for return callback:', bookingId, payRequestId);
-      }
-    }
-  } else {
-    console.warn('[paygate-return] Missing expected PayGate return params:', bookingId);
-  }
-
-  // Check current booking status — our own DB is the source of truth
-  // here, never the (unverified-for-decisions) TRANSACTION_STATUS above.
-  let status: 'success' | 'pending' | 'failed' = 'pending';
-
-  if (bookingId && SERVICE_ROLE_KEY) {
-    try {
-      const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-      const { data: booking } = await supabase
-        .from('bookings').select('status').eq('id', bookingId).single();
-
-      // A successful notify moves the booking to awaiting_host_confirmation,
-      // not straight to confirmed (see confirm_booking_payment in
-      // supabase/schema.sql) — so "payment succeeded" here means "no
-      // longer pending_payment and not cancelled", not "status is exactly
-      // confirmed". Same logic payfast-return already uses.
-      if (!booking?.status || booking.status === 'pending_payment') status = 'pending';
-      else if (booking.status === 'cancelled') status = 'failed';
-      else status = 'success';
-    } catch {
-      status = 'pending';
-    }
-  }
-
-  const deepLink = `cubby://payment-result?status=${status}&bookingId=${encodeURIComponent(bookingId)}`;
+function renderPage(status: 'success' | 'pending' | 'failed', bookingId: string) {
+  // bookingId is always either '' or a real gen_random_uuid() value read
+  // back from our own database by this point — never raw user input — so
+  // neither escape below actually changes anything in practice today.
+  // Both are kept anyway as a safety net: escaping costs nothing, and this
+  // is exactly the kind of place a future change could otherwise silently
+  // reintroduce an injection. Two DIFFERENT escapes are required because
+  // the same string is embedded in two different contexts below — an HTML
+  // attribute (href) and a JS string literal (<script>) — and conflating
+  // them is itself a bug (see escapeJsString's comment).
+  const rawDeepLink = `cubby://payment-result?status=${status}&bookingId=${encodeURIComponent(bookingId)}`;
+  const deepLinkForHref = escapeHtml(rawDeepLink);
+  const deepLinkForScript = escapeJsString(rawDeepLink);
 
   const icon = status === 'success' ? '✅' : status === 'pending' ? '⏳' : '❌';
   const heading = status === 'success' ? 'Payment successful!' : status === 'pending' ? 'Processing payment…' : 'Payment failed';
@@ -128,14 +116,14 @@ Deno.serve(async (req) => {
   </style>
   <script>
     // Auto-redirect after 1.5s so the user sees the status
-    setTimeout(() => { window.location.href = '${deepLink}'; }, 1500);
+    setTimeout(() => { window.location.href = '${deepLinkForScript}'; }, 1500);
   </script>
 </head>
 <body>
   <div class="icon">${icon}</div>
   <h2>${heading}</h2>
   <p>${body}</p>
-  <a href="${deepLink}">Return to Cubby</a>
+  <a href="${deepLinkForHref}">Return to Cubby</a>
   <div class="logo">📦 Cubby</div>
 </body>
 </html>`;
@@ -143,4 +131,81 @@ Deno.serve(async (req) => {
   return new Response(html, {
     headers: { ...securityHeaders, 'Content-Type': 'text/html; charset=utf-8' },
   });
+}
+
+// The one non-disclosing response for every failure path below — never
+// looks anything up, never includes a bookingId, identical regardless of
+// *why* verification failed (missing params, unknown PAY_REQUEST_ID, bad
+// checksum). Logged with a specific reason server-side only.
+function genericResponse() {
+  return renderPage('pending', '');
+}
+
+Deno.serve(async (req) => {
+  const url = new URL(req.url);
+  const payRequestId = url.searchParams.get('PAY_REQUEST_ID') ?? '';
+  const transactionStatus = url.searchParams.get('TRANSACTION_STATUS') ?? '';
+  const checksum = url.searchParams.get('CHECKSUM') ?? '';
+
+  if (!payRequestId || !transactionStatus || !checksum) {
+    console.warn('[paygate-return] Missing PayGate return params — nothing disclosed');
+    return genericResponse();
+  }
+
+  if (!PAYGATE_ID || !PAYGATE_ENCRYPTION_KEY || !SERVICE_ROLE_KEY) {
+    console.error('[paygate-return] Not configured — nothing disclosed');
+    return genericResponse();
+  }
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  // Step 1: look up by the PayGate-issued identifier — never by the URL's
+  // own (fully attacker-controllable) bookingId query param.
+  const { data: booking, error: lookupErr } = await supabase
+    .from('bookings').select('id, status').eq('paygate_pay_request_id', payRequestId).maybeSingle();
+
+  if (lookupErr) {
+    // Logged without the raw error object — avoids echoing driver/schema
+    // internals into logs for what's ultimately just "lookup didn't work".
+    console.error('[paygate-return] Booking lookup error for PAY_REQUEST_ID — nothing disclosed:', payRequestId);
+    return genericResponse();
+  }
+
+  if (!booking) {
+    console.warn('[paygate-return] No booking found for PAY_REQUEST_ID — nothing disclosed:', payRequestId);
+    return genericResponse();
+  }
+
+  // Step 2: verify the checksum using REFERENCE = the DB row's OWN id,
+  // never the URL's bookingId. This is what actually authorizes
+  // disclosure — the only way to produce a checksum that validates
+  // against a specific booking.id is to have received it from PayGate's
+  // real initiate.trans response for that exact booking, i.e. to know
+  // PAYGATE_ENCRYPTION_KEY.
+  const fields = {
+    PAYGATE_ID, PAY_REQUEST_ID: payRequestId,
+    TRANSACTION_STATUS: transactionStatus, REFERENCE: booking.id,
+  };
+  const checksumValid = verifyChecksum(fields, RETURN_FIELD_ORDER, PAYGATE_ENCRYPTION_KEY, checksum);
+
+  if (!checksumValid) {
+    // Deliberately does not log the booking id or status here — an
+    // invalid checksum on a real PAY_REQUEST_ID lookup hit is exactly the
+    // scenario worth NOT echoing details for.
+    console.warn('[paygate-return] Checksum verification failed for a matched PAY_REQUEST_ID — nothing disclosed');
+    return genericResponse();
+  }
+
+  // Only now — PayGate-issued identifier matched AND checksum verified
+  // against that row's own id — is this specific booking's real status
+  // disclosed. Same non-authoritative status mapping payfast-return uses:
+  // a successful notify moves the booking to awaiting_host_confirmation,
+  // not straight to confirmed, so "succeeded" means "no longer
+  // pending_payment and not cancelled", not "status is exactly confirmed".
+  let status: 'success' | 'pending' | 'failed' = 'pending';
+  if (!booking.status || booking.status === 'pending_payment') status = 'pending';
+  else if (booking.status === 'cancelled') status = 'failed';
+  else status = 'success';
+
+  return renderPage(status, booking.id);
 });
