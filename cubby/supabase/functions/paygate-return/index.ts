@@ -160,9 +160,27 @@ Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
   // Step 1: look up by the PayGate-issued identifier — never by the URL's
-  // own (fully attacker-controllable) bookingId query param.
-  const { data: booking, error: lookupErr } = await supabase
-    .from('bookings').select('id, status').eq('paygate_pay_request_id', payRequestId).maybeSingle();
+  // own (fully attacker-controllable) bookingId query param. Filtered on
+  // payment_provider = 'paygate' too: paygate_pay_request_id is currently
+  // only ever written by paygate-initiate (which always sets both fields
+  // together), so this is redundant *today* — but that's an invariant
+  // enforced by convention across other files, not by any DB constraint,
+  // and this filter costs nothing to make it explicit rather than assumed.
+  //
+  // Uses a plain array-returning select + an explicit length check rather
+  // than .single()/.maybeSingle(). paygate_pay_request_id deliberately has
+  // no UNIQUE constraint (retries are meant to overwrite it — see the
+  // known-limitation note in PROJECT_MASTER_PLAN.md), so more than one row
+  // COULD in principle match. Rather than relying on exactly how the
+  // Supabase client/PostgREST happen to handle that multi-row case
+  // internally — behavior this environment has no way to execute and
+  // observe directly (no local PostgREST/Docker) — this fails closed on
+  // our own explicit, directly-testable condition: anything other than
+  // exactly one match discloses nothing.
+  const { data: matches, error: lookupErr } = await supabase
+    .from('bookings').select('id, status')
+    .eq('paygate_pay_request_id', payRequestId)
+    .eq('payment_provider', 'paygate');
 
   if (lookupErr) {
     // Logged without the raw error object — avoids echoing driver/schema
@@ -171,10 +189,20 @@ Deno.serve(async (req) => {
     return genericResponse();
   }
 
-  if (!booking) {
+  if (!matches || matches.length === 0) {
     console.warn('[paygate-return] No booking found for PAY_REQUEST_ID — nothing disclosed:', payRequestId);
     return genericResponse();
   }
+
+  if (matches.length > 1) {
+    // Should be structurally impossible (see comment above), but this is
+    // exactly the scenario that must fail closed rather than guess — never
+    // disclose any of the ambiguous candidates.
+    console.error('[paygate-return] SECURITY: multiple bookings matched one PAY_REQUEST_ID — nothing disclosed:', payRequestId, matches.length);
+    return genericResponse();
+  }
+
+  const booking = matches[0];
 
   // Step 2: verify the checksum using REFERENCE = the DB row's OWN id,
   // never the URL's bookingId. This is what actually authorizes
