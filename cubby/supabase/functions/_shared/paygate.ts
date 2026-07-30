@@ -45,14 +45,17 @@ export const INITIATE_FIELD_ORDER = [
 // to the redirect step without recomputing anything.
 export const RESPONSE_FIELD_ORDER = ['PAYGATE_ID', 'PAY_REQUEST_ID', 'REFERENCE'] as const;
 
-// Notify payload field order, for reconstructing/verifying its checksum.
-// UNLIKE INITIATE_FIELD_ORDER and RESPONSE_FIELD_ORDER above, PayGate's
-// official docs never gave a worked example for this one — only "MD5 hash
-// calculated from all fields + key." This is the Notify URL Response
-// page's own field table row order (the same pattern that held for both
-// of the other two formulas), but it is a documented working assumption,
-// not something verified byte-for-byte against an official example. It
-// must be re-confirmed against the first real sandbox notify payload —
+// ⚠️ BLOCKING PRE-LAUNCH ITEM — DO NOT enable real (non-sandbox-test)
+// payments until this has been confirmed against a real PayGate notify
+// callback. Notify payload field order, for reconstructing/verifying its
+// checksum. UNLIKE INITIATE_FIELD_ORDER and RESPONSE_FIELD_ORDER above,
+// PayGate's official docs never gave a worked example for this one — only
+// "MD5 hash calculated from all fields + key." This is the Notify URL
+// Response page's own field table row order (the same pattern that held
+// for both of the other two formulas), but it is a documented working
+// assumption, not something verified byte-for-byte against an official
+// example the way the other two are. It must be re-confirmed against the
+// first real sandbox notify payload —
 // recompute both this order and raw arrival order against the CHECKSUM
 // PayGate actually sends, and see which one matches — before this is
 // treated as settled.
