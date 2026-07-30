@@ -448,10 +448,35 @@ Built against PayGate's official PayWeb3 documentation and test credentials, rev
 - [x] Phase 4/5 booking-lifecycle RPCs (`accept_booking`, `decline_booking`, `confirm_booking_payment`, etc.) found missing from production despite being merged in PR #56-#58 — synced via `supabase/PHASE4_5_PRODUCTION_SYNC.sql`, verified live (PR #64)
 - [x] `_shared/paygate.ts` — checksum build/verify + official field-order constants, shared across every paygate-* function
 - [x] `paygate-initiate` edge function — authenticates caller, validates booking, calls `initiate.trans`, verifies PayGate's response checksum, stores `PAY_REQUEST_ID` + `payment_provider='paygate'`. Never touches `booking.status`. Checksum algorithm verified against PayGate's own official worked examples (byte-for-byte match); eligibility/ownership/update logic verified against real local Postgres (PR #65)
-- [ ] `paygate-redirect` — thin auto-submit page to `process.trans` (next up)
-- [ ] `paygate-notify` — webhook handler, first function to call `confirm_booking_payment`
-- [ ] `paygate-return` — browser return handler with `query.trans` reconciliation fallback
+- [x] `paygate-redirect` edge function — thin auto-submit page to `process.trans`, no Supabase client/booking access at all. Verified in a real headless browser (Playwright) that the form genuinely auto-submits with zero interaction and posts exactly the 2 required fields; `Cache-Control: no-store` and hardening headers (CSP, `Referrer-Policy`, `X-Frame-Options`, `X-Content-Type-Options`) added and confirmed not to break the auto-submit (PR #66)
+- [x] `paygate-notify` edge function — webhook handler, first function to call `confirm_booking_payment`. See "paygate-notify design decisions" below for the full acknowledgement policy, amount verification, and REFERENCE-authority rationale (PR #67)
+- [ ] `paygate-return` — browser return handler (next up). `query.trans` reconciliation is being deliberately deferred to its own follow-up PR rather than bundled in, unless live sandbox testing shows it's immediately necessary
 - [ ] No separate cancel function planned — PayWeb3 has no `CANCEL_URL`; cancellation arrives as `TRANSACTION_STATUS` on the same return leg
+
+#### `paygate-notify` design decisions (PR #67)
+
+**Acknowledgement policy — "OK" means receipt, not success.** PayGate's own docs: the plain-text `OK` response is required "to acknowledge receipt," and PayGate retries up to 2 more times at 30-minute intervals if it isn't returned. `OK` is returned **only** for the three outcomes where a retry would be genuinely pointless:
+| Outcome | Response |
+|---|---|
+| Verified, approved (`TRANSACTION_STATUS=1`), `confirm_booking_payment` succeeds | `OK` |
+| Verified, non-approved status (anything but `1`) — nothing to do | `OK` |
+| Verified, duplicate — `confirm_booking_payment` returns `already_resolved` | `OK` |
+| Missing required fields / malformed payload | 400, non-`OK` body |
+| Invalid checksum | 400, non-`OK` body |
+| PayGate credentials not configured | 500, non-`OK` body |
+| Booking not found for a checksum-verified `REFERENCE` | 500, non-`OK` body |
+| **Amount mismatch** (see below) | 500, non-`OK` body |
+| `confirm_booking_payment` RPC/DB error | 500, non-`OK` body |
+| Any other unexpected `confirm_booking_payment` result (`reference_reused`, `not_found`, etc.) | 500, non-`OK` body |
+| Unhandled exception | 500, non-`OK` body |
+
+Everything in the second half of that table was originally (incorrectly) returning `OK` too, copying `payfast-itn`'s "always 200" precedent without checking whether its reasoning applied — it doesn't, for a transient failure on our own side. The RPC/DB-error case was the most serious: a real, checksum-valid, approved payment that failed to record due to a transient failure was being told `OK`, permanently losing it with no way for PayGate to ever retry. Fixed before merge, verified against real local Postgres.
+
+**Amount verification is a mandatory security check, not optional hardening.** Before calling `confirm_booking_payment`, the function fetches the booking's own `total_price` and compares it (in cents) against the notified `AMOUNT`. A valid checksum only proves the payload genuinely came from PayGate unmodified — it says nothing about whether the amount PayGate is reporting matches what this specific booking actually costs. A mismatch is logged as a security-relevant anomaly, the RPC is never called, and the booking is left completely untouched. This is the same check `payfast-itn` already has for PayFast; `paygate-notify` was missing it entirely until this review caught it.
+
+**`REFERENCE` is the sole authoritative booking lookup key for notify (and will be for `return`).** Once the checksum verifies (using our own known `PAYGATE_ID`, never the payload's claim of it), `REFERENCE` — always `booking.id` — is trusted and used to look up the booking. `PAY_REQUEST_ID` is intentionally **not** used to gate acceptance: we deliberately allow an older, otherwise-superseded `paygate-initiate` attempt to still complete successfully (see the known limitation below — repeated initiation is accepted, and only the latest `PAY_REQUEST_ID` is retained). Requiring the notify's `PAY_REQUEST_ID` to match our stored value would incorrectly reject a legitimate late-arriving payment from an earlier attempt. `PAY_REQUEST_ID` remains useful for the future `query.trans` reconciliation fallback, just not as a notify-acceptance gate.
+
+**`NOTIFY_FIELD_ORDER` remains a blocking sandbox validation before live rollout.** Unlike the initiate/response/redirect checksum formulas (all confirmed byte-for-byte against official worked examples), PayGate's docs never gave a worked example for the notify checksum — only "MD5 hash calculated from all fields + key." The field order currently used (`_shared/paygate.ts`) is the Notify URL Response page's own table row order, a documented working assumption, not an independently confirmed fact. Marked `⚠️ BLOCKING PRE-LAUNCH ITEM` in code — must be confirmed against a real sandbox notify payload before any real (non-test) payment is accepted.
 
 **Known limitation, accepted for Private Beta (2026-07-30):** `paygate-initiate` has no protection against a booking being re-initiated while an earlier attempt is still outstanding. Concretely:
 - Repeated initiation can create multiple live PayGate transaction attempts for the same booking.
