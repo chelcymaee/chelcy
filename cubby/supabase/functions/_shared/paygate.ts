@@ -66,6 +66,15 @@ export const NOTIFY_FIELD_ORDER = [
   'USER1', 'USER2', 'USER3', 'VAULT_ID', 'PAYVAULT_DATA_1', 'PAYVAULT_DATA_2',
 ] as const;
 
+// Return-to-Merchant checksum field order. Explicitly documented on the
+// official "Return to Merchant" page as "MD5 hash based on PAYGATE_ID,
+// PAY_REQUEST_ID, TRANSACTION_STATUS, REFERENCE, and your key" — the field
+// *list* is confirmed, in that literal order, but — same caveat as
+// NOTIFY_FIELD_ORDER — no worked example with an actual computed hash was
+// given for this one either, unlike INITIATE_FIELD_ORDER/
+// RESPONSE_FIELD_ORDER. Treated as a working assumption, not settled fact.
+export const RETURN_FIELD_ORDER = ['PAYGATE_ID', 'PAY_REQUEST_ID', 'TRANSACTION_STATUS', 'REFERENCE'] as const;
+
 function md5Hex(input: string): string {
   return createHash('md5').update(input).digest('hex').toLowerCase();
 }
