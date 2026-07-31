@@ -40,6 +40,7 @@ import {
   PAYGATE_ID, PAYGATE_ENCRYPTION_KEY, NOTIFY_FIELD_ORDER,
   verifyChecksum, parseFormEncoded,
 } from '../_shared/paygate.ts';
+import { sendAwaitingHostNotifications } from '../_shared/awaiting-host-notifications.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 
@@ -177,6 +178,19 @@ Deno.serve(async (req) => {
 
     if (result?.ok) {
       console.log('[paygate-notify] Booking confirmed, now awaiting host confirmation:', bookingId);
+      // Fire-and-forget, same pattern payfast-itn already uses — a
+      // notification failure must never turn a genuinely successful,
+      // already-recorded payment into a non-OK response PayGate would
+      // retry. Only reachable here, on a FRESH confirm_booking_payment
+      // success (never on already_resolved below, and never before the
+      // checksum/amount/TRANSACTION_STATUS checks above have all passed) —
+      // the RPC's own guarded UPDATE (WHERE status = 'pending_payment')
+      // means result.ok is true at most once per booking, so a duplicate/
+      // retried notify, or a race with paygate-query's reconciliation
+      // fallback, can never reach this line twice for the same booking.
+      sendAwaitingHostNotifications(supabase, result.booking).catch((e) =>
+        console.error('[paygate-notify] Notification error:', e)
+      );
       return ok();
     }
 
