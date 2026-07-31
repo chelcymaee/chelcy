@@ -36,6 +36,7 @@ import {
   RESPONSE_FIELD_ORDER, NOTIFY_FIELD_ORDER,
   buildChecksum, verifyChecksum, parseFormEncoded,
 } from '../_shared/paygate.ts';
+import { sendAwaitingHostNotifications } from '../_shared/awaiting-host-notifications.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -279,6 +280,19 @@ Deno.serve(async (req) => {
 
     if (result?.ok) {
       console.log('[paygate-query] Booking confirmed via reconciliation:', bookingId);
+      // Fire-and-forget, same pattern payfast-itn/paygate-notify already
+      // use — reuses the one shared notification helper rather than a
+      // second implementation. Only reachable on a FRESH
+      // confirm_booking_payment success (never on the already_resolved
+      // no-op below, and never before the eligibility/checksum/merchant-
+      // ID/REFERENCE/amount checks above have all passed). The RPC's own
+      // guarded UPDATE means result.ok is true at most once per booking,
+      // so this can't double-notify even if paygate-notify and this
+      // reconciliation call race for the same booking — whichever loses
+      // the race gets already_resolved here, never a second notification.
+      sendAwaitingHostNotifications(supabase, result.booking).catch((e) =>
+        console.error('[paygate-query] Notification error:', e)
+      );
       return json({ ok: true, confirmed: true });
     }
 
