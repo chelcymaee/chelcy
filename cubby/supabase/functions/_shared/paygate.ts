@@ -36,13 +36,18 @@ export const INITIATE_FIELD_ORDER = [
   'VAULT', 'VAULT_ID',
 ] as const;
 
-// Used for both the initiate *response* checksum and the redirect-to-PayWeb
-// checksum — confirmed identical on both official doc pages (the Initiate
-// Request response table says "CHECKSUM: MD5 hash of the response fields",
-// which are exactly PAYGATE_ID + PAY_REQUEST_ID + REFERENCE — the same
-// formula the Redirect to PayWeb page documents). A verified PAY_REQUEST_ID
-// + CHECKSUM pair from the initiate response can be passed straight through
-// to the redirect step without recomputing anything.
+// Used for the initiate *response* checksum, the redirect-to-PayWeb
+// checksum, AND the query.trans *request* checksum — confirmed identical
+// across all three official doc pages. The Initiate Request response table
+// says "CHECKSUM: MD5 hash of the response fields" (PAYGATE_ID +
+// PAY_REQUEST_ID + REFERENCE); the Redirect to PayWeb page documents the
+// same formula; and the Query Transaction Status page states its own
+// request CHECKSUM as "MD5 hash of PAYGATE_ID + PAY_REQUEST_ID +
+// REFERENCE, and your key" — the identical field list and order, not a
+// new formula. A verified PAY_REQUEST_ID + CHECKSUM pair from the initiate
+// response can be passed straight through to the redirect step without
+// recomputing anything; paygate-query builds its outbound request
+// checksum with this same constant rather than a redundant duplicate.
 export const RESPONSE_FIELD_ORDER = ['PAYGATE_ID', 'PAY_REQUEST_ID', 'REFERENCE'] as const;
 
 // ⚠️ BLOCKING PRE-LAUNCH ITEM — DO NOT enable real (non-sandbox-test)
@@ -59,6 +64,11 @@ export const RESPONSE_FIELD_ORDER = ['PAYGATE_ID', 'PAY_REQUEST_ID', 'REFERENCE'
 // recompute both this order and raw arrival order against the CHECKSUM
 // PayGate actually sends, and see which one matches — before this is
 // treated as settled.
+// Also used for the query.trans *response* checksum — PayGate's own docs
+// state the query response's "field structure ... is identical to the one
+// used in the Notify URL Response," not a separate formula. Inherits the
+// same blocking-pre-launch caveat above: neither has an official worked
+// example.
 export const NOTIFY_FIELD_ORDER = [
   'PAYGATE_ID', 'PAY_REQUEST_ID', 'REFERENCE', 'TRANSACTION_STATUS',
   'RESULT_CODE', 'AUTH_CODE', 'CURRENCY', 'AMOUNT', 'RESULT_DESC',
