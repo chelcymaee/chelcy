@@ -7,8 +7,10 @@ import { useLocalSearchParams, router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Colors } from '../../src/constants/colors';
-import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { supabase, isSupabaseConfigured, SUPABASE_URL } from '../../src/lib/supabase';
+import { fetchPaymentOutcome } from '../../src/lib/payment-status';
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
 import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
 
@@ -16,6 +18,47 @@ const TIME_SLOTS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
   '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
 ];
+
+// Maps paygate-initiate's structured `code` field (see
+// supabase/functions/paygate-initiate/index.ts) to a traveller-facing
+// message. Codes that shouldn't be reachable from this screen in practice
+// (e.g. NOT_PAYABLE, "Traveller email not found" — this screen always
+// creates a fresh pending_payment booking and only reaches this call while
+// signed in) still get a real message rather than the generic fallback, in
+// case a race or stale profile ever does hit them.
+// supabase-js's functions.invoke() does NOT parse the response body into
+// `data` on a non-2xx response — it throws a FunctionsHttpError whose
+// `.context` is the raw, unread Response object instead (confirmed against
+// the installed @supabase/functions-js source, and against
+// paygate-initiate/index.ts, which always responds with a real JSON body
+// on every error path). `data?.code` is therefore always undefined on
+// failure; this reads the actual structured `{error, code}` body
+// paygate-initiate sent.
+async function extractPaygateErrorCode(error: unknown): Promise<string | undefined> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      return body?.code;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+function paygateInitiateErrorMessage(code: string | undefined): string {
+  switch (code) {
+    case 'PAYGATE_NOT_CONFIGURED':
+      return 'Payments are not available yet. Please contact support.';
+    case 'NOT_PAYABLE':
+      return 'This booking is no longer available for payment.';
+    case 'PAYGATE_TIMEOUT':
+    case 'PAYGATE_UNREACHABLE':
+      return 'Could not reach the payment provider. Please check your connection and try again.';
+    default:
+      return 'Could not start payment. Please try again.';
+  }
+}
 
 function normalizeHost(raw: any) {
   return {
@@ -115,12 +158,16 @@ export default function Booking() {
   const availablePickSlots = TIME_SLOTS.filter(t => t > dropTime);
 
   async function handleConfirm() {
+    // Re-entrancy guard, independent of the confirm button's `disabled`
+    // prop — a booking-creation-plus-payment-initiate call must never run
+    // twice concurrently for one tap. Checked first, synchronously, before
+    // any state update or await, so it can't race with anything.
+    if (loading) return;
     setErrorMsg('');
     setLoading(true);
     try {
       if (isSupabaseConfigured) {
         const { data: { user } } = await supabase.auth.getUser();
-        const travellerEmail = user?.email ?? '';
 
         const { data: booking, error: bookingError } = await supabase
           .from('bookings')
@@ -134,7 +181,7 @@ export default function Booking() {
             bag_count: bags,
             total_price: grandTotal,
             status: 'pending_payment',
-            payment_provider: 'payfast',
+            payment_provider: 'paygate',
             pin_code: pin,
           })
           .select('id')
@@ -145,44 +192,73 @@ export default function Booking() {
           return;
         }
 
-        const { data, error } = await supabase.functions.invoke('payfast-create', {
-          body: {
-            bookingId: booking.id,
-            amount: grandTotal,
-            bagCount: bags,
-            hostName: host.display_name,
-            travellerId: user?.id,
-            travellerEmail,
-          },
+        // paygate-initiate re-derives AMOUNT/EMAIL server-side from the
+        // booking/profile row itself — bookingId is the only input trusted
+        // from the client, same principle payfast-create used.
+        const { data, error } = await supabase.functions.invoke('paygate-initiate', {
+          body: { bookingId: booking.id },
         });
 
-        if (error || !data?.redirectUrl) {
-          // Clean up the pending booking so it doesn't clutter the user's list
-          await supabase.from('bookings').delete().eq('id', booking.id);
-          if (data?.code === 'PAYFAST_NOT_CONFIGURED') {
-            setErrorMsg('Payments are not available yet. Please contact support.');
-          } else {
-            setErrorMsg('Could not start payment. Please try again.');
-          }
+        if (error || !data?.ok || !data?.payRequestId || !data?.checksum) {
+          // Deliberately does NOT delete the booking. It was created
+          // successfully and is still a perfectly valid, payable
+          // pending_payment booking — only the attempt to start a PayGate
+          // transaction for it failed. Deleting it would destroy a
+          // recoverable booking over what may be a transient failure (a
+          // timeout, PayGate being briefly unreachable); leaving it as
+          // pending_payment means it's still visible in the traveller's
+          // bookings list ("Awaiting payment") and still payable via a
+          // fresh paygate-initiate call against this same booking id.
+          const code = error ? await extractPaygateErrorCode(error) : data?.code;
+          setErrorMsg(paygateInitiateErrorMessage(code));
           return;
         }
 
+        // paygate-initiate only returns the already-verified PAY_REQUEST_ID +
+        // CHECKSUM, not a full URL — paygate-redirect is what turns them into
+        // the actual hosted-checkout hop, so the URL is built here.
+        const redirectUrl =
+          `${SUPABASE_URL}/functions/v1/paygate-redirect` +
+          `?payRequestId=${encodeURIComponent(data.payRequestId)}` +
+          `&checksum=${encodeURIComponent(data.checksum)}`;
+
         // Open hosted payment page in an in-app browser that auto-closes on deep link return
         if (Platform.OS === 'web') {
-          // On web, open in same tab — the payment-result page redirects back via JS
-          window.location.href = data.redirectUrl;
+          // On web, open in same tab — paygate-return redirects back via JS
+          window.location.href = redirectUrl;
           return;
         }
 
         const result = await WebBrowser.openAuthSessionAsync(
-          data.redirectUrl,
+          redirectUrl,
           'cubby://payment-result',
         );
 
         if (result.type === 'success') {
           const parsed = Linking.parse(result.url);
-          const status = parsed.queryParams?.status as string | undefined;
-          if (status === 'success') {
+          // Route validation, belt-and-braces: openAuthSessionAsync's own
+          // redirect-prefix matching should already guarantee this URL
+          // starts with cubby://payment-result, but that's not something to
+          // assume without checking — same "verify, don't assume" principle
+          // used throughout the rest of this integration. expo-linking maps
+          // the segment right after the scheme to `hostname` for a
+          // cubby://payment-result?... URL.
+          if (parsed.hostname !== 'payment-result') {
+            setErrorMsg('Payment was not completed. Please try again.');
+            return;
+          }
+
+          // The URL's own `status` param is never treated as proof of
+          // payment — it's PayGate's/paygate-return's claim about what
+          // happened, not a verified fact, and a browser-level return can
+          // occur without any payment having actually completed. The only
+          // authoritative source is this booking's own row, re-fetched
+          // fresh here using OUR OWN known booking.id from the insert
+          // above — never anything parsed from the URL. Mirrors the exact
+          // status mapping paygate-return already applies server-side.
+          const outcome = await fetchPaymentOutcome(booking.id);
+
+          if (outcome === 'success') {
             router.replace({
               pathname: '/(traveller)/booking-confirmation',
               params: {
@@ -195,14 +271,15 @@ export default function Booking() {
                 date: bookingDate,
               },
             });
-          } else if (status === 'pending') {
+          } else if (outcome === 'pending') {
             setErrorMsg('Payment is processing. Check your bookings tab in a few minutes.');
-          } else if (status === 'cancelled') {
-            setErrorMsg('Payment was cancelled. Your booking has been removed.');
           } else {
             setErrorMsg('Payment was not completed. Please try again.');
           }
         } else if (result.type === 'cancel') {
+          // The traveller closed the in-app browser themselves before any
+          // PayGate redirect happened — distinct from a PayGate-reported
+          // decline, which comes back as status=failed/pending above.
           setErrorMsg('Payment was cancelled.');
         } else {
           setErrorMsg('Payment failed. Please try again.');

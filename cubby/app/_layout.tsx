@@ -25,11 +25,21 @@ function usePaymentDeepLink() {
     function handleUrl(event: { url: string }) {
       const parsed = Linking.parse(event.url);
       if (parsed.path === 'payment-result') {
+        // `status` here is only a hint for which screen shell to show
+        // immediately — it is PayGate's/paygate-return's claim, not a
+        // verified fact, and this handler exists specifically for the case
+        // where the app was backgrounded or cold-started during checkout,
+        // i.e. exactly when there's no other in-memory verification
+        // already in flight. Neither destination screen is allowed to
+        // treat this status as proof of payment on its own; payment-success
+        // re-fetches the booking's real status from Supabase using
+        // bookingId before ever showing "confirmed" (see PaymentSuccess).
         const status = parsed.queryParams?.status as string | undefined;
+        const bookingId = (parsed.queryParams?.bookingId as string | undefined) ?? '';
         if (status === 'success') {
-          router.replace('/(traveller)/payment-success');
+          router.replace({ pathname: '/(traveller)/payment-success', params: { bookingId } });
         } else {
-          router.replace('/(traveller)/payment-failed');
+          router.replace({ pathname: '/(traveller)/payment-failed', params: { bookingId } });
         }
       } else if (parsed.path === 'reset-password') {
         const code = parsed.queryParams?.code as string | undefined;
