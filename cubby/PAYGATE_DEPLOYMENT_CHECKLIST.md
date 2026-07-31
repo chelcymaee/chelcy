@@ -44,22 +44,29 @@ npx supabase functions deploy paygate-query --no-verify-jwt
 
 ## 2. Supabase secrets that must exist before testing
 
-Set via `npx supabase secrets set <NAME>=<value>` or **Supabase Dashboard → Settings → Edge Functions → Secrets**.
+Set via `npx supabase secrets set <NAME>=<value>` or **Supabase Dashboard → Settings → Edge Functions → Secrets**. Split below into what should already exist vs. what's genuinely blocked on external input, so it's unambiguous which items this checklist is actually waiting on.
 
-| Secret | Required for | Status as of this checklist |
+### 2.1 Already-existing project secrets (should already be set — confirm, don't assume)
+
+| Secret | Required for |
+|---|---|
+| `SUPABASE_URL` | Every paygate-* function — auto-injected by the platform, do not set manually. |
+| `SUPABASE_SERVICE_ROLE_KEY` | `paygate-initiate`, `paygate-notify`, `paygate-return`, `paygate-query` — used by every other server-role Edge Function in this project already. |
+| `ADMIN_SECRET` | `paygate-query`'s `x-admin-secret` auth path; indirectly `send-push`/`send-email` via `sendAwaitingHostNotifications`. Used by `booking-expiry-sweep`, `complete-booking`, admin-* already. **Must be the same value** every server-to-server caller already shares — do not create a second, payment-specific secret with this name. |
+| `RESEND_API_KEY` | `send-email`, now indirectly triggered by every PayGate confirmation (PR #72). Should already exist if host/traveller emails work today for PayFast/Peach bookings — confirm, don't assume, since this is a new, real dependency for PayGate specifically now. |
+
+### 2.2 PayGate credentials still pending (from Fawwaz)
+
+| Secret | Required for | Status |
 |---|---|---|
-| `PAYGATE_ID` | Every paygate-* function | **Blocked on merchant credentials** — use test value `10011072130` for the first sandbox run if live credentials aren't issued yet. |
-| `PAYGATE_ENCRYPTION_KEY` | Every paygate-* function | **Blocked on merchant credentials** — paired with whichever `PAYGATE_ID` above is set. |
-| `SUPABASE_URL` | Every paygate-* function | Auto-injected by the platform — do not set manually. |
-| `SUPABASE_SERVICE_ROLE_KEY` | `paygate-initiate`, `paygate-notify`, `paygate-return`, `paygate-query` | Should already exist (used by every other server-role Edge Function in this project). |
-| `ADMIN_SECRET` | `paygate-query`'s `x-admin-secret` auth path; indirectly `send-push`/`send-email` via `sendAwaitingHostNotifications` | Should already exist (used by `booking-expiry-sweep`, `complete-booking`, admin-*). **Must be the same value** every server-to-server caller already shares — do not create a second, payment-specific secret with this name. |
-| `RESEND_API_KEY` | `send-email`, now indirectly triggered by every PayGate confirmation | Should already exist if host/traveller emails work today for PayFast/Peach bookings — confirm, don't assume, since PR #72 makes this a new, real dependency for PayGate specifically. |
+| `PAYGATE_ID` | Every paygate-* function | **Not yet available — blocked on the merchant account from Fawwaz.** PayGate's public test value `10011072130` can be used for an initial sandbox run only if a real test account isn't issued yet; this is a publicly documented test ID, not a real credential. |
+| `PAYGATE_ENCRYPTION_KEY` | Every paygate-* function | **Not yet available — blocked on the same merchant account from Fawwaz.** Paired with whichever `PAYGATE_ID` above is set; the two must come from the same account/environment (test or live), never mixed. |
 
 **Verify (names only, never print values):**
 ```bash
 npx supabase secrets list
 ```
-Confirm every name above is present. `PAYGATE_ID`/`PAYGATE_ENCRYPTION_KEY` are the two items actually gated on the still-pending merchant credentials — everything else on this list should already be satisfied by existing infrastructure.
+Confirm every name in both tables above is present before testing. Section 2.2 is the actual blocker on the "wait for merchant credentials" step — everything in Section 2.1 should already be satisfied by existing infrastructure and needs only confirming, not waiting on anyone.
 
 ---
 
@@ -120,7 +127,7 @@ From `src/lib/supabase.ts` and `app/_layout.tsx`. `EXPO_PUBLIC_*` variables are 
 
 **No OTA update mechanism is configured in this project** (`expo-updates` is not installed, no `runtimeVersion`/`updates` block in `app.json`) — PR #71's `booking.tsx`/`app/_layout.tsx`/`payment-success.tsx` changes require a **real rebuild**, not a JS-only push, to reach a test device. Confirm this hasn't changed before assuming a rebuild isn't needed.
 
-**`eas.json`'s `preview` profile builds iOS as a simulator (`"ios": {"simulator": true}`)** — a simulator build cannot be installed on, or meaningfully test, a physical device's real deep-link/`WebBrowser.openAuthSessionAsync` return behavior. For a real iOS device test, use the `development` profile instead (`developmentClient: true`, `distribution: internal`, no simulator flag) — this file deliberately does not change `eas.json` itself (out of scope, operational checklist only per this deliverable's instructions), just flags the distinction so the wrong profile isn't used by accident.
+**`eas.json`'s `preview` profile builds iOS as a simulator (`"ios": {"simulator": true}`)** — a simulator build cannot be installed on, or meaningfully test, a physical device's real deep-link/`WebBrowser.openAuthSessionAsync` return behavior. Confirmed against Expo's own EAS Build documentation: `ios.simulator: true` is specifically what you set to *get* a simulator build, meaning a profile that omits it (like `development` below) produces a real, physical-device-installable build by default. **`development` is the profile that produces a physical-device build** (`developmentClient: true`, `distribution: internal`, no simulator flag) — this file deliberately does not change `eas.json` itself (out of scope, operational checklist only per this deliverable's instructions), just flags the distinction so the wrong profile isn't used by accident.
 
 ```bash
 cd cubby
@@ -144,13 +151,14 @@ Work through in order; each section above is the source for the corresponding it
 
 - [ ] **Section 1**: all five `paygate-*` functions deployed with `--no-verify-jwt`, confirmed via `npx supabase functions list` showing a recent "Updated" timestamp for each.
 - [ ] **Section 1**: `send-push` and `send-email` confirmed still deployed and functioning (not part of this deploy, but newly load-bearing).
-- [ ] **Section 2**: `npx supabase secrets list` shows all six secrets present — `PAYGATE_ID`, `PAYGATE_ENCRYPTION_KEY`, `SUPABASE_URL` (auto), `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_SECRET`, `RESEND_API_KEY`.
+- [ ] **Section 2.1**: `npx supabase secrets list` shows `SUPABASE_URL` (auto), `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_SECRET`, `RESEND_API_KEY` all present.
+- [ ] **Section 2.2**: `PAYGATE_ID` and `PAYGATE_ENCRYPTION_KEY` set — from Fawwaz's issued merchant credentials, or the public test pair if running an initial sandbox check before those arrive.
 - [ ] **Section 3**: PayGate dashboard settings confirmed, current `PAYGATE_ENCRYPTION_KEY` copied exactly into Supabase secrets (a stale/rotated key is the single most common way a previously-working checksum starts failing).
 - [ ] **Section 4**: `SUPABASE_URL` (server) and `EXPO_PUBLIC_SUPABASE_URL` (app) confirmed pointing at the same project.
 - [ ] **Section 5**: app build's env vars confirmed correct for this project.
 - [ ] **Section 6**: test device is running a build from after PR #71 (2026-07-31), not an older cached build.
 - [ ] A real test booking exists in `pending_payment` status with a traveller who has a real `profiles.email` set (`paygate-initiate` rejects otherwise) — see `PAYMENT_VERIFICATION_RUNBOOK.md` Section 5 for the exact query.
 - [ ] Everyone involved in the test knows **`NOTIFY_FIELD_ORDER`'s exact field order is still unconfirmed** against a real payload — this first sandbox run's notify callback is itself the confirmation step (see `PAYMENT_VERIFICATION_RUNBOOK.md` Section 9); be ready to inspect the raw notify payload/checksum if anything about it looks wrong, not just treat a failure as "the code is broken."
-- [ ] A rollback/pause plan exists if the sandbox run reveals a real problem: since these are Edge Functions (not the app itself), reverting `PAYGATE_ID`/`PAYGATE_ENCRYPTION_KEY` to blank (or simply not setting them) makes every paygate-* function return `503 PAYGATE_NOT_CONFIGURED` immediately, which is a safe, fast way to halt the integration without a redeploy if something is actively wrong mid-test.
+- [ ] A rollback/pause plan exists if the sandbox run reveals a real problem: since these are Edge Functions (not the app itself), reverting `PAYGATE_ID`/`PAYGATE_ENCRYPTION_KEY` to blank (or simply not setting them) makes every paygate-* function return `503 PAYGATE_NOT_CONFIGURED` immediately, which is a safe, fast way to halt the integration without a redeploy if something is actively wrong mid-test. **Grep-confirmed scope of this rollback**: `PAYGATE_ID`/`PAYGATE_ENCRYPTION_KEY` are read only by `_shared/paygate.ts` and the five paygate-* functions that import it — nothing else in `supabase/functions/` references either name. PayFast (`PAYFAST_MERCHANT_ID`, `PAYFAST_MERCHANT_KEY`, `PAYFAST_PASSPHRASE`, etc.) and Peach (`PEACH_PAYMENTS_TOKEN`, `PEACH_PAYMENTS_ENTITY_ID`, etc.) use entirely distinct, non-overlapping secret names, so this rollback cannot affect either of those providers or any other part of the app.
 
 **Only once every box above is checked**: proceed to `PAYMENT_VERIFICATION_RUNBOOK.md` Section 4 (Sandbox Payment Checklist) and run the first full sandbox payment.
