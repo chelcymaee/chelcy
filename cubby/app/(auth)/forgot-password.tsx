@@ -4,7 +4,6 @@ import {
   StyleSheet, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
-import * as Linking from 'expo-linking';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import Btn from '../../src/components/Btn';
@@ -14,9 +13,9 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [sent, setSent] = useState(false);
 
   async function handleSend() {
+    if (loading) return;
     if (!email) {
       setErrorMsg('Please enter your email address');
       return;
@@ -25,12 +24,10 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       if (isSupabaseConfigured) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: Linking.createURL('reset-password'),
-        });
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
         if (error) { setErrorMsg(error.message); return; }
       }
-      setSent(true);
+      router.replace({ pathname: '/(auth)/reset-password', params: { email } });
     } catch (err: any) {
       setErrorMsg(err?.message ?? 'Something went wrong');
     } finally {
@@ -55,43 +52,32 @@ export default function ForgotPassword() {
           <Text style={styles.logoName}>cubby</Text>
         </View>
 
-        {sent ? (
-          <>
-            <Text style={styles.heading}>Check your email</Text>
-            <Text style={styles.subheading}>
-              If an account exists for {email}, we've sent a link to reset your password.
-            </Text>
-            <Btn label="Back to sign in" onPress={() => router.replace('/(auth)/login')} style={styles.btn} />
-          </>
-        ) : (
-          <>
-            <Text style={styles.heading}>Forgot password?</Text>
-            <Text style={styles.subheading}>Enter your email and we'll send you a reset link.</Text>
+        <Text style={styles.heading}>Forgot password?</Text>
+        <Text style={styles.subheading}>Enter your email and we'll send you a 6-digit code to reset your password.</Text>
 
-            {!!errorMsg && <Banner message={errorMsg} variant="error" />}
+        {!!errorMsg && <Banner message={errorMsg} variant="error" />}
 
-            <View style={styles.form}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={Colors.textLight}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
+        <View style={styles.form}>
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            placeholderTextColor={Colors.textLight}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            editable={!loading}
+          />
 
-              <Btn
-                label={loading ? 'Sending…' : 'Send reset link'}
-                onPress={handleSend}
-                loading={loading}
-                style={styles.btn}
-              />
-            </View>
-          </>
-        )}
+          <Btn
+            label={loading ? 'Sending…' : 'Send code'}
+            onPress={handleSend}
+            loading={loading}
+            style={styles.btn}
+          />
+        </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Remembered your password? </Text>
