@@ -387,7 +387,9 @@ export default function Bookings() {
                 {status === 'awaiting_host_confirmation' && countdown && (
                   <View style={[styles.awaitingCard, countdown.state !== 'active' && styles.awaitingCardEnded]}>
                     <Text style={styles.awaitingText}>
-                      Payment received — we're waiting for your host to confirm this booking.
+                      {countdown.state === 'ended'
+                        ? "Your host didn't respond in time. Your refund has been queued for processing."
+                        : "Payment received — we're waiting for your host to confirm this booking."}
                     </Text>
                     <Text style={[styles.awaitingCountdown, countdown.state !== 'active' && styles.awaitingCountdownEnded]}>
                       {countdown.text}

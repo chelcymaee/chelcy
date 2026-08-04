@@ -58,7 +58,7 @@ async function notifyOneExpiredBooking(supabase: any, booking: ExpiredBooking): 
         user_id: booking.traveller_id,
         type: 'booking_declined',
         title: 'Response window ended',
-        body: "Your host didn't respond in time, so this booking has expired. You'll be refunded — try another host nearby!",
+        body: "Your host didn't respond in time, so this booking has expired. Your refund has been queued for processing — try another host nearby!",
         data: { bookingId: booking.id },
         related_booking_id: booking.id,
       }),

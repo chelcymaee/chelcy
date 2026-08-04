@@ -22,3 +22,21 @@ export async function fetchPaymentOutcome(bookingId: string): Promise<'success' 
     return 'pending';
   }
 }
+
+// Separate from fetchPaymentOutcome deliberately — that function's 3-way
+// success/pending/failed signal is a payment-verification result (payment
+// succeeded means "no longer pending_payment and not cancelled", covering
+// both awaiting_host_confirmation and confirmed alike), not a booking-state
+// signal. Callers that need to tell those two apart — e.g. to decide whether
+// showing the drop-off PIN is actually correct yet — read the raw status
+// via this instead, rather than overloading fetchPaymentOutcome's contract
+// for the one caller that needs the distinction.
+export async function fetchBookingStatus(bookingId: string): Promise<string | null> {
+  try {
+    const { data: booking } = await supabase
+      .from('bookings').select('status').eq('id', bookingId).single();
+    return booking?.status ?? null;
+  } catch {
+    return null;
+  }
+}
