@@ -176,6 +176,7 @@ export default function Profile() {
     if (result.canceled) return;
 
     const localUri = result.assets[0].uri;
+    const previousAvatar = avatar;
     // Show local preview immediately (optimistic)
     setAvatar(localUri);
 
@@ -231,8 +232,11 @@ export default function Profile() {
         JSON.stringify({ firstName, lastName, phone, avatarUri: publicUrl }),
       );
       showToast('Photo updated!', true);
-    } catch {
-      // Keep local URI as optimistic preview; surface error
+    } catch (err) {
+      console.error('[profile] avatar upload failed:', err);
+      // Upload didn't actually persist — revert the optimistic local preview
+      // instead of leaving a photo on screen that isn't really saved.
+      setAvatar(previousAvatar);
       showToast('Upload failed — photo not saved to cloud.', false);
     } finally {
       setUploadingAvatar(false);
