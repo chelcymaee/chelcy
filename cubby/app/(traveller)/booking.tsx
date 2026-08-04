@@ -9,7 +9,7 @@ import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Colors } from '../../src/constants/colors';
-import { supabase, isSupabaseConfigured, SUPABASE_URL } from '../../src/lib/supabase';
+import { supabase, isSupabaseConfigured, PUBLIC_FUNCTIONS_URL } from '../../src/lib/supabase';
 import { fetchPaymentOutcome } from '../../src/lib/payment-status';
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
 import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
@@ -218,7 +218,7 @@ export default function Booking() {
         // CHECKSUM, not a full URL — paygate-redirect is what turns them into
         // the actual hosted-checkout hop, so the URL is built here.
         const redirectUrl =
-          `${SUPABASE_URL}/functions/v1/paygate-redirect` +
+          `${PUBLIC_FUNCTIONS_URL}/paygate-redirect` +
           `?payRequestId=${encodeURIComponent(data.payRequestId)}` +
           `&checksum=${encodeURIComponent(data.checksum)}`;
 
