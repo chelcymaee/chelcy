@@ -35,6 +35,22 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 
+// Base URL for browser-facing PayGate callbacks (currently just RETURN_URL —
+// the page PayGate redirects the user's browser to, which has to render as
+// real HTML, not JSON). Supabase's default *.supabase.co domain rewrites
+// text/html Edge Function responses to text/plain — a documented anti-abuse
+// restriction, confirmed by a Supabase maintainer:
+// https://github.com/orgs/supabase/discussions/29633 — so this points at the
+// project's custom domain instead. NOTIFY_URL deliberately keeps using the
+// default domain below: it's a server-to-server webhook that only ever
+// returns text/plain, so it was never affected by this restriction, and
+// moving it isn't necessary. Falls back to the default functions base if the
+// secret isn't set, so nothing breaks before the custom domain is configured
+// or if it's ever rolled back — trailing slash stripped so callers can
+// safely append `/function-name` without risking a doubled slash.
+const rawPublicFunctionsUrl = Deno.env.get('PUBLIC_FUNCTIONS_URL') ?? `${SUPABASE_URL}/functions/v1`;
+const PUBLIC_FUNCTIONS_URL = rawPublicFunctionsUrl.replace(/\/+$/, '');
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -116,7 +132,7 @@ Deno.serve(async (req) => {
       REFERENCE: booking.id,
       AMOUNT: String(amountCents),
       CURRENCY: 'ZAR',
-      RETURN_URL: `${functionsBase}/paygate-return?bookingId=${encodeURIComponent(booking.id)}`,
+      RETURN_URL: `${PUBLIC_FUNCTIONS_URL}/paygate-return?bookingId=${encodeURIComponent(booking.id)}`,
       TRANSACTION_DATE: transactionDate,
       LOCALE: 'en-za',
       COUNTRY: 'ZAF',
