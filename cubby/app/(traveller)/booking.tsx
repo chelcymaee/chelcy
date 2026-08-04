@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured, PUBLIC_FUNCTIONS_URL } from '../../src/lib/supabase';
-import { fetchPaymentOutcome } from '../../src/lib/payment-status';
+import { fetchPaymentOutcome, fetchBookingStatus } from '../../src/lib/payment-status';
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
 import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
 
@@ -259,18 +259,34 @@ export default function Booking() {
           const outcome = await fetchPaymentOutcome(booking.id);
 
           if (outcome === 'success') {
-            router.replace({
-              pathname: '/(traveller)/booking-confirmation',
-              params: {
-                hostName: host.display_name,
-                dropOff: dropTime,
-                pickUp: pickTime,
-                bags: String(bags),
-                total: String(grandTotal),
-                pin,
-                date: bookingDate,
-              },
-            });
+            // 'success' here only means the payment itself verified — it
+            // covers both awaiting_host_confirmation and confirmed alike
+            // (see fetchPaymentOutcome's own comment). Only a booking whose
+            // real status is already 'confirmed' gets the celebratory PIN
+            // reveal; everything else (in practice, always
+            // awaiting_host_confirmation immediately after paying) lands on
+            // the bookings list, which already has the correct "payment
+            // received — waiting for host" state with a live countdown and
+            // deliberately withholds the PIN until status is actually
+            // 'confirmed'. This avoids a second, inconsistent copy of that
+            // same state logic living here.
+            const status = await fetchBookingStatus(booking.id);
+            if (status === 'confirmed') {
+              router.replace({
+                pathname: '/(traveller)/booking-confirmation',
+                params: {
+                  hostName: host.display_name,
+                  dropOff: dropTime,
+                  pickUp: pickTime,
+                  bags: String(bags),
+                  total: String(grandTotal),
+                  pin,
+                  date: bookingDate,
+                },
+              });
+            } else {
+              router.replace('/(traveller)/bookings');
+            }
           } else if (outcome === 'pending') {
             setErrorMsg('Payment is processing. Check your bookings tab in a few minutes.');
           } else {
