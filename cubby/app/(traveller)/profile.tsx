@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system';
 import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
@@ -194,18 +195,20 @@ export default function Profile() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Fetch blob from local URI (works on both native and web)
-      const response = await fetch(localUri);
-      const blob = await response.blob();
+      // Read local file as an ArrayBuffer. fetch(localUri).blob() is not usable
+      // here — this RN Blob implementation throws "Creating blobs from
+      // 'ArrayBuffer' and 'ArrayBufferView' are not supported" — and Supabase's
+      // own storage-js docs say to use ArrayBuffer for React Native uploads.
+      const arrayBuffer = await new File(localUri).arrayBuffer();
       const ext = localUri.split('.').pop()?.split('?')[0]?.toLowerCase() ?? 'jpg';
       const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
       const safeExt = allowedExts.includes(ext) ? ext : 'jpg';
       const filePath = `${user.id}/avatar.${safeExt}`;
-      const contentType = blob.type || `image/${safeExt === 'jpg' ? 'jpeg' : safeExt}`;
+      const contentType = `image/${safeExt === 'jpg' ? 'jpeg' : safeExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, blob, { upsert: true, contentType });
+        .upload(filePath, arrayBuffer, { upsert: true, contentType });
 
       if (uploadError) throw uploadError;
 
