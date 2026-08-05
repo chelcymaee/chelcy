@@ -99,8 +99,61 @@ ROLLBACK;
 -- sensitive table.
 
 
+-- ── 6. profiles: does the personal-avatar-display work rely on RLS that ──
+-- ── actually exists live, and does it stay scoped to the right people? ──
+-- schema.sql only defines one SELECT policy on profiles ("Users can view
+-- own profile", auth.uid() = id) — own row only. But host/traveller-profile.tsx
+-- has always read a *different* user's profiles row (and it works, per
+-- live testing), so the deployed database must have broader access than
+-- this file documents. host/messages.tsx and traveller/messages.tsx now
+-- rely on the same access for avatar_url. This block checks both that the
+-- intended access works, AND that it doesn't leak beyond it.
+--
+-- Unlike blocks 1-5 (where any real rows = unsafe), 6a *should* return a
+-- row — that's the access the avatar feature depends on. 6b should not.
+
+-- First, find a real booking/conversation pair to test with:
+SELECT b.host_id, h.user_id AS host_user_id, b.traveller_id
+FROM bookings b
+JOIN hosts h ON h.id = b.host_id
+LIMIT 5;
+
+-- 6a. Host (with a real booking to this traveller) reads the traveller's
+-- profiles row. Substitute <HOST_USER_ID> and <TRAVELLER_ID> from above.
+-- Expected (needed for the feature to work): 1 row, with avatar_url visible.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL request.jwt.claims = '{"sub": "<HOST_USER_ID>", "role": "authenticated"}';
+SELECT id, avatar_url FROM profiles WHERE id = '<TRAVELLER_ID>';
+ROLLBACK;
+
+-- 6b. A completely unrelated user (no booking/conversation with this
+-- traveller at all) tries the same read.
+-- Expected (safe): 0 rows. If this returns the row, avatar_url (and
+-- whatever policy grants 6a) is readable by anyone, not just people with
+-- an actual relationship to this traveller — that's the IDOR-shaped risk,
+-- same class as the messaging bug in block #2.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000000", "role": "authenticated"}';
+SELECT id, avatar_url FROM profiles WHERE id = '<TRAVELLER_ID>';
+ROLLBACK;
+
+-- If 6a returns 0 rows: the avatar_url selects added to host/messages.tsx,
+-- traveller/messages.tsx, and host/traveller-profile.tsx will silently
+-- render the fallback glyph in production, not an error. Do not add a new
+-- policy as a quick patch — this PR intentionally does not touch production
+-- RLS. Treat it as a launch-readiness blocker for founder decision instead,
+-- same as the existing flagged profiles RLS question in
+-- PROJECT_MASTER_PLAN.md.
+--
+-- If 6b returns a row: unrelated users can already read any profile's
+-- avatar_url (and possibly more). Flag as a launch-readiness issue
+-- regardless of whether this PR's screens are affected.
+
+
 -- ============================================================================
--- After running all 5: report back which ones returned unexpected (unsafe)
--- results. For #2 (messaging), if unsafe, run the Fix 4 block already added
+-- After running all 6: report back which ones returned unexpected results.
+-- For #2 (messaging), if unsafe, run the Fix 4 block already added
 -- to schema.sql, then re-run block #2 to confirm it's now blocked.
 -- ============================================================================
