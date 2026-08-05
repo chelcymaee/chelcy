@@ -79,17 +79,15 @@ export default function HostDetail() {
           .eq('id', id)
           .single();
         if (!error && data) {
-          // Fetch owner profile for verification status
-          const ownerId = data.assigned_user_id ?? data.user_id;
-          let ownerIsVerified = false;
-          if (ownerId) {
-            const { data: prof } = await supabase
-              .from('profiles')
-              .select('is_verified')
-              .eq('id', ownerId)
-              .single();
-            ownerIsVerified = prof?.is_verified ?? false;
-          }
+          // Verification status comes from hosts.owner_is_verified — already
+          // present on this same row (select('*') above), kept in sync by
+          // the admin-hosts edge function whenever an admin approves/revokes
+          // ID verification. No separate profiles read needed: hosts is the
+          // public-facing table, profiles stays private. (Previously this
+          // did a second cross-user profiles.is_verified query for the
+          // same value, which relied on an over-broad RLS policy — see
+          // PROJECT_MASTER_PLAN.md.)
+          const ownerIsVerified = data.owner_is_verified ?? false;
           const normalized = normalizeHost(data, ownerIsVerified);
           setHost(normalized);
           setBadges(computeHostBadges(normalized));

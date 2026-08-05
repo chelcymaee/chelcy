@@ -487,7 +487,7 @@ async function handleDbWebhook(payload: any): Promise<void> {
 
 // ─── Direct Call Handlers ─────────────────────────────────────────────────────
 
-async function handleDirect(body: any): Promise<Response> {
+async function handleDirect(body: any, callerId: string | null): Promise<Response> {
   const { emailType, data } = body;
   let tmpl: { subject: string; html: string; text: string } | null = null;
   let to: string = data?.to ?? ADMIN_EMAIL;
@@ -529,10 +529,43 @@ async function handleDirect(body: any): Promise<Response> {
       tmpl = tmpl_review_received(data);
       to = data.recipientEmail;
       break;
-    case 'milestone_reached':
-      tmpl = tmpl_milestone_reached(data);
-      to = data.hostEmail;
+    case 'milestone_reached': {
+      // data.hostUserId is client-supplied and never trusted directly as an
+      // email target. Bind it server-side: the caller (from their own
+      // verified session, not the request body) must have actually
+      // authored a review for a host whose owner really is hostUserId.
+      // Only then is the recipient email resolved, from profiles, using
+      // this function's own service-role client — the client app never
+      // reads or handles it. Every failure path below fails safe (no
+      // email sent, no error surfaced, nothing about the target — email,
+      // existence, or otherwise — is echoed back to the caller or logged).
+      if (!callerId || !data?.hostUserId) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+
+      const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+      const { data: hostRows } = await supabase
+        .from('hosts')
+        .select('id')
+        .or(`assigned_user_id.eq.${data.hostUserId},user_id.eq.${data.hostUserId}`);
+      const hostIds = (hostRows ?? []).map((h: { id: string }) => h.id);
+      if (!hostIds.length) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+
+      const { data: legitReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('reviewer_id', callerId)
+        .in('host_id', hostIds)
+        .limit(1)
+        .maybeSingle();
+      if (!legitReview) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+
+      const { data: hp } = await supabase.from('profiles').select('email, full_name').eq('id', data.hostUserId).single();
+      if (!hp?.email) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+
+      tmpl = tmpl_milestone_reached({ hostName: hp.full_name ?? data.hostName ?? 'there', milestone: data.milestone, detail: data.detail });
+      to = hp.email;
       break;
+    }
     default:
       return new Response(JSON.stringify({ error: `Unknown emailType: ${emailType}` }), { status: 400 });
   }
@@ -564,6 +597,12 @@ Deno.serve(async (req) => {
     const secret = req.headers.get('x-admin-secret');
     const authHeader = req.headers.get('authorization');
     let authed = false;
+    // The caller's own verified user id (JWT-derived, never client-supplied)
+    // — null for ADMIN_SECRET-authenticated calls from other edge functions.
+    // Cases that email private contact info to a specific person (e.g.
+    // milestone_reached) must bind their target to this id server-side,
+    // never to a client-supplied identifier alone.
+    let callerId: string | null = null;
 
     if (ADMIN_SECRET && secret === ADMIN_SECRET) {
       authed = true;
@@ -572,13 +611,14 @@ Deno.serve(async (req) => {
       const authClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
       const { data: { user } } = await authClient.auth.getUser(token);
       authed = !!user;
+      callerId = user?.id ?? null;
     }
 
     if (!authed) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
-    return await handleDirect(body);
+    return await handleDirect(body, callerId);
   } catch (err) {
     console.error('[send-email] Error:', err);
     // Never fail — email errors must not block user actions

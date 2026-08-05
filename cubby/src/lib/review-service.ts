@@ -120,10 +120,12 @@ async function notifyHostOfReview(p: SubmitHostReviewParams, reviewId?: string):
         title: `🏆 Milestone: ${milestone}`,
         body: detail ?? '',
       });
-      const { data: hp } = await supabase.from('profiles').select('email, full_name').eq('id', host.assigned_user_id).single();
-      if (hp?.email) {
-        fireEmail({ emailType: 'milestone_reached', data: { hostEmail: hp.email, hostName: hp.full_name ?? host.display_name, milestone, detail } });
-      }
+      // send-email resolves the recipient email itself, server-side, from
+      // hostUserId — and binds hostUserId to a review this caller actually
+      // wrote before trusting it (see send-email/index.ts). The client
+      // never reads another user's profiles row here; hostName is only
+      // ever the public hosts.display_name as a fallback.
+      fireEmail({ emailType: 'milestone_reached', data: { hostUserId: host.assigned_user_id, hostName: host.display_name, milestone, detail } });
     }
   }
 
