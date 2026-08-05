@@ -13,6 +13,8 @@ interface AvatarProps {
   fallbackFontSize?: number;
   /** Override the fallback circle's background color. Defaults to Colors.border. */
   backgroundColor?: string;
+  /** Additional style merged onto the fallback glyph's Text (e.g. color, fontWeight) — for screens with a branded initials look to preserve. */
+  fallbackTextStyle?: any;
   /**
    * Applied to whichever of Image/View actually renders (e.g. layout margins
    * from the caller). Untyped because it needs to satisfy both Image's and
@@ -37,6 +39,7 @@ export default function Avatar({
   fallbackEmoji = '👤',
   fallbackFontSize,
   backgroundColor = Colors.border,
+  fallbackTextStyle,
   style,
 }: AvatarProps) {
   const [failed, setFailed] = useState(false);
@@ -59,7 +62,7 @@ export default function Avatar({
 
   return (
     <View style={[dimensions, styles.fallback, { backgroundColor }, style]}>
-      <Text style={{ fontSize: fallbackFontSize ?? size * 0.44 }}>{fallbackEmoji}</Text>
+      <Text style={[{ fontSize: fallbackFontSize ?? size * 0.44 }, fallbackTextStyle]}>{fallbackEmoji}</Text>
     </View>
   );
 }
