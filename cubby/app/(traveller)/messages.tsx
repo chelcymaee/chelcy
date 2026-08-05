@@ -4,13 +4,11 @@ import { MessageRowSkeleton } from '../../src/components/Skeleton';
 import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
-import Avatar from '../../src/components/Avatar';
 
 interface Convo {
   id: string;
   bookingId: string;
   hostName: string;
-  hostAvatarUrl: string | null;
   lastMessage: string;
   lastMessageAt: string;
   unread: number;
@@ -33,7 +31,7 @@ export default function Messages() {
         .from('conversations')
         .select(`
           id, booking_id, last_message_at,
-          hosts:host_id ( display_name, user_id ),
+          hosts:host_id ( display_name ),
           messages ( id, sender_id, read_at )
         `)
         .eq('traveller_id', user.id)
@@ -56,26 +54,10 @@ export default function Messages() {
         }
       }
 
-      // Fetch the host's personal avatar (profiles.avatar_url, via the
-      // host's user_id — this is the person you're chatting with, not the
-      // hosts.photos[] business-listing imagery used on host-detail.tsx).
-      const hostUserIds = [...new Set(data.map((c: any) => c.hosts?.user_id).filter(Boolean))];
-      let hostAvatarMap: Record<string, string | null> = {};
-      if (hostUserIds.length > 0) {
-        const { data: hostProfiles } = await supabase
-          .from('profiles')
-          .select('id, avatar_url')
-          .in('id', hostUserIds);
-        for (const p of hostProfiles ?? []) {
-          hostAvatarMap[p.id] = p.avatar_url ?? null;
-        }
-      }
-
       setConvos(data.map((c: any) => ({
         id: c.id,
         bookingId: c.booking_id,
         hostName: c.hosts?.display_name ?? 'Host',
-        hostAvatarUrl: c.hosts?.user_id ? (hostAvatarMap[c.hosts.user_id] ?? null) : null,
         lastMessage: lastMsgMap[c.id] ?? 'No messages yet',
         lastMessageAt: c.last_message_at
           ? new Date(c.last_message_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
@@ -109,7 +91,9 @@ export default function Messages() {
               // @ts-ignore
               onClick={() => router.push({ pathname: '/(traveller)/chat', params: { conversationId: item.id, hostName: item.hostName } })}
             >
-              <Avatar uri={item.hostAvatarUrl} size={50} fallbackEmoji="🏠" />
+              <View style={styles.avatar}>
+                <Text style={{ fontSize: 22 }}>🏠</Text>
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.hostName}>{item.hostName}</Text>
                 <Text style={styles.lastMsg} numberOfLines={1}>{item.lastMessage}</Text>
@@ -142,6 +126,7 @@ const styles = StyleSheet.create({
   header: { padding: 20, paddingTop: 8 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
   convo: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   hostName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   lastMsg: { fontSize: 14, color: Colors.textSecondary, marginTop: 2 },
   timestamp: { fontSize: 12, color: Colors.textLight },
