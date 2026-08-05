@@ -4,12 +4,14 @@ import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
+import Avatar from '../../src/components/Avatar';
 
 interface Convo {
   id: string;
   travellerId: string;
   bookingId?: string;
   travellerName: string;
+  travellerAvatarUrl: string | null;
   lastMessage: string;
   lastMessageAt: string;
   unread: number;
@@ -48,15 +50,17 @@ export default function HostMessages() {
       const convIds = convData.map((c: any) => c.id);
       const travellerIds = [...new Set(convData.map((c: any) => c.traveller_id))];
 
-      // Fetch traveller names separately
+      // Fetch traveller names + avatars separately
       let profileMap: Record<string, string> = {};
+      let avatarMap: Record<string, string | null> = {};
       if (travellerIds.length > 0) {
         const { data: profs } = await supabase
           .from('profiles')
-          .select('id, full_name, email')
+          .select('id, full_name, email, avatar_url')
           .in('id', travellerIds);
         for (const p of profs ?? []) {
           profileMap[p.id] = p.full_name?.trim() || p.email?.split('@')[0] || 'Traveller';
+          avatarMap[p.id] = p.avatar_url ?? null;
         }
       }
 
@@ -97,6 +101,7 @@ export default function HostMessages() {
         travellerId: c.traveller_id,
         bookingId: bookingMap[c.traveller_id],
         travellerName: profileMap[c.traveller_id] ?? 'Traveller',
+        travellerAvatarUrl: avatarMap[c.traveller_id] ?? null,
         lastMessage: lastMsgMap[c.id] ?? 'No messages yet',
         lastMessageAt: c.last_message_at
           ? new Date(c.last_message_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
@@ -132,12 +137,11 @@ export default function HostMessages() {
               onClick={() => router.push({ pathname: '/(host)/chat', params: { conversationId: item.id, travellerName: item.travellerName, travellerId: item.travellerId, bookingId: item.bookingId ?? '' } })}
             >
               <TouchableOpacity
-                style={styles.avatar}
                 onPress={() => item.travellerId && item.bookingId && router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.travellerId, bookingId: item.bookingId, returnTo: 'messages' } })}
                 // @ts-ignore
                 onClick={(e: any) => { e.stopPropagation(); item.travellerId && item.bookingId && router.push({ pathname: '/(host)/traveller-profile', params: { travellerId: item.travellerId, bookingId: item.bookingId, returnTo: 'messages' } }); }}
               >
-                <Text style={{ fontSize: 22 }}>🎒</Text>
+                <Avatar uri={item.travellerAvatarUrl} size={50} fallbackEmoji="🎒" />
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
                 <Text style={styles.travellerName}>{item.travellerName}</Text>
@@ -171,7 +175,6 @@ const styles = StyleSheet.create({
   header: { padding: 20, paddingTop: 8 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
   convo: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   travellerName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   lastMsg: { fontSize: 14, color: Colors.textSecondary, marginTop: 2 },
   timestamp: { fontSize: 12, color: Colors.textLight },

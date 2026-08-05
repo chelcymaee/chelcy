@@ -7,6 +7,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { computeTravellerBadges, TrustBadge } from '../../src/lib/trust-badges';
+import Avatar from '../../src/components/Avatar';
 
 interface TravellerData {
   fullName: string;
@@ -200,9 +201,14 @@ export default function TravellerProfileForHost() {
 
           {/* Avatar + name + verification */}
           <View style={styles.heroCard}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarEmoji}>🎒</Text>
-            </View>
+            <Avatar
+              uri={traveller.avatarUrl}
+              size={80}
+              fallbackEmoji="🎒"
+              fallbackFontSize={38}
+              backgroundColor="#F3F4F6"
+              style={styles.avatarCircle}
+            />
             <Text style={styles.name}>{traveller.fullName}</Text>
             {renderVerificationBadge(traveller.isVerified)}
             <Text style={styles.memberSince}>Member since {traveller.memberSince}</Text>
@@ -325,8 +331,7 @@ const styles = StyleSheet.create({
   backBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
   content: { padding: 20, gap: 16 },
   heroCard: { backgroundColor: Colors.white, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: Colors.border, gap: 10 },
-  avatarCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  avatarEmoji: { fontSize: 38 },
+  avatarCircle: { marginBottom: 4 },
   name: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
   badge: { borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6 },
   badgeVerified: { backgroundColor: '#D1FAE5' },
