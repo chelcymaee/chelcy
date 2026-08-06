@@ -19,7 +19,8 @@ if (SENTRY_DSN) {
 
 setupGlobalErrorLogging();
 
-// Handle cubby://payment-result and cubby://reset-password deep links
+// Handle cubby://payment-result, cubby://reset-password and
+// cubby://confirm-email deep links
 function usePaymentDeepLink() {
   useEffect(() => {
     function handleUrl(event: { url: string }) {
@@ -50,6 +51,39 @@ function usePaymentDeepLink() {
         } else {
           router.replace('/(auth)/reset-password');
         }
+      } else if (parsed.path === 'confirm-email') {
+        // Unlike reset-password (which always shows the same OTP-entry
+        // screen regardless of what this exchange does), confirm-email has
+        // no independent verification step — its screen's "verified" state
+        // is the only signal the user gets. So the result it's told to show
+        // must come from the actual outcome of exchangeCodeForSession, never
+        // from the raw deep-link URL/query params alone — a forged or
+        // replayed cubby://confirm-email link must not be able to make it
+        // claim success. `code` itself is never logged.
+        const code = parsed.queryParams?.code as string | undefined;
+        if (!code) {
+          router.replace({ pathname: '/(auth)/confirm-email', params: { result: 'invalid' } });
+          return;
+        }
+        supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+          if (!error) {
+            router.replace({ pathname: '/(auth)/confirm-email', params: { result: 'verified' } });
+            return;
+          }
+          // Exchange failed — most commonly because this code was already
+          // used (link tapped twice, or already handled once this app
+          // session). If the user already has a live session at this point,
+          // they're genuinely confirmed and signed in; don't show them a
+          // scary error for that.
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            router.replace({
+              pathname: '/(auth)/confirm-email',
+              params: { result: session ? 'already' : 'invalid' },
+            });
+          });
+        }).catch(() => {
+          router.replace({ pathname: '/(auth)/confirm-email', params: { result: 'invalid' } });
+        });
       }
     }
 

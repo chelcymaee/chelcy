@@ -36,7 +36,14 @@ export default function Signup() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: fullName, role } },
+          options: {
+            data: { full_name: fullName, role },
+            // Confirmation link redirects here instead of Supabase's Site
+            // URL default — see app/_layout.tsx's confirm-email deep-link
+            // branch, which turns this into a real signed-in session via
+            // exchangeCodeForSession before showing the result.
+            emailRedirectTo: 'cubby://confirm-email',
+          },
         });
         if (error) { setErrorMsg(error.message); return; }
 
