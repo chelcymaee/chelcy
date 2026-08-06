@@ -8,13 +8,16 @@ import { Colors } from '../../src/constants/colors';
 import { Radius, CardShadow, Spacing } from '../../src/constants/theme';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { Stars } from '../../src/components/Stars';
+import Avatar from '../../src/components/Avatar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ReceivedReview {
   id: string;
   booking_id: string;
+  reviewer_id: string;
   reviewer_name: string;
+  avatar_url: string | null;
   rating: number;
   comment: string | null;
   tags: string[];
@@ -29,6 +32,7 @@ interface WrittenReview {
   id: string;
   booking_id: string;
   traveller_display_name: string;
+  avatar_url: string | null;
   rating_respectful: number;
   rating_on_time: number;
   rating_communication: number;
@@ -40,6 +44,7 @@ interface PendingBooking {
   id: string;
   traveller_id: string;
   traveller_display_name: string;
+  avatar_url: string | null;
   drop_off_date: string;
 }
 
@@ -112,9 +117,14 @@ function ReceivedCard({ item }: { item: ReceivedReview }) {
       // @ts-ignore
       onClick={go}>
       <View style={styles.cardHeader}>
-        <View style={styles.cardAvatar}>
-          <Text style={styles.cardAvatarText}>{item.reviewer_name?.[0]?.toUpperCase() ?? '?'}</Text>
-        </View>
+        <Avatar
+          uri={item.avatar_url}
+          size={40}
+          fallbackEmoji={item.reviewer_name?.[0]?.toUpperCase() ?? '?'}
+          fallbackFontSize={17}
+          backgroundColor={Colors.primary + '20'}
+          fallbackTextStyle={{ fontWeight: '700', color: Colors.primary }}
+        />
         <View style={{ flex: 1 }}>
           <Text style={styles.cardName}>{item.reviewer_name}</Text>
           <Text style={styles.cardDate}>{fmt(item.created_at)}</Text>
@@ -153,9 +163,14 @@ function WrittenCard({ item }: { item: WrittenReview }) {
       // @ts-ignore
       onClick={go}>
       <View style={styles.cardHeader}>
-        <View style={styles.cardAvatar}>
-          <Text style={styles.cardAvatarText}>{item.traveller_display_name?.[0]?.toUpperCase() ?? '?'}</Text>
-        </View>
+        <Avatar
+          uri={item.avatar_url}
+          size={40}
+          fallbackEmoji={item.traveller_display_name?.[0]?.toUpperCase() ?? '?'}
+          fallbackFontSize={17}
+          backgroundColor={Colors.primary + '20'}
+          fallbackTextStyle={{ fontWeight: '700', color: Colors.primary }}
+        />
         <View style={{ flex: 1 }}>
           <Text style={styles.cardName}>{item.traveller_display_name}</Text>
           <Text style={styles.cardDate}>{fmt(item.created_at)}</Text>
@@ -177,11 +192,14 @@ function PendingCard({ item, onReview }: { item: PendingBooking; onReview: (item
   return (
     <View style={styles.pendingCard}>
       <View style={styles.cardHeader}>
-        <View style={[styles.cardAvatar, { backgroundColor: Colors.warningBg }]}>
-          <Text style={[styles.cardAvatarText, { color: Colors.warningText }]}>
-            {item.traveller_display_name?.[0]?.toUpperCase() ?? '?'}
-          </Text>
-        </View>
+        <Avatar
+          uri={item.avatar_url}
+          size={40}
+          fallbackEmoji={item.traveller_display_name?.[0]?.toUpperCase() ?? '?'}
+          fallbackFontSize={17}
+          backgroundColor={Colors.warningBg}
+          fallbackTextStyle={{ fontWeight: '700', color: Colors.warningText }}
+        />
         <View style={{ flex: 1 }}>
           <Text style={styles.cardName}>{item.traveller_display_name}</Text>
           <Text style={styles.cardDate}>Completed {fmt(item.drop_off_date)}</Text>
@@ -261,7 +279,7 @@ export default function HostReviews() {
       const [receivedRes, writtenRes, bookingsRes, reviewedRes, travellerProfilesRes] = await Promise.all([
         supabase
           .from('reviews')
-          .select('id, booking_id, reviewer_name, rating, comment, tags, rating_friendliness, rating_location, rating_drop_off, rating_security, created_at')
+          .select('id, booking_id, reviewer_id, reviewer_name, rating, comment, tags, rating_friendliness, rating_location, rating_drop_off, rating_security, created_at')
           .eq('host_id', hostRow.id)
           .order('created_at', { ascending: false }),
 
@@ -284,22 +302,28 @@ export default function HostReviews() {
 
         supabase
           .from('profiles')
-          .select('id, full_name'),
+          .select('id, full_name, avatar_url'),
       ]);
 
-      const recvData = (receivedRes.data ?? []) as ReceivedReview[];
-      setReceived(recvData);
-
-      // Build traveller name map
-      const profileMap: Record<string, string> = {};
+      // Build traveller name + avatar map (same booking-scoped access already
+      // used to build names here — anyone in this map has a real booking or
+      // review relationship with this host).
+      const profileMap: Record<string, { name: string; avatarUrl: string | null }> = {};
       for (const p of (travellerProfilesRes.data ?? [])) {
-        profileMap[p.id] = p.full_name?.trim() || 'Traveller';
+        profileMap[p.id] = { name: p.full_name?.trim() || 'Traveller', avatarUrl: p.avatar_url ?? null };
       }
+
+      const recvData: ReceivedReview[] = (receivedRes.data ?? []).map((r: any) => ({
+        ...r,
+        avatar_url: profileMap[r.reviewer_id]?.avatarUrl ?? null,
+      }));
+      setReceived(recvData);
 
       const writtenData: WrittenReview[] = (writtenRes.data ?? []).map((r: any) => ({
         id: r.id,
         booking_id: r.booking_id,
-        traveller_display_name: profileMap[r.traveller_id] ?? 'Traveller',
+        traveller_display_name: profileMap[r.traveller_id]?.name ?? 'Traveller',
+        avatar_url: profileMap[r.traveller_id]?.avatarUrl ?? null,
         rating_respectful: r.rating_respectful,
         rating_on_time: r.rating_on_time,
         rating_communication: r.rating_communication,
@@ -314,7 +338,8 @@ export default function HostReviews() {
         .map((b: any) => ({
           id: b.id,
           traveller_id: b.traveller_id,
-          traveller_display_name: profileMap[b.traveller_id] ?? 'Traveller',
+          traveller_display_name: profileMap[b.traveller_id]?.name ?? 'Traveller',
+          avatar_url: profileMap[b.traveller_id]?.avatarUrl ?? null,
           drop_off_date: b.drop_off_date,
         }));
       setPending(pendingData);
@@ -442,12 +467,6 @@ const styles = StyleSheet.create({
     ...CardShadow,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
-  cardAvatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.primary + '20',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  cardAvatarText: { fontSize: 17, fontWeight: '700', color: Colors.primary },
   cardName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   cardDate: { fontSize: 12, color: Colors.textLight, marginTop: 2 },
   cardAvgLabel: { fontSize: 11, color: Colors.textSecondary },

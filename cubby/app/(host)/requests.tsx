@@ -8,6 +8,7 @@ import { Colors } from '../../src/constants/colors';
 import { Radius, CardShadow } from '../../src/constants/theme';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
+import Avatar from '../../src/components/Avatar';
 import { recalculateHostResponseRate, minutesBetween } from '../../src/lib/response-rate';
 import { sendNotification } from '../../src/lib/notification-service';
 
@@ -33,6 +34,7 @@ interface HostBooking {
   traveller_id: string;
   traveller_name: string;
   traveller_email: string;
+  traveller_avatar_url: string | null;
   bag_count: number;
   drop_off_date: string;
   drop_off_time: string;
@@ -114,19 +116,19 @@ const DEMO_REQUESTS: HostBooking[] = [
     id: 'demo-1', traveller_id: 'demo', traveller_name: 'Sarah T.', traveller_email: 'sarah@example.com',
     bag_count: 2, drop_off_date: 'Today', drop_off_time: '09:00', pick_up_time: '15:00',
     total_price: 160, status: 'pending', pin_code: '4821', created_at: new Date().toISOString(), host_id: '',
-    host_response_deadline: null,
+    host_response_deadline: null, traveller_avatar_url: null,
   },
   {
     id: 'demo-2', traveller_id: 'demo', traveller_name: 'Luca B.', traveller_email: 'luca@example.com',
     bag_count: 3, drop_off_date: 'Today', drop_off_time: '11:00', pick_up_time: '19:00',
     total_price: 240, status: 'pending', pin_code: '7203', created_at: new Date().toISOString(), host_id: '',
-    host_response_deadline: null,
+    host_response_deadline: null, traveller_avatar_url: null,
   },
   {
     id: 'demo-3', traveller_id: 'demo', traveller_name: 'Anika R.', traveller_email: 'anika@example.com',
     bag_count: 1, drop_off_date: 'Yesterday', drop_off_time: '08:30', pick_up_time: '14:00',
     total_price: 80, status: 'confirmed', pin_code: '3391', created_at: new Date().toISOString(), host_id: '',
-    host_response_deadline: null,
+    host_response_deadline: null, traveller_avatar_url: null,
   },
 ];
 
@@ -200,11 +202,11 @@ export default function Requests() {
 
           // Fetch traveller names separately (avoids RLS join issue on profiles)
           const travellerIds = [...new Set((data ?? []).map((b: any) => b.traveller_id).filter(Boolean))];
-          let profileMap: Record<string, { full_name: string; email: string }> = {};
+          let profileMap: Record<string, { full_name: string; email: string; avatar_url: string | null }> = {};
           if (travellerIds.length > 0) {
             const { data: profs } = await supabase
               .from('profiles')
-              .select('id, full_name, email')
+              .select('id, full_name, email, avatar_url')
               .in('id', travellerIds);
             for (const p of profs ?? []) profileMap[p.id] = p;
           }
@@ -216,6 +218,7 @@ export default function Requests() {
             traveller_id: b.traveller_id ?? '',
             traveller_name: prof?.full_name?.trim() || prof?.email?.split('@')[0] || 'Traveller',
             traveller_email: prof?.email || '',
+            traveller_avatar_url: prof?.avatar_url ?? null,
             bag_count: b.bag_count,
             drop_off_date: b.drop_off_date,
             drop_off_time: b.drop_off_time,
@@ -443,9 +446,7 @@ export default function Requests() {
               <View key={item.id} style={styles.card}>
                 {/* Card header */}
                 <View style={styles.cardTop}>
-                  <View style={styles.avatar}>
-                    <Text style={{ fontSize: 22 }}>👤</Text>
-                  </View>
+                  <Avatar uri={item.traveller_avatar_url} size={44} fallbackEmoji="👤" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name}>{item.traveller_name}</Text>
                     {!!item.traveller_email && (
@@ -657,10 +658,6 @@ const styles = StyleSheet.create({
     ...CardShadow, gap: 12,
   },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  avatar: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Colors.border, alignItems: 'center', justifyContent: 'center',
-  },
   name: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   viewProfileBtn: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
   viewProfileBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
