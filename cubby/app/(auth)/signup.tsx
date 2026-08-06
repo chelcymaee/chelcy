@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert,
+  StyleSheet, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -65,10 +65,14 @@ export default function Signup() {
         } else {
           // No session yet — email confirmation is enabled in Supabase.
           // The on_auth_user_created DB trigger will create the profile row.
+          // Confirmation is a 6-digit code (same pattern as password
+          // recovery, see confirm-email.tsx) rather than a tappable link —
+          // link-based confirmation was found to fail unreliably from
+          // Mail's in-app browser.
           console.log('[signup] no session — email confirmation required. Trigger will create profile.');
           setErrorMsg('');
           setLoading(false);
-          Alert.alert('Account created!', 'Please check your email and confirm your address before signing in.');
+          router.replace({ pathname: '/(auth)/confirm-email', params: { email } });
           return;
         }
       } else {
