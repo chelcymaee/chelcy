@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, Animated, Image,
 } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
@@ -76,41 +76,49 @@ export default function HostDetail() {
   const [photoFailed, setPhotoFailed] = useState(false);
   const heartScale = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
+  // Hoisted out of the mount effect below so it can also be called from the
+  // useFocusEffect further down — returning to this screen (e.g. after
+  // submitting a review) needs to re-fetch, since the host row's rating/
+  // review_count can have changed server-side without this screen's cached
+  // state knowing. A plain useEffect([id]) only runs on mount/id-change, not
+  // on every return to an already-mounted instance.
+  async function loadHost() {
     if (!id) return;
-    async function loadHost() {
-      if (isSupabaseConfigured) {
-        const { data, error } = await supabase
-          .from('hosts')
-          .select('*')
-          .eq('id', id)
-          .single();
-        if (!error && data) {
-          // Verification status comes from hosts.owner_is_verified — already
-          // present on this same row (select('*') above), kept in sync by
-          // the admin-hosts edge function whenever an admin approves/revokes
-          // ID verification. No separate profiles read needed: hosts is the
-          // public-facing table, profiles stays private. (Previously this
-          // did a second cross-user profiles.is_verified query for the
-          // same value, which relied on an over-broad RLS policy — see
-          // PROJECT_MASTER_PLAN.md.)
-          const ownerIsVerified = data.owner_is_verified ?? false;
-          const normalized = normalizeHost(data, ownerIsVerified);
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase
+        .from('hosts')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (!error && data) {
+        // Verification status comes from hosts.owner_is_verified — already
+        // present on this same row (select('*') above), kept in sync by
+        // the admin-hosts edge function whenever an admin approves/revokes
+        // ID verification. No separate profiles read needed: hosts is the
+        // public-facing table, profiles stays private. (Previously this
+        // did a second cross-user profiles.is_verified query for the
+        // same value, which relied on an over-broad RLS policy — see
+        // PROJECT_MASTER_PLAN.md.)
+        const ownerIsVerified = data.owner_is_verified ?? false;
+        const normalized = normalizeHost(data, ownerIsVerified);
+        setHost(normalized);
+        setBadges(computeHostBadges(normalized));
+      }
+    } else {
+      const raw = await AsyncStorage.getItem('cubby_hosts');
+      if (raw) {
+        const found = JSON.parse(raw).find((h: any) => h.id === id);
+        if (found) {
+          const normalized = normalizeHost(found);
           setHost(normalized);
           setBadges(computeHostBadges(normalized));
         }
-      } else {
-        const raw = await AsyncStorage.getItem('cubby_hosts');
-        if (raw) {
-          const found = JSON.parse(raw).find((h: any) => h.id === id);
-          if (found) {
-            const normalized = normalizeHost(found);
-            setHost(normalized);
-            setBadges(computeHostBadges(normalized));
-          }
-        }
       }
     }
+  }
+
+  useEffect(() => {
+    if (!id) return;
     async function loadReviews() {
       if (isSupabaseConfigured) {
         const { data } = await supabase
@@ -130,6 +138,14 @@ export default function HostDetail() {
     checkSaved();
     checkEligibleBooking();
   }, [id]);
+
+  // Refetch the host row (rating/review_count in particular) every time this
+  // screen regains focus, not just on first mount — e.g. returning here
+  // after submitting a review should show the updated rating without
+  // requiring a full app restart. Runs once more on initial mount too
+  // (harmless, redundant with the useEffect above) since that's how
+  // useFocusEffect behaves everywhere else in this codebase.
+  useFocusEffect(useCallback(() => { loadHost(); }, [id]));
 
   // A review must be tied to a real completed booking (reviews.booking_id
   // is NOT NULL in the schema, by design — a review with no booking behind
