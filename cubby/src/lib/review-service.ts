@@ -47,13 +47,21 @@ export interface ReviewResult {
 }
 
 export async function submitHostReview(p: SubmitHostReviewParams): Promise<ReviewResult> {
-  // Duplicate guard
-  if (p.bookingId) {
-    const { data: existing, error: dupErr } = await supabase
-      .from('reviews').select('id').eq('booking_id', p.bookingId).maybeSingle();
-    if (dupErr) console.error('[review-service] duplicate check error:', dupErr);
-    if (existing) return { success: false, alreadyReviewed: true };
+  // reviews.booking_id is NOT NULL with no default — a review can't exist
+  // without a real booking behind it, by design. Fail gracefully here
+  // rather than ever attempting an insert that's guaranteed to hit a
+  // database-level 23502. The UI (host-detail.tsx) is the primary gate —
+  // it only offers "Write a review" once it's found a real eligible
+  // booking — this is defense in depth for any other caller.
+  if (!p.bookingId) {
+    return { success: false, error: 'A completed booking with this host is required to leave a review.' };
   }
+
+  // Duplicate guard
+  const { data: existing, error: dupErr } = await supabase
+    .from('reviews').select('id').eq('booking_id', p.bookingId).maybeSingle();
+  if (dupErr) console.error('[review-service] duplicate check error:', dupErr);
+  if (existing) return { success: false, alreadyReviewed: true };
 
   const reviewRow: Record<string, any> = {
     reviewer_id: p.userId,
@@ -62,9 +70,9 @@ export async function submitHostReview(p: SubmitHostReviewParams): Promise<Revie
     rating: p.rating,
     comment: p.comment.trim() || null,
     tags: p.tags,
+    booking_id: p.bookingId,
     ...Object.fromEntries(Object.entries(p.categoryRatings).filter(([, v]) => v > 0)),
   };
-  if (p.bookingId) reviewRow.booking_id = p.bookingId;
 
   const { data: inserted, error: insertError } = await supabase
     .from('reviews').insert(reviewRow).select('id').single();

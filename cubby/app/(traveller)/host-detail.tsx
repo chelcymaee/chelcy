@@ -65,6 +65,13 @@ export default function HostDetail() {
   const [bagCount, setBagCount] = useState(1);
   const [savedReviews, setSavedReviews] = useState<any[]>([]);
   const [isSaved, setIsSaved] = useState(false);
+  // The traveller's own completed, not-yet-reviewed booking with this host,
+  // if one exists — the single source of truth for whether "Write a review"
+  // is shown at all, and the real booking_id passed into the review flow.
+  // null = none found (or not signed in) — never a fallback default; the
+  // button only ever renders when this is a real id. See goToReview and the
+  // "Write a review" render below.
+  const [eligibleBookingId, setEligibleBookingId] = useState<string | null>(null);
   const [savingSpot, setSavingSpot] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
   const heartScale = useRef(new Animated.Value(1)).current;
@@ -121,7 +128,38 @@ export default function HostDetail() {
     loadReviews();
     // Check if saved
     checkSaved();
+    checkEligibleBooking();
   }, [id]);
+
+  // A review must be tied to a real completed booking (reviews.booking_id
+  // is NOT NULL in the schema, by design — a review with no booking behind
+  // it shouldn't be possible). Find the traveller's most recent completed
+  // booking with this host that doesn't already have a review, and use
+  // that as the only source of the booking_id passed into the review flow.
+  async function checkEligibleBooking() {
+    if (!id || !isSupabaseConfigured) { setEligibleBookingId(null); return; }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setEligibleBookingId(null); return; }
+
+    const { data: bookings } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('traveller_id', user.id)
+      .eq('host_id', id)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false });
+    if (!bookings?.length) { setEligibleBookingId(null); return; }
+
+    const bookingIds = bookings.map((b: any) => b.id);
+    const { data: reviewed } = await supabase
+      .from('reviews')
+      .select('booking_id')
+      .in('booking_id', bookingIds);
+    const reviewedIds = new Set((reviewed ?? []).map((r: any) => r.booking_id));
+
+    const eligible = bookings.find((b: any) => !reviewedIds.has(b.id));
+    setEligibleBookingId(eligible?.id ?? null);
+  }
 
   async function checkSaved() {
     if (!id) return;
@@ -199,7 +237,13 @@ export default function HostDetail() {
   const decreaseBags = () => setBagCount(Math.max(1, bagCount - 1));
   const increaseBags = () => setBagCount(Math.min(host.max_bags, bagCount + 1));
 
-  const goToReview = () => router.push({ pathname: '/(traveller)/review', params: { hostId: id, hostName: host.display_name } });
+  // Only ever called from the button below, which itself only renders when
+  // eligibleBookingId is a real id — the guard here is defense in depth,
+  // not the primary gate.
+  const goToReview = () => {
+    if (!eligibleBookingId) return;
+    router.push({ pathname: '/(traveller)/review', params: { hostId: id, hostName: host.display_name, bookingId: eligibleBookingId } });
+  };
   const goToBooking = () => router.push({ pathname: '/(traveller)/booking', params: { hostId: id, bagCount: String(bagCount), selectedDate: selectedDate ?? '' } });
 
   return (
@@ -403,14 +447,16 @@ export default function HostDetail() {
           {/* Reviews */}
           <View style={styles.reviewsHeader}>
             <Text style={styles.sectionTitle}>Reviews ({reviews.length})</Text>
-            <TouchableOpacity
-              style={styles.writeReviewBtn}
-              onPress={goToReview}
-              // @ts-ignore
-              onClick={goToReview}
-            >
-              <Text style={styles.writeReviewBtnText}>✏️ Write a review</Text>
-            </TouchableOpacity>
+            {!!eligibleBookingId && (
+              <TouchableOpacity
+                style={styles.writeReviewBtn}
+                onPress={goToReview}
+                // @ts-ignore
+                onClick={goToReview}
+              >
+                <Text style={styles.writeReviewBtnText}>✏️ Write a review</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Rating distribution */}
