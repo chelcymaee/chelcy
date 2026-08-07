@@ -4,6 +4,8 @@ import {
   TouchableOpacity, TextInput, Switch, Image, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import Btn from '../../src/components/Btn';
@@ -160,6 +162,62 @@ export default function HostProfile() {
     } finally {
       setUploadingPhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function pickPhotoNative() {
+    if (!isSupabaseConfigured) { showToast('Photo upload requires Supabase', true); return; }
+    if (photos.length >= 5) { showToast('Maximum 5 photos allowed', true); return; }
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      showToast('Photo library access is needed to add photos. Enable it in Settings.', true);
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const localUri = result.assets[0].uri;
+    setUploadingPhoto(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { showToast('Not logged in', true); return; }
+
+      // Read local file as an ArrayBuffer. fetch(localUri).blob() is not usable
+      // here — this RN Blob implementation throws "Creating blobs from
+      // 'ArrayBuffer' and 'ArrayBufferView' are not supported" — and Supabase's
+      // own storage-js docs say to use ArrayBuffer for React Native uploads.
+      const arrayBuffer = await new File(localUri).arrayBuffer();
+      const ext = localUri.split('.').pop()?.split('?')[0]?.toLowerCase() ?? 'jpg';
+      const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+      const safeExt = allowedExts.includes(ext) ? ext : 'jpg';
+      const path = `${user.id}/${Date.now()}.${safeExt}`;
+      const contentType = `image/${safeExt === 'jpg' ? 'jpeg' : safeExt}`;
+
+      const { error: upErr } = await supabase.storage
+        .from('host-photos')
+        .upload(path, arrayBuffer, { upsert: false, contentType });
+      if (upErr) { showToast('Upload failed: ' + upErr.message, true); return; }
+
+      const { data: { publicUrl } } = supabase.storage.from('host-photos').getPublicUrl(path);
+      const newPhotos = [...photos, publicUrl];
+
+      // Only reflect the new photo in the UI once it's actually persisted to
+      // the host row — never show a photo that isn't really saved.
+      const { error: updateErr } = await supabase.from('hosts').update({ photos: newPhotos }).eq('assigned_user_id', user.id);
+      if (updateErr) { showToast('Upload succeeded but could not save to your listing. Please try again.', true); return; }
+
+      setPhotos(newPhotos);
+      showToast('Photo added ✓');
+    } catch (err) {
+      console.error('[host-profile] photo upload failed:', err);
+      showToast('Upload failed. Please try again.', true);
+    } finally {
+      setUploadingPhoto(false);
     }
   }
 
@@ -436,7 +494,7 @@ export default function HostProfile() {
           {photos.length < 5 && (
             <TouchableOpacity
               style={styles.photosPlaceholder}
-              onPress={() => fileInputRef.current?.click()}
+              onPress={() => (Platform.OS === 'web' ? fileInputRef.current?.click() : pickPhotoNative())}
               // @ts-ignore
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPhoto}
