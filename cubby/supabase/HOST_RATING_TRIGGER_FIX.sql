@@ -101,6 +101,26 @@ select proname, prosecdef as is_security_definer
 from pg_proc
 where proname = 'recalculate_host_rating';
 
+-- Single-number sanity check across every host — expected result: 0.
+-- Any non-zero count means at least one host still has a mismatch.
+SELECT
+    COUNT(*)
+FROM hosts h
+WHERE
+    COALESCE(h.rating,0) <>
+        COALESCE((
+            SELECT ROUND(AVG(r.rating)::numeric,1)
+            FROM reviews r
+            WHERE r.host_id = h.id
+        ),0)
+OR
+    COALESCE(h.review_count,0) <>
+        COALESCE((
+            SELECT COUNT(*)
+            FROM reviews r
+            WHERE r.host_id = h.id
+        ),0);
+
 -- Live end-to-end check: submit a real review (or delete + reinsert an
 -- existing one) through the app, then re-run STEP 0's query for that one
 -- host — stored_* should update automatically with zero manual SQL, proving
