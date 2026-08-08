@@ -85,6 +85,7 @@ create table if not exists reviews (
   reviewer_id uuid references auth.users(id) on delete cascade not null,
   host_id uuid references hosts(id) not null,
   reviewer_name text not null,
+  reviewer_avatar_url text, -- denormalized snapshot of profiles.avatar_url at submission time, same model as reviewer_name — see migration block below
   rating integer not null check (rating >= 1 and rating <= 5),
   comment text,
   tags text[] default '{}',
@@ -327,6 +328,16 @@ ALTER TABLE support_messages ENABLE ROW LEVEL SECURITY;
 -- -------------------------------------------------------------------------
 ALTER TABLE hosts ADD COLUMN IF NOT EXISTS assigned_user_id UUID REFERENCES auth.users(id);
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_host_approved BOOLEAN DEFAULT FALSE;
+
+-- -------------------------------------------------------------------------
+-- Reviewer avatar snapshot on reviews (public listing page reviewer photos)
+-- -------------------------------------------------------------------------
+-- Same denormalized-snapshot model as reviewer_name — avoids any new
+-- cross-user profiles RLS surface on the public host-detail.tsx review
+-- list. Written once at submission time from the reviewer's own (self-read)
+-- profiles row. See supabase/REVIEWER_AVATAR_SNAPSHOT.sql for the existing-
+-- rows backfill (run separately, after this column exists).
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reviewer_avatar_url TEXT;
 
 -- -------------------------------------------------------------------------
 -- RLS FIX: bookings — hosts must be readable by assigned_user_id too
