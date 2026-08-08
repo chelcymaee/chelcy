@@ -99,13 +99,17 @@ export default function Review() {
         if (authErr) console.error('[Review] auth error:', authErr);
         if (!user) { setError('You need to be signed in to leave a review.'); return; }
 
+        // Self-read only (auth.uid() = id) — same query as before, just
+        // widened to also grab avatar_url so it can be snapshotted onto the
+        // review row, same pattern as reviewer_name. No new cross-user access.
         const { data: profile } = await supabase
-          .from('profiles').select('full_name').eq('id', user.id).single();
+          .from('profiles').select('full_name, avatar_url').eq('id', user.id).single();
         const reviewerName = profile?.full_name?.trim() || user.email?.split('@')[0] || 'Anonymous';
 
         const result = await submitHostReview({
           userId: user.id,
           reviewerName,
+          reviewerAvatarUrl: profile?.avatar_url ?? null,
           hostId,
           bookingId,
           rating,

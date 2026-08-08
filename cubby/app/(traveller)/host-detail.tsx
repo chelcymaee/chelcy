@@ -10,6 +10,7 @@ import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { computeHostBadges, topBadges, TrustBadge } from '../../src/lib/trust-badges';
 import { formatResponseRate, formatResponseTime, formatResponseTimeShort } from '../../src/lib/response-rate';
 import { HostDetailSkeleton } from '../../src/components/Skeleton';
+import Avatar from '../../src/components/Avatar';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TODAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -123,7 +124,7 @@ export default function HostDetail() {
       if (isSupabaseConfigured) {
         const { data } = await supabase
           .from('reviews')
-          .select('id, reviewer_name, rating, comment, tags, created_at, rating_friendliness, rating_location, rating_drop_off, rating_security')
+          .select('id, reviewer_name, reviewer_avatar_url, rating, comment, tags, created_at, rating_friendliness, rating_location, rating_drop_off, rating_security')
           .eq('host_id', id)
           .order('created_at', { ascending: false });
         if (data && data.length > 0) { setSavedReviews(data); return; }
@@ -524,9 +525,7 @@ export default function HostDetail() {
               {reviews.map((r: any) => (
                 <View key={r.id} style={styles.review}>
                   <View style={styles.reviewHeaderRow}>
-                    <View style={styles.reviewAvatar}>
-                      <Text style={{ fontSize: 16 }}>👤</Text>
-                    </View>
+                    <Avatar uri={r.reviewer_avatar_url} size={36} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.reviewName}>{r.reviewer_name}</Text>
                       <View style={{ flexDirection: 'row', gap: 2 }}>
@@ -755,14 +754,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  reviewAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   reviewName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   reviewDate: { fontSize: 12, color: Colors.textSecondary },
   reviewComment: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },

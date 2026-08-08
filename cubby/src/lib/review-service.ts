@@ -32,6 +32,11 @@ async function fireEmail(body: object) {
 export interface SubmitHostReviewParams {
   userId: string;
   reviewerName: string;
+  /** profiles.avatar_url of the submitting traveller, or null — snapshotted
+   * onto the review row at insert time (same denormalized-snapshot model as
+   * reviewerName) so the public listing page can show a real photo without
+   * ever needing a cross-user profiles read. */
+  reviewerAvatarUrl: string | null;
   hostId: string;
   bookingId: string | undefined;
   rating: number;
@@ -67,6 +72,7 @@ export async function submitHostReview(p: SubmitHostReviewParams): Promise<Revie
     reviewer_id: p.userId,
     host_id: p.hostId,
     reviewer_name: p.reviewerName,
+    reviewer_avatar_url: p.reviewerAvatarUrl,
     rating: p.rating,
     comment: p.comment.trim() || null,
     tags: p.tags,

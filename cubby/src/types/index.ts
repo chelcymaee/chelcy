@@ -90,7 +90,7 @@ export interface Review {
   reviewer_id: string;
   host_id: string;
   reviewer_name: string;
-  reviewer_avatar?: string;
+  reviewer_avatar_url?: string | null;
   rating: number;
   comment: string;
   created_at: string;
