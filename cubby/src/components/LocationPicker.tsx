@@ -35,8 +35,17 @@ export default function LocationPicker({ value, onSelect, placeholder, label }: 
         const url = `${PLACES_BASE}/place/autocomplete/json?input=${encodeURIComponent(text)}&components=country:za&types=geocode|establishment&key=${GOOGLE_MAPS_KEY}`;
         const res = await fetch(url);
         const json = await res.json();
-        setSuggestions(json.status === 'OK' ? json.predictions.slice(0, 5) : []);
-      } catch {
+        if (json.status === 'OK') {
+          setSuggestions(json.predictions.slice(0, 5));
+        } else {
+          // Never log `url` (contains the key) or GOOGLE_MAPS_KEY itself —
+          // just Google's own status + error_message, which is exactly what
+          // diagnosed the missing/misconfigured-key case live tonight.
+          console.error('[LocationPicker] autocomplete non-OK status:', json.status, json.error_message ?? '(no error_message)');
+          setSuggestions([]);
+        }
+      } catch (err) {
+        console.error('[LocationPicker] autocomplete request failed:', err);
         setSuggestions([]);
       } finally {
         setLoading(false);
@@ -63,9 +72,14 @@ export default function LocationPicker({ value, onSelect, placeholder, label }: 
         setQuery(formatted_address);
         setConfirmed(true);
         onSelect({ address: formatted_address, latitude: lat, longitude: lng });
+      } else {
+        // Same rule as above: log Google's status/error_message only, never
+        // `url` or GOOGLE_MAPS_KEY. Leave query as-is — no false "confirmed".
+        console.error('[LocationPicker] place details non-OK status:', json.status, json.error_message ?? '(no error_message)');
       }
-    } catch {
-      // silent — leave query as-is
+    } catch (err) {
+      console.error('[LocationPicker] place details request failed:', err);
+      // leave query as-is
     } finally {
       setLoading(false);
     }
