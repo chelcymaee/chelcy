@@ -14,6 +14,35 @@ create policy "Users can view own profile" on profiles for select using (auth.ui
 create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
 create policy "Users can insert own profile" on profiles for insert with check (auth.uid() = id);
 
+-- Lets a host read a traveller's profiles row (full_name, avatar_url, email)
+-- when a real booking exists between them — powers Booking Requests,
+-- Messages, View Traveller Profile, and Host Reviews. This policy has
+-- existed live in production for a while but was never committed here
+-- until the profiles RLS audit below found it undocumented. Captured
+-- verbatim from production (2026-08-09) rather than rewritten, and
+-- confirmed to be the only policy any live client code depends on for
+-- cross-user profiles access (see PROJECT_MASTER_PLAN.md for the audit).
+create policy "Hosts can view profiles of their travellers" on profiles
+  for select using (
+    exists (
+      select 1 from bookings b join hosts h on h.id = b.host_id
+      where b.traveller_id = profiles.id
+        and (h.user_id = auth.uid() or h.assigned_user_id = auth.uid())
+    )
+  );
+
+-- REMOVED (2026-08-09, profiles RLS audit): "Anyone can view active host
+-- profile verification" — for select using (id in (select
+-- coalesce(hosts.assigned_user_id, hosts.user_id) from hosts where
+-- hosts.is_active = true)). Exposed the full profiles row (email, phone,
+-- full_name) of every active host to any authenticated request, no
+-- relationship check at all. Its only known consumer (host-detail.tsx's
+-- verification badge) had already been migrated to read
+-- hosts.owner_is_verified directly in an earlier commit (82ac815) — a
+-- full codebase audit found no remaining dependency before this was
+-- dropped from production. Rollback, if ever needed, is the verbatim
+-- USING clause above.
+
 -- Bank details for hosts
 create table if not exists bank_details (
   id uuid default gen_random_uuid() primary key,
