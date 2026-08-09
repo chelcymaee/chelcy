@@ -3,15 +3,6 @@ import { useFocusEffect, router } from 'expo-router';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { adminFetch } from '../../src/lib/admin-auth';
 
-async function callAdminHosts(method: 'GET' | 'POST' | 'PATCH', body?: unknown): Promise<any> {
-  const res = await adminFetch('/admin-hosts', {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  return res.json();
-}
-
 interface Verification {
   id: string;
   userId: string;
@@ -82,42 +73,38 @@ export default function Verifications() {
   }
 
   async function updateStatus(id: string, userId: string, status: 'approved' | 'rejected') {
-    const now = new Date().toISOString();
-    const { error } = await supabase
-      .from('verifications')
-      .update({ status, reviewed_at: now })
-      .eq('id', id);
-    if (error) { setMsg('Error: ' + error.message); return; }
+    setMsg('');
 
-    // Update profile is_verified flag + sync the host listing for this user
-    const isApproved = status === 'approved';
-    await supabase.from('profiles').update({ is_verified: isApproved }).eq('id', userId);
+    // All persistence — verifications.status/reviewed_at, profiles.is_verified,
+    // hosts.owner_is_verified for host applicants, and the in-app notification
+    // row — happens server-side in admin-verifications (service role). Direct
+    // client writes to those tables used to run under the admin's PIN session,
+    // which has no auth.uid() any RLS policy on verifications/profiles grants
+    // access under — they were silently filtered to zero rows, no error, no
+    // change, "Verification approved ✓" shown anyway. See the Tier 1
+    // verification-integrity investigation for the full trace. Everything
+    // below only runs once the edge function confirms every required write
+    // actually landed — fail closed, not optimistic.
+    const res = await adminFetch('/admin-verifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verificationId: id, userId, status }),
+    });
+    const result = await res.json().catch(() => ({}));
 
-    // Host row update goes through the service-role admin-hosts edge function
-    // (not a direct client write) — the admin's own session has no special
-    // RLS standing on the hosts table, only its own row via user_id.
-    const { data: hostRow } = await supabase.from('hosts').select('id').eq('assigned_user_id', userId).maybeSingle();
-    if (hostRow) {
-      await callAdminHosts('PATCH', { hostId: hostRow.id, updates: { owner_is_verified: isApproved } });
+    if (!res.ok || result.error) {
+      setMsg('Error: ' + (result.error ?? 'Update failed — nothing was changed.'));
+      return;
     }
 
-    // Notify the traveller
-    await supabase.from('notifications').insert({
-      user_id: userId,
-      type: status === 'approved' ? 'verification_approved' : 'verification_rejected',
-      title: status === 'approved' ? 'You\'re verified! ✅' : 'Verification unsuccessful',
-      body: status === 'approved'
-        ? 'Your identity has been confirmed. Your profile now shows the verified badge.'
-        : 'We couldn\'t verify your identity. Please try again with a clearer photo of your ID and selfie.',
-      read_at: null,
-    });
-
-    setVerifications(prev => prev.map(v => v.id === id ? { ...v, status, reviewedAt: now } : v));
+    const reviewedAt = result.data?.reviewedAt ?? new Date().toISOString();
+    setVerifications(prev => prev.map(v => v.id === id ? { ...v, status, reviewedAt } : v));
     setMsg(`Verification ${status} ✓`);
 
-    // Fire-and-forget push notification to the user. send-push accepts an
-    // admin session token as one of its valid auth methods specifically
-    // for this call site — see supabase/functions/send-push/index.ts.
+    // Fire-and-forget push notification to the user — only reached once
+    // persistence above is confirmed. send-push accepts an admin session
+    // token as one of its valid auth methods specifically for this call
+    // site — see supabase/functions/send-push/index.ts.
     adminFetch('/send-push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
