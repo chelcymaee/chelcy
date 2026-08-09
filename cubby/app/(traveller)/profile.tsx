@@ -516,11 +516,19 @@ export default function Profile() {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity onPress={() => router.replace('/(admin)/login')}
-          // @ts-ignore
-          onClick={() => router.replace('/(admin)/login')}>
+        {Platform.OS === 'web' ? (
+          // Web-only: admin is deferred to web-only for beta (Tier 1 item 8), so this
+          // tap target only exists where the admin panel is actually reachable/renderable.
+          // On native it's plain, non-interactive text below — see app/(admin) for why
+          // (raw HTML/DOM admin screens crash on iOS/Android).
+          <TouchableOpacity onPress={() => router.replace('/(admin)/login')}
+            // @ts-ignore
+            onClick={() => router.replace('/(admin)/login')}>
+            <Text style={{ color: 'rgba(0,0,0,0.08)', fontSize: 11, textAlign: 'center', marginTop: 20 }}>v1.0.0</Text>
+          </TouchableOpacity>
+        ) : (
           <Text style={{ color: 'rgba(0,0,0,0.08)', fontSize: 11, textAlign: 'center', marginTop: 20 }}>v1.0.0</Text>
-        </TouchableOpacity>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
