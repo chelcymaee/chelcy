@@ -525,10 +525,68 @@ async function handleDirect(body: any, callerId: string | null): Promise<Respons
       tmpl = tmpl_review_prompt(data);
       to = data.recipientEmail;
       break;
-    case 'review_received':
-      tmpl = tmpl_review_received(data);
-      to = data.recipientEmail;
+    case 'review_received': {
+      // data.reviewId + data.role are client-supplied but never trusted
+      // directly. Bind reviewId to a review row this caller (from their own
+      // verified session) actually authored, in the direction their role
+      // claims, before resolving anything. Recipient email/name AND the
+      // review content itself (reviewer name, rating, comment) are then
+      // read from that authoritative row / the recipient's own profiles
+      // row via this function's own service-role client — the client app
+      // never reads another user's profiles row, and never supplies
+      // content the server can read itself. Every failure path below fails
+      // safe (no email sent, no error surfaced, nothing about the target —
+      // email, existence, or otherwise — is echoed back or logged).
+      if (!callerId || !data?.reviewId || (data.role !== 'host' && data.role !== 'traveller')) {
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+
+      const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+      let recipientUserId: string | null = null;
+      let reviewerName = '';
+      let rating = 0;
+      let comment: string | undefined;
+
+      if (data.role === 'host') {
+        // Traveller reviewed a host — recipient is the host's owner.
+        const { data: review } = await supabase
+          .from('reviews')
+          .select('host_id, reviewer_id, reviewer_name, rating, comment')
+          .eq('id', data.reviewId)
+          .single();
+        if (review && review.reviewer_id === callerId) {
+          const { data: host } = await supabase
+            .from('hosts').select('assigned_user_id, user_id').eq('id', review.host_id).single();
+          recipientUserId = host?.assigned_user_id ?? host?.user_id ?? null;
+          reviewerName = review.reviewer_name;
+          rating = review.rating;
+          comment = review.comment ?? undefined;
+        }
+      } else {
+        // Host reviewed a traveller — recipient is the traveller.
+        const { data: review } = await supabase
+          .from('traveller_reviews')
+          .select('traveller_id, reviewer_id, host_name, rating_respectful, rating_on_time, rating_communication, comment')
+          .eq('id', data.reviewId)
+          .single();
+        if (review && review.reviewer_id === callerId) {
+          recipientUserId = review.traveller_id;
+          reviewerName = review.host_name;
+          rating = Math.round((review.rating_respectful + review.rating_on_time + review.rating_communication) / 3);
+          comment = review.comment ?? undefined;
+        }
+      }
+
+      if (!recipientUserId) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+
+      const { data: hp } = await supabase.from('profiles').select('email, full_name').eq('id', recipientUserId).single();
+      if (!hp?.email) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+
+      tmpl = tmpl_review_received({ recipientName: hp.full_name ?? 'there', reviewerName, rating, comment, role: data.role });
+      to = hp.email;
       break;
+    }
     case 'milestone_reached': {
       // data.hostUserId is client-supplied and never trusted directly as an
       // email target. Bind it server-side: the caller (from their own

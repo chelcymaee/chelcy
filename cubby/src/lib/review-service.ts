@@ -160,20 +160,13 @@ async function notifyHostOfReview(p: SubmitHostReviewParams, reviewId?: string):
     }
   }
 
-  // Email host about the review
-  const { data: hp } = await supabase.from('profiles').select('email, full_name').eq('id', host.assigned_user_id).single();
-  if (hp?.email) {
-    fireEmail({
-      emailType: 'review_received',
-      data: {
-        recipientEmail: hp.email,
-        recipientName: hp.full_name ?? host.display_name,
-        reviewerName: p.reviewerName,
-        rating: p.rating,
-        comment: p.comment.trim() || undefined,
-        role: 'host',
-      },
-    });
+  // Email host about the review — send-email resolves the recipient's
+  // email/name AND the review content itself server-side from this
+  // reviewId, bound to the caller's own session. The client never reads
+  // another user's profiles row, and never supplies content the server
+  // could instead read from the authoritative reviews row.
+  if (reviewId) {
+    fireEmail({ emailType: 'review_received', data: { reviewId, role: 'host' } });
   }
 }
 
@@ -257,18 +250,9 @@ async function notifyTravellerOfReview(p: SubmitTravellerReviewParams, reviewId?
     }
   }
 
-  // Email traveller
-  const { data: profile } = await supabase.from('profiles').select('email, full_name').eq('id', p.travellerId).single();
-  if (profile?.email) {
-    fireEmail({
-      emailType: 'review_received',
-      data: {
-        recipientEmail: profile.email,
-        recipientName: profile.full_name ?? 'Traveller',
-        reviewerName: p.hostName,
-        rating: avg,
-        role: 'traveller',
-      },
-    });
+  // Email traveller — same pattern: send-email resolves everything
+  // server-side from this reviewId.
+  if (reviewId) {
+    fireEmail({ emailType: 'review_received', data: { reviewId, role: 'traveller' } });
   }
 }
