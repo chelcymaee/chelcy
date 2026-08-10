@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect, router } from 'expo-router';
-import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { adminFetch } from '../../src/lib/admin-auth';
 
 interface Verification {
@@ -18,55 +17,39 @@ interface Verification {
 export default function Verifications() {
   const [verifications, setVerifications] = useState<Verification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [tab, setTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
 
   useFocusEffect(useCallback(() => { loadVerifications(); }, []));
 
+  // Reads through admin-verifications (service role) instead of a direct
+  // client query — see that function's GET handler for why: this table's
+  // only SELECT policy is `auth.uid() = user_id`, which silently filtered
+  // out every submission except the admin's own (FAT-010). A real fetch
+  // failure (network, expired/invalid admin session, 500) is now
+  // distinguishable from a genuinely empty list, which the old collapsed
+  // error-or-empty check couldn't do.
   async function loadVerifications() {
     setLoading(true);
-    if (!isSupabaseConfigured) { setLoading(false); return; }
+    setLoadError(false);
     try {
-      // Try to load from verifications table — may not exist yet
-      const { data, error } = await supabase
-        .from('verifications')
-        .select('*')
-        .order('submitted_at', { ascending: false });
+      const res = await adminFetch('/admin-verifications');
+      const result = await res.json().catch(() => ({}));
 
-      if (error) {
-        // Table doesn't exist yet — show empty state
+      if (!res.ok || result.error) {
+        console.error('admin-verifications GET failed:', result.error ?? res.status);
         setVerifications([]);
-        setLoading(false);
+        setLoadError(true);
         return;
       }
 
-      if (!data || data.length === 0) { setVerifications([]); setLoading(false); return; }
-
-      // Fetch profile info for each verification
-      const userIds = [...new Set(data.map((r: any) => r.user_id))];
-      let profileMap: Record<string, { name: string; email: string }> = {};
-      if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .in('id', userIds);
-        for (const p of profiles ?? []) {
-          profileMap[p.id] = { name: p.full_name?.trim() || p.email?.split('@')[0] || 'User', email: p.email ?? '' };
-        }
-      }
-
-      setVerifications(data.map((r: any) => ({
-        id: r.id,
-        userId: r.user_id,
-        userName: profileMap[r.user_id]?.name ?? 'Unknown',
-        userEmail: profileMap[r.user_id]?.email ?? '',
-        idPhotoUrl: r.id_photo_url ?? null,
-        selfieUrl: r.selfie_url ?? null,
-        status: r.status ?? 'pending',
-        submittedAt: r.submitted_at,
-        reviewedAt: r.reviewed_at ?? null,
-      })));
+      setVerifications(result.data ?? []);
+    } catch (err) {
+      console.error('admin-verifications GET error:', err);
+      setVerifications([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -169,11 +152,15 @@ export default function Verifications() {
 
       {!!msg && <div style={s.msg}>{msg}</div>}
 
-      {!loading && verifications.length === 0 && (
+      {!loading && loadError && (
         <div style={s.setupNotice}>
-          <strong>Verification system not yet set up.</strong><br /><br />
-          The <code>verifications</code> table doesn't exist yet. Run the SQL in the project setup guide to create it, then traveller ID submissions will appear here.
+          <strong>Couldn't load verifications.</strong><br /><br />
+          There was a problem reaching the admin verifications service. Try refreshing, or check that you're still signed in as admin.
         </div>
+      )}
+
+      {!loading && !loadError && verifications.length === 0 && (
+        <div style={s.empty}>No verifications submitted yet.</div>
       )}
 
       {loading ? (

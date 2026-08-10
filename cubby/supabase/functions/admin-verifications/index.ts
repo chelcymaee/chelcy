@@ -5,7 +5,7 @@ import { requireAdminSession } from '../_shared/admin-session.ts';
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'PATCH, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, PATCH, OPTIONS',
 };
 
 const json = (data: unknown, status = 200) =>
@@ -40,6 +40,18 @@ const badRequest = (msg: string) => json({ error: msg }, 400);
 // admin UI won't show success or notify — but the earlier write already
 // landed. All three writes are idempotent updates, so re-running the same
 // approve/reject is always safe.
+//
+// GET (added for FAT-010): the list read had the identical problem as the
+// writes above, just never fixed at the same time — verifications.tsx's
+// loadVerifications() ran the same kind of unauthenticated-for-this-purpose
+// direct client query, filtered by the same `auth.uid() = user_id` SELECT
+// policy. It only ever looked like it worked because every test so far
+// happened to run in a browser where the admin tester was also, separately,
+// logged into Supabase Auth as the exact same account that submitted the
+// verification being viewed — self-view satisfies the policy by accident,
+// a real second applicant never can. Service-role read here, same as the
+// writes: no RLS change, no new admin identity model, just the same
+// service-role bypass this file already uses.
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -50,6 +62,47 @@ serve(async (req) => {
 
   const session = await requireAdminSession(req, supabase);
   if (!session.ok) return unauthorized();
+
+  if (req.method === 'GET') {
+    try {
+      const { data, error } = await supabase
+        .from('verifications')
+        .select('*')
+        .order('submitted_at', { ascending: false });
+      if (error) throw error;
+
+      const rows = data ?? [];
+      const userIds = [...new Set(rows.map((r: any) => r.user_id))];
+      let profileMap: Record<string, { name: string; email: string }> = {};
+      if (userIds.length > 0) {
+        const { data: profiles, error: profileErr } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', userIds);
+        if (profileErr) throw profileErr;
+        for (const p of profiles ?? []) {
+          profileMap[p.id] = { name: p.full_name?.trim() || p.email?.split('@')[0] || 'User', email: p.email ?? '' };
+        }
+      }
+
+      const result = rows.map((r: any) => ({
+        id: r.id,
+        userId: r.user_id,
+        userName: profileMap[r.user_id]?.name ?? 'Unknown',
+        userEmail: profileMap[r.user_id]?.email ?? '',
+        idPhotoUrl: r.id_photo_url ?? null,
+        selfieUrl: r.selfie_url ?? null,
+        status: r.status ?? 'pending',
+        submittedAt: r.submitted_at,
+        reviewedAt: r.reviewed_at ?? null,
+      }));
+
+      return json({ data: result });
+    } catch (err) {
+      console.error('admin-verifications GET error:', err);
+      return json({ error: String(err) }, 500);
+    }
+  }
 
   if (req.method !== 'PATCH') return json({ error: 'Method not allowed' }, 405);
 
