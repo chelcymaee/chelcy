@@ -27,6 +27,11 @@ export default function ConfirmEmail() {
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
   const [codeError, setCodeError] = useState('');
+  // Same role-based destinations signup.tsx uses for the immediate-session
+  // path — this file is the actual completion point of signup whenever
+  // email confirmation is enabled (as it is here), which returns from
+  // signup.tsx before that redirect ever runs (FAT-007).
+  const [role, setRole] = useState<'traveller' | 'host' | 'both' | 'runner' | null>(null);
 
   const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
   const [resending, setResending] = useState(false);
@@ -64,6 +69,15 @@ export default function ConfirmEmail() {
       if (isSupabaseConfigured) {
         const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'signup' });
         if (error) { setCodeError(friendlyCodeError(error.message)); return; }
+
+        // verifyOtp establishes the real session — the on_auth_user_created
+        // trigger has created profiles.role by now, same as signup.tsx's
+        // immediate-session branch reads it straight after signUp.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+          setRole((profile?.role as typeof role) ?? null);
+        }
       }
       setVerified(true);
     } catch (err: any) {
@@ -103,7 +117,15 @@ export default function ConfirmEmail() {
           <>
             <Text style={styles.heading}>Email verified</Text>
             <Text style={styles.subheading}>You're all set — your email is confirmed and you're signed in.</Text>
-            <Btn label="Continue to Cubby" onPress={() => router.replace('/(traveller)/explore')} style={styles.btn} />
+            <Btn
+              label="Continue to Cubby"
+              onPress={() => {
+                if (role === 'host' || role === 'both') router.replace('/(traveller)/partner-apply');
+                else if (role === 'runner') router.replace('/(runner)/dashboard');
+                else router.replace('/(traveller)/explore');
+              }}
+              style={styles.btn}
+            />
           </>
         ) : !email ? (
           <>
