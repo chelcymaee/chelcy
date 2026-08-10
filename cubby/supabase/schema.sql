@@ -81,7 +81,7 @@ create policy "Hosts can view bookings for their listing" on bookings for select
 -- Reviews
 create table if not exists reviews (
   id uuid default gen_random_uuid() primary key,
-  booking_id uuid references bookings(id) on delete cascade not null unique, -- one review per booking
+  booking_id uuid references bookings(id) on delete cascade not null constraint reviews_booking_id_unique unique, -- one review per booking; named to match the live production constraint
   reviewer_id uuid references auth.users(id) on delete cascade not null,
   host_id uuid references hosts(id) not null,
   reviewer_name text not null,
