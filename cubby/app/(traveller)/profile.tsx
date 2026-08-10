@@ -55,7 +55,10 @@ export default function Profile() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [isHostApproved, setIsHostApproved] = useState(false);
-  const [wantsToHost, setWantsToHost] = useState(false);
+  // Driven by a real partner_applications row (FAT-007), not profiles.role —
+  // selecting "Host" at signup used to be enough on its own to claim an
+  // application had been submitted, with nothing behind it.
+  const [applicationStatus, setApplicationStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
   const [travellerRating, setTravellerRating] = useState(0);
   const [travellerReviewCount, setTravellerReviewCount] = useState(-1); // -1 = not loaded yet
@@ -93,7 +96,6 @@ export default function Profile() {
           setPhone(profile.phone ?? '');
           if (profile.avatar_url) setAvatar(profile.avatar_url);
           setIsHostApproved(profile.is_host_approved ?? false);
-          setWantsToHost(profile.role === 'host' || profile.role === 'both');
           setTravellerRating(profile.traveller_rating ?? 0);
           setTravellerReviewCount(profile.traveller_review_count ?? 0);
 
@@ -108,6 +110,14 @@ export default function Profile() {
           } else if (profile.is_verified) {
             setVerificationStatus('approved');
           }
+
+          // Check host application status — the real row, not profiles.role
+          const { data: application } = await supabase
+            .from('partner_applications')
+            .select('status')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          setApplicationStatus((application?.status as 'pending' | 'approved' | 'rejected' | undefined) ?? null);
           return;
         }
       }
@@ -436,14 +446,25 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* Host status: pending-approval checklist for host/both signups, or a
-            generic CTA for travellers who haven't shown interest yet */}
-        {!isHostApproved && wantsToHost && (
+        {/* Host status: driven by a real partner_applications row
+            (FAT-007) — pending shows the existing checklist, rejected gets
+            an honest (not "pending") notice, and no application at all
+            shows the CTA into the real application flow. */}
+        {!isHostApproved && applicationStatus === 'pending' && (
           <View style={{ marginBottom: 16 }}>
             <HostOnboardingChecklist isApproved={false} />
           </View>
         )}
-        {!isHostApproved && !wantsToHost && <TouchableOpacity
+        {!isHostApproved && applicationStatus === 'rejected' && (
+          <View style={styles.becomeHostCard}>
+            <Text style={styles.becomeHostEmoji}>🏠</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.becomeHostTitle}>Host application not approved</Text>
+              <Text style={styles.becomeHostSub}>Contact support if you have questions</Text>
+            </View>
+          </View>
+        )}
+        {!isHostApproved && applicationStatus === null && <TouchableOpacity
           style={styles.becomeHostCard}
           onPress={() => router.push('/(traveller)/partner-apply')}
           // @ts-ignore

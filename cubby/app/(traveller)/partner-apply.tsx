@@ -67,7 +67,7 @@ export default function PartnerApply() {
     setLoading(true);
     setServerError('');
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         name: fields.name.trim(),
         email: fields.email.trim().toLowerCase(),
         phone: fields.phone.trim() || null,
@@ -81,6 +81,16 @@ export default function PartnerApply() {
       };
 
       if (isSupabaseConfigured) {
+        // Logged-in applicants (host/both signup, or an existing traveller
+        // tapping "Become a Host") link the application to their real
+        // account (FAT-007) — a logged-out visitor filling out this same
+        // public form keeps submitting anonymously, user_id just stays
+        // unset. partner_applications_user_id_unique means a second
+        // attempt from the same account fails here rather than creating a
+        // duplicate open application.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) payload.user_id = user.id;
+
         const { error } = await supabase.from('partner_applications').insert(payload);
         if (error) {
           setServerError('Could not submit application. Please try again.');

@@ -249,6 +249,16 @@ ALTER TABLE partner_applications ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can submit a partner application" ON partner_applications FOR INSERT WITH CHECK (true);
 -- No public SELECT: admin reads go through service-role Edge Functions only
 
+-- FAT-007/FAT-009: links an application to the authenticated account that
+-- submitted it, so admin approval has an actual account to grant host
+-- access to instead of being a cosmetic status label. Nullable — every
+-- pre-existing anonymous submission (and any future one from a logged-out
+-- visitor) keeps user_id = NULL, untouched. Postgres treats multiple NULLs
+-- as non-conflicting under UNIQUE, so the index below only ever constrains
+-- the account-linked rows: one open application per user.
+ALTER TABLE partner_applications ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id);
+CREATE UNIQUE INDEX IF NOT EXISTS partner_applications_user_id_unique ON partner_applications (user_id);
+
 -- Allow travellers to update their own bookings (needed for cancellation)
 CREATE POLICY "Travellers can update own bookings" ON bookings FOR UPDATE USING (auth.uid() = traveller_id);
 

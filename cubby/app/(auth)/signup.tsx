@@ -87,7 +87,13 @@ export default function Signup() {
         await AsyncStorage.setItem('cubby_session', JSON.stringify(user));
         await AsyncStorage.setItem('cubby_traveller_profile', JSON.stringify({ name: fullName, avatarUri: null }));
       }
-      if (role === 'host' || role === 'both') router.replace('/(traveller)/profile');
+      // Host/both signups go straight into the real application flow (FAT-007)
+      // instead of landing on the ordinary profile screen — selecting "Host"
+      // here used to only ever set profiles.role, with no application ever
+      // created and no way to reach partner-apply afterward (its CTA was
+      // gated on role !== 'host'/'both'). partner-apply now writes user_id
+      // for a logged-in submitter, so this is a real, admin-visible row.
+      if (role === 'host' || role === 'both') router.replace('/(traveller)/partner-apply');
       else if (role === 'runner') router.replace('/(runner)/dashboard');
       else router.replace('/(traveller)/explore');
     } catch (err: any) {
