@@ -5,16 +5,11 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 
 type Step = 'loading' | 'status' | 'intro' | 'id' | 'selfie' | 'submitting' | 'submitted' | 'error';
-
-// Convert a local URI to a Blob for Supabase Storage upload
-async function uriToBlob(uri: string): Promise<Blob> {
-  const response = await fetch(uri);
-  return response.blob();
-}
 
 export default function Verification() {
   const [step, setStep] = useState<Step>('loading');
@@ -98,12 +93,16 @@ export default function Verification() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not logged in. Please sign in and try again.');
 
-      // Upload ID photo
+      // Upload ID photo. fetch(localUri).blob() is not usable here — this RN
+      // Blob implementation throws "Creating blobs from 'ArrayBuffer' and
+      // 'ArrayBufferView' are not supported" — same fix as avatar upload
+      // (app/(traveller)/profile.tsx) and host listing photos
+      // (app/(host)/host-profile.tsx).
       const idPath = `${user.id}/id.jpg`;
-      const idBlob = await uriToBlob(idPhoto);
+      const idArrayBuffer = await new File(idPhoto).arrayBuffer();
       const { error: idErr } = await supabase.storage
         .from('verifications')
-        .upload(idPath, idBlob, { upsert: true, contentType: 'image/jpeg' });
+        .upload(idPath, idArrayBuffer, { upsert: true, contentType: 'image/jpeg' });
       if (idErr) throw new Error(`ID upload failed: ${idErr.message}`);
 
       // Generate 7-day signed URL for ID (valid well beyond 24–48h review window)
@@ -111,12 +110,12 @@ export default function Verification() {
         .from('verifications')
         .createSignedUrl(idPath, 7 * 24 * 60 * 60);
 
-      // Upload selfie
+      // Upload selfie — same ArrayBuffer approach as the ID photo above.
       const selfiePath = `${user.id}/selfie.jpg`;
-      const selfieBlob = await uriToBlob(selfiePhoto);
+      const selfieArrayBuffer = await new File(selfiePhoto).arrayBuffer();
       const { error: selfieErr } = await supabase.storage
         .from('verifications')
-        .upload(selfiePath, selfieBlob, { upsert: true, contentType: 'image/jpeg' });
+        .upload(selfiePath, selfieArrayBuffer, { upsert: true, contentType: 'image/jpeg' });
       if (selfieErr) throw new Error(`Selfie upload failed: ${selfieErr.message}`);
 
       const { data: selfieSigned } = await supabase.storage
