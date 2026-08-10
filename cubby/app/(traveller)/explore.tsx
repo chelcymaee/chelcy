@@ -101,7 +101,14 @@ function locationMatches(hostLoc: string, search: string): boolean {
   if (!stripped) return true;
   const words = stripped.split(/\s+/).filter(w => w.length > 2);
   if (!words.length) return true;
-  return words.some(w => hostLoc.toLowerCase().includes(w));
+  // Compare against a whitespace-stripped copy of the host's stored
+  // location (FAT-001) — "Seapoint" typed as one word never matched
+  // "Sea Point, Cape Town..." because .includes() is a strict contiguous
+  // substring check with no spacing tolerance. Same substring logic as
+  // before, just no longer sensitive to spacing a real address string and
+  // a casually-typed search term won't reliably agree on.
+  const hostLocNoSpaces = hostLoc.toLowerCase().replace(/\s+/g, '');
+  return words.some(w => hostLocNoSpaces.includes(w.replace(/\s+/g, '')));
 }
 
 interface SearchParams {
