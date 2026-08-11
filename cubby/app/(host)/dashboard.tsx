@@ -369,7 +369,7 @@ export default function Dashboard() {
 
         Alert.alert(
           'Payout Initiated',
-          `Payout of R${data.hostAmount.toFixed(2)} will be sent to ${data.bankName} within 1-2 business days.`,
+          `Payout of R${data.hostAmount.toFixed(2)} will be sent via manual EFT within 1-2 business days.`,
         );
       } else {
         setBookings(prev => prev.map(b => b.id === booking.id ? { ...b, status: 'completed' } : b));
