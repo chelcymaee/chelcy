@@ -341,7 +341,15 @@ export default function Booking() {
     }
   }
 
-  const goBack = () => router.replace('/(traveller)/explore');
+  // FAT-006: was hardcoded to Explore regardless of where the user actually
+  // came from — this screen is only ever reached from host-detail.tsx, so
+  // Back was skipping past the listing the user was looking at. canGoBack()
+  // keeps today's Explore fallback for the one case with no real history
+  // (e.g. a direct deep link into this screen).
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(traveller)/explore');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
