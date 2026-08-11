@@ -19,6 +19,17 @@ import { getUserLocation, haversineMeters, formatDistance, formatWalkLabel, LatL
 import { ExploreCardSkeleton } from '../../src/components/Skeleton';
 
 const { height: SCREEN_H } = Dimensions.get('window');
+// Raw window height — still used for webMap sizing (web has no iOS safe-area
+// insets to correct for) and as a same-as-before fallback default for the
+// native sheet before insets are known. The native sheet's real height/snap
+// points are computed inside the component from the safe-area-adjusted
+// usable height instead — see sheetH/snapFull/snapHalf/snapPeek below.
+// FAT-011: Dimensions.get('window') does not subtract the safe-area insets
+// (notch/status bar, home indicator), so a sheet sized as a percentage of
+// this raw height renders taller than the space actually available inside
+// the SafeAreaView — pushing its fully-expanded top edge (and drag handle)
+// up into the floating search/filter bar's real touch area, silently
+// swallowing the handle's touches.
 const SHEET_H = SCREEN_H * 0.78;
 const SNAP_FULL = 0;
 const SNAP_HALF = SHEET_H * 0.52;
@@ -464,8 +475,33 @@ export default function Explore() {
   const [showPickUp, setShowPickUp] = useState(false);
 
   // ── Bottom sheet (native only) ──
-  const sheetAnim = useRef(new Animated.Value(SNAP_HALF)).current;
-  const sheetSnapRef = useRef(SNAP_HALF);
+  //
+  // FAT-011: SHEET_H/SNAP_* (module-level, above) are computed from the raw
+  // Dimensions.get('window') height, which doesn't subtract the safe-area
+  // insets (notch/status bar, home indicator) — sizing the sheet taller than
+  // the space actually available inside the SafeAreaView, so at full
+  // expansion its drag handle lands under the floating search/filter bar's
+  // real touch area instead of below it. containerH is measured directly
+  // from the SafeAreaView's own content View via onLayout (below), which is
+  // already correctly inset-adjusted by the native SafeAreaView regardless
+  // of whether a SafeAreaProvider exists — this stays self-contained to this
+  // file rather than requiring a root-layout change. Defaults to the old
+  // (buggy but harmless-until-measured) SCREEN_H so first paint matches
+  // prior behavior until the real measurement arrives a frame later.
+  const [containerH, setContainerH] = useState(SCREEN_H);
+  const sheetH = useMemo(() => containerH * 0.78, [containerH]);
+  const snapFull = 0;
+  const snapHalf = useMemo(() => sheetH * 0.52, [sheetH]);
+  const snapPeek = useMemo(() => sheetH - 80, [sheetH]);
+
+  // Kept in a ref (same pattern as sheetSnapRef below) so the PanResponder's
+  // callbacks — created once via useRef — always read the current snap
+  // points rather than whatever was in scope on first render.
+  const snapPointsRef = useRef({ full: snapFull, half: snapHalf, peek: snapPeek });
+  snapPointsRef.current = { full: snapFull, half: snapHalf, peek: snapPeek };
+
+  const sheetAnim = useRef(new Animated.Value(snapHalf)).current;
+  const sheetSnapRef = useRef(snapHalf);
 
   function snapSheet(pos: number) {
     sheetSnapRef.current = pos;
@@ -479,21 +515,23 @@ export default function Explore() {
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
       onPanResponderMove: (_, g) => {
-        const newY = Math.max(SNAP_FULL, Math.min(SNAP_PEEK, sheetSnapRef.current + g.dy));
+        const { full, peek } = snapPointsRef.current;
+        const newY = Math.max(full, Math.min(peek, sheetSnapRef.current + g.dy));
         sheetAnim.setValue(newY);
       },
       onPanResponderRelease: (_, g) => {
+        const { full, half, peek } = snapPointsRef.current;
         const projected = sheetSnapRef.current + g.dy;
         const vy = g.vy;
         let target: number;
         if (vy > 0.8) {
-          target = sheetSnapRef.current === SNAP_FULL ? SNAP_HALF : SNAP_PEEK;
+          target = sheetSnapRef.current === full ? half : peek;
         } else if (vy < -0.8) {
-          target = sheetSnapRef.current === SNAP_PEEK ? SNAP_HALF : SNAP_FULL;
+          target = sheetSnapRef.current === peek ? half : full;
         } else {
-          const snaps = [SNAP_FULL, SNAP_HALF, SNAP_PEEK];
+          const snaps = [full, half, peek];
           target = snaps.reduce((best, s) =>
-            Math.abs(projected - s) < Math.abs(projected - best) ? s : best, SNAP_PEEK);
+            Math.abs(projected - s) < Math.abs(projected - best) ? s : best, peek);
         }
         snapSheet(target);
       },
@@ -691,7 +729,17 @@ export default function Explore() {
   if (Platform.OS !== 'web') {
     return (
       <SafeAreaView style={S.container}>
-        <View style={{ flex: 1 }}>
+        <View
+          style={{ flex: 1 }}
+          onLayout={(e) => {
+            // FAT-011: this is the SafeAreaView's real, already-inset-adjusted
+            // content height — used to correctly size the bottom sheet
+            // instead of the raw window height. See the comment above
+            // containerH's declaration.
+            const h = e.nativeEvent.layout.height;
+            if (h > 0 && h !== containerH) setContainerH(h);
+          }}
+        >
           {/* ── Map (fills background) ── */}
           <View style={StyleSheet.absoluteFill}>
             <HostMapComponent
@@ -704,7 +752,13 @@ export default function Explore() {
           </View>
 
           {/* ── Floating top search bar ── */}
-          <View style={S.topBarNative}>
+          {/* box-none: this container has explicit zIndex to float above the
+              map/sheet, but must not swallow touches in its own empty space
+              (padding/gaps) — that was blocking the bottom sheet's drag
+              handle underneath once the sheet was fully expanded (FAT-011).
+              box-none still lets every child (search pill, filter chips)
+              receive touches normally. */}
+          <View style={S.topBarNative} pointerEvents="box-none">
             {/* Location row */}
             <TouchableOpacity style={S.searchPill} onPress={() => setShowLocation(true)}
               // @ts-ignore
@@ -769,7 +823,7 @@ export default function Explore() {
           </View>
 
           {/* ── Draggable bottom sheet ── */}
-          <Animated.View style={[S.sheet, { transform: [{ translateY: sheetAnim }] }]}>
+          <Animated.View style={[S.sheet, { height: sheetH }, { transform: [{ translateY: sheetAnim }] }]}>
             {/* Drag handle area */}
             <View style={S.sheetHandle} {...panResponder.panHandlers}>
               <View style={S.sheetHandleBar} />
@@ -930,6 +984,9 @@ const S = StyleSheet.create({
   sheet: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
+    // height is set inline (see render) from the correctly safe-area-
+    // adjusted sheetH — this static SHEET_H is only a same-as-before
+    // fallback for the instant before the first onLayout measurement.
     height: SHEET_H,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 22, borderTopRightRadius: 22,
