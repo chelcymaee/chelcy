@@ -29,10 +29,19 @@ export default function Chat() {
   const listRef = useRef<FlatList>(null);
   const channelRef = useRef<any>(null);
 
+  // FAT-013: was `[]` — only ran once, so navigating directly from one
+  // conversation to another (same screen instance, new route params) never
+  // re-loaded messages or re-subscribed, leaving the previous
+  // conversation's messages/subscription showing. Depending on the actual
+  // route params re-runs init() (and its cleanup, tearing down the old
+  // realtime subscription) whenever they point at a different
+  // conversation/booking.
   useEffect(() => {
+    setMessages([]);
+    setLoading(true);
     init();
     return () => { channelRef.current?.unsubscribe(); };
-  }, []);
+  }, [paramConvId, bookingId]);
 
   async function init() {
     if (!isSupabaseConfigured) { setLoading(false); return; }
@@ -40,7 +49,11 @@ export default function Chat() {
     if (!user) { router.replace('/(traveller)/messages'); return; }
     setMyId(user.id);
 
-    let convId = conversationId;
+    // Always source the starting conversation id fresh from the current
+    // route param rather than local state — conversationId state can be
+    // stale from a previous conversation this same screen instance was
+    // showing before this effect re-ran.
+    let convId = paramConvId ?? null;
 
     // Create or find conversation from bookingId
     if (!convId && bookingId) {

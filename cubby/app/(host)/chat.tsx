@@ -29,10 +29,19 @@ export default function HostChat() {
   const listRef = useRef<FlatList>(null);
   const channelRef = useRef<any>(null);
 
+  // FAT-013: was `[]` — only ran once, so navigating directly from one
+  // conversation to another (same screen instance, new conversationId
+  // param) never re-loaded messages or re-subscribed, leaving the
+  // previous conversation's messages/subscription showing. Depending on
+  // conversationId re-runs init() (and its cleanup, tearing down the old
+  // realtime subscription) whenever the route actually points at a
+  // different conversation.
   useEffect(() => {
+    setMessages([]);
+    setLoading(true);
     init();
     return () => { channelRef.current?.unsubscribe(); };
-  }, []);
+  }, [conversationId]);
 
   async function init() {
     if (!isSupabaseConfigured || !conversationId) { setLoading(false); return; }
