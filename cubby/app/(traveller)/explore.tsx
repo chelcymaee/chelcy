@@ -704,7 +704,13 @@ export default function Explore() {
           </View>
 
           {/* ── Floating top search bar ── */}
-          <View style={S.topBarNative}>
+          {/* box-none: this container has explicit zIndex to float above the
+              map/sheet, but must not swallow touches in its own empty space
+              (padding/gaps) — that was blocking the bottom sheet's drag
+              handle underneath once the sheet was fully expanded (FAT-011).
+              box-none still lets every child (search pill, filter chips)
+              receive touches normally. */}
+          <View style={S.topBarNative} pointerEvents="box-none">
             {/* Location row */}
             <TouchableOpacity style={S.searchPill} onPress={() => setShowLocation(true)}
               // @ts-ignore
