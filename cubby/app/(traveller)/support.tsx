@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
   TextInput, Linking, Platform, Animated,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import Btn from '../../src/components/Btn';
@@ -50,6 +50,15 @@ export default function Support() {
       Animated.spring(successScale, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 14 }),
     ]).start();
   }, [success]);
+
+  // FAT-004: "How it works", "FAQ", and "Contact support" (profile.tsx) all
+  // correctly route here — there's no separate screen for any of them, FAQ
+  // content already lives below as an accordion. The bug was this screen
+  // itself: success never reset after a prior submission, so any later
+  // visit from any of those three entry points showed the frozen "Message
+  // sent!" view instead of the form/FAQ. Resetting on focus, same pattern
+  // already used elsewhere in this app (e.g. (host)/messages.tsx).
+  useFocusEffect(useCallback(() => { setSuccess(false); }, []));
 
   async function handleSend() {
     let valid = true;
