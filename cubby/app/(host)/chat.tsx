@@ -66,6 +66,18 @@ export default function HostChat() {
       time: new Date(m.created_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }),
     })));
     setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
+
+    // Mark the other participant's messages as read now that this
+    // conversation is open (FAT-008) — (host)/messages.tsx's unread badge
+    // is computed purely from read_at IS NULL, and nothing here ever set
+    // it. RLS policy for this already exists ("Participants can mark
+    // messages as read"), so this is the only piece that was missing.
+    await supabase
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .is('read_at', null)
+      .neq('sender_id', userId);
   }
 
   function subscribeRealtime(userId: string) {
