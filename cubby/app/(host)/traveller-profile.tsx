@@ -56,7 +56,21 @@ export default function TravellerProfileForHost() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => { load(); }, []);
+  // FAT-018: was `[]` — only ever fetched once, on first mount. If this
+  // screen instance is reused across repeated navigations here (same
+  // pattern as FAT-013's chat screens), tapping "View profile" for a
+  // second, different traveller never re-fetched — it kept showing
+  // whoever was loaded the very first time. Depending on travellerId/
+  // bookingId re-runs load() whenever the route actually points at a
+  // different traveller/booking; resetting traveller/booking/error first
+  // means no previous person's details can linger while the new ones load.
+  useEffect(() => {
+    setTraveller(null);
+    setBooking(null);
+    setError('');
+    setLoading(true);
+    load();
+  }, [travellerId, bookingId]);
 
   async function load() {
     if (!isSupabaseConfigured || !travellerId || !bookingId) {
