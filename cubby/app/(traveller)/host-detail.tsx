@@ -230,7 +230,14 @@ export default function HostDetail() {
 
   const reviews = savedReviews;
 
-  const goBack = () => router.replace('/(traveller)/explore');
+  // FAT-006: was hardcoded to Explore — currently only ever reached from
+  // explore.tsx so this happened to be correct, but it's the same anti-
+  // pattern as booking.tsx. canGoBack() keeps today's Explore fallback for
+  // the one case with no real history (e.g. a direct deep link here).
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(traveller)/explore');
+  };
 
   if (!host) return (
     <SafeAreaView style={styles.container}>
