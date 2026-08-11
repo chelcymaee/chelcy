@@ -9,7 +9,7 @@ import { Radius, CardShadow } from '../../src/constants/theme';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
 import Avatar from '../../src/components/Avatar';
-import { recalculateHostResponseRate, minutesBetween } from '../../src/lib/response-rate';
+import { recalculateHostResponseRate } from '../../src/lib/response-rate';
 import { sendNotification } from '../../src/lib/notification-service';
 
 // Booking statuses used across Cubby:
@@ -249,6 +249,13 @@ export default function Requests() {
     }
   }
 
+  // Legacy direct-write path for the 'pending' flow, converted to the
+  // respond_to_pending_booking RPC (distinct from respondToRequest below,
+  // which already uses the 'awaiting_host_confirmation' RPCs) — a raw
+  // `.update()` here could previously write any status value regardless of
+  // the row's actual current status, and financial-integrity hardening
+  // removed the client's direct UPDATE grant on bookings entirely. The RPC
+  // computes host_responded_at/response_time_minutes server-side.
   async function updateStatus(bookingId: string, newStatus: BookingStatus) {
     setActionId(bookingId);
     try {
@@ -256,24 +263,14 @@ export default function Requests() {
       // in scope for the notification send below (fixes a pre-existing bug
       // where `booking` was referenced outside the block it was declared in).
       const booking = bookings.find(b => b.id === bookingId);
+      const isResponse = newStatus === 'confirmed' || newStatus === 'cancelled';
 
       if (isSupabaseConfigured) {
-        const respondedAt = new Date().toISOString();
-
-        // Record response time when accepting or declining a pending booking
-        const isResponse = newStatus === 'confirmed' || newStatus === 'cancelled';
-        const responseMinutes = (isResponse && booking?.status === 'pending' && booking?.created_at)
-          ? minutesBetween(booking.created_at, respondedAt)
-          : undefined;
-
-        const update: Record<string, unknown> = { status: newStatus };
-        if (isResponse && booking?.status === 'pending') {
-          update.host_responded_at = respondedAt;
-          if (responseMinutes !== undefined) update.response_time_minutes = responseMinutes;
-        }
-
-        const { error } = await supabase.from('bookings').update(update).eq('id', bookingId);
-        if (error) { showToast('Could not update booking. Please try again.', true); return; }
+        const { data: result, error } = await supabase.rpc('respond_to_pending_booking', {
+          p_booking_id: bookingId,
+          p_decision: newStatus,
+        });
+        if (error || !result?.ok) { showToast('Could not update booking. Please try again.', true); return; }
 
         // Recalculate host response rate after responding
         if (isResponse && booking?.host_id) {

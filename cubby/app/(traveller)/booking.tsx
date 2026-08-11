@@ -180,8 +180,8 @@ export default function Booking() {
             pick_up_time: pickTime,
             bag_count: bags,
             total_price: grandTotal,
-            status: 'pending_payment',
-            payment_provider: 'paygate',
+            base_storage_amount: total,
+            traveller_service_fee: platformFee,
             pin_code: pin,
           })
           .select('id')

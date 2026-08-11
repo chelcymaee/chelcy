@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
 
     const { data: booking, error: bookingErr } = await supabase
       .from('bookings')
-      .select('id, total_price, status, traveller_id, host_id, payment_provider')
+      .select('id, total_price, base_storage_amount, traveller_service_fee, bag_count, status, traveller_id, host_id, payment_provider')
       .eq('id', bookingId)
       .single();
 
@@ -118,6 +118,42 @@ Deno.serve(async (req) => {
 
     if (!traveller?.email) {
       return json({ error: 'Traveller email not found' }, 400);
+    }
+
+    // Price-integrity guard, first of two (complete-booking runs the same
+    // check again before computing the payout split). Only runs when this
+    // booking actually has a base/fee snapshot — a pre-migration booking
+    // has nothing to verify against and falls through unchecked, same as
+    // before this change. When a snapshot exists, recompute the expected
+    // base/fee/total from the host's own current listing price and this
+    // booking's bag_count, and compare — in integer cents, exact equality —
+    // against what's stored. Prices here are always whole Rand, so cents
+    // conversion is exact and no rounding tolerance is needed. On mismatch,
+    // fail closed: PayGate is never called, so no charge is ever initiated.
+    if (booking.base_storage_amount != null && booking.traveller_service_fee != null) {
+      const { data: hostRow } = await supabase
+        .from('hosts').select('price_per_bag_per_day').eq('id', booking.host_id).single();
+
+      const pricePerBagCents = Math.round(Number(hostRow?.price_per_bag_per_day ?? 0) * 100);
+      const expectedBaseCents = pricePerBagCents * Number(booking.bag_count);
+      const expectedFeeCents = Math.round(expectedBaseCents * 0.1);
+      const expectedTotalCents = expectedBaseCents + expectedFeeCents;
+
+      const storedBaseCents = Math.round(Number(booking.base_storage_amount) * 100);
+      const storedFeeCents = Math.round(Number(booking.traveller_service_fee) * 100);
+      const storedTotalCents = Math.round(Number(booking.total_price) * 100);
+
+      if (
+        storedBaseCents !== expectedBaseCents ||
+        storedFeeCents !== expectedFeeCents ||
+        storedTotalCents !== expectedTotalCents
+      ) {
+        console.error('[paygate-initiate] price integrity check failed', {
+          bookingId, storedBaseCents, storedFeeCents, storedTotalCents,
+          expectedBaseCents, expectedFeeCents, expectedTotalCents,
+        });
+        return json({ error: 'Booking price could not be verified', code: 'PRICE_MISMATCH' }, 409);
+      }
     }
 
     const functionsBase = `${SUPABASE_URL}/functions/v1`;

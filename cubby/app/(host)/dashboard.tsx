@@ -9,7 +9,7 @@ import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
 import HostOnboardingChecklist from '../../src/components/HostOnboardingChecklist';
-import { recalculateHostResponseRate, minutesBetween, formatResponseRate, formatResponseTime } from '../../src/lib/response-rate';
+import { recalculateHostResponseRate, formatResponseRate, formatResponseTime } from '../../src/lib/response-rate';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -75,6 +75,18 @@ const DEMO_STATS: Stats = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Host's real earnings for a booking — the persisted 70%-of-base payout
+ * once completed (set by complete-booking), otherwise a 70%-of-base
+ * projection from the price snapshot for bookings not yet completed.
+ * Falls back to total_price for legacy bookings with no snapshot, same
+ * fallback complete-booking itself uses — a display-only approximation,
+ * never used for the actual payout calculation. */
+function hostShare(b: { total_price?: number | null; base_storage_amount?: number | null; host_payout_amount?: number | null }): number {
+  if (b.host_payout_amount != null) return Number(b.host_payout_amount);
+  const base = b.base_storage_amount ?? b.total_price ?? 0;
+  return Math.round(Number(base) * 0.70);
+}
 
 function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -163,7 +175,7 @@ export default function Dashboard() {
         // This month's completed bookings (for earnings card)
         supabase
           .from('bookings')
-          .select('id, total_price, status')
+          .select('id, total_price, base_storage_amount, host_payout_amount, status')
           .eq('host_id', hostId)
           .gte('drop_off_date', monthStart)
           .lte('drop_off_date', today)
@@ -172,7 +184,7 @@ export default function Dashboard() {
         // This week's completed bookings (for bar chart)
         supabase
           .from('bookings')
-          .select('drop_off_date, total_price')
+          .select('drop_off_date, total_price, base_storage_amount, host_payout_amount')
           .eq('host_id', hostId)
           .gte('drop_off_date', weekStart)
           .lte('drop_off_date', weekEnd)
@@ -209,13 +221,15 @@ export default function Dashboard() {
 
       // ── 4. Monthly stats ─────────────────────────────────────────────────
       const monthBookings = monthRes.data ?? [];
-      const monthlyEarnings = monthBookings.reduce((sum: number, b: any) => sum + (b.total_price ?? 0), 0);
+      // Host's real earnings (70% of base storage), not the gross traveller
+      // payment — see hostShare() above.
+      const monthlyEarnings = monthBookings.reduce((sum: number, b: any) => sum + hostShare(b), 0);
       const monthlyBookings = monthBookings.length;
 
       // ── 5. Weekly bar chart ──────────────────────────────────────────────
       const earningsByDate: Record<string, number> = {};
       for (const b of weekRes.data ?? []) {
-        earningsByDate[b.drop_off_date] = (earningsByDate[b.drop_off_date] ?? 0) + (b.total_price ?? 0);
+        earningsByDate[b.drop_off_date] = (earningsByDate[b.drop_off_date] ?? 0) + hostShare(b);
       }
       const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
       const weeklyData: WeekDay[] = weekDates.map((date, i) => ({
@@ -261,25 +275,23 @@ export default function Dashboard() {
     }
   }
 
+  // Legacy direct-write path for the 'pending' host accept/decline flow,
+  // converted to the respond_to_pending_booking RPC — a raw `.update()`
+  // here could previously write any status value regardless of the row's
+  // actual current status, and financial-integrity hardening removed the
+  // client's direct UPDATE grant on bookings entirely. The RPC computes
+  // host_responded_at/response_time_minutes server-side from the row's own
+  // created_at, so it no longer needs to be passed from here.
   async function updateBookingStatus(bookingId: string, newStatus: string) {
     setActionId(bookingId);
     try {
+      const isResponse = newStatus === 'confirmed' || newStatus === 'cancelled';
       if (isSupabaseConfigured) {
-        const respondedAt = new Date().toISOString();
-        const booking = bookings.find(b => b.id === bookingId);
-        const isResponse = newStatus === 'confirmed' || newStatus === 'cancelled';
-        const responseMinutes = (isResponse && booking?.status === 'pending' && booking?.created_at)
-          ? minutesBetween(booking.created_at as unknown as string, respondedAt)
-          : undefined;
-
-        const update: Record<string, unknown> = { status: newStatus };
-        if (isResponse && booking?.status === 'pending') {
-          update.host_responded_at = respondedAt;
-          if (responseMinutes !== undefined) update.response_time_minutes = responseMinutes;
-        }
-
-        const { error } = await supabase.from('bookings').update(update).eq('id', bookingId);
-        if (error) { Alert.alert('Error', 'Could not update booking. Please try again.'); return; }
+        const { data: result, error } = await supabase.rpc('respond_to_pending_booking', {
+          p_booking_id: bookingId,
+          p_decision: newStatus,
+        });
+        if (error || !result?.ok) { Alert.alert('Error', 'Could not update booking. Please try again.'); return; }
 
         // Fire-and-forget recalculate
         if (isResponse && stats.hostId) {
@@ -311,10 +323,11 @@ export default function Dashboard() {
         }
 
         setBookings(prev => prev.map(b => b.id === booking.id ? { ...b, status: 'completed' } : b));
-        // Update stats optimistically
+        // Update stats optimistically — data.hostAmount is the real 70%-of-
+        // base payout complete-booking just computed, not the gross total.
         setStats(s => ({
           ...s,
-          monthlyEarnings: s.monthlyEarnings + booking.total,
+          monthlyEarnings: s.monthlyEarnings + Number(data.hostAmount ?? 0),
           monthlyBookings: s.monthlyBookings + 1,
           completedCount: s.completedCount + 1,
         }));
