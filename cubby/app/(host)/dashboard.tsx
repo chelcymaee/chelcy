@@ -118,6 +118,10 @@ export default function Dashboard() {
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [pendingHost, setPendingHost] = useState(false);
   const [isHostApproved, setIsHostApproved] = useState(false);
+  // True only when today's-bookings query itself failed — kept separate from
+  // `bookings.length === 0` so a genuine failure shows a retry state instead
+  // of silently looking identical to "no bookings today".
+  const [todayError, setTodayError] = useState(false);
 
   useFocusEffect(useCallback(() => {
     loadDashboard();
@@ -127,6 +131,7 @@ export default function Dashboard() {
     if (!isSupabaseConfigured) return; // keep demo data
     setLoading(true);
     setError('');
+    setTodayError(false);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -163,10 +168,15 @@ export default function Dashboard() {
 
       // ── 2. Fetch in parallel ─────────────────────────────────────────────
       const [todayRes, monthRes, weekRes, pendingRes, completedRes] = await Promise.all([
-        // Today's active bookings (for the card list)
+        // Today's active bookings (for the card list). Traveller name/email
+        // is looked up separately below — bookings.traveller_id has no FK
+        // relationship to profiles (only to auth.users), so an embedded
+        // `profiles:traveller_id(...)` join here fails with PGRST200 and
+        // was silently making every host's Dashboard look like they had no
+        // bookings today, no matter what was actually booked.
         supabase
           .from('bookings')
-          .select('id, traveller_id, bag_count, drop_off_time, pick_up_time, total_price, status, created_at, profiles:traveller_id(full_name, email)')
+          .select('id, traveller_id, bag_count, drop_off_time, pick_up_time, total_price, status, created_at')
           .eq('host_id', hostId)
           .eq('drop_off_date', today)
           .in('status', ['pending', 'confirmed', 'active'])
@@ -206,18 +216,43 @@ export default function Dashboard() {
       ]);
 
       // ── 3. Process today's bookings ──────────────────────────────────────
-      const todayBookings: Booking[] = (todayRes.data ?? []).map((b: any) => ({
-        id: b.id,
-        travellerId: b.traveller_id,
-        traveller: b.profiles?.full_name?.trim() || b.profiles?.email?.split('@')[0] || 'Traveller',
-        bags: b.bag_count,
-        dropOff: b.drop_off_time,
-        pickUp: b.pick_up_time,
-        total: b.total_price,
-        status: b.status,
-        created_at: b.created_at,
-      }));
-      setBookings(todayBookings);
+      if (todayRes.error) {
+        // A genuine query failure — surfaced as a real error/retry state,
+        // not left to look identical to "no bookings today".
+        console.error('[dashboard] today bookings query failed:', todayRes.error);
+        setTodayError(true);
+        setBookings([]);
+      } else {
+        const todayRows = todayRes.data ?? [];
+        const travellerIds = [...new Set(todayRows.map((b: any) => b.traveller_id).filter(Boolean))];
+
+        // Separate lookup instead of an embedded join — see the select()
+        // comment above for why the embed can't be used here.
+        let profilesById: Record<string, { full_name?: string; email?: string }> = {};
+        if (travellerIds.length > 0) {
+          const { data: travellerProfiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', travellerIds);
+          profilesById = Object.fromEntries((travellerProfiles ?? []).map((p: any) => [p.id, p]));
+        }
+
+        const todayBookings: Booking[] = todayRows.map((b: any) => {
+          const profile = profilesById[b.traveller_id];
+          return {
+            id: b.id,
+            travellerId: b.traveller_id,
+            traveller: profile?.full_name?.trim() || profile?.email?.split('@')[0] || 'Traveller',
+            bags: b.bag_count,
+            dropOff: b.drop_off_time,
+            pickUp: b.pick_up_time,
+            total: b.total_price,
+            status: b.status,
+            created_at: b.created_at,
+          };
+        });
+        setBookings(todayBookings);
+      }
 
       // ── 4. Monthly stats ─────────────────────────────────────────────────
       const monthBookings = monthRes.data ?? [];
@@ -542,6 +577,20 @@ export default function Dashboard() {
                 <View style={{ width: 60, height: 28, borderRadius: 8, backgroundColor: '#EDEDEB' }} />
               </View>
             ))}
+          </View>
+        ) : todayError ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyEmoji}>⚠️</Text>
+            <Text style={styles.emptyTitle}>Couldn't load today's bookings</Text>
+            <Text style={styles.emptySub}>Something went wrong loading this. Please try again.</Text>
+            <TouchableOpacity
+              onPress={loadDashboard}
+              // @ts-ignore
+              onClick={loadDashboard}
+              style={{ marginTop: 14, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, backgroundColor: Colors.primary }}
+            >
+              <Text style={{ color: Colors.white, fontWeight: '700' }}>Try again</Text>
+            </TouchableOpacity>
           </View>
         ) : bookings.length === 0 ? (
           <View style={styles.emptyBox}>
