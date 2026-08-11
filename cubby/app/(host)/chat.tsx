@@ -36,9 +36,22 @@ export default function HostChat() {
   // conversationId re-runs init() (and its cleanup, tearing down the old
   // realtime subscription) whenever the route actually points at a
   // different conversation.
+  //
+  // FAT-018: travellerId/bookingId were left out of that reset — init()
+  // only ever overwrote them once its async conversation lookup resolved,
+  // never cleared them first. The header name (a route param) updates
+  // instantly on switch, but "View profile" used this stale state, so it
+  // could stay pointing at the *previous* conversation's traveller for the
+  // brief window before init() finished — tap it then and it opens the
+  // wrong person. Clearing them here means the button (already guarded by
+  // `!!travellerId && !!bookingId`) simply disappears until the correct
+  // ids for the current conversation load, instead of staying tappable
+  // with the wrong ones.
   useEffect(() => {
     setMessages([]);
     setLoading(true);
+    setTravellerId(null);
+    setBookingId(null);
     init();
     return () => { channelRef.current?.unsubscribe(); };
   }, [conversationId]);
