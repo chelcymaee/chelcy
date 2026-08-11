@@ -128,7 +128,12 @@ export default function Chat() {
         filter: `conversation_id=eq.${convId}`,
       }, (payload: any) => {
         const m = payload.new;
-        setMessages(prev => [...prev, {
+        // FAT-017: send() reloads the full message list right after
+        // inserting, so this realtime INSERT for that same row can arrive
+        // afterward and append a second copy. Skip if a message with this
+        // exact id is already in state — never skips a genuinely new id.
+        const incomingId = m.id;
+        setMessages(prev => prev.some(existing => existing.id === incomingId) ? prev : [...prev, {
           id: m.id,
           body: m.body,
           fromMe: m.sender_id === userId,
