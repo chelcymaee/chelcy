@@ -998,6 +998,14 @@ $$;
 -- ADMIN_SECRET pattern for this function specifically, per the Phase 1
 -- decision. No service-role key or admin secret is ever sent to or stored
 -- in the client for this to work.
+--
+-- Financial-integrity addition: a refund also voids out any payout still
+-- sitting at 'pending_manual' — without this, a booking that was completed
+-- (host_payout_amount set) and then refunded would still read as owed to
+-- the host in a manual EFT pass, even though the traveller was refunded.
+-- Only touches payout_status when it's still 'pending_manual'; leaves
+-- 'paid'/'voided_refunded'/NULL alone so this can never un-pay or
+-- re-flag a payout that already moved past that state.
 CREATE OR REPLACE FUNCTION mark_refunded(p_booking_id UUID, p_refund_reference TEXT DEFAULT NULL)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -1016,7 +1024,8 @@ BEGIN
   UPDATE bookings b
   SET refund_status = 'refunded',
       refunded_at = now(),
-      refund_reference = p_refund_reference
+      refund_reference = p_refund_reference,
+      payout_status = CASE WHEN b.payout_status = 'pending_manual' THEN 'voided_refunded' ELSE b.payout_status END
   WHERE b.id = p_booking_id
     AND b.refund_status = 'pending_manual'
   RETURNING * INTO v_booking;
@@ -1204,6 +1213,160 @@ GRANT EXECUTE ON FUNCTION confirm_booking_payment(UUID, TEXT, TEXT) TO service_r
 -- display reaches 'ended'. None of this makes the client-side call the
 -- authority — every RPC re-validates its own guard server-side regardless
 -- of what the client believed was true when it called.
+
+-- -------------------------------------------------------------------------
+-- Host earnings/payout financial integrity — pre-beta hardening
+-- -------------------------------------------------------------------------
+--
+-- Business rule (locked): the host's 70% commission applies only to the
+-- base storage price, before Cubby's traveller service fee. Traveller pays
+-- base + fee; host earns 70% of base; Cubby earns the remaining 30% of
+-- base plus 100% of the fee. Example: base R150, fee R15, traveller pays
+-- R165, host earns R105, Cubby earns R60.
+--
+-- Prior to this, only the combined total_price was stored — the base/fee
+-- split was computed client-side in booking.tsx and discarded after
+-- booking creation, making the correct split unrecoverable later and,
+-- combined with the grants below being wide open, letting a client
+-- calculate its own commission from the full traveller payment (including
+-- Cubby's fee) rather than from the base price alone.
+--
+-- Snapshotted at booking creation so a later host price change never
+-- retroactively changes what an existing booking owes.
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS base_storage_amount INTEGER,
+  ADD COLUMN IF NOT EXISTS traveller_service_fee INTEGER;
+
+-- status/payment_provider defaults — every booking starts in exactly the
+-- same place regardless of what an INSERT does or doesn't specify, once
+-- both columns are removed from the client INSERT grant below.
+ALTER TABLE bookings
+  ALTER COLUMN status SET DEFAULT 'pending_payment',
+  ALTER COLUMN payment_provider SET DEFAULT 'paygate';
+
+-- Live pg_policies + information_schema.role_table_grants /
+-- role_column_grants queries against production (2026-08-11) confirmed:
+-- (a) `authenticated` holds full table-level INSERT/UPDATE/etc. on
+--     bookings (the Supabase bootstrap's blanket grant), and
+-- (b) `authenticated` also independently holds an explicit column-level
+--     INSERT and UPDATE grant on every single column.
+-- Both layers authorize independently — revoking only one leaves the
+-- other still granting full access, so both must be stripped before the
+-- narrower GRANTs below take effect.
+REVOKE INSERT, UPDATE ON public.bookings FROM authenticated;
+
+REVOKE INSERT (
+  id, host_id, traveller_id, drop_off_date, drop_off_time, pick_up_date, pick_up_time,
+  bag_count, total_price, status, pin_code, created_at, checkout_id, host_payout_amount,
+  cubby_amount, payout_status, payout_id, payment_provider, payment_reference, paid_at,
+  failure_reason, completed_at, host_response_deadline, refund_status, refund_requested_at,
+  refunded_at, refund_reference, declined_at, expired_at, host_responded_at,
+  response_time_minutes, paygate_pay_request_id, base_storage_amount, traveller_service_fee
+) ON public.bookings FROM authenticated;
+
+REVOKE UPDATE (
+  id, host_id, traveller_id, drop_off_date, drop_off_time, pick_up_date, pick_up_time,
+  bag_count, total_price, status, pin_code, created_at, checkout_id, host_payout_amount,
+  cubby_amount, payout_status, payout_id, payment_provider, payment_reference, paid_at,
+  failure_reason, completed_at, host_response_deadline, refund_status, refund_requested_at,
+  refunded_at, refund_reference, declined_at, expired_at, host_responded_at,
+  response_time_minutes, paygate_pay_request_id, base_storage_amount, traveller_service_fee
+) ON public.bookings FROM authenticated;
+
+-- INSERT: exactly the columns booking.tsx's insert already uses, plus the
+-- two new snapshot fields. status/payment_provider deliberately excluded —
+-- the DB defaults above set them; a client can no longer INSERT a
+-- pre-confirmed booking or choose an arbitrary payment_provider.
+GRANT INSERT (
+  host_id, traveller_id, drop_off_date, drop_off_time, pick_up_date, pick_up_time,
+  bag_count, total_price, base_storage_amount, traveller_service_fee, pin_code
+) ON public.bookings TO authenticated;
+
+-- UPDATE: deliberately no GRANT at all. Every legitimate transition —
+-- status changes included — now goes through a SECURITY DEFINER RPC
+-- (accept_booking, decline_booking, cancel_awaiting_booking,
+-- confirm_booking_payment, mark_refunded, and the two new RPCs directly
+-- below) rather than a raw column write. This closes the gap where a
+-- client that owned a row (satisfying RLS) could previously write any
+-- status string to it directly — including self-confirming a
+-- pending_payment booking without ever paying, or a host self-completing
+-- a booking without going through complete-booking.
+--
+-- service_role is a separate Postgres role and is entirely unaffected by
+-- every REVOKE/GRANT above — Edge Functions using the service-role key
+-- keep full read/write access to every column.
+
+-- respond_to_pending_booking(p_booking_id, p_decision) — replaces the
+-- legacy raw `.update({status: newStatus})` host accept/decline path in
+-- app/(host)/dashboard.tsx and app/(host)/requests.tsx (the 'pending'
+-- flow, distinct from accept_booking/decline_booking's
+-- 'awaiting_host_confirmation' flow above). Re-validates ownership and
+-- current status server-side — a raw client write could previously set
+-- any status value regardless of the row's actual current status.
+CREATE OR REPLACE FUNCTION respond_to_pending_booking(p_booking_id UUID, p_decision TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_booking bookings;
+BEGIN
+  IF p_decision NOT IN ('confirmed', 'cancelled') THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'invalid_decision');
+  END IF;
+
+  UPDATE bookings b
+  SET status = p_decision,
+      host_responded_at = now(),
+      response_time_minutes = GREATEST(0, EXTRACT(EPOCH FROM (now() - b.created_at)) / 60)::int
+  WHERE b.id = p_booking_id
+    AND b.status = 'pending'
+    AND b.host_id IN (
+      SELECT id FROM hosts WHERE user_id = auth.uid() OR assigned_user_id = auth.uid()
+    )
+  RETURNING * INTO v_booking;
+
+  IF FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'booking', to_jsonb(v_booking));
+  END IF;
+
+  RETURN jsonb_build_object('ok', false, 'reason', 'not_found_or_not_pending');
+END;
+$$;
+REVOKE ALL ON FUNCTION respond_to_pending_booking(UUID, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION respond_to_pending_booking(UUID, TEXT) TO authenticated;
+
+-- cancel_own_booking(p_booking_id) — replaces the legacy raw
+-- `.update({status:'cancelled'})` traveller-cancellation path in
+-- app/(traveller)/bookings.tsx, which had no current-status guard at all
+-- (could previously cancel a completed booking). Refuses once a booking
+-- is already completed/cancelled/declined.
+CREATE OR REPLACE FUNCTION cancel_own_booking(p_booking_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_booking bookings;
+BEGIN
+  UPDATE bookings b
+  SET status = 'cancelled'
+  WHERE b.id = p_booking_id
+    AND b.traveller_id = auth.uid()
+    AND b.status NOT IN ('completed', 'cancelled', 'declined')
+  RETURNING * INTO v_booking;
+
+  IF FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'booking', to_jsonb(v_booking));
+  END IF;
+
+  RETURN jsonb_build_object('ok', false, 'reason', 'not_found_or_not_cancellable');
+END;
+$$;
+REVOKE ALL ON FUNCTION cancel_own_booking(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION cancel_own_booking(UUID) TO authenticated;
 
 -- -------------------------------------------------------------------------
 -- Admin authentication hardening — server-side PIN + session tokens

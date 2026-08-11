@@ -128,14 +128,22 @@ export default function Bookings() {
     }
   }
 
+  // Legacy direct-write path for pending/confirmed bookings, converted to
+  // the cancel_own_booking RPC — see PR notes: a raw `.update()` here had
+  // no current-status guard at all (could "cancel" an already-completed
+  // booking), and financial-integrity hardening removed the client's
+  // direct UPDATE grant on bookings entirely.
   async function cancelBooking(bookingId: string) {
     setCancellingId(bookingId);
     try {
+      let rpcSucceeded = true;
       if (isSupabaseConfigured) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId).eq('traveller_id', user.id);
+        const { data: result, error } = await supabase.rpc('cancel_own_booking', { p_booking_id: bookingId });
 
+        if (error) {
+          showToast("Couldn't reach the server — please try again.");
+          rpcSucceeded = false;
+        } else if (result?.ok) {
           // Notify the host that the traveller cancelled
           const booking = bookings.find(b => b.id === bookingId);
           const hostUserId = booking?.hosts?.assigned_user_id ?? booking?.hosts?.user_id;
@@ -148,18 +156,29 @@ export default function Bookings() {
               relatedBookingId: bookingId,
             }).catch(() => {});
           }
+        } else {
+          showToast(
+            result?.reason === 'not_found_or_not_cancellable'
+              ? 'This booking can no longer be cancelled.'
+              : 'Could not cancel this booking. Please try again.'
+          );
+          rpcSucceeded = false;
         }
       }
-      // Update AsyncStorage too
-      const raw = await AsyncStorage.getItem('cubby_bookings');
-      if (raw) {
-        const all = JSON.parse(raw).map((b: any) =>
-          b.id === bookingId ? { ...b, status: 'cancelled' } : b
-        );
-        await AsyncStorage.setItem('cubby_bookings', JSON.stringify(all));
+      // Update AsyncStorage too — only once the real cancellation (if any) succeeded
+      if (rpcSucceeded) {
+        const raw = await AsyncStorage.getItem('cubby_bookings');
+        if (raw) {
+          const all = JSON.parse(raw).map((b: any) =>
+            b.id === bookingId ? { ...b, status: 'cancelled' } : b
+          );
+          await AsyncStorage.setItem('cubby_bookings', JSON.stringify(all));
+        }
       }
-      await loadBookings();
     } finally {
+      // Always refetch — never assume the requested transition succeeded
+      // (or failed) from the client's own guess about what happened.
+      await loadBookings();
       setCancellingId(null);
       setConfirmCancelId(null);
     }

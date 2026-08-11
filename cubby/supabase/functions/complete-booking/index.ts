@@ -112,7 +112,7 @@ serve(async (req) => {
 
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('id, total_price, host_id, traveller_id, status, payment_provider')
+      .select('id, total_price, base_storage_amount, traveller_service_fee, bag_count, host_id, traveller_id, status, payment_provider')
       .eq('id', bookingId)
       .single();
 
@@ -125,7 +125,7 @@ serve(async (req) => {
 
     const { data: hostRow } = await supabase
       .from('hosts')
-      .select('assigned_user_id, user_id')
+      .select('assigned_user_id, user_id, price_per_bag_per_day')
       .eq('id', booking.host_id)
       .single();
 
@@ -144,10 +144,60 @@ serve(async (req) => {
       );
     }
 
-    // Calculate 70/30 split
+    // Price-integrity guard: only runs when this booking actually has a
+    // base/fee snapshot (i.e. was created after the financial-integrity
+    // migration). A pre-migration booking has no snapshot to verify against
+    // — it falls through to the legacy total_price-based split below
+    // unchecked, same behavior as before this change, rather than being
+    // permanently blocked from ever completing.
+    //
+    // When a snapshot exists, recompute the expected base/fee/total from
+    // the host's own current listing price and this booking's bag_count,
+    // and compare — in integer cents, exact equality — against what's
+    // stored. Prices in this app are always whole Rand (no cents precision
+    // anywhere in the schema), so cents conversion is exact and no
+    // rounding tolerance is needed. This is the second of two checks
+    // (paygate-initiate runs the same check before payment is even
+    // initiated); this one exists so a booking that somehow reached
+    // 'completed' with a tampered/mismatched price still can't produce a
+    // payout calculated from the wrong numbers.
+    const hasSnapshot = booking.base_storage_amount != null && booking.traveller_service_fee != null;
+
+    if (hasSnapshot) {
+      const pricePerBagCents = Math.round(Number(hostRow?.price_per_bag_per_day ?? 0) * 100);
+      const expectedBaseCents = pricePerBagCents * Number(booking.bag_count);
+      const expectedFeeCents = Math.round(expectedBaseCents * 0.1);
+      const expectedTotalCents = expectedBaseCents + expectedFeeCents;
+
+      const storedBaseCents = Math.round(Number(booking.base_storage_amount) * 100);
+      const storedFeeCents = Math.round(Number(booking.traveller_service_fee) * 100);
+      const storedTotalCents = Math.round(Number(booking.total_price) * 100);
+
+      if (
+        storedBaseCents !== expectedBaseCents ||
+        storedFeeCents !== expectedFeeCents ||
+        storedTotalCents !== expectedTotalCents
+      ) {
+        console.error('[complete-booking] price integrity check failed', {
+          bookingId, storedBaseCents, storedFeeCents, storedTotalCents,
+          expectedBaseCents, expectedFeeCents, expectedTotalCents,
+        });
+        return new Response(
+          JSON.stringify({ error: 'Booking price could not be verified', code: 'PRICE_MISMATCH' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    }
+
+    // Host's 70% commission applies to the base storage price only — the
+    // traveller's separate service fee belongs entirely to Cubby. Cubby's
+    // share is derived as the remainder (total − host) rather than an
+    // independently-rounded 30%, so the two always reconcile exactly to
+    // total_price regardless of rounding.
     const totalPrice = Number(booking.total_price);
-    const hostAmount = Math.round(totalPrice * 0.70 * 100) / 100;
-    const cubbyAmount = Math.round(totalPrice * 0.30 * 100) / 100;
+    const baseAmount = hasSnapshot ? Number(booking.base_storage_amount) : totalPrice; // legacy fallback
+    const hostAmount = Math.round(baseAmount * 0.70 * 100) / 100;
+    const cubbyAmount = Math.round((totalPrice - hostAmount) * 100) / 100;
 
     // Mark booking completed. Payout to host is handled manually from Cubby's
     // PayFast merchant account. payout_status = 'pending_manual' signals the
