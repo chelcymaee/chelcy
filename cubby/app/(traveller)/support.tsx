@@ -61,6 +61,13 @@ export default function Support() {
   useFocusEffect(useCallback(() => { setSuccess(false); }, []));
 
   async function handleSend() {
+    // FAT-005: Btn's TouchableOpacity wires the same handler to both
+    // onPress and onClick (see src/components/Btn.tsx) — on web this can
+    // invoke handleSend twice for a single tap, and nothing here stopped
+    // a second concurrent call from also validating and inserting.
+    // Guarding locally rather than touching the shared component.
+    if (sending) return;
+
     let valid = true;
     setSubjectError('');
     setMessageError('');
