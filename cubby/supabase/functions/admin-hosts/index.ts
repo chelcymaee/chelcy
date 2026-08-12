@@ -47,7 +47,7 @@ serve(async (req) => {
         ] = await Promise.all([
           supabase.from('hosts').select('*').eq('id', hostId).single(),
           supabase.from('bookings')
-            .select('id, status, total_price, bag_count, drop_off_date, pick_up_date, created_at, traveller_id')
+            .select('id, status, total_price, base_storage_amount, host_payout_amount, bag_count, drop_off_date, pick_up_date, created_at, traveller_id')
             .eq('host_id', hostId)
             .order('created_at', { ascending: false }),
           supabase.from('hosts').select('assigned_user_id').eq('id', hostId).single(),
@@ -74,9 +74,24 @@ serve(async (req) => {
         const active = allBookings.filter((b: any) => ['confirmed', 'active'].includes(b.status));
         const upcoming = allBookings.filter((b: any) => b.status === 'pending');
 
+        // Host/Cubby split source of truth (matches hostShare() in
+        // app/(host)/dashboard.tsx, established by the PR #101 financial
+        // integrity fix): host = 70% of base storage price only, never the
+        // traveller service fee — Cubby keeps 30% of base + 100% of the fee.
+        // Prefer the locked `host_payout_amount` snapshot taken at booking
+        // completion; fall back to computing 70% of `base_storage_amount`
+        // for completed bookings that predate the snapshot column. Only for
+        // genuinely old/legacy rows missing *both* of those do we fall back
+        // to 70% of `total_price` — that fallback is financially wrong (it
+        // includes the traveller fee in the split) and should never be hit
+        // for any booking created after the PR #101 fix shipped.
         const totalRevenue = completed.reduce((s: number, b: any) => s + (b.total_price ?? 0), 0);
-        const cubbyEarnings = Math.round(totalRevenue * 0.20);
-        const hostEarnings = totalRevenue - cubbyEarnings;
+        const hostEarnings = completed.reduce((s: number, b: any) => {
+          if (b.host_payout_amount != null) return s + Number(b.host_payout_amount);
+          if (b.base_storage_amount != null) return s + Math.round(Number(b.base_storage_amount) * 0.70);
+          return s + Math.round(Number(b.total_price ?? 0) * 0.70);
+        }, 0);
+        const cubbyEarnings = totalRevenue - hostEarnings;
 
         return json({
           data: {
