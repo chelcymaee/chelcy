@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase } from '../../src/lib/supabase';
+import { useSelectedHost } from '../../src/lib/host-context';
 
 const STORAGE_KEY = 'cubby_bank_details';
 
@@ -17,53 +18,75 @@ const BRANCH_CODES: Record<string, string> = {
 };
 
 export default function BankDetails() {
+  const { selectedHostId, loading: hostContextLoading } = useSelectedHost();
   const [bank, setBank] = useState('');
   const [accountHolder, setAccountHolder] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [branchCode, setBranchCode] = useState('');
   const [accountType, setAccountType] = useState('Cheque / Current');
   const [saved, setSaved] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    async function loadBankDetails() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: hostRow } = await supabase
-          .from('hosts')
-          .select('id')
-          .or(`assigned_user_id.eq.${user.id},user_id.eq.${user.id}`)
-          .maybeSingle();
-        if (hostRow) {
-          const { data } = await supabase
-            .from('host_bank_details')
-            .select('*')
-            .eq('host_id', hostRow.id)
-            .maybeSingle();
-          if (data) {
-            setBank(data.bank_name ?? '');
-            setAccountHolder(data.account_holder ?? '');
-            setAccountNumber(data.account_number ?? '');
-            setBranchCode(data.branch_code ?? '');
-            setAccountType(data.account_type ?? 'Cheque / Current');
-            setSaved(true);
-            return;
-          }
-        }
+    // Clear the previous listing's form state up front, before the new
+    // fetch starts, so switching listings can never show Listing A's bank
+    // details under Listing B's context while the new data loads.
+    setBank('');
+    setAccountHolder('');
+    setAccountNumber('');
+    setBranchCode('');
+    setAccountType('Cheque / Current');
+    setSaved(false);
+    setLoadError(false);
+    loadBankDetails();
+    // Re-runs whenever selectedHostId/hostContextLoading change, same
+    // reasoning as Dashboard/Host Profile.
+  }, [selectedHostId, hostContextLoading]);
+
+  async function loadBankDetails() {
+    if (hostContextLoading) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && selectedHostId) {
+      // Scoped to the selected listing's primary key directly — no
+      // intermediate hosts lookup needed, unlike the old
+      // .or('assigned_user_id.eq.X,user_id.eq.X').maybeSingle() query,
+      // which failed the same way .single() does once an account owns
+      // more than one listing.
+      const { data, error } = await supabase
+        .from('host_bank_details')
+        .select('*')
+        .eq('host_id', selectedHostId)
+        .maybeSingle();
+      if (error) {
+        // A genuine query failure must never look like "no bank details
+        // saved yet" — this is financial destination information.
+        console.error('[bank-details] load failed:', error);
+        setLoadError(true);
+        return;
       }
-      // Fallback to AsyncStorage
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const d = JSON.parse(stored);
-        setBank(d.bank ?? '');
-        setAccountHolder(d.accountHolder ?? '');
-        setAccountNumber(d.accountNumber ?? '');
-        setBranchCode(d.branchCode ?? '');
-        setAccountType(d.accountType ?? 'Cheque / Current');
+      if (data) {
+        setBank(data.bank_name ?? '');
+        setAccountHolder(data.account_holder ?? '');
+        setAccountNumber(data.account_number ?? '');
+        setBranchCode(data.branch_code ?? '');
+        setAccountType(data.account_type ?? 'Cheque / Current');
         setSaved(true);
       }
+      return;
     }
-    loadBankDetails();
-  }, []);
+    // Fallback to AsyncStorage (demo/offline mode, no Supabase account)
+    const stored = await AsyncStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const d = JSON.parse(stored);
+      setBank(d.bank ?? '');
+      setAccountHolder(d.accountHolder ?? '');
+      setAccountNumber(d.accountNumber ?? '');
+      setBranchCode(d.branchCode ?? '');
+      setAccountType(d.accountType ?? 'Cheque / Current');
+      setSaved(true);
+    }
+  }
 
   function selectBank(b: string) {
     setBank(b);
@@ -77,17 +100,14 @@ export default function BankDetails() {
     }
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: hostRow, error: hostError } = await supabase
-        .from('hosts')
-        .select('id')
-        .or(`assigned_user_id.eq.${user.id},user_id.eq.${user.id}`)
-        .maybeSingle();
-      if (hostError || !hostRow) {
+      if (!selectedHostId) {
         Alert.alert('Save failed', 'No host listing found for your account yet. Set up your host listing first, then add bank details.');
         return;
       }
+      // Scoped to the selected listing's primary key directly — saving
+      // Listing B's bank details must never touch Listing A's row.
       const { error } = await supabase.from('host_bank_details').upsert({
-        host_id: hostRow.id,
+        host_id: selectedHostId,
         bank_name: bank,
         account_holder: accountHolder,
         account_number: accountNumber,
@@ -117,6 +137,30 @@ export default function BankDetails() {
         </TouchableOpacity>
 
         <Text style={styles.emoji}>🏦</Text>
+
+        {loadError ? (
+          // A genuine failure to load this listing's bank details — these
+          // are financial destination details, so this must never render
+          // as a blank "Add bank account" form. Shown instead of the form
+          // entirely, not underneath it.
+          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8, textAlign: 'center' }}>
+              Couldn't load bank details
+            </Text>
+            <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 16 }}>
+              Something went wrong loading this listing's bank details. Please try again.
+            </Text>
+            <TouchableOpacity
+              onPress={loadBankDetails}
+              // @ts-ignore
+              onClick={loadBankDetails}
+              style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, backgroundColor: Colors.primary }}
+            >
+              <Text style={{ color: Colors.white, fontWeight: '700' }}>Try again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+        <>
         <Text style={styles.heading}>{saved ? 'Edit bank account' : 'Add bank account'}</Text>
         {saved && (
           <View style={styles.savedBadge}>
@@ -160,6 +204,8 @@ export default function BankDetails() {
         <TouchableOpacity style={styles.btn} onPress={handleSave} activeOpacity={0.85}>
           <Text style={styles.btnText}>Save bank details</Text>
         </TouchableOpacity>
+        </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
