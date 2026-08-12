@@ -15,7 +15,11 @@ interface HostSummary {
   max_bags: number;
   is_active: boolean;
   assigned_user_id: string | null;
-  user_id: string;
+  // Multi-listing: nullable now that a business account's 2nd+ listing has
+  // no user_id of its own (only the first listing per account can hold one
+  // — see schema.sql's UNIQUE constraint) and is linked purely via
+  // assigned_user_id instead.
+  user_id: string | null;
   rating: number;
   review_count: number;
   created_at: string;
@@ -600,6 +604,24 @@ export default function ManageHosts() {
                 +{bookings.length - 5} more — view in All Bookings
               </p>
             )}
+          </div>
+
+          {/* ── Multi-listing: add another location for this same owner ── */}
+          <div style={s.section}>
+            <p style={s.sectionLabel}>Locations</p>
+            <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 10px' }}>
+              Add another location for this same host/business account — creates a new draft listing, starts inactive until the host completes and activates it themselves.
+            </p>
+            <button
+              style={{ ...s.btn('#EFF6FF', '#2563EB', '#BFDBFE'), width: '100%' }}
+              onClick={() => {
+                const ownerId = host.assigned_user_id ?? host.user_id;
+                if (!ownerId) { flash('This listing has no linked owner account — assign one first.'); return; }
+                router.push({ pathname: '/(admin)/create-host', params: { ownerUserId: ownerId, ownerName: host.display_name ?? '' } });
+              }}
+            >
+              ➕ Add Another Listing for This Owner
+            </button>
           </div>
 
           {/* ── Danger Zone ── */}

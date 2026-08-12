@@ -1418,3 +1418,35 @@ ALTER TABLE admin_sessions ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at
   ON admin_sessions (expires_at);
+
+-- -------------------------------------------------------------------------
+-- Multi-listing support (Stage 1) — one host/business account owning
+-- multiple independent Cubby listings
+-- -------------------------------------------------------------------------
+--
+-- Minimum-migration model, chosen over making assigned_user_id canonical
+-- for all listings (that option was ruled out: it would require rewriting
+-- every RLS policy already verified live against production during the
+-- financial-integrity work, for zero functional benefit — every existing
+-- hosts row already has user_id and assigned_user_id set identically,
+-- confirmed via the only two code paths that can ever insert into hosts
+-- — admin-partner-applications and admin-hosts's 'create' action — both of
+-- which always set both fields together).
+--
+-- hosts.user_id keeps its UNIQUE constraint and stays exactly as-is for
+-- every existing listing — only the very first listing per account may
+-- ever hold a user_id. Additional listings (Stage 2's
+-- create_additional_listing admin action) get user_id = NULL,
+-- assigned_user_id = the owner's existing user id. Postgres treats
+-- multiple NULLs as non-conflicting under UNIQUE, so this doesn't weaken
+-- the constraint for real self-registrations at all.
+--
+-- No RLS changes: every relevant policy already reads
+-- `user_id = auth.uid() OR assigned_user_id = auth.uid()` as a
+-- set-returning subquery — already correct for an account owning any
+-- number of hosts rows, requiring no changes here.
+--
+-- Live-verified against production (2026-08-12): confirmed the UNIQUE
+-- constraint is unaffected, zero existing rows were touched, and every
+-- existing host still has user_id = assigned_user_id.
+ALTER TABLE hosts ALTER COLUMN user_id DROP NOT NULL;
