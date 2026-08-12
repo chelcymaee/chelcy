@@ -4,9 +4,28 @@ import { Tabs, router } from 'expo-router';
 import { Text } from 'react-native';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { HostProvider, useSelectedHost } from '../../src/lib/host-context';
 
 function Icon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return <Text style={{ fontSize: focused ? 24 : 22, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>;
+}
+
+// TEMPORARY — Stage 3.2 verification only. Proves HostProvider resolves
+// correctly for a real multi-listing account without migrating any screen
+// yet. Remove before this PR is finalized for merge.
+function DebugHostContextLogger() {
+  const { hosts, selectedHostId, selectedHost, loading, error } = useSelectedHost();
+  useEffect(() => {
+    if (loading) return;
+    console.log('[Stage 3.2 DEBUG] hosts.length =', hosts.length);
+    console.log('[Stage 3.2 DEBUG] hosts =', hosts.map(h => ({
+      id: h.id, display_name: h.display_name, user_id: h.user_id, assigned_user_id: h.assigned_user_id,
+    })));
+    console.log('[Stage 3.2 DEBUG] selectedHostId =', selectedHostId);
+    console.log('[Stage 3.2 DEBUG] selectedHost =', selectedHost?.display_name ?? null);
+    console.log('[Stage 3.2 DEBUG] error =', error);
+  }, [loading, hosts, selectedHostId, selectedHost, error]);
+  return null;
 }
 
 export default function HostLayout() {
@@ -59,33 +78,36 @@ export default function HostLayout() {
   if (!approved) return null;
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: Colors.white,
-          borderTopColor: Colors.border,
-          borderTopWidth: 1,
-          height: 84,
-          paddingBottom: 20,
-          paddingTop: 10,
-        },
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textLight,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-      }}
-    >
-      <Tabs.Screen name="dashboard" options={{ title: 'Dashboard', tabBarIcon: ({ focused }) => <Icon emoji="📊" focused={focused} /> }} />
-      <Tabs.Screen name="requests" options={{ title: 'Requests', tabBarIcon: ({ focused }) => <Icon emoji="📬" focused={focused} /> }} />
-      <Tabs.Screen name="messages" options={{ title: 'Messages', tabBarIcon: ({ focused }) => <Icon emoji="💬" focused={focused} /> }} />
-      <Tabs.Screen name="host-profile" options={{ title: 'Profile', tabBarIcon: ({ focused }) => <Icon emoji="🏠" focused={focused} /> }} />
-      <Tabs.Screen name="bank-details" options={{ href: null }} />
-      <Tabs.Screen name="chat" options={{ href: null }} />
-      <Tabs.Screen name="traveller-profile" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
-      <Tabs.Screen name="review-traveller" options={{ href: null }} />
-      <Tabs.Screen name="review-detail" options={{ href: null }} />
-      <Tabs.Screen name="reviews" options={{ href: null }} />
-    </Tabs>
+    <HostProvider>
+      <DebugHostContextLogger />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: Colors.white,
+            borderTopColor: Colors.border,
+            borderTopWidth: 1,
+            height: 84,
+            paddingBottom: 20,
+            paddingTop: 10,
+          },
+          tabBarActiveTintColor: Colors.primary,
+          tabBarInactiveTintColor: Colors.textLight,
+          tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        }}
+      >
+        <Tabs.Screen name="dashboard" options={{ title: 'Dashboard', tabBarIcon: ({ focused }) => <Icon emoji="📊" focused={focused} /> }} />
+        <Tabs.Screen name="requests" options={{ title: 'Requests', tabBarIcon: ({ focused }) => <Icon emoji="📬" focused={focused} /> }} />
+        <Tabs.Screen name="messages" options={{ title: 'Messages', tabBarIcon: ({ focused }) => <Icon emoji="💬" focused={focused} /> }} />
+        <Tabs.Screen name="host-profile" options={{ title: 'Profile', tabBarIcon: ({ focused }) => <Icon emoji="🏠" focused={focused} /> }} />
+        <Tabs.Screen name="bank-details" options={{ href: null }} />
+        <Tabs.Screen name="chat" options={{ href: null }} />
+        <Tabs.Screen name="traveller-profile" options={{ href: null }} />
+        <Tabs.Screen name="notifications" options={{ href: null }} />
+        <Tabs.Screen name="review-traveller" options={{ href: null }} />
+        <Tabs.Screen name="review-detail" options={{ href: null }} />
+        <Tabs.Screen name="reviews" options={{ href: null }} />
+      </Tabs>
+    </HostProvider>
   );
 }
