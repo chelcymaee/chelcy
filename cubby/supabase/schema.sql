@@ -618,11 +618,38 @@ CREATE POLICY "Participants can mark messages as read" ON messages
 
 DROP POLICY IF EXISTS "Hosts can manage own listing" ON hosts;
 
+-- -------------------------------------------------------------------------
+-- Multi-listing fix (2026-08-12): the UPDATE policy below only checked
+-- user_id, on the assumption documented in Fix 5 above that admin-hosts
+-- "always sets user_id and assigned_user_id to the same value together."
+-- That assumption is now false by design: the Option A multi-listing model
+-- (see the migration doc near the end of this file) deliberately leaves
+-- user_id NULL on every listing after a business's first — ownership for
+-- those is represented through assigned_user_id only.
+--
+-- Effect while this gap existed: RLS silently filtered out any UPDATE on a
+-- user_id-NULL listing to zero matching rows — no error, no exception, the
+-- client's .update() call simply succeeded while writing nothing. Confirmed
+-- live: Host Profile save + toggling is_active on a second listing both
+-- showed a success toast with no actual change. host_bank_details already
+-- had the correct dual-column check (see Fix 3, Sprint 3) — only the hosts
+-- table's own UPDATE policy had this gap.
+--
+-- DELETE has the identical gap (auth.uid() = user_id only) but is left
+-- unchanged here — logged as an inactive consistency gap, not fixed, since
+-- no client-side code calls delete on hosts (host deletion is admin-only,
+-- service-role, bypassing RLS entirely — see Fix 5 above).
 DROP POLICY IF EXISTS "Hosts can update own listing" ON hosts;
 CREATE POLICY "Hosts can update own listing" ON hosts
   FOR UPDATE
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING (
+    auth.uid() = user_id
+    OR auth.uid() = assigned_user_id
+  )
+  WITH CHECK (
+    auth.uid() = user_id
+    OR auth.uid() = assigned_user_id
+  );
 
 DROP POLICY IF EXISTS "Hosts can delete own listing" ON hosts;
 CREATE POLICY "Hosts can delete own listing" ON hosts
