@@ -85,7 +85,11 @@ const DEMO_STATS: Stats = {
 function hostShare(b: { total_price?: number | null; base_storage_amount?: number | null; host_payout_amount?: number | null }): number {
   if (b.host_payout_amount != null) return Number(b.host_payout_amount);
   const base = b.base_storage_amount ?? b.total_price ?? 0;
-  return Math.round(Number(base) * 0.70);
+  // Integer-multiply-then-divide, same convention as complete-booking's
+  // cents-based rounding — `base * 0.70` alone hits JS float imprecision
+  // (e.g. 165 * 0.70 === 115.49999999999999), which can round a
+  // legacy/projection estimate down by R1.
+  return Math.round(Number(base) * 70) / 100;
 }
 
 function isoDate(d: Date): string {
