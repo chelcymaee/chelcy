@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Alert, ActivityIndicator,
+  TouchableOpacity, Alert, ActivityIndicator, Modal,
 } from 'react-native';
 import { DashboardSkeleton } from '../../src/components/Skeleton';
 import { router, useFocusEffect } from 'expo-router';
@@ -10,6 +10,7 @@ import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
 import HostOnboardingChecklist from '../../src/components/HostOnboardingChecklist';
 import { recalculateHostResponseRate, formatResponseRate, formatResponseTime } from '../../src/lib/response-rate';
+import { useSelectedHost } from '../../src/lib/host-context';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -113,6 +114,7 @@ function currentWeekDates(): string[] {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+  const { hosts, selectedHostId, selectedHost, selectListing, loading: hostContextLoading } = useSelectedHost();
   const [stats, setStats] = useState<Stats>(DEMO_STATS);
   const [bookings, setBookings] = useState<Booking[]>(DEMO_BOOKINGS);
   const [loading, setLoading] = useState(false);
@@ -126,42 +128,77 @@ export default function Dashboard() {
   // `bookings.length === 0` so a genuine failure shows a retry state instead
   // of silently looking identical to "no bookings today".
   const [todayError, setTodayError] = useState(false);
+  // True only when the selected listing's own row failed to load — kept
+  // separate from `error` so this can hide the earnings/bookings sections
+  // entirely instead of rendering them with stale/zeroed stats. A failed
+  // financial query must never quietly present itself as R0.
+  const [hostFetchError, setHostFetchError] = useState(false);
+  const [selectorOpen, setSelectorOpen] = useState(false);
 
   useFocusEffect(useCallback(() => {
     loadDashboard();
-  }, []));
+    // Re-runs on focus AND whenever selectedHostId/hostContextLoading change
+    // while this screen stays focused (switching listings doesn't navigate
+    // away) — see useFocusEffect's own dependency-driven re-invocation.
+  }, [selectedHostId, hostContextLoading]));
 
   async function loadDashboard() {
     if (!isSupabaseConfigured) return; // keep demo data
+
+    // HostProvider itself is still resolving — wait rather than briefly
+    // treating "not loaded yet" as "not a host".
+    if (hostContextLoading) return;
+
+    // Clear all previous listing's state up front, before any fetch starts,
+    // so switching listings can never show Listing A's numbers under
+    // Listing B's name while the new data loads.
     setLoading(true);
     setError('');
     setTodayError(false);
-    try {
+    setHostFetchError(false);
+    setStats(s => ({ ...s, monthlyEarnings: 0, monthlyBookings: 0, pendingCount: 0, completedCount: 0, weeklyData: DEMO_STATS.weeklyData.map(d => ({ ...d, earnings: 0 })) }));
+    setBookings([]);
+
+    if (!selectedHostId) {
+      // No hosts row owned by this account at all — admin hasn't
+      // approved/set up this account as a host yet. Show onboarding status
+      // instead of stats for a listing that doesn't exist.
+      setLoading(false);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // ── 1. Host row ──────────────────────────────────────────────────────
-      const { data: host, error: hostErr } = await supabase
-        .from('hosts')
-        .select('id, display_name, rating, review_count, is_active, response_rate, avg_response_time_minutes, total_requests, responded_requests')
-        .eq('assigned_user_id', user.id)
-        .single();
-
-      if (hostErr || !host) {
-        // No hosts row assigned yet — admin hasn't approved/set up this account
-        // as a host. Show onboarding status instead of stats for a listing
-        // that doesn't exist.
+      if (user) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('is_host_approved')
           .eq('id', user.id)
           .maybeSingle();
         setIsHostApproved(profile?.is_host_approved ?? false);
-        setPendingHost(true);
+      }
+      setPendingHost(true);
+      return;
+    }
+
+    setPendingHost(false);
+    try {
+      // ── 1. Host row — scoped to the one selected listing by primary key.
+      // Safe to use .single() here: unlike the old .eq('assigned_user_id',
+      // user.id) lookup (which could legitimately match more than one row
+      // for a multi-listing account), `id` is the primary key, so exactly
+      // one row can ever match.
+      const { data: host, error: hostErr } = await supabase
+        .from('hosts')
+        .select('id, display_name, rating, review_count, is_active, response_rate, avg_response_time_minutes, total_requests, responded_requests')
+        .eq('id', selectedHostId)
+        .single();
+
+      if (hostErr || !host) {
+        // A genuine failure to load the selected listing's own row — never
+        // fall through to rendering the earnings/bookings sections with
+        // stale or zeroed stats. Surfaced as an explicit retry state.
+        console.error('[dashboard] selected host fetch failed:', hostErr);
+        setHostFetchError(true);
         return;
       }
 
-      setPendingHost(false);
       const hostId = host.id;
       const today = isoDate(new Date());
       const now = new Date();
@@ -218,6 +255,22 @@ export default function Dashboard() {
           .eq('host_id', hostId)
           .eq('status', 'completed'),
       ]);
+
+      // Earnings/counts queries failing must never quietly collapse to R0/
+      // zero counts via `?? []`/`?? 0` — that's the exact "failed query
+      // masquerading as an empty state" pattern already fixed once on this
+      // Dashboard (the FAT financial-integrity work). Treat any of these
+      // failing as a full load failure with a visible retry, same as the
+      // host row fetch above. todayRes gets its own narrower todayError
+      // state below since it only affects the booking-list section, not
+      // money.
+      if (monthRes.error || weekRes.error || pendingRes.error || completedRes.error) {
+        console.error('[dashboard] earnings/count query failed:', {
+          monthErr: monthRes.error, weekErr: weekRes.error, pendingErr: pendingRes.error, completedErr: completedRes.error,
+        });
+        setHostFetchError(true);
+        return;
+      }
 
       // ── 3. Process today's bookings ──────────────────────────────────────
       if (todayRes.error) {
@@ -301,13 +354,21 @@ export default function Dashboard() {
   }
 
   async function toggleAvailability() {
-    if (!isSupabaseConfigured || togglingStatus) return;
+    if (!isSupabaseConfigured || togglingStatus || !selectedHostId) return;
     setTogglingStatus(true);
     try {
       const next = !stats.isActive;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from('hosts').update({ is_active: next }).eq('assigned_user_id', user.id);
+      // Scoped to the specific selected listing's primary key. The old
+      // `.eq('assigned_user_id', user.id)` matched every listing owned by
+      // this account — Postgres UPDATE affects *all* matching rows, so
+      // toggling availability on one listing was silently also flipping
+      // is_active on every other listing the same account owns.
+      const { error: updateErr } = await supabase.from('hosts').update({ is_active: next }).eq('id', selectedHostId);
+      if (updateErr) {
+        console.error('[dashboard] toggleAvailability failed:', updateErr);
+        Alert.alert('Error', 'Could not update availability. Please try again.');
+        return;
+      }
       setStats(s => ({ ...s, isActive: next }));
     } finally {
       setTogglingStatus(false);
@@ -402,6 +463,20 @@ export default function Dashboard() {
           <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>Welcome back 👋</Text>
             <Text style={styles.heading}>Host Dashboard</Text>
+            {/* Only shown for accounts with more than one listing — a
+                single-listing host sees nothing extra here at all. */}
+            {!hostContextLoading && hosts.length > 1 && (
+              <TouchableOpacity
+                style={styles.listingChip}
+                onPress={() => setSelectorOpen(true)}
+                // @ts-ignore
+                onClick={() => setSelectorOpen(true)}
+              >
+                <Text style={styles.listingChipText}>
+                  📍 {selectedHost?.display_name ?? 'Listing'} ▾
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <NotificationBell variant="host" />
@@ -416,6 +491,36 @@ export default function Dashboard() {
           </View>
         </View>
 
+        {/* ── Listing selector modal ─────────────────────────────────────── */}
+        <Modal visible={selectorOpen} transparent animationType="fade" onRequestClose={() => setSelectorOpen(false)}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setSelectorOpen(false)}
+            // @ts-ignore
+            onClick={() => setSelectorOpen(false)}
+          >
+            <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+              <Text style={styles.modalTitle}>Switch listing</Text>
+              {hosts.map(h => (
+                <TouchableOpacity
+                  key={h.id}
+                  style={styles.modalRow}
+                  onPress={() => { selectListing(h.id); setSelectorOpen(false); }}
+                  // @ts-ignore
+                  onClick={() => { selectListing(h.id); setSelectorOpen(false); }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalRowName}>{h.display_name ?? 'Listing'}</Text>
+                    {!!h.location_name && <Text style={styles.modalRowLocation}>{h.location_name}</Text>}
+                  </View>
+                  {h.id === selectedHostId && <Text style={styles.modalCheck}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
         {/* ── Error banner ─────────────────────────────────────────────────── */}
         {!!error && (
           <View style={styles.errorBanner}>
@@ -425,6 +530,23 @@ export default function Dashboard() {
 
         {!loading && pendingHost ? (
           <HostOnboardingChecklist isApproved={isHostApproved} />
+        ) : !loading && hostFetchError ? (
+          // A financial/listing query failed — shown instead of the
+          // earnings/bookings sections below, never underneath them with
+          // stale or zeroed numbers.
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyEmoji}>⚠️</Text>
+            <Text style={styles.emptyTitle}>Couldn't load this listing</Text>
+            <Text style={styles.emptySub}>Something went wrong loading your dashboard for this listing. Please try again.</Text>
+            <TouchableOpacity
+              onPress={loadDashboard}
+              // @ts-ignore
+              onClick={loadDashboard}
+              style={{ marginTop: 14, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, backgroundColor: Colors.primary }}
+            >
+              <Text style={{ color: Colors.white, fontWeight: '700' }}>Try again</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
         <>
         {/* ── Earnings card ─────────────────────────────────────────────────── */}
@@ -755,6 +877,26 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
   },
   switchBtnText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+
+  listingChip: { marginTop: 6, alignSelf: 'flex-start' },
+  listingChipText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
+
+  modalBackdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  modalCard: {
+    backgroundColor: Colors.white, borderRadius: 18, padding: 16,
+    width: '100%', maxWidth: 360,
+  },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginBottom: 10 },
+  modalRow: {
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
+    paddingHorizontal: 8, borderRadius: 10,
+  },
+  modalRowName: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+  modalRowLocation: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  modalCheck: { fontSize: 16, fontWeight: '700', color: Colors.primary },
 
   errorBanner: {
     backgroundColor: Colors.errorBg, borderRadius: 12, marginHorizontal: 20,
