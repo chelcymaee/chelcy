@@ -8,6 +8,7 @@ import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { computeTravellerBadges, TrustBadge } from '../../src/lib/trust-badges';
 import Avatar from '../../src/components/Avatar';
+import { useSelectedHost } from '../../src/lib/host-context';
 
 interface TravellerData {
   fullName: string;
@@ -50,6 +51,12 @@ export default function TravellerProfileForHost() {
     returnTo?: string;
   }>();
 
+  // Booking-specific, not selected-listing-specific: this screen is
+  // addressed by a specific bookingId, and a host should be able to open
+  // it from either listing regardless of what's currently selected on
+  // Dashboard — see load() below for the ownership check that uses this.
+  const { hosts, loading: hostContextLoading } = useSelectedHost();
+
   const [traveller, setTraveller] = useState<TravellerData | null>(null);
   const [travellerBadges, setTravellerBadges] = useState<TrustBadge[]>([]);
   const [booking, setBooking] = useState<BookingContext | null>(null);
@@ -70,7 +77,10 @@ export default function TravellerProfileForHost() {
     setError('');
     setLoading(true);
     load();
-  }, [travellerId, bookingId]);
+    // hostContextLoading added so a mount that races ahead of HostProvider
+    // resolving retries once the owned-listings array is ready — the
+    // travellerId/bookingId re-fetch behavior (FAT-018) is unchanged.
+  }, [travellerId, bookingId, hostContextLoading]);
 
   async function load() {
     if (!isSupabaseConfigured || !travellerId || !bookingId) {
@@ -79,29 +89,37 @@ export default function TravellerProfileForHost() {
       return;
     }
 
+    // HostProvider itself still resolving — wait rather than briefly
+    // treating "not loaded yet" as "no permission".
+    if (hostContextLoading) return;
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace('/(host)/requests'); return; }
 
-      // Get this host's listing id
-      const { data: hostRow } = await supabase
-        .from('hosts')
-        .select('id')
-        .eq('assigned_user_id', user.id)
-        .single();
-
-      if (!hostRow) { setError('Host profile not found.'); setLoading(false); return; }
-
-      // Security check: verify a booking exists between this host and this traveller
+      // Resolve the booking directly by id+traveller — not scoped to
+      // whichever listing happens to be selected on Dashboard, since this
+      // screen is addressed by a specific booking and a host should be
+      // able to open it from either of their listings.
       const { data: bookingRow, error: bookingErr } = await supabase
         .from('bookings')
-        .select('id, traveller_id, drop_off_date, drop_off_time, pick_up_time, bag_count, status')
+        .select('id, host_id, traveller_id, drop_off_date, drop_off_time, pick_up_time, bag_count, status')
         .eq('id', bookingId)
-        .eq('host_id', hostRow.id)
         .eq('traveller_id', travellerId)
         .single();
 
       if (bookingErr || !bookingRow) {
+        setError('You do not have permission to view this profile.');
+        setLoading(false);
+        return;
+      }
+
+      // Security check: verify the booking's host_id is one of THIS
+      // user's owned listings (any of them, not just the currently
+      // selected one) — HostProvider's hosts array, already verified
+      // against auth.uid(), is the source of truth for ownership here,
+      // same as every other migrated screen.
+      if (!hosts.some(h => h.id === bookingRow.host_id)) {
         setError('You do not have permission to view this profile.');
         setLoading(false);
         return;
