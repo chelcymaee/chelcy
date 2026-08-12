@@ -31,9 +31,13 @@ serve(async (req) => {
   try {
     // Bookings + host display name, used by both the All Bookings list and
     // the Revenue screen (which filters to status=completed client-side).
+    // base_storage_amount/host_payout_amount added so Revenue can compute
+    // the real host/Cubby split (see revenue.tsx) instead of a flat 70/30
+    // of total_price — purely additive, All Bookings ignores the new
+    // fields.
     const { data: bookings, error } = await supabase
       .from('bookings')
-      .select('id, status, total_price, bag_count, drop_off_date, created_at, host_id, traveller_id, hosts(display_name)')
+      .select('id, status, total_price, base_storage_amount, host_payout_amount, bag_count, drop_off_date, created_at, host_id, traveller_id, hosts(display_name)')
       .order('created_at', { ascending: false });
     if (error) throw error;
 
@@ -41,6 +45,8 @@ serve(async (req) => {
       id: b.id,
       status: b.status,
       total_price: b.total_price,
+      base_storage_amount: b.base_storage_amount,
+      host_payout_amount: b.host_payout_amount,
       bag_count: b.bag_count,
       drop_off_date: b.drop_off_date,
       created_at: b.created_at,
