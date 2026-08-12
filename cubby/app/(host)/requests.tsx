@@ -11,6 +11,7 @@ import NotificationBell from '../../src/components/NotificationBell';
 import Avatar from '../../src/components/Avatar';
 import { recalculateHostResponseRate } from '../../src/lib/response-rate';
 import { sendNotification } from '../../src/lib/notification-service';
+import { useSelectedHost } from '../../src/lib/host-context';
 
 // Booking statuses used across Cubby:
 //   pending_payment            — created, awaiting traveller payment via PayFast
@@ -133,9 +134,14 @@ const DEMO_REQUESTS: HostBooking[] = [
 ];
 
 export default function Requests() {
+  const { selectedHostId, loading: hostContextLoading } = useSelectedHost();
   const [bookings, setBookings] = useState<HostBooking[]>([]);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  // True only when the bookings query itself failed — kept separate from
+  // bookings.length === 0 so a genuine failure shows a retry state instead
+  // of looking identical to "no booking requests yet".
+  const [loadError, setLoadError] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
   const [confirmDeclineId, setConfirmDeclineId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
@@ -146,7 +152,9 @@ export default function Requests() {
 
   useFocusEffect(useCallback(() => {
     loadBookings();
-  }, []));
+    // Re-runs on focus AND whenever selectedHostId/hostContextLoading
+    // change while this screen stays focused, same reasoning as Dashboard.
+  }, [selectedHostId, hostContextLoading]));
 
   useEffect(() => {
     const interval = setInterval(() => setNowTick(Date.now()), 1000);
@@ -159,26 +167,32 @@ export default function Requests() {
   }
 
   async function loadBookings() {
+    // HostProvider itself still resolving — wait rather than briefly
+    // treating "not loaded yet" as "no listing".
+    if (hostContextLoading) return;
+
+    // Clear all previous listing's state up front, before any fetch
+    // starts, so switching listings can never show Listing A's bookings
+    // under Listing B's context while the new data loads.
     setLoading(true);
+    setLoadError(false);
+    setBookings([]);
+    setReviewedBookingIds(new Set());
     try {
       if (isSupabaseConfigured) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // Get this host's listing id
-          const { data: hostRow } = await supabase
-            .from('hosts')
-            .select('id')
-            .eq('assigned_user_id', user.id)
-            .single();
+        if (!selectedHostId) {
+          // No hosts row owned by this account at all — legitimate empty
+          // state, not a query failure.
+          return;
+        }
 
-          if (!hostRow) {
-            // Host profile not set up yet — show empty state
-            setBookings([]);
-            return;
-          }
-
-          // Fetch bookings for this host, join traveller profile for name/email
-          const { data, error } = await supabase
+        // Fetch bookings for the selected listing, join traveller profile
+        // for name/email. selectedHostId already comes from HostProvider's
+        // verified owned-listings resolution — no separate ambiguous
+        // .eq('assigned_user_id', user.id).single() lookup needed here
+        // anymore (that could legitimately match more than one row for a
+        // multi-listing account, and silently returned "no requests yet").
+        const { data, error } = await supabase
             .from('bookings')
             .select(`
               id,
@@ -194,11 +208,18 @@ export default function Requests() {
               created_at,
               host_response_deadline
             `)
-            .eq('host_id', hostRow.id)
+            .eq('host_id', selectedHostId)
             .in('status', ['pending_payment', 'pending', 'awaiting_host_confirmation', 'confirmed', 'active', 'completed', 'declined', 'expired'])
             .order('created_at', { ascending: false });
 
-          if (error) { showToast('Could not load bookings.', true); return; }
+          if (error) {
+            // A genuine query failure — never render as "No booking
+            // requests yet".
+            console.error('[requests] bookings query failed:', error);
+            showToast('Could not load bookings.', true);
+            setLoadError(true);
+            return;
+          }
 
           // Fetch traveller names separately (avoids RLS join issue on profiles)
           const travellerIds = [...new Set((data ?? []).map((b: any) => b.traveller_id).filter(Boolean))];
@@ -240,7 +261,6 @@ export default function Requests() {
             setReviewedBookingIds(new Set((reviewed ?? []).map((r: any) => r.booking_id)));
           }
           return;
-        }
       }
       // Demo fallback
       setBookings(DEMO_REQUESTS);
@@ -420,6 +440,22 @@ export default function Requests() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      ) : loadError ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>⚠️</Text>
+          <Text style={styles.emptyTitle}>Couldn't load requests</Text>
+          <Text style={styles.emptySub}>
+            Something went wrong loading your booking requests. Please try again.
+          </Text>
+          <TouchableOpacity
+            onPress={loadBookings}
+            // @ts-ignore
+            onClick={loadBookings}
+            style={{ marginTop: 14, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, backgroundColor: Colors.primary }}
+          >
+            <Text style={{ color: Colors.white, fontWeight: '700' }}>Try again</Text>
+          </TouchableOpacity>
         </View>
       ) : bookings.length === 0 ? (
         <View style={styles.empty}>
