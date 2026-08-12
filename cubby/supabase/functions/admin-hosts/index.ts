@@ -88,8 +88,12 @@ serve(async (req) => {
         const totalRevenue = completed.reduce((s: number, b: any) => s + (b.total_price ?? 0), 0);
         const hostEarnings = completed.reduce((s: number, b: any) => {
           if (b.host_payout_amount != null) return s + Number(b.host_payout_amount);
-          if (b.base_storage_amount != null) return s + Math.round(Number(b.base_storage_amount) * 0.70);
-          return s + Math.round(Number(b.total_price ?? 0) * 0.70);
+          // Integer-multiply-then-divide, same convention as
+          // complete-booking's cents-based rounding — `x * 0.70` alone
+          // hits JS float imprecision (165 * 0.70 === 115.49999999999999),
+          // which can round a legacy fallback estimate down by R1.
+          if (b.base_storage_amount != null) return s + Math.round(Number(b.base_storage_amount) * 70) / 100;
+          return s + Math.round(Number(b.total_price ?? 0) * 70) / 100;
         }, 0);
         const cubbyEarnings = totalRevenue - hostEarnings;
 
