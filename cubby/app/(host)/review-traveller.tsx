@@ -7,6 +7,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { submitTravellerReview } from '../../src/lib/review-service';
+import { useSelectedHost } from '../../src/lib/host-context';
 
 const CATEGORIES = [
   { key: 'rating_respectful',    label: 'Respectful',        emoji: '🤝' },
@@ -34,6 +35,13 @@ export default function ReviewTraveller() {
   const { travellerId, travellerName, bookingId } = useLocalSearchParams<{
     travellerId: string; travellerName: string; bookingId: string;
   }>();
+
+  // Booking-specific, not selected-listing-specific: a host can open this
+  // from either listing's Reviews tab, and the write below must always be
+  // stamped with the booking's own host_id — never merely whichever
+  // listing happens to be selected on Dashboard. Same pattern as
+  // traveller-profile.tsx / review-detail.tsx.
+  const { hosts, loading: hostContextLoading } = useSelectedHost();
 
   const [ratings, setRatings] = useState<Record<string, number>>({
     rating_respectful: 0,
@@ -86,15 +94,37 @@ export default function ReviewTraveller() {
       if (authErr) console.error('[ReviewTraveller] auth error:', authErr);
       if (!user) { setError('Not signed in.'); return; }
 
-      const { data: hostRow, error: hostErr } = await supabase
-        .from('hosts').select('id, display_name').eq('assigned_user_id', user.id).single();
-      if (hostErr) console.error('[ReviewTraveller] host lookup error:', hostErr);
+      if (hostContextLoading) {
+        setError('Still loading your listings — please try again in a moment.');
+        return;
+      }
+
+      // Resolve the booking's own host_id directly — not "whichever
+      // listing this account's ambiguous single-row lookup happened to
+      // return" (that lookup threw PGRST116 for any multi-listing
+      // account, and even single-listing it never actually verified the
+      // booking belonged to that host). A review must always be stamped
+      // with the listing the booking actually happened at.
+      const { data: bookingRow, error: bookingErr } = await supabase
+        .from('bookings')
+        .select('id, host_id')
+        .eq('id', bookingId)
+        .eq('traveller_id', travellerId)
+        .single();
+      if (bookingErr) console.error('[ReviewTraveller] booking lookup error:', bookingErr);
+      if (!bookingRow) { setError('Booking not found.'); return; }
+
+      // Security: verify the booking's host_id is one of THIS user's
+      // owned listings (any of them) — HostProvider's hosts array is the
+      // source of truth for ownership, same as every other migrated
+      // screen.
+      const hostRow = hosts.find(h => h.id === bookingRow.host_id);
       if (!hostRow) { setError('Host profile not found.'); return; }
 
       const result = await submitTravellerReview({
         reviewerId: user.id,
         hostId: hostRow.id,
-        hostName: hostRow.display_name,
+        hostName: hostRow.display_name ?? '',
         travellerId,
         bookingId,
         ratings: {
