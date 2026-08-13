@@ -1020,19 +1020,32 @@ END;
 $$;
 
 -- mark_refunded(p_booking_id, p_refund_reference) — admin closes out a
--- queued manual refund. Gated on profiles.is_admin = true, checked via
--- auth.uid() inside the function body — replacing the client-embedded
--- ADMIN_SECRET pattern for this function specifically, per the Phase 1
--- decision. No service-role key or admin secret is ever sent to or stored
--- in the client for this to work.
+-- queued manual refund. Originally gated on profiles.is_admin = true via
+-- auth.uid(), but the admin panel has run entirely on the service-role +
+-- session-token model since the PIN hardening (see admin-session.ts) and
+-- has no Supabase Auth session for auth.uid() to resolve — a service-role
+-- caller always gets NULL there, so this function has been unreachable
+-- from the real admin panel since that change shipped, and in practice
+-- nothing has ever called it. The service_role bypass below fixes that;
+-- the security boundary for that path is requireAdminSession() in the
+-- calling Edge Function (admin-bookings), same trust model as every other
+-- admin-* write. A non-service-role caller (any ordinary traveller/host
+-- client — service_role is a database credential that only ever lives in
+-- an Edge Function's server-side env, never shipped to any client) still
+-- hits the original is_admin check unchanged, so no client gains any new
+-- privilege here.
 --
--- Financial-integrity addition: a refund also voids out any payout still
--- sitting at 'pending_manual' — without this, a booking that was completed
--- (host_payout_amount set) and then refunded would still read as owed to
--- the host in a manual EFT pass, even though the traveller was refunded.
--- Only touches payout_status when it's still 'pending_manual'; leaves
--- 'paid'/'voided_refunded'/NULL alone so this can never un-pay or
--- re-flag a payout that already moved past that state.
+-- Financial-integrity addition (unchanged by the above): a refund also
+-- voids out any payout still sitting at 'pending_manual' — without this,
+-- a booking that was completed (host_payout_amount set) and then refunded
+-- would still read as owed to the host in a manual EFT pass, even though
+-- the traveller was refunded. Only touches payout_status when it's still
+-- 'pending_manual'; leaves 'paid'/'voided_refunded'/NULL alone so this can
+-- never un-pay or re-flag a payout that already moved past that state.
+-- The WHERE clause below (unchanged) already guarantees only a booking
+-- genuinely queued as refund_status = 'pending_manual' can be touched, and
+-- that it can never be processed twice — a second call finds no matching
+-- row and falls through to the already_resolved reason further down.
 CREATE OR REPLACE FUNCTION mark_refunded(p_booking_id UUID, p_refund_reference TEXT DEFAULT NULL)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -1043,9 +1056,11 @@ DECLARE
   v_booking bookings;
   v_is_admin boolean;
 BEGIN
-  SELECT COALESCE((SELECT is_admin FROM profiles WHERE id = auth.uid()), false) INTO v_is_admin;
-  IF NOT v_is_admin THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'not_admin');
+  IF auth.role() <> 'service_role' THEN
+    SELECT COALESCE((SELECT is_admin FROM profiles WHERE id = auth.uid()), false) INTO v_is_admin;
+    IF NOT v_is_admin THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'not_admin');
+    END IF;
   END IF;
 
   UPDATE bookings b
