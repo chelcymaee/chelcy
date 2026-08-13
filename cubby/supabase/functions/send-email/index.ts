@@ -37,9 +37,10 @@ const ADMIN_SECRET       = Deno.env.get('ADMIN_SECRET');
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-// Until domain is verified on Resend, use their shared testing sender.
-// Change to 'Cubby <noreply@mycubby.co.za>' once the domain is added to Resend.
-const FROM = 'Cubby <onboarding@resend.dev>';
+// mycubby.co.za verified on Resend (2026-08-03, confirmed live 2026-08-13) —
+// sending from the real domain instead of Resend's shared testing sender,
+// which could only ever deliver to the Resend account's own address.
+const FROM = 'Cubby <noreply@mycubby.co.za>';
 
 // ─── Resend API ───────────────────────────────────────────────────────────────
 
