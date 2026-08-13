@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.cubby.app",
+      "bundleIdentifier": "com.mycubby.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Cubby uses your location to find nearby luggage hosts.",
         "NSPhotoLibraryUsageDescription": "Cubby needs photo access so you can add profile and storage photos.",
