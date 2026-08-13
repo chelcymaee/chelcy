@@ -312,13 +312,21 @@ export default function HostReviews() {
           .eq('host_id', selectedHostId)
           .order('created_at', { ascending: false }),
 
-        // Reviews the host wrote about travellers — scoped to this
-        // account (reviewer_id), not to a specific listing, since a
-        // multi-listing host reviewing a traveller writes as themselves.
+        // Reviews the host wrote about travellers. Scoped by BOTH
+        // reviewer_id (this account) and host_id (the selected listing —
+        // traveller_reviews.host_id is stamped from the booking's own
+        // listing at submit time, see review-traveller.tsx). host_id
+        // alone would already guarantee isolation since a host_id row is
+        // only ever owned by this account, but keeping reviewer_id too
+        // matches the same defense-in-depth double-filter used elsewhere
+        // (e.g. review-traveller.tsx's booking lookup). Filtering by
+        // reviewer_id alone, as before, showed every review this account
+        // had ever written under every listing's "I wrote" tab.
         supabase
           .from('traveller_reviews')
           .select('id, booking_id, traveller_id, rating_respectful, rating_on_time, rating_communication, comment, created_at')
           .eq('reviewer_id', user.id)
+          .eq('host_id', selectedHostId)
           .order('created_at', { ascending: false }),
 
         supabase
@@ -327,10 +335,15 @@ export default function HostReviews() {
           .eq('host_id', selectedHostId)
           .eq('status', 'completed'),
 
+        // Same double-filter as above. Not a correctness bug on its own
+        // (booking ids are globally unique, so this set is only ever
+        // checked against selectedHostId's own bookings below) — scoped
+        // to host_id anyway for consistency and to avoid over-fetching.
         supabase
           .from('traveller_reviews')
           .select('booking_id')
-          .eq('reviewer_id', user.id),
+          .eq('reviewer_id', user.id)
+          .eq('host_id', selectedHostId),
 
         supabase
           .from('profiles')
