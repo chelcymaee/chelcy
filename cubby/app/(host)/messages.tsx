@@ -5,6 +5,7 @@ import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
 import Avatar from '../../src/components/Avatar';
+import { useSelectedHost } from '../../src/lib/host-context';
 
 interface Convo {
   id: string;
@@ -18,34 +19,67 @@ interface Convo {
 }
 
 export default function HostMessages() {
+  const { selectedHostId, loading: hostContextLoading } = useSelectedHost();
   const [convos, setConvos] = useState<Convo[]>([]);
   const [loading, setLoading] = useState(true);
+  // True only when a conversations/messages query itself failed — kept
+  // separate from convos.length === 0 so a genuine failure shows a retry
+  // state instead of looking identical to an empty inbox.
+  const [loadError, setLoadError] = useState(false);
 
-  useFocusEffect(useCallback(() => { loadConvos(); }, []));
+  useFocusEffect(useCallback(() => {
+    loadConvos();
+    // Re-runs on focus AND whenever selectedHostId/hostContextLoading
+    // change while this screen stays focused, same reasoning as Dashboard.
+  }, [selectedHostId, hostContextLoading]));
 
   async function loadConvos() {
+    // HostProvider itself still resolving — wait rather than briefly
+    // treating "not loaded yet" as "no listing".
+    if (hostContextLoading) return;
+
+    // Clear all previous listing's state up front, before any fetch
+    // starts, so switching listings can never show Listing A's
+    // conversations under Listing B's context while the new data loads.
     setLoading(true);
+    setLoadError(false);
+    setConvos([]);
     if (!isSupabaseConfigured) { setLoading(false); return; }
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      const { data: hostRow } = await supabase
-        .from('hosts')
-        .select('id')
-        .eq('assigned_user_id', user.id)
-        .single();
+      if (!selectedHostId) {
+        // No hosts row owned by this account at all — legitimate empty
+        // state, not a query failure.
+        setLoading(false);
+        return;
+      }
 
-      if (!hostRow) { setLoading(false); return; }
-
-      // Fetch conversations for this host
+      // Fetch conversations for the selected listing. selectedHostId
+      // already comes from HostProvider's verified owned-listings
+      // resolution — no separate ambiguous
+      // .eq('assigned_user_id', user.id).single() lookup needed here
+      // anymore (that could legitimately match more than one row for a
+      // multi-listing account).
       const { data: convData, error: convErr } = await supabase
         .from('conversations')
         .select('id, traveller_id, last_message_at')
-        .eq('host_id', hostRow.id)
+        .eq('host_id', selectedHostId)
         .order('last_message_at', { ascending: false });
 
-      if (convErr || !convData || convData.length === 0) { setLoading(false); return; }
+      if (convErr) {
+        // A genuine query failure — never render as an empty inbox.
+        console.error('[messages] conversations query failed:', convErr);
+        setLoadError(true);
+        setLoading(false);
+        return;
+      }
+      if (!convData || convData.length === 0) {
+        // Legitimate empty state — no error, just no conversations yet.
+        setLoading(false);
+        return;
+      }
 
       const convIds = convData.map((c: any) => c.id);
       const travellerIds = [...new Set(convData.map((c: any) => c.traveller_id))];
@@ -80,7 +114,7 @@ export default function HostMessages() {
         supabase
           .from('bookings')
           .select('id, traveller_id')
-          .eq('host_id', hostRow.id)
+          .eq('host_id', selectedHostId)
           .order('created_at', { ascending: false }),
       ]);
 
@@ -123,6 +157,20 @@ export default function HostMessages() {
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={Colors.primary} />
+        </View>
+      ) : loadError ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>⚠️</Text>
+          <Text style={styles.emptyTitle}>Couldn't load messages</Text>
+          <Text style={styles.emptyText}>Something went wrong loading your conversations. Please try again.</Text>
+          <TouchableOpacity
+            onPress={loadConvos}
+            // @ts-ignore
+            onClick={loadConvos}
+            style={{ marginTop: 14, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, backgroundColor: Colors.primary }}
+          >
+            <Text style={{ color: Colors.white, fontWeight: '700' }}>Try again</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList

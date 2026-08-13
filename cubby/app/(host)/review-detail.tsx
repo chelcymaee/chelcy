@@ -13,6 +13,7 @@ import { Colors } from '../../src/constants/colors';
 import { Radius, CardShadow, Spacing } from '../../src/constants/theme';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { Stars } from '../../src/components/Stars';
+import { useSelectedHost } from '../../src/lib/host-context';
 
 const RATING_LABELS = ['', 'Poor', 'Not great', 'Okay', 'Really good', 'Outstanding'];
 
@@ -44,6 +45,13 @@ const CATEGORY_LABELS: { key: keyof HostReview; emoji: string; label: string }[]
 
 export default function HostReviewDetail() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
+
+  // Booking-specific, not selected-listing-specific: this screen is
+  // addressed by a specific bookingId, and a host should be able to open
+  // it from either listing regardless of what's currently selected on
+  // Dashboard — same pattern as traveller-profile.tsx.
+  const { hosts, loading: hostContextLoading } = useSelectedHost();
+
   const [review, setReview] = useState<HostReview | null>(null);
   const [booking, setBooking] = useState<BookingContext | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,22 +65,24 @@ export default function HostReviewDetail() {
       setLoading(false);
       return;
     }
+    setReview(null);
+    setBooking(null);
+    setError('');
+    setLoading(true);
     load();
-  }, [bookingId]);
+    // hostContextLoading added so a mount that races ahead of HostProvider
+    // resolving retries once the owned-listings array is ready, same as
+    // traveller-profile.tsx.
+  }, [bookingId, hostContextLoading]);
 
   async function load() {
+    // HostProvider itself still resolving — wait rather than briefly
+    // treating "not loaded yet" as "no permission".
+    if (hostContextLoading) return;
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setError('Please sign in to view this review.'); return; }
-
-      // Get the host's host row to verify ownership
-      const { data: hostRow } = await supabase
-        .from('hosts')
-        .select('id')
-        .eq('assigned_user_id', user.id)
-        .single();
-
-      if (!hostRow) { setError('Host profile not found.'); return; }
 
       const { data: rev, error: revErr } = await supabase
         .from('reviews')
@@ -89,8 +99,14 @@ export default function HostReviewDetail() {
         return;
       }
 
-      // Security: verify this review is for the current host
-      if (rev.host_id !== hostRow.id) {
+      // Security: verify this review belongs to one of THIS user's owned
+      // listings (any of them, not just the currently selected one) —
+      // HostProvider's hosts array, already verified against auth.uid(),
+      // is the source of truth for ownership here, same as every other
+      // migrated screen. (Previously compared against a single ambiguous
+      // `.eq('assigned_user_id', user.id).single()` lookup, which threw
+      // PGRST116 the instant an account owned more than one listing.)
+      if (!hosts.some(h => h.id === rev.host_id)) {
         setError('You do not have permission to view this review.');
         return;
       }

@@ -9,6 +9,7 @@ import { Radius, CardShadow, Spacing } from '../../src/constants/theme';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { Stars } from '../../src/components/Stars';
 import Avatar from '../../src/components/Avatar';
+import { useSelectedHost } from '../../src/lib/host-context';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -256,54 +257,104 @@ function TabBar({ active, onSelect, pendingCount }: { active: Tab; onSelect: (t:
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function HostReviews() {
+  const { selectedHostId, loading: hostContextLoading } = useSelectedHost();
   const [activeTab, setActiveTab] = useState<Tab>('received');
   const [loading, setLoading] = useState(true);
+  // True only when a query itself failed — kept separate from the
+  // genuine "no reviews yet" / "all caught up" empty states so a failed
+  // fetch never renders as if there's simply nothing there yet.
+  const [loadError, setLoadError] = useState(false);
   const [received, setReceived] = useState<ReceivedReview[]>([]);
   const [written, setWritten] = useState<WrittenReview[]>([]);
   const [pending, setPending] = useState<PendingBooking[]>([]);
   const [summary, setSummary] = useState<Summary>({ total: 0, overall: 0, avgFriendliness: 0, avgLocation: 0, avgDropOff: 0, avgSecurity: 0 });
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  useFocusEffect(useCallback(() => {
+    load();
+    // Re-runs on focus AND whenever selectedHostId/hostContextLoading
+    // change while this screen stays focused, same reasoning as Requests.
+  }, [selectedHostId, hostContextLoading]));
 
   async function load() {
+    // HostProvider itself still resolving — wait rather than briefly
+    // treating "not loaded yet" as "no listing".
+    if (hostContextLoading) return;
+
+    // Clear all previous listing's state up front, before any fetch
+    // starts, so switching listings can never show Listing A's reviews
+    // under Listing B's context while the new data loads.
     setLoading(true);
+    setLoadError(false);
+    setReceived([]);
+    setPending([]);
+    setSummary({ total: 0, overall: 0, avgFriendliness: 0, avgLocation: 0, avgDropOff: 0, avgSecurity: 0 });
     if (!isSupabaseConfigured) { setLoading(false); return; }
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: hostRow } = await supabase
-        .from('hosts').select('id').eq('assigned_user_id', user.id).single();
-      if (!hostRow) { setLoading(false); return; }
+      if (!selectedHostId) {
+        // No hosts row owned by this account at all — legitimate empty
+        // state, not a query failure.
+        return;
+      }
 
+      // selectedHostId already comes from HostProvider's verified
+      // owned-listings resolution — no separate ambiguous
+      // .eq('assigned_user_id', user.id).single() lookup needed here
+      // anymore (that could legitimately match more than one row for a
+      // multi-listing account, throw PGRST116, and silently look like
+      // "no reviews yet").
       const [receivedRes, writtenRes, bookingsRes, reviewedRes, travellerProfilesRes] = await Promise.all([
         supabase
           .from('reviews')
           .select('id, booking_id, reviewer_id, reviewer_name, rating, comment, tags, rating_friendliness, rating_location, rating_drop_off, rating_security, created_at')
-          .eq('host_id', hostRow.id)
+          .eq('host_id', selectedHostId)
           .order('created_at', { ascending: false }),
 
+        // Reviews the host wrote about travellers. Scoped by BOTH
+        // reviewer_id (this account) and host_id (the selected listing —
+        // traveller_reviews.host_id is stamped from the booking's own
+        // listing at submit time, see review-traveller.tsx). host_id
+        // alone would already guarantee isolation since a host_id row is
+        // only ever owned by this account, but keeping reviewer_id too
+        // matches the same defense-in-depth double-filter used elsewhere
+        // (e.g. review-traveller.tsx's booking lookup). Filtering by
+        // reviewer_id alone, as before, showed every review this account
+        // had ever written under every listing's "I wrote" tab.
         supabase
           .from('traveller_reviews')
           .select('id, booking_id, traveller_id, rating_respectful, rating_on_time, rating_communication, comment, created_at')
           .eq('reviewer_id', user.id)
+          .eq('host_id', selectedHostId)
           .order('created_at', { ascending: false }),
 
         supabase
           .from('bookings')
           .select('id, traveller_id, drop_off_date')
-          .eq('host_id', hostRow.id)
+          .eq('host_id', selectedHostId)
           .eq('status', 'completed'),
 
+        // Same double-filter as above. Not a correctness bug on its own
+        // (booking ids are globally unique, so this set is only ever
+        // checked against selectedHostId's own bookings below) — scoped
+        // to host_id anyway for consistency and to avoid over-fetching.
         supabase
           .from('traveller_reviews')
           .select('booking_id')
-          .eq('reviewer_id', user.id),
+          .eq('reviewer_id', user.id)
+          .eq('host_id', selectedHostId),
 
         supabase
           .from('profiles')
           .select('id, full_name, avatar_url'),
       ]);
+
+      if (receivedRes.error || writtenRes.error || bookingsRes.error || reviewedRes.error) {
+        console.error('[reviews] query failed:', receivedRes.error || writtenRes.error || bookingsRes.error || reviewedRes.error);
+        setLoadError(true);
+        return;
+      }
 
       // Build traveller name + avatar map (same booking-scoped access already
       // used to build names here — anyone in this map has a real booking or
@@ -378,6 +429,20 @@ export default function HostReviews() {
 
       {loading ? (
         <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
+      ) : loadError ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>⚠️</Text>
+          <Text style={styles.emptyTitle}>Couldn't load reviews</Text>
+          <Text style={styles.emptySub}>Something went wrong loading your reviews. Please try again.</Text>
+          <TouchableOpacity
+            onPress={load}
+            // @ts-ignore
+            onClick={load}
+            style={{ marginTop: 14, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, backgroundColor: Colors.primary }}
+          >
+            <Text style={{ color: Colors.white, fontWeight: '700' }}>Try again</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
           <View style={{ paddingHorizontal: Spacing.xl, paddingTop: 8 }}>

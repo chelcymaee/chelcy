@@ -11,6 +11,7 @@ import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import Btn from '../../src/components/Btn';
 import LocationPicker, { LocationResult } from '../../src/components/LocationPicker';
 import HostOnboardingChecklist from '../../src/components/HostOnboardingChecklist';
+import { useSelectedHost } from '../../src/lib/host-context';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -32,6 +33,7 @@ const TYPES = [
 ];
 
 export default function HostProfile() {
+  const { selectedHostId, loading: hostContextLoading } = useSelectedHost();
   const [displayName, setDisplayName] = useState('My Cubby Spot');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
@@ -56,6 +58,11 @@ export default function HostProfile() {
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [noHostRow, setNoHostRow] = useState(false);
   const [isHostApproved, setIsHostApproved] = useState(false);
+  // True only when the selected listing's own row failed to load — kept
+  // separate from noHostRow so a genuine query failure never renders as
+  // the "not a host yet" onboarding checklist, and separate from just
+  // leaving stale form fields on screen.
+  const [profileFetchError, setProfileFetchError] = useState(false);
 
   const showToast = useCallback((msg: string, error = false) => {
     setToast({ msg, error });
@@ -63,49 +70,91 @@ export default function HostProfile() {
   }, []);
 
   useEffect(() => {
+    // Clear every previous listing's form state up front, before the new
+    // fetch starts, so switching listings can never show Listing A's
+    // fields under Listing B's context while the new data loads.
+    setDisplayName('My Cubby Spot');
+    setBio('');
+    setLocation('');
+    setLatitude(0);
+    setLongitude(0);
+    setType('home');
+    setPricePerBag('100');
+    setMaxBags('4');
+    setFromTime('08:00');
+    setUntilTime('20:00');
+    setDays(DAYS);
+    setIsActive(true);
+    setStorageFeatures([]);
+    setPhotos([]);
+    setNoHostRow(false);
+    setProfileFetchError(false);
+    setCheckingProfile(true);
     loadProfile();
-  }, []);
+    // Re-runs on focus AND whenever selectedHostId/hostContextLoading change
+    // while this screen stays mounted, same reasoning as Dashboard's
+    // useFocusEffect dependency.
+  }, [selectedHostId, hostContextLoading]);
 
   async function loadProfile() {
     if (isSupabaseConfigured) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data, error } = await supabase
-          .from('hosts')
-          .select('*')
-          .eq('assigned_user_id', user.id)
-          .single();
-        if (!error && data) {
-          setDisplayName(data.display_name ?? 'My Cubby Spot');
-          setBio(data.bio ?? '');
-          setLocation(data.location_name ?? '');
-          setLatitude(data.latitude ?? 0);
-          setLongitude(data.longitude ?? 0);
-          setType(data.business_type ?? 'home');
-          setPricePerBag(String(data.price_per_bag_per_day ?? 100));
-          setMaxBags(String(data.max_bags ?? 4));
-          setFromTime(data.available_from ?? '08:00');
-          setUntilTime(data.available_until ?? '20:00');
-          setDays(data.available_days ?? DAYS);
-          setIsActive(data.is_active ?? true);
-          setStorageFeatures(data.storage_features ?? []);
-          setPhotos(data.photos ?? []);
-          setCheckingProfile(false);
-          return;
-        }
+      // HostProvider itself still resolving — wait rather than briefly
+      // treating "not loaded yet" as "not a host".
+      if (hostContextLoading) return;
 
-        // No hosts row assigned yet — this account hasn't been approved/set
-        // up as a host by Cubby. Don't show an edit form that can't save.
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_host_approved')
-          .eq('id', user.id)
-          .maybeSingle();
-        setIsHostApproved(profile?.is_host_approved ?? false);
+      if (!selectedHostId) {
+        // No hosts row owned by this account at all — admin hasn't
+        // approved/set up this account as a host yet. Don't show an edit
+        // form that can't save.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_host_approved')
+            .eq('id', user.id)
+            .maybeSingle();
+          setIsHostApproved(profile?.is_host_approved ?? false);
+        }
         setNoHostRow(true);
         setCheckingProfile(false);
         return;
       }
+
+      // Scoped to the selected listing's primary key — safe to use
+      // .single() here, unlike the old .eq('assigned_user_id', user.id)
+      // lookup which could legitimately match more than one row for a
+      // multi-listing account.
+      const { data, error } = await supabase
+        .from('hosts')
+        .select('*')
+        .eq('id', selectedHostId)
+        .single();
+      if (!error && data) {
+        setDisplayName(data.display_name ?? 'My Cubby Spot');
+        setBio(data.bio ?? '');
+        setLocation(data.location_name ?? '');
+        setLatitude(data.latitude ?? 0);
+        setLongitude(data.longitude ?? 0);
+        setType(data.business_type ?? 'home');
+        setPricePerBag(String(data.price_per_bag_per_day ?? 100));
+        setMaxBags(String(data.max_bags ?? 4));
+        setFromTime(data.available_from ?? '08:00');
+        setUntilTime(data.available_until ?? '20:00');
+        setDays(data.available_days ?? DAYS);
+        setIsActive(data.is_active ?? true);
+        setStorageFeatures(data.storage_features ?? []);
+        setPhotos(data.photos ?? []);
+        setCheckingProfile(false);
+        return;
+      }
+
+      // A genuine failure to load the selected listing's own row — never
+      // fall through to the "not a host yet" onboarding screen or a blank
+      // editable form. Surfaced as an explicit retry state.
+      console.error('[host-profile] selected host fetch failed:', error);
+      setProfileFetchError(true);
+      setCheckingProfile(false);
+      return;
     }
     // Fallback: AsyncStorage (demo/offline mode, no Supabase account)
     const raw = await AsyncStorage.getItem('cubby_host_profile');
@@ -139,6 +188,7 @@ export default function HostProfile() {
     if (!file) return;
     if (!isSupabaseConfigured) { showToast('Photo upload requires Supabase', true); return; }
     if (photos.length >= 5) { showToast('Maximum 5 photos allowed', true); return; }
+    if (!selectedHostId) { showToast('No listing selected', true); return; }
 
     setUploadingPhoto(true);
     try {
@@ -156,8 +206,9 @@ export default function HostProfile() {
       const newPhotos = [...photos, publicUrl];
       setPhotos(newPhotos);
 
-      // persist to host row immediately
-      await supabase.from('hosts').update({ photos: newPhotos }).eq('assigned_user_id', user.id);
+      // persist to host row immediately — scoped to the selected listing
+      // only, never every listing this account owns.
+      await supabase.from('hosts').update({ photos: newPhotos }).eq('id', selectedHostId);
       showToast('Photo added ✓');
     } finally {
       setUploadingPhoto(false);
@@ -168,6 +219,7 @@ export default function HostProfile() {
   async function pickPhotoNative() {
     if (!isSupabaseConfigured) { showToast('Photo upload requires Supabase', true); return; }
     if (photos.length >= 5) { showToast('Maximum 5 photos allowed', true); return; }
+    if (!selectedHostId) { showToast('No listing selected', true); return; }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -207,8 +259,9 @@ export default function HostProfile() {
       const newPhotos = [...photos, publicUrl];
 
       // Only reflect the new photo in the UI once it's actually persisted to
-      // the host row — never show a photo that isn't really saved.
-      const { error: updateErr } = await supabase.from('hosts').update({ photos: newPhotos }).eq('assigned_user_id', user.id);
+      // the host row — never show a photo that isn't really saved. Scoped
+      // to the selected listing only.
+      const { error: updateErr } = await supabase.from('hosts').update({ photos: newPhotos }).eq('id', selectedHostId);
       if (updateErr) { showToast('Upload succeeded but could not save to your listing. Please try again.', true); return; }
 
       setPhotos(newPhotos);
@@ -224,9 +277,8 @@ export default function HostProfile() {
   async function removePhoto(url: string) {
     const newPhotos = photos.filter(p => p !== url);
     setPhotos(newPhotos);
-    if (isSupabaseConfigured) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) await supabase.from('hosts').update({ photos: newPhotos }).eq('assigned_user_id', user.id);
+    if (isSupabaseConfigured && selectedHostId) {
+      await supabase.from('hosts').update({ photos: newPhotos }).eq('id', selectedHostId);
     }
   }
 
@@ -249,7 +301,9 @@ export default function HostProfile() {
     try {
       if (isSupabaseConfigured) {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
+        if (user && selectedHostId) {
+          // Scoped to the selected listing's primary key — editing Listing
+          // B must never touch Listing A's row.
           const { error } = await supabase
             .from('hosts')
             .update({
@@ -267,7 +321,7 @@ export default function HostProfile() {
               is_active: isActive,
               storage_features: storageFeatures,
             })
-            .eq('assigned_user_id', user.id);
+            .eq('id', selectedHostId);
 
           if (error) {
             showToast('Could not save. Please try again.', true);
@@ -282,6 +336,13 @@ export default function HostProfile() {
           }));
 
           showToast('Listing updated ✓');
+          return;
+        }
+        // Configured and signed in, but no listing selected — don't fall
+        // through to the demo-mode branch below and claim success when
+        // nothing was actually saved.
+        if (user) {
+          showToast('No listing selected. Please try again.', true);
           return;
         }
       }
@@ -314,6 +375,27 @@ export default function HostProfile() {
 
         {checkingProfile ? null : noHostRow ? (
           <HostOnboardingChecklist isApproved={isHostApproved} />
+        ) : profileFetchError ? (
+          // A genuine fetch failure for the selected listing — shown
+          // instead of the onboarding checklist and instead of an
+          // editable-but-blank form, never underneath either.
+          <View style={{ alignItems: 'center', paddingVertical: 56, paddingHorizontal: 32 }}>
+            <Text style={{ fontSize: 40, marginBottom: 16 }}>⚠️</Text>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8, textAlign: 'center' }}>
+              Couldn't load this listing
+            </Text>
+            <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 16 }}>
+              Something went wrong loading your profile for this listing. Please try again.
+            </Text>
+            <TouchableOpacity
+              onPress={loadProfile}
+              // @ts-ignore
+              onClick={loadProfile}
+              style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, backgroundColor: Colors.primary }}
+            >
+              <Text style={{ color: Colors.white, fontWeight: '700' }}>Try again</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
         <>
         {/* Active toggle */}
