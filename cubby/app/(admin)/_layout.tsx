@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Slot, router, usePathname } from 'expo-router';
-import { View, ActivityIndicator, Platform } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { checkAdminSession } from '../../src/lib/admin-auth';
 import { Colors } from '../../src/constants/colors';
 
@@ -40,25 +40,6 @@ export default function AdminLayout() {
   }
 
   if (!authorized) return null;
-
-  // Every (admin) screen is a plain HTML/div-based web page, not a
-  // React Native component with its own ScrollView — it relies on the
-  // page itself scrolling for content taller than the viewport.
-  // Expo Router's <Stack> (app/_layout.tsx) wraps every screen,
-  // admin included, in a container React Navigation pins to exactly
-  // the viewport height, which clips rather than scrolls. Overriding
-  // that here, scoped to just the admin route group, fixes scrolling
-  // for every admin page in one place — the root layout and the
-  // traveller/host layouts (some of which rely on that exact
-  // viewport-height container, e.g. FAT-011's explore.tsx bottom
-  // sheet) are untouched.
-  if (Platform.OS === 'web') {
-    return (
-      <div style={{ height: '100vh', overflowY: 'auto' }}>
-        <Slot />
-      </div>
-    );
-  }
 
   return <Slot />;
 }
