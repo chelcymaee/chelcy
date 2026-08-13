@@ -226,6 +226,63 @@ serve(async (req) => {
         return json({ success: true, data: inserted });
       }
 
+      // Multi-listing: add an additional listing to an existing host/business
+      // account. Deliberately separate from the 'create' action above rather
+      // than a flag on it — 'create' sets user_id (only valid for a listing's
+      // very first row per account, enforced by hosts.user_id's UNIQUE
+      // constraint); this action never touches user_id at all, so the same
+      // owner can hold any number of additional listings via
+      // assigned_user_id alone. schema.sql's `ALTER TABLE hosts ALTER
+      // COLUMN user_id DROP NOT NULL` is what makes that possible.
+      if (action === 'create_additional_listing') {
+        const { ownerUserId, payload } = body as { ownerUserId?: string; payload?: Record<string, unknown> };
+
+        // Fail closed — never create a listing without a real, existing
+        // owner account, and never as a backdoor around the normal
+        // create/approval flow for a brand-new host with no listing yet.
+        if (!ownerUserId || typeof ownerUserId !== 'string') {
+          return badRequest('ownerUserId required');
+        }
+        const { data: ownerProfile, error: ownerErr } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', ownerUserId)
+          .single();
+        if (ownerErr || !ownerProfile) {
+          return json({ error: 'No account found for that owner id — refusing to create an orphaned listing.' }, 404);
+        }
+        const { count: existingListingCount } = await supabase
+          .from('hosts')
+          .select('id', { count: 'exact', head: true })
+          .or(`user_id.eq.${ownerUserId},assigned_user_id.eq.${ownerUserId}`);
+        if (!existingListingCount) {
+          return json({ error: 'This account has no existing listing — use "Create Host Profile" for a brand-new host instead.' }, 409);
+        }
+
+        if (!payload) return badRequest('payload required');
+        const safePayload: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(payload)) {
+          // is_active excluded on purpose, even if present in payload — this
+          // listing is always created as a draft, no exceptions, until the
+          // host completes and activates it themselves.
+          if (ALLOWED_HOST_FIELDS[k] && k !== 'is_active') safePayload[k] = v;
+        }
+
+        const { data: inserted, error } = await supabase
+          .from('hosts')
+          .insert({
+            ...safePayload,
+            user_id: null,
+            assigned_user_id: ownerUserId,
+            is_active: false,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+
+        return json({ success: true, data: inserted });
+      }
+
       const { hostId: id } = body as { hostId: string };
       if (!id) return badRequest('hostId required');
 
