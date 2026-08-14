@@ -54,6 +54,14 @@
           "color": "#FF5C5C",
           "sounds": []
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#F7343F",
+          "resizeMode": "contain"
+        }
       ]
     ],
     "experiments": {
