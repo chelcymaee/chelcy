@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } fr
 import { router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 
-const LAST_UPDATED = '6 July 2026';
+const LAST_UPDATED = '14 August 2026';
 
 const SECTIONS: { heading: string; paragraphs?: string[]; bullets?: string[] }[] = [
   {
@@ -18,10 +18,12 @@ const SECTIONS: { heading: string; paragraphs?: string[]; bullets?: string[] }[]
       'Profile information: photo, role (traveller / host / bag runner), bio.',
       'Verification data: ID document photo and selfie photo, for users who choose to verify.',
       'Booking data: booking times, locations, bag counts, PIN codes, and messages between users.',
-      'Payment data: processed directly by PayFast — Cubby does not receive or store your card number.',
+      'Payment data: processed directly by PayGate — Cubby does not receive or store your card number.',
       'Location data: only when you grant location permission, to show nearby hosts.',
+      'Location search data: when you search for an address or area, your search text is sent to Google Places to return matching suggestions.',
       'Host bank details: used only to pay out host earnings.',
       'Device / push notification tokens: used to deliver booking and message notifications.',
+      'Diagnostic data: automatic crash and error reports collected via Sentry to help us find and fix bugs.',
     ],
   },
   {
@@ -41,8 +43,10 @@ const SECTIONS: { heading: string; paragraphs?: string[]; bullets?: string[] }[]
     ],
     bullets: [
       'Supabase — our database and authentication provider, stores your account and booking data securely.',
-      'PayFast — processes payments and receives only the data required to complete a transaction.',
+      'PayGate — processes payments and receives only the data required to complete a transaction.',
       'Resend — our email delivery provider, used to send transactional emails.',
+      'Google — receives location search queries (via Google Places) and displays map data to show nearby hosts.',
+      'Sentry — receives automatic crash and error diagnostic reports to help us identify and fix bugs.',
     ],
   },
   {
