@@ -3,6 +3,8 @@ import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../src/constants/colors';
+import { useAuth } from '../src/lib/auth-context';
+import { supabase } from '../src/lib/supabase';
 
 function LogoPin() {
   return (
@@ -23,11 +25,38 @@ function LogoPin() {
 }
 
 export default function Welcome() {
+  const { session, loading } = useAuth();
   const pinDrop = useRef(new Animated.Value(-120)).current;
   const pinOpacity = useRef(new Animated.Value(0)).current;
   const contentOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Wait for AuthProvider to finish restoring (or fail to find) a
+    // persisted session before making any routing decision here — avoids
+    // a flash of Welcome/onboarding-check followed by a second redirect
+    // once the real session state resolves a moment later.
+    if (loading) return;
+
+    if (session) {
+      // A session was already restored from storage — skip Welcome/Login
+      // entirely and route exactly the way login.tsx's navigateByRole()
+      // does right after a fresh sign-in, so a restored session lands in
+      // the same place a manual login would have. profiles.role query
+      // mirrors login.tsx's; any failure/missing role safely defaults to
+      // the traveller path rather than getting stuck.
+      supabase.from('profiles').select('role').eq('id', session.user.id).single()
+        .then(({ data: profile }) => {
+          const role = profile?.role ?? 'traveller';
+          if (role === 'host' || role === 'both') router.replace('/(host)/dashboard');
+          else if (role === 'runner') router.replace('/(runner)/dashboard');
+          else router.replace('/(traveller)/explore');
+        });
+      return;
+    }
+
+    // No session (never logged in, logged out, or an unrecoverably expired
+    // session already resolved to null by AuthProvider) — unchanged
+    // existing behavior.
     AsyncStorage.getItem('cubby_onboarded').then(val => {
       if (!val) {
         router.replace('/onboarding');
@@ -42,7 +71,7 @@ export default function Welcome() {
         Animated.timing(contentOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
       ]).start();
     });
-  }, []);
+  }, [loading, session]);
 
   return (
     <View style={styles.container}>
