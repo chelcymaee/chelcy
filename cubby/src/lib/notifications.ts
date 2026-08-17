@@ -52,3 +52,31 @@ export async function registerPushToken() {
     console.log('Push token registration skipped:', e);
   }
 }
+
+// Remove this device's push-token association for a user who just signed
+// out, so the same physical device can't keep receiving pushes meant for
+// them after a different account signs in on it. Only deletes the row for
+// *this* device's token, not the outgoing user's other devices. Called with
+// the outgoing user's id (captured before the session went null), since by
+// the time this runs there is no authenticated user to look up.
+export async function unregisterPushToken(userId: string) {
+  if (Platform.OS === 'web') return;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Notifications = require('expo-notifications');
+
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    if (!tokenData?.data) return;
+
+    await supabase.from('push_tokens').delete()
+      .eq('user_id', userId)
+      .eq('token', tokenData.data);
+  } catch (e) {
+    // Silently skip — matches registerPushToken's own failure handling;
+    // a failed cleanup must never block sign-out.
+    console.log('Push token cleanup skipped:', e);
+  }
+}

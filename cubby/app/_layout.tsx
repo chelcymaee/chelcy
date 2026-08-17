@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Sentry from '@sentry/react-native';
 import { Colors } from '../src/constants/colors';
 import { AuthProvider } from '../src/lib/auth-context';
-import { setupNotificationHandler, registerPushToken } from '../src/lib/notifications';
+import { setupNotificationHandler } from '../src/lib/notifications';
 import { supabase } from '../src/lib/supabase';
 import { setupGlobalErrorLogging } from '../src/lib/error-logging';
 import ErrorBoundary from '../src/components/ErrorBoundary';
@@ -71,7 +71,11 @@ function RootLayout() {
 
   useEffect(() => {
     setupNotificationHandler();
-    registerPushToken();
+    // Push-token registration/cleanup now lives in AuthProvider's own
+    // auth-state listener (src/lib/auth-context.tsx) — it needs to react
+    // to the authenticated user id actually changing (fresh signup, fresh
+    // login, session restore, sign-out), which this one-shot mount effect
+    // outside AuthProvider's tree had no way to observe.
   }, []);
 
   return (
