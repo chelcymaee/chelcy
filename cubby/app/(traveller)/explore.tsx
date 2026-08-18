@@ -344,9 +344,13 @@ function LocationModal({ visible, onSelect, onClose }: {
 
 // ─── Location Permission Card ─────────────────────────────────────────────────
 
-function LocationPermissionCard({ onEnable, onDecline }: {
-  onEnable: () => void; onDecline: () => void;
-}) {
+// Apple Guideline 5.1.1(iv): a custom pre-permission screen must not offer
+// its own way to skip/delay the real system prompt, and its button must not
+// itself read like the permission grant (e.g. "Enable Location") — the
+// actual OS dialog is the only real decision point. So this has exactly one
+// button, worded neutrally, and every path through this screen leads to the
+// real prompt; denying only happens at the OS dialog itself.
+function LocationPermissionCard({ onContinue }: { onContinue: () => void }) {
   return (
     <Modal visible transparent animationType="slide">
       <View style={S.permOverlay}>
@@ -358,16 +362,11 @@ function LocationPermissionCard({ onEnable, onDecline }: {
           <Text style={S.permBody}>
             Allow location access to instantly discover secure luggage storage spots around you, sorted by distance.
           </Text>
-          <TouchableOpacity style={S.permPrimary} onPress={onEnable}
+          <TouchableOpacity style={S.permPrimary} onPress={onContinue}
             // @ts-ignore
-            onClick={onEnable}
+            onClick={onContinue}
             activeOpacity={0.88}>
-            <Text style={S.permPrimaryText}>Enable Location</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={S.permSecondary} onPress={onDecline}
-            // @ts-ignore
-            onClick={onDecline}>
-            <Text style={S.permSecondaryText}>Not Now</Text>
+            <Text style={S.permPrimaryText}>Continue</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -569,16 +568,16 @@ export default function Explore() {
     }
   }
 
-  async function handleEnableLocation() {
+  // Apple Guideline 5.1.1(iv): every path through the custom card above must
+  // lead to the real OS permission prompt — there is no separate "decline
+  // without asking" path anymore. If the user denies at the actual system
+  // dialog, getUserLocation() already returns null and this just doesn't
+  // set userLocation, same graceful no-location behavior as before.
+  async function handleContinueLocationPrompt() {
     await AsyncStorage.setItem('cubby_location_prompted', '1').catch(() => {});
     setShowPermCard(false);
     const loc = await getUserLocation();
     if (loc) setUserLocation(loc);
-  }
-
-  async function handleDeclineLocation() {
-    await AsyncStorage.setItem('cubby_location_prompted', '1').catch(() => {});
-    setShowPermCard(false);
   }
 
   // ── Derived data ──────────────────────────────────────────────────────────
@@ -861,7 +860,7 @@ export default function Explore() {
 
         {/* ── Location permission card (first launch only) ── */}
         {showPermCard && (
-          <LocationPermissionCard onEnable={handleEnableLocation} onDecline={handleDeclineLocation} />
+          <LocationPermissionCard onContinue={handleContinueLocationPrompt} />
         )}
       </SafeAreaView>
     );
@@ -1127,8 +1126,6 @@ const S = StyleSheet.create({
     shadowOpacity: 0.3, shadowRadius: 12, elevation: 6, marginBottom: 12,
   },
   permPrimaryText: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
-  permSecondary: { paddingVertical: 12, alignItems: 'center', width: '100%' },
-  permSecondaryText: { fontSize: 15, fontWeight: '600', color: '#9CA3AF' },
 
   // ── Result cards ──
   resultCard: {
