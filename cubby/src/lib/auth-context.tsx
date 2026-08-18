@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from './supabase';
-import { registerPushToken, unregisterPushToken } from './notifications';
+import { registerPushToken } from './notifications';
 
 type AuthContextType = {
   session: Session | null;
@@ -16,12 +16,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(isSupabaseConfigured);
 
   // Tracks the last known authenticated user id so the push-token
-  // register/cleanup calls below only fire when identity actually changes
-  // (fresh signup, fresh login, session restore, or sign-out) — not on
-  // every auth event, e.g. TOKEN_REFRESHED for a still-logged-in user.
-  // `undefined` (distinct from `null`) means "not yet checked", so the very
-  // first callback firing on a cold start with no session doesn't get
-  // mistaken for a real sign-out with a previous user to clean up.
+  // registration call below only fires when identity actually changes
+  // (fresh signup, fresh login, or session restore) — not on every auth
+  // event, e.g. TOKEN_REFRESHED for a still-logged-in user. `undefined`
+  // (distinct from `null`) means "not yet checked", harmless here since
+  // registration only cares about a real id appearing.
+  //
+  // Push-token *cleanup* on sign-out deliberately does NOT live here —
+  // push_tokens' RLS policy requires auth.uid() = user_id, and by the time
+  // this listener observes session -> null, supabase.auth.signOut() has
+  // already invalidated the session, so a delete attempted at this point
+  // would silently match zero rows. See signOutAndCleanupPushToken() in
+  // notifications.ts, which runs cleanup *before* signOut() instead.
   const previousUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -37,17 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const newUserId = session?.user?.id ?? null;
       const previousUserId = previousUserIdRef.current;
-      if (previousUserId !== newUserId) {
-        if (newUserId) {
-          // Covers fresh signup, fresh login, and persisted-session restore
-          // on cold launch — registerPushToken() already fails silently.
-          registerPushToken().catch(() => {});
-        } else if (previousUserId) {
-          // Real sign-out transition (not the initial "never logged in"
-          // check) — clean up so this device stops being associated with
-          // the outgoing account. unregisterPushToken() fails silently.
-          unregisterPushToken(previousUserId).catch(() => {});
-        }
+      if (previousUserId !== newUserId && newUserId) {
+        // Covers fresh signup, fresh login, and persisted-session restore
+        // on cold launch — registerPushToken() already fails silently.
+        registerPushToken().catch(() => {});
       }
       previousUserIdRef.current = newUserId;
     });

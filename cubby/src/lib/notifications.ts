@@ -53,12 +53,18 @@ export async function registerPushToken() {
   }
 }
 
-// Remove this device's push-token association for a user who just signed
-// out, so the same physical device can't keep receiving pushes meant for
-// them after a different account signs in on it. Only deletes the row for
-// *this* device's token, not the outgoing user's other devices. Called with
-// the outgoing user's id (captured before the session went null), since by
-// the time this runs there is no authenticated user to look up.
+// Remove this device's push-token association for a user, so the same
+// physical device can't keep receiving pushes meant for them after a
+// different account signs in on it. Only deletes the row for *this*
+// device's token, not the outgoing user's other devices.
+//
+// Must be called *before* supabase.auth.signOut() — push_tokens' RLS policy
+// requires auth.uid() = user_id, so once the session is actually
+// invalidated this DELETE would run as an unauthenticated caller and
+// silently match zero rows (no error, no exception, nothing to catch).
+// signOutAndCleanupPushToken() below is the one place that gets this
+// ordering right; call sites should use it rather than calling this
+// directly around their own signOut().
 export async function unregisterPushToken(userId: string) {
   if (Platform.OS === 'web') return;
   try {
@@ -79,4 +85,19 @@ export async function unregisterPushToken(userId: string) {
     // a failed cleanup must never block sign-out.
     console.log('Push token cleanup skipped:', e);
   }
+}
+
+// Shared sign-out wrapper: cleans up this device's push-token row for the
+// current user *while still authenticated* (see unregisterPushToken's
+// comment for why the ordering matters), then actually signs out. Cleanup
+// failure never blocks sign-out — the real supabase.auth.signOut() call
+// always runs, whether or not cleanup succeeded.
+export async function signOutAndCleanupPushToken() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await unregisterPushToken(user.id);
+  } catch (e) {
+    console.log('Push token cleanup skipped:', e);
+  }
+  await supabase.auth.signOut();
 }
