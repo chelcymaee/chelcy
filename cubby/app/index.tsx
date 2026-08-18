@@ -91,7 +91,6 @@ export default function Welcome() {
         <View style={styles.pill}><Text style={styles.pillText}>🛏️ Hostels</Text></View>
         <View style={styles.pill}><Text style={styles.pillText}>🔑 Airbnbs</Text></View>
         <View style={styles.pill}><Text style={styles.pillText}>🗺️ Tour Operators</Text></View>
-        <View style={styles.pill}><Text style={styles.pillText}>🚗 Bag Runners</Text></View>
       </Animated.View>
 
       <Animated.View style={[styles.ctas, { opacity: contentOpacity }]}>
