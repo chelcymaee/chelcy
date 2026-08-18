@@ -482,25 +482,9 @@ export default function Dashboard() {
             <NotificationBell variant="host" />
             <TouchableOpacity
               style={styles.switchBtn}
-              onPress={() => {
-                console.log('[DEBUG-TRAVELLER-TOGGLE] onPress fired');
-                try {
-                  router.replace('/(traveller)/explore');
-                  console.log('[DEBUG-TRAVELLER-TOGGLE] router.replace called, no synchronous throw');
-                } catch (e) {
-                  console.log('[DEBUG-TRAVELLER-TOGGLE] router.replace threw:', e);
-                }
-              }}
+              onPress={() => router.replace('/(traveller)/explore')}
               // @ts-ignore
-              onClick={() => {
-                console.log('[DEBUG-TRAVELLER-TOGGLE] onClick fired');
-                try {
-                  router.replace('/(traveller)/explore');
-                  console.log('[DEBUG-TRAVELLER-TOGGLE] router.replace called, no synchronous throw');
-                } catch (e) {
-                  console.log('[DEBUG-TRAVELLER-TOGGLE] router.replace threw:', e);
-                }
-              }}
+              onClick={() => router.replace('/(traveller)/explore')}
             >
               <Text style={styles.switchBtnText}>🧳 Traveller</Text>
             </TouchableOpacity>
