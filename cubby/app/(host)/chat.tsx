@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, FlatList,
-  TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator,
+  TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import ReportReasonModal from '../../src/components/ReportReasonModal';
+import { reportContent, blockUser } from '../../src/lib/moderation-service';
 
 interface Message {
   id: string;
   body: string;
+  senderId: string;
   fromMe: boolean;
   time: string;
 }
@@ -26,6 +29,9 @@ export default function HostChat() {
   const [myId, setMyId] = useState<string | null>(null);
   const [travellerId, setTravellerId] = useState<string | null>(null);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [reportTargetMessageId, setReportTargetMessageId] = useState<string | null>(null);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
   const listRef = useRef<FlatList>(null);
   const channelRef = useRef<any>(null);
 
@@ -52,6 +58,7 @@ export default function HostChat() {
     setLoading(true);
     setTravellerId(null);
     setBookingId(null);
+    setIsBlocked(false);
     init();
     return () => { channelRef.current?.unsubscribe(); };
   }, [conversationId]);
@@ -67,7 +74,16 @@ export default function HostChat() {
       .select('traveller_id, booking_id')
       .eq('id', conversationId)
       .single();
-    if (convo?.traveller_id) setTravellerId(convo.traveller_id);
+    if (convo?.traveller_id) {
+      setTravellerId(convo.traveller_id);
+      const { data: blockRow } = await supabase
+        .from('blocked_users')
+        .select('id')
+        .eq('blocker_id', user.id)
+        .eq('blocked_id', convo.traveller_id)
+        .maybeSingle();
+      setIsBlocked(!!blockRow);
+    }
     if (convo?.booking_id) setBookingId(convo.booking_id);
     await loadMessages(user.id);
     subscribeRealtime(user.id);
@@ -84,6 +100,7 @@ export default function HostChat() {
     setMessages((data ?? []).map((m: any) => ({
       id: m.id,
       body: m.body,
+      senderId: m.sender_id,
       fromMe: m.sender_id === userId,
       time: new Date(m.created_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }),
     })));
@@ -120,6 +137,7 @@ export default function HostChat() {
         setMessages(prev => prev.some(existing => existing.id === incomingId) ? prev : [...prev, {
           id: m.id,
           body: m.body,
+          senderId: m.sender_id,
           fromMe: m.sender_id === userId,
           time: new Date(m.created_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }),
         }]);
@@ -138,11 +156,66 @@ export default function HostChat() {
     if (error) {
       console.error('Message insert error:', error);
       setInput(body);
+      if (error.code === '23514' && error.message?.includes('_no_objectionable_language')) {
+        Alert.alert('Message not sent', "Your message contains language that isn't allowed. Please revise it and try again.");
+      } else if (error.code === '42501') {
+        Alert.alert('Message not sent', "This message couldn't be sent. Please try again later.");
+      } else {
+        Alert.alert('Message not sent', 'Something went wrong. Please try again.');
+      }
       return;
     }
 
     await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
     await loadMessages(myId);
+  }
+
+  function showMessageActions(m: Message) {
+    Alert.alert(
+      'Message options',
+      undefined,
+      [
+        { text: 'Report message', onPress: () => setReportTargetMessageId(m.id) },
+        { text: 'Block user', style: 'destructive', onPress: handleBlockOther },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  }
+
+  async function handleReportMessage(reason: string) {
+    if (!reportTargetMessageId) return;
+    setReportSubmitting(true);
+    const result = await reportContent('message', reportTargetMessageId, reason);
+    setReportSubmitting(false);
+    setReportTargetMessageId(null);
+    if (result.ok) {
+      Alert.alert('Report submitted', "Thanks — we'll take a look at this.");
+    } else {
+      Alert.alert('Could not submit report', 'Please try again in a moment.');
+    }
+  }
+
+  async function handleBlockOther() {
+    if (!myId || !travellerId) return;
+    Alert.alert(
+      `Block ${travellerName || 'this user'}?`,
+      "You won't be able to message each other. Existing messages aren't deleted.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await blockUser(myId, travellerId);
+            if (result.ok) {
+              setIsBlocked(true);
+            } else {
+              Alert.alert('Could not block this user', result.error ?? 'Please try again.');
+            }
+          },
+        },
+      ]
+    );
   }
 
   return (
@@ -177,7 +250,10 @@ export default function HostChat() {
       ) : (
         <FlatList
           ref={listRef}
-          data={messages}
+          // Only the blocked traveller's own messages are hidden — my own
+          // sent history stays visible to me. Underlying rows are never
+          // touched, this is a render-only filter.
+          data={messages.filter(m => !(isBlocked && m.senderId === travellerId))}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.messagesList}
           ListEmptyComponent={
@@ -187,6 +263,16 @@ export default function HostChat() {
           }
           renderItem={({ item }) => (
             <View style={[styles.bubble, item.fromMe ? styles.bubbleMe : styles.bubbleThem]}>
+              {!item.fromMe && (
+                <TouchableOpacity
+                  style={styles.msgMenuBtn}
+                  onPress={() => showMessageActions(item)}
+                  // @ts-ignore
+                  onClick={() => showMessageActions(item)}
+                >
+                  <Text style={styles.msgMenuBtnText}>•••</Text>
+                </TouchableOpacity>
+              )}
               <Text style={[styles.bubbleText, item.fromMe ? styles.bubbleTextMe : styles.bubbleTextThem]}>
                 {item.body}
               </Text>
@@ -198,27 +284,40 @@ export default function HostChat() {
         />
       )}
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            value={input}
-            onChangeText={setInput}
-            placeholder="Type a message…"
-            placeholderTextColor={Colors.textLight}
-            multiline
-          />
-          <TouchableOpacity
-            style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
-            onPress={send}
-            // @ts-ignore
-            onClick={send}
-            disabled={!input.trim()}
-          >
-            <Text style={styles.sendBtnText}>↑</Text>
-          </TouchableOpacity>
+      {isBlocked ? (
+        <View style={styles.blockedBar}>
+          <Text style={styles.blockedBarText}>🚫 You blocked this user. You can't send or receive messages here.</Text>
         </View>
-      </KeyboardAvoidingView>
+      ) : (
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.input}
+              value={input}
+              onChangeText={setInput}
+              placeholder="Type a message…"
+              placeholderTextColor={Colors.textLight}
+              multiline
+            />
+            <TouchableOpacity
+              style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
+              onPress={send}
+              // @ts-ignore
+              onClick={send}
+              disabled={!input.trim()}
+            >
+              <Text style={styles.sendBtnText}>↑</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      )}
+
+      <ReportReasonModal
+        visible={!!reportTargetMessageId}
+        submitting={reportSubmitting}
+        onSelect={handleReportMessage}
+        onClose={() => setReportTargetMessageId(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -235,7 +334,11 @@ const styles = StyleSheet.create({
   emptyChatText: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22 },
   bubble: { maxWidth: '75%', borderRadius: 18, padding: 12, marginBottom: 4 },
   bubbleMe: { backgroundColor: Colors.primary, alignSelf: 'flex-end', borderBottomRightRadius: 4 },
-  bubbleThem: { backgroundColor: Colors.white, alignSelf: 'flex-start', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: Colors.border },
+  bubbleThem: { backgroundColor: Colors.white, alignSelf: 'flex-start', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: Colors.border, paddingRight: 28, position: 'relative' },
+  msgMenuBtn: { position: 'absolute', top: 2, right: 4, paddingHorizontal: 6, paddingVertical: 4 },
+  msgMenuBtnText: { fontSize: 13, color: Colors.textLight, fontWeight: '800' },
+  blockedBar: { padding: 16, backgroundColor: Colors.white, borderTopWidth: 1, borderTopColor: Colors.border },
+  blockedBarText: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' },
   bubbleText: { fontSize: 15, lineHeight: 20 },
   bubbleTextMe: { color: Colors.white },
   bubbleTextThem: { color: Colors.textPrimary },
