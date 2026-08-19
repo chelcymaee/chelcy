@@ -1660,33 +1660,23 @@ DROP POLICY IF EXISTS "Users can view own reports" ON content_reports;
 CREATE POLICY "Users can view own reports" ON content_reports
   FOR SELECT USING (auth.uid() = reporter_id);
 
--- Base table privilege is required in addition to the RLS policy above —
--- Postgres checks GRANTs before RLS ever runs, and authenticated has none
--- on a freshly created table by default in local testing. (Caught by the
--- local RLS test suite: every write attempted directly against the new
--- tables as `authenticated`, rather than through the SECURITY DEFINER
--- functions, failed with "permission denied for table" until this GRANT
--- was added — a real gap in the first draft of this migration, not a
--- test-harness artifact.)
+-- Table-level privileges. Postgres checks GRANTs before RLS ever runs, so
+-- a base grant is required in addition to the policy above — but the
+-- REVOKE lines below are not optional cleanup, they're required for a
+-- fresh deployment to reach the intended state at all: Supabase's
+-- schema-level ALTER DEFAULT PRIVILEGES grants full CRUD to both anon and
+-- authenticated the instant this table is created, before any statement
+-- here runs. Final state after this block: authenticated has SELECT
+-- only — this table has no INSERT/UPDATE/DELETE policy at all, since
+-- reporting only happens through report_content() below (a SECURITY
+-- DEFINER function that bypasses RLS as the table owner) — and anon has
+-- nothing (no legitimate unauthenticated read path exists for this
+-- table). TRUNCATE is revoked explicitly and separately from the rest:
+-- unlike SELECT/INSERT/UPDATE/DELETE, TRUNCATE is not governed by RLS at
+-- all, so leaving it granted would bypass every policy above entirely.
 GRANT SELECT ON content_reports TO authenticated;
-
--- CORRECTION (2026-08-19, verified live immediately after first deploying
--- this table to production): Supabase's ALTER DEFAULT PRIVILEGES on the
--- public schema grants full CRUD to BOTH anon and authenticated the
--- instant any new table is created — before the GRANT above even runs.
--- That default grant made the line above redundant rather than wrong, and
--- meant anon held a live SELECT/INSERT/UPDATE/DELETE grant on this table
--- that was never intended. Not actively exploitable (this table has no
--- INSERT/UPDATE/DELETE policy at all, and RLS enabled + zero policies for
--- a command denies that command outright regardless of the grant — same
--- rule documented in Fix 4 above; the one SELECT policy is a real
--- auth.uid() = reporter_id check, not USING (true), so anon's auth.uid()
--- being null already returned zero rows even before this) — but grants
--- should match the intended design rather than relying on RLS alone to
--- silently absorb the gap, same standard applied to the traveller_reviews
--- fix. Explicitly revoking the excess now that the table exists.
 REVOKE ALL ON content_reports FROM anon;
-REVOKE INSERT, UPDATE, DELETE ON content_reports FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON content_reports FROM authenticated;
 
 CREATE TABLE IF NOT EXISTS blocked_users (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -1708,21 +1698,17 @@ DROP POLICY IF EXISTS "Users can unblock" ON blocked_users;
 CREATE POLICY "Users can unblock" ON blocked_users
   FOR DELETE USING (auth.uid() = blocker_id);
 
--- Base table privilege, same reasoning as content_reports above — matches
--- exactly the three RLS policies just created (insert/select/delete own row).
+-- Table-level privileges — same reasoning as content_reports above; the
+-- REVOKE lines are required, not optional, for the same reason (Supabase's
+-- default schema-level grant applies before this block runs). Final state:
+-- authenticated has exactly SELECT/INSERT/DELETE, matching the three RLS
+-- policies above (there is deliberately no UPDATE policy — a block
+-- relationship is inserted or deleted, never edited in place); anon has
+-- nothing. TRUNCATE revoked separately, same reason as content_reports —
+-- it bypasses RLS entirely regardless of policy.
 GRANT SELECT, INSERT, DELETE ON blocked_users TO authenticated;
-
--- CORRECTION (2026-08-19, same finding and same fix as content_reports
--- above): the default schema-level privilege grant gave anon full CRUD
--- here too, and gave authenticated an UPDATE grant with no matching
--- policy (there is deliberately no UPDATE policy on this table — a block
--- relationship is inserted or deleted, never edited in place). Not
--- actively exploitable for the same reason as above (every command that
--- has a policy checks auth.uid() = blocker_id for real; UPDATE has no
--- policy at all so RLS denies it outright regardless of the grant) — but
--- tightened to match intent rather than relying on RLS alone.
 REVOKE ALL ON blocked_users FROM anon;
-REVOKE UPDATE ON blocked_users FROM authenticated;
+REVOKE UPDATE, TRUNCATE, REFERENCES, TRIGGER ON blocked_users FROM authenticated;
 
 -- users_are_blocked(): the only way client code (or another function) can
 -- learn about a block relationship. Deliberately does NOT expose
