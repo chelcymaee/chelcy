@@ -55,10 +55,15 @@ export default function TravellerReviewDetail() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setError('Please sign in to view this review.'); return; }
 
+      // Defense-in-depth: filter by traveller_id in the query itself, not
+      // just the post-fetch check below. RLS is the actual security
+      // boundary (see the traveller_reviews SELECT policy fix) — this is
+      // a second, redundant layer, not a substitute for it.
       const { data: rev, error: revErr } = await supabase
         .from('traveller_reviews')
         .select('id, host_name, rating_respectful, rating_on_time, rating_communication, comment, created_at, traveller_id')
         .eq('booking_id', bookingId)
+        .eq('traveller_id', user.id)
         .single();
 
       if (revErr || !rev) {
