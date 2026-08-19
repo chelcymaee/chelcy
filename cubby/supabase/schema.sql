@@ -1806,14 +1806,46 @@ GRANT EXECUTE ON FUNCTION report_content(TEXT, UUID, TEXT) TO authenticated;
 -- Objectionable-language filter: the authoritative, non-bypassable
 -- enforcement layer (a CHECK constraint, same pattern already used by
 -- bookings_payment_provider_check elsewhere in this schema) rather than
--- something only enforced client-side. Word list intentionally starts
--- narrow — this is the mechanical enforcement point; expanding the word
--- list later doesn't require any RLS/policy change.
+-- something only enforced client-side.
+--
+-- Small, hand-curated, English-only v1 list (~47 terms): severe
+-- profanity, slurs, and explicit sexual/graphic terms. Deliberately
+-- excludes mild language (damn, hell, crap, etc.) — that's not what
+-- Apple Guideline 1.2 is targeting, and flagging it would just cause
+-- false positives on ordinary reviews. No AI/ML — a static list, matching
+-- the approved scope.
+--
+-- Whole-word matching only (\y...\y, Postgres's equivalent of \b) — a
+-- listed term must appear as its own word, not as a substring of an
+-- unrelated word (e.g. "cumbersome" does not match "cum", "raccoon" does
+-- not match "coon", "spice" does not match "spic"). Deliberately excludes
+-- standalone "dick" — it's a common given-name short form (Richard) and
+-- would false-positive on a legitimate host or traveller name;
+-- "dickhead" (compound, no name collision) is kept.
+--
+-- Stored as a plain array so the list itself is the only thing to edit
+-- later — the regex construction and \y boundaries don't need to change.
 CREATE OR REPLACE FUNCTION contains_objectionable_language(input TEXT)
 RETURNS BOOLEAN
 LANGUAGE sql IMMUTABLE
 AS $$
-  SELECT input ~* '\ybadword1\y|\ybadword2\y|\ybadword3\y'
+  SELECT input ~* ('\y(' || array_to_string(ARRAY[
+    -- severe profanity
+    'fuck', 'fucking', 'fucker', 'fucked', 'motherfucker',
+    'shit', 'bullshit', 'bitch', 'asshole', 'dickhead',
+    'cunt', 'whore', 'slut', 'bastard', 'twat',
+    -- slurs: racial / ethnic
+    'nigger', 'nigga', 'chink', 'spic', 'kike',
+    'wetback', 'gook', 'coon', 'paki', 'raghead',
+    -- slurs: homophobic / transphobic
+    'faggot', 'fag', 'dyke', 'tranny',
+    -- slurs: ableist
+    'retard', 'retarded', 'spastic',
+    -- explicit sexual / graphic
+    'rape', 'rapist', 'pedophile', 'pedo', 'molest',
+    'molester', 'incest', 'bestiality', 'cumshot', 'blowjob',
+    'handjob', 'deepthroat', 'gangbang', 'cum', 'porn'
+  ], '|') || ')\y')
 $$;
 
 DO $$ BEGIN
