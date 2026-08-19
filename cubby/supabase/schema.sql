@@ -1662,14 +1662,31 @@ CREATE POLICY "Users can view own reports" ON content_reports
 
 -- Base table privilege is required in addition to the RLS policy above —
 -- Postgres checks GRANTs before RLS ever runs, and authenticated has none
--- on a freshly created table by default. SELECT only: authenticated has no
--- INSERT/UPDATE/DELETE policy on this table, so no other grant is needed.
--- (Caught by the local RLS test suite: every write attempted directly
--- against the new tables as `authenticated`, rather than through the
--- SECURITY DEFINER functions, failed with "permission denied for table"
--- until this GRANT was added — a real gap in the first draft of this
--- migration, not a test-harness artifact.)
+-- on a freshly created table by default in local testing. (Caught by the
+-- local RLS test suite: every write attempted directly against the new
+-- tables as `authenticated`, rather than through the SECURITY DEFINER
+-- functions, failed with "permission denied for table" until this GRANT
+-- was added — a real gap in the first draft of this migration, not a
+-- test-harness artifact.)
 GRANT SELECT ON content_reports TO authenticated;
+
+-- CORRECTION (2026-08-19, verified live immediately after first deploying
+-- this table to production): Supabase's ALTER DEFAULT PRIVILEGES on the
+-- public schema grants full CRUD to BOTH anon and authenticated the
+-- instant any new table is created — before the GRANT above even runs.
+-- That default grant made the line above redundant rather than wrong, and
+-- meant anon held a live SELECT/INSERT/UPDATE/DELETE grant on this table
+-- that was never intended. Not actively exploitable (this table has no
+-- INSERT/UPDATE/DELETE policy at all, and RLS enabled + zero policies for
+-- a command denies that command outright regardless of the grant — same
+-- rule documented in Fix 4 above; the one SELECT policy is a real
+-- auth.uid() = reporter_id check, not USING (true), so anon's auth.uid()
+-- being null already returned zero rows even before this) — but grants
+-- should match the intended design rather than relying on RLS alone to
+-- silently absorb the gap, same standard applied to the traveller_reviews
+-- fix. Explicitly revoking the excess now that the table exists.
+REVOKE ALL ON content_reports FROM anon;
+REVOKE INSERT, UPDATE, DELETE ON content_reports FROM authenticated;
 
 CREATE TABLE IF NOT EXISTS blocked_users (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -1694,6 +1711,18 @@ CREATE POLICY "Users can unblock" ON blocked_users
 -- Base table privilege, same reasoning as content_reports above — matches
 -- exactly the three RLS policies just created (insert/select/delete own row).
 GRANT SELECT, INSERT, DELETE ON blocked_users TO authenticated;
+
+-- CORRECTION (2026-08-19, same finding and same fix as content_reports
+-- above): the default schema-level privilege grant gave anon full CRUD
+-- here too, and gave authenticated an UPDATE grant with no matching
+-- policy (there is deliberately no UPDATE policy on this table — a block
+-- relationship is inserted or deleted, never edited in place). Not
+-- actively exploitable for the same reason as above (every command that
+-- has a policy checks auth.uid() = blocker_id for real; UPDATE has no
+-- policy at all so RLS denies it outright regardless of the grant) — but
+-- tightened to match intent rather than relying on RLS alone.
+REVOKE ALL ON blocked_users FROM anon;
+REVOKE UPDATE ON blocked_users FROM authenticated;
 
 -- users_are_blocked(): the only way client code (or another function) can
 -- learn about a block relationship. Deliberately does NOT expose
