@@ -267,6 +267,48 @@ function tmpl_partner_application(d: {
   return { subject, html, text };
 }
 
+function tmpl_content_report_created(d: {
+  contentType: string; reason: string; reporterName: string; reporterEmail: string;
+  reportedUserName: string; reportedUserEmail: string; submittedAt: string;
+}): { subject: string; html: string; text: string } {
+  const subject = `[URGENT — 24h] Content reported: ${d.contentType}`;
+  const html = wrap(`
+    <h1 style="margin:0 0 8px;font-size:24px;font-weight:800;color:#1A1A1A;">Content reported 🚨</h1>
+    <p style="margin:0 0 24px;font-size:16px;color:#6B7280;">Cubby's Terms commit to reviewing this within 24 hours.</p>
+    <table cellpadding="0" cellspacing="0" style="width:100%;background:#F9FAFB;border-radius:12px;padding:20px;margin-bottom:24px;">
+      <tbody>
+        ${pill('Content type', d.contentType)}
+        ${pill('Reason', d.reason)}
+        ${pill('Reported by', `${d.reporterName} (${d.reporterEmail})`)}
+        ${pill('About', `${d.reportedUserName} (${d.reportedUserEmail})`)}
+        ${pill('Received', d.submittedAt)}
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:#6B7280;">Review and act on this in the Cubby admin panel — Content Reports.</p>
+  `);
+  const text = `Content reported (act within 24h)\n\nType: ${d.contentType}\nReason: ${d.reason}\nReported by: ${d.reporterName} (${d.reporterEmail})\nAbout: ${d.reportedUserName} (${d.reportedUserEmail})\nReceived: ${d.submittedAt}\n\nReview in the admin panel — Content Reports.\n\n— Cubby Admin`;
+  return { subject, html, text };
+}
+
+function tmpl_user_blocked(d: {
+  blockerName: string; blockerEmail: string; blockedName: string; blockedEmail: string; blockedAt: string;
+}): { subject: string; html: string; text: string } {
+  const subject = `[Block] ${d.blockerName} blocked ${d.blockedName}`;
+  const html = wrap(`
+    <h1 style="margin:0 0 8px;font-size:24px;font-weight:800;color:#1A1A1A;">A user was blocked 🚫</h1>
+    <p style="margin:0 0 24px;font-size:16px;color:#6B7280;">For visibility — this doesn't require action on its own, but repeated blocks against the same account may warrant a look.</p>
+    <table cellpadding="0" cellspacing="0" style="width:100%;background:#F9FAFB;border-radius:12px;padding:20px;margin-bottom:24px;">
+      <tbody>
+        ${pill('Blocked by', `${d.blockerName} (${d.blockerEmail})`)}
+        ${pill('Blocked user', `${d.blockedName} (${d.blockedEmail})`)}
+        ${pill('When', d.blockedAt)}
+      </tbody>
+    </table>
+  `);
+  const text = `A user was blocked\n\nBlocked by: ${d.blockerName} (${d.blockerEmail})\nBlocked user: ${d.blockedName} (${d.blockedEmail})\nWhen: ${d.blockedAt}\n\n— Cubby Admin`;
+  return { subject, html, text };
+}
+
 function tmpl_verification_submitted(d: {
   userName: string; userEmail: string; submittedAt: string;
 }): { subject: string; html: string; text: string } {
@@ -480,6 +522,45 @@ async function handleDbWebhook(payload: any): Promise<void> {
         await sendViaResend({ to: traveller.email, ...tmpl });
       }
     }
+    return;
+  }
+
+  // content_reports INSERT → notify admin immediately (Apple's 24h
+  // objectionable-content requirement — the admin queue itself, not this
+  // email, is what the timer actually runs against, but this is how the
+  // founder learns a new report exists without polling the dashboard).
+  if (table === 'content_reports' && type === 'INSERT') {
+    const [{ data: reporter }, { data: reportedUser }] = await Promise.all([
+      supabase.from('profiles').select('full_name, email').eq('id', record.reporter_id).single(),
+      supabase.from('profiles').select('full_name, email').eq('id', record.reported_user_id).single(),
+    ]);
+    const tmpl = tmpl_content_report_created({
+      contentType: record.content_type,
+      reason: record.reason,
+      reporterName: reporter?.full_name ?? 'Unknown',
+      reporterEmail: reporter?.email ?? 'unknown',
+      reportedUserName: reportedUser?.full_name ?? 'Unknown',
+      reportedUserEmail: reportedUser?.email ?? 'unknown',
+      submittedAt: new Date(record.created_at).toLocaleString('en-ZA'),
+    });
+    await sendViaResend({ to: ADMIN_EMAIL, ...tmpl });
+    return;
+  }
+
+  // blocked_users INSERT → notify admin (informational, no action implied)
+  if (table === 'blocked_users' && type === 'INSERT') {
+    const [{ data: blocker }, { data: blocked }] = await Promise.all([
+      supabase.from('profiles').select('full_name, email').eq('id', record.blocker_id).single(),
+      supabase.from('profiles').select('full_name, email').eq('id', record.blocked_id).single(),
+    ]);
+    const tmpl = tmpl_user_blocked({
+      blockerName: blocker?.full_name ?? 'Unknown',
+      blockerEmail: blocker?.email ?? 'unknown',
+      blockedName: blocked?.full_name ?? 'Unknown',
+      blockedEmail: blocked?.email ?? 'unknown',
+      blockedAt: new Date(record.created_at).toLocaleString('en-ZA'),
+    });
+    await sendViaResend({ to: ADMIN_EMAIL, ...tmpl });
     return;
   }
 

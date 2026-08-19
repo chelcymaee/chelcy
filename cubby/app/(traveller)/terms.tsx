@@ -57,9 +57,10 @@ const SECTIONS: { heading: string; paragraphs?: string[]; bullets?: string[] }[]
     ],
   },
   {
-    heading: '8. Reviews & Conduct',
+    heading: '8. Reviews, Messages & Conduct',
     paragraphs: [
-      'Users may leave reviews of one another after a completed booking. Reviews must be honest and based on genuine experience. Cubby may remove reviews that are abusive, fraudulent, or that otherwise violate these Terms.',
+      'Users may leave reviews of one another after a completed booking, and message one another about a booking. Reviews must be honest and based on genuine experience.',
+      'Cubby has zero tolerance for objectionable, abusive, or harassing content of any kind. If you receive content that violates this policy, you can report it directly in the app, and you can block another user to prevent further contact. Cubby will review reports of objectionable content and take appropriate action within 24 hours of receiving a report.',
     ],
   },
   {
@@ -77,7 +78,7 @@ const SECTIONS: { heading: string; paragraphs?: string[]; bullets?: string[] }[]
   {
     heading: '11. Account Suspension & Termination',
     paragraphs: [
-      'Cubby may suspend or terminate an account that violates these Terms, receives repeated negative reviews, or engages in fraudulent or unsafe behaviour. You may delete your own account at any time from Profile → Delete Account.',
+      'Cubby may suspend or terminate an account that violates these Terms, receives repeated negative reviews, or engages in fraudulent or unsafe behaviour. Cubby may also remove any content that violates these Terms, independently of any action taken against the account that posted it. You may delete your own account at any time from Profile → Delete Account.',
     ],
   },
   {
