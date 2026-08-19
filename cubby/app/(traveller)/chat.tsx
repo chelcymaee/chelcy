@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, FlatList,
-  TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator,
+  TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import ReportReasonModal from '../../src/components/ReportReasonModal';
+import { reportContent, blockUser, getBlockedUserIds } from '../../src/lib/moderation-service';
 
 interface Message {
   id: string;
   body: string;
+  senderId: string;
   fromMe: boolean;
   time: string;
 }
@@ -26,6 +29,15 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [myId, setMyId] = useState<string | null>(null);
+  // Every user id this account has blocked (not scoped to this
+  // conversation) — deliberately not derived from hosts.user_id/
+  // assigned_user_id. A message's sender_id is the authoritative identity
+  // of who actually sent it, so blocking (and the resulting filtering)
+  // is keyed off real sender_ids from the conversation's own messages,
+  // never off listing-ownership metadata.
+  const [blockedSenderIds, setBlockedSenderIds] = useState<Set<string>>(new Set());
+  const [reportTargetMessageId, setReportTargetMessageId] = useState<string | null>(null);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
   const listRef = useRef<FlatList>(null);
   const channelRef = useRef<any>(null);
 
@@ -85,6 +97,13 @@ export default function Chat() {
 
     if (!convId) { setLoading(false); return; }
     setConversationId(convId);
+
+    // Load this account's full block list before messages, so the very
+    // first render already filters correctly rather than flashing
+    // unfiltered content first. Not scoped to this conversation — it's
+    // just this user's own blocked_users rows (own-row RLS).
+    setBlockedSenderIds(await getBlockedUserIds(user.id));
+
     await loadMessages(convId, user.id);
     subscribeRealtime(convId, user.id);
     setLoading(false);
@@ -100,6 +119,7 @@ export default function Chat() {
     setMessages((data ?? []).map((m: any) => ({
       id: m.id,
       body: m.body,
+      senderId: m.sender_id,
       fromMe: m.sender_id === userId,
       time: new Date(m.created_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }),
     })));
@@ -136,6 +156,7 @@ export default function Chat() {
         setMessages(prev => prev.some(existing => existing.id === incomingId) ? prev : [...prev, {
           id: m.id,
           body: m.body,
+          senderId: m.sender_id,
           fromMe: m.sender_id === userId,
           time: new Date(m.created_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }),
         }]);
@@ -158,6 +179,19 @@ export default function Chat() {
     if (error) {
       console.error('Message insert error:', error);
       setInput(body); // restore input if failed
+      if (error.code === '23514' && error.message?.includes('_no_objectionable_language')) {
+        Alert.alert('Message not sent', "Your message contains language that isn't allowed. Please revise it and try again.");
+      } else if (error.code === '42501') {
+        // RLS rejection — either party has blocked the other. Never expose
+        // the raw Postgres/RLS error; a neutral message is enough (this
+        // path is also unreachable from the blocker's own composer, since
+        // it's hidden once a blocked sender is detected in this
+        // conversation — this covers the OTHER side: someone who has been
+        // blocked, sending without knowing it).
+        Alert.alert('Message not sent', "This message couldn't be sent. Please try again later.");
+      } else {
+        Alert.alert('Message not sent', 'Something went wrong. Please try again.');
+      }
       return;
     }
 
@@ -168,6 +202,70 @@ export default function Chat() {
     // Always reload after send — Realtime may not fire on web without replica identity
     await loadMessages(conversationId, myId);
   }
+
+  function showMessageActions(m: Message) {
+    Alert.alert(
+      'Message options',
+      undefined,
+      [
+        { text: 'Report message', onPress: () => setReportTargetMessageId(m.id) },
+        { text: 'Block user', style: 'destructive', onPress: () => handleBlockSender(m.senderId) },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  }
+
+  async function handleReportMessage(reason: string) {
+    if (!reportTargetMessageId) return;
+    setReportSubmitting(true);
+    const result = await reportContent('message', reportTargetMessageId, reason);
+    setReportSubmitting(false);
+    setReportTargetMessageId(null);
+    if (result.ok) {
+      Alert.alert('Report submitted', "Thanks — we'll take a look at this.");
+    } else {
+      Alert.alert('Could not submit report', 'Please try again in a moment.');
+    }
+  }
+
+  // Blocks the actual sender of the message the "•••" menu was opened
+  // from — message.sender_id is the authoritative identity of who sent
+  // it, not something derived from listing-ownership metadata (a listing
+  // can have a separate owner vs. assigned manager, and either may be the
+  // one actually messaging — the message itself already tells us which).
+  async function handleBlockSender(senderId: string) {
+    if (!myId) return;
+    Alert.alert(
+      `Block ${hostName || 'this user'}?`,
+      "You won't be able to message each other. Existing messages aren't deleted.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await blockUser(myId, senderId);
+            if (result.ok) {
+              setBlockedSenderIds(prev => new Set(prev).add(senderId));
+            } else {
+              Alert.alert('Could not block this user', result.error ?? 'Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  // Derived, not stored — the smallest reliable way to know "is the other
+  // side of this conversation blocked" without any listing-ownership
+  // metadata: check whether any real sender seen in this conversation's
+  // own messages is in my blocked list. Naturally handles a listing with
+  // more than one messaging participant (owner + assigned manager) the
+  // same way the database's own RESTRICTIVE policy already does — blocking
+  // any one of them disables the composer, since the DB would reject a
+  // send to this conversation either way.
+  const conversationIsBlocked = messages.some(m => !m.fromMe && blockedSenderIds.has(m.senderId));
+  const visibleMessages = messages.filter(m => !(m.senderId !== myId && blockedSenderIds.has(m.senderId)));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -192,7 +290,10 @@ export default function Chat() {
       ) : (
         <FlatList
           ref={listRef}
-          data={messages}
+          // Only blocked senders' own messages are hidden — my own sent
+          // history stays visible to me. The underlying rows are never
+          // touched; this is a render-only filter.
+          data={visibleMessages}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.messagesList}
           ListEmptyComponent={
@@ -202,6 +303,16 @@ export default function Chat() {
           }
           renderItem={({ item }) => (
             <View style={[styles.bubble, item.fromMe ? styles.bubbleMe : styles.bubbleThem]}>
+              {!item.fromMe && (
+                <TouchableOpacity
+                  style={styles.msgMenuBtn}
+                  onPress={() => showMessageActions(item)}
+                  // @ts-ignore
+                  onClick={() => showMessageActions(item)}
+                >
+                  <Text style={styles.msgMenuBtnText}>•••</Text>
+                </TouchableOpacity>
+              )}
               <Text style={[styles.bubbleText, item.fromMe ? styles.bubbleTextMe : styles.bubbleTextThem]}>
                 {item.body}
               </Text>
@@ -213,27 +324,40 @@ export default function Chat() {
         />
       )}
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            value={input}
-            onChangeText={setInput}
-            placeholder="Type a message…"
-            placeholderTextColor={Colors.textLight}
-            multiline
-          />
-          <TouchableOpacity
-            style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
-            onPress={send}
-            // @ts-ignore
-            onClick={send}
-            disabled={!input.trim()}
-          >
-            <Text style={styles.sendBtnText}>↑</Text>
-          </TouchableOpacity>
+      {conversationIsBlocked ? (
+        <View style={styles.blockedBar}>
+          <Text style={styles.blockedBarText}>🚫 You blocked this user. You can't send or receive messages here.</Text>
         </View>
-      </KeyboardAvoidingView>
+      ) : (
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.input}
+              value={input}
+              onChangeText={setInput}
+              placeholder="Type a message…"
+              placeholderTextColor={Colors.textLight}
+              multiline
+            />
+            <TouchableOpacity
+              style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
+              onPress={send}
+              // @ts-ignore
+              onClick={send}
+              disabled={!input.trim()}
+            >
+              <Text style={styles.sendBtnText}>↑</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      )}
+
+      <ReportReasonModal
+        visible={!!reportTargetMessageId}
+        submitting={reportSubmitting}
+        onSelect={handleReportMessage}
+        onClose={() => setReportTargetMessageId(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -249,7 +373,11 @@ const styles = StyleSheet.create({
   emptyChatText: { fontSize: 16, color: Colors.textSecondary },
   bubble: { maxWidth: '75%', borderRadius: 18, padding: 12, marginBottom: 4 },
   bubbleMe: { backgroundColor: Colors.primary, alignSelf: 'flex-end', borderBottomRightRadius: 4 },
-  bubbleThem: { backgroundColor: Colors.white, alignSelf: 'flex-start', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: Colors.border },
+  bubbleThem: { backgroundColor: Colors.white, alignSelf: 'flex-start', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: Colors.border, paddingRight: 28, position: 'relative' },
+  msgMenuBtn: { position: 'absolute', top: 2, right: 4, paddingHorizontal: 6, paddingVertical: 4 },
+  msgMenuBtnText: { fontSize: 13, color: Colors.textLight, fontWeight: '800' },
+  blockedBar: { padding: 16, backgroundColor: Colors.white, borderTopWidth: 1, borderTopColor: Colors.border },
+  blockedBarText: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' },
   bubbleText: { fontSize: 15, lineHeight: 20 },
   bubbleTextMe: { color: Colors.white },
   bubbleTextThem: { color: Colors.textPrimary },
