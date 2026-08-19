@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Animated, Image,
+  TouchableOpacity, Animated, Image, Alert,
 } from 'react-native';
 import { useLocalSearchParams, useFocusEffect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,6 +11,8 @@ import { computeHostBadges, topBadges, TrustBadge } from '../../src/lib/trust-ba
 import { formatResponseRate, formatResponseTime, formatResponseTimeShort } from '../../src/lib/response-rate';
 import { HostDetailSkeleton } from '../../src/components/Skeleton';
 import Avatar from '../../src/components/Avatar';
+import ReportReasonModal from '../../src/components/ReportReasonModal';
+import { reportContent, blockUser, getBlockedUserIds } from '../../src/lib/moderation-service';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TODAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -65,6 +67,16 @@ export default function HostDetail() {
   const [badges, setBadges] = useState<TrustBadge[]>([]);
   const [bagCount, setBagCount] = useState(1);
   const [savedReviews, setSavedReviews] = useState<any[]>([]);
+  // Reviews written by users the current viewer has blocked — hidden from
+  // the card list only. Deliberately never used to recalculate
+  // host.rating/host.review_count or the distribution histogram below,
+  // both of which stay wired to the full, unfiltered savedReviews array —
+  // blocking hides one viewer's own feed, it must not change the listing's
+  // objective aggregate stats.
+  const [blockedReviewerIds, setBlockedReviewerIds] = useState<Set<string>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [reportTargetReviewId, setReportTargetReviewId] = useState<string | null>(null);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   // The traveller's own completed, not-yet-reviewed booking with this host,
   // if one exists — the single source of truth for whether "Write a review"
@@ -124,7 +136,7 @@ export default function HostDetail() {
       if (isSupabaseConfigured) {
         const { data } = await supabase
           .from('reviews')
-          .select('id, reviewer_name, reviewer_avatar_url, rating, comment, tags, created_at, rating_friendliness, rating_location, rating_drop_off, rating_security')
+          .select('id, reviewer_id, reviewer_name, reviewer_avatar_url, rating, comment, tags, created_at, rating_friendliness, rating_location, rating_drop_off, rating_security')
           .eq('host_id', id)
           .order('created_at', { ascending: false });
         if (data && data.length > 0) { setSavedReviews(data); return; }
@@ -133,8 +145,16 @@ export default function HostDetail() {
       const raw = await AsyncStorage.getItem(`cubby_reviews_${id}`);
       if (raw) setSavedReviews(JSON.parse(raw));
     }
+    async function loadBlockedUsers() {
+      if (!isSupabaseConfigured) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setCurrentUserId(user.id);
+      setBlockedReviewerIds(await getBlockedUserIds(user.id));
+    }
     loadHost();
     loadReviews();
+    loadBlockedUsers();
     // Check if saved
     checkSaved();
     checkEligibleBooking();
@@ -228,7 +248,60 @@ export default function HostDetail() {
     }
   }
 
+  // The full, unfiltered dataset — count, distribution histogram, and
+  // category averages all read from this and only this, regardless of the
+  // current viewer's own blocks. See blockedReviewerIds above.
   const reviews = savedReviews;
+  // Card-list-only view — the one thing blocking actually affects.
+  const visibleReviews = reviews.filter((r: any) => !blockedReviewerIds.has(r.reviewer_id));
+
+  async function handleReportReview(reason: string) {
+    if (!reportTargetReviewId) return;
+    setReportSubmitting(true);
+    const result = await reportContent('host_review', reportTargetReviewId, reason);
+    setReportSubmitting(false);
+    setReportTargetReviewId(null);
+    if (result.ok) {
+      Alert.alert('Report submitted', "Thanks — we'll take a look at this.");
+    } else {
+      Alert.alert('Could not submit report', 'Please try again in a moment.');
+    }
+  }
+
+  function showReviewActions(r: any) {
+    Alert.alert(
+      r.reviewer_name ?? 'Review options',
+      undefined,
+      [
+        { text: 'Report review', onPress: () => setReportTargetReviewId(r.id) },
+        { text: `Block ${r.reviewer_name ?? 'this user'}`, style: 'destructive', onPress: () => handleBlockReviewer(r.reviewer_id, r.reviewer_name ?? 'this user') },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  }
+
+  function handleBlockReviewer(reviewerId: string, reviewerName: string) {
+    if (!currentUserId) return;
+    Alert.alert(
+      `Block ${reviewerName}?`,
+      "You won't see their reviews here anymore. This doesn't affect the host's overall rating.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await blockUser(currentUserId, reviewerId);
+            if (result.ok) {
+              setBlockedReviewerIds(prev => new Set(prev).add(reviewerId));
+            } else {
+              Alert.alert('Could not block this user', result.error ?? 'Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }
 
   // FAT-006: was hardcoded to Explore — currently only ever reached from
   // explore.tsx so this happened to be correct, but it's the same anti-
@@ -529,7 +602,7 @@ export default function HostDetail() {
 
           {reviews.length > 0 && (
             <View style={styles.reviewsList}>
-              {reviews.map((r: any) => (
+              {visibleReviews.map((r: any) => (
                 <View key={r.id} style={styles.review}>
                   <View style={styles.reviewHeaderRow}>
                     <Avatar uri={r.reviewer_avatar_url} size={36} />
@@ -542,6 +615,16 @@ export default function HostDetail() {
                       </View>
                     </View>
                     <Text style={styles.reviewDate}>{r.created_at.slice(0, 7)}</Text>
+                    {r.reviewer_id && r.reviewer_id !== currentUserId && (
+                      <TouchableOpacity
+                        style={styles.reviewMenuBtn}
+                        onPress={() => showReviewActions(r)}
+                        // @ts-ignore
+                        onClick={() => showReviewActions(r)}
+                      >
+                        <Text style={styles.reviewMenuBtnText}>•••</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                   {!!r.comment && <Text style={styles.reviewComment}>{r.comment}</Text>}
                   {r.tags?.length > 0 && (
@@ -585,6 +668,13 @@ export default function HostDetail() {
           <Text style={styles.footerBtnText}>Select no. of bags →</Text>
         </TouchableOpacity>
       </View>
+
+      <ReportReasonModal
+        visible={!!reportTargetReviewId}
+        submitting={reportSubmitting}
+        onSelect={handleReportReview}
+        onClose={() => setReportTargetReviewId(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -763,6 +853,8 @@ const styles = StyleSheet.create({
   reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   reviewName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   reviewDate: { fontSize: 12, color: Colors.textSecondary },
+  reviewMenuBtn: { paddingHorizontal: 8, paddingVertical: 4, marginLeft: 4 },
+  reviewMenuBtnText: { fontSize: 16, color: Colors.textLight, fontWeight: '800' },
   reviewComment: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
   noReviewsBox: { alignItems: 'center', paddingVertical: 24 },
   noReviewsEmoji: { fontSize: 32, marginBottom: 8 },

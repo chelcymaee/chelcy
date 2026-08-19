@@ -85,6 +85,9 @@ export async function submitHostReview(p: SubmitHostReviewParams): Promise<Revie
   if (insertError) {
     console.error('[review-service] reviews insert error:', JSON.stringify(insertError));
     if (insertError.code === '23505') return { success: false, alreadyReviewed: true };
+    if (insertError.code === '23514' && insertError.message?.includes('_no_objectionable_language')) {
+      return { success: false, error: "Your review contains language that isn't allowed. Please revise your comment and try again." };
+    }
     return { success: false, error: `Could not submit review. Please try again. (${insertError.code})` };
   }
 
@@ -206,6 +209,9 @@ export async function submitTravellerReview(p: SubmitTravellerReviewParams): Pro
   if (insertError) {
     console.error('[review-service] insert error:', insertError.code, insertError.message);
     if (insertError.code === '23505') return { success: false, alreadyReviewed: true };
+    if (insertError.code === '23514' && insertError.message?.includes('_no_objectionable_language')) {
+      return { success: false, error: "This review contains language that isn't allowed. Please revise the comment and try again." };
+    }
     return { success: false, error: `Could not submit review. Please try again. (${insertError.code})` };
   }
 

@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator,
+  TouchableOpacity, ActivityIndicator, Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Colors } from '../../src/constants/colors';
@@ -14,11 +14,14 @@ import { Radius, CardShadow, Spacing } from '../../src/constants/theme';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { Stars } from '../../src/components/Stars';
 import { useSelectedHost } from '../../src/lib/host-context';
+import ReportReasonModal from '../../src/components/ReportReasonModal';
+import { reportContent, blockUser } from '../../src/lib/moderation-service';
 
 const RATING_LABELS = ['', 'Poor', 'Not great', 'Okay', 'Really good', 'Outstanding'];
 
 interface HostReview {
   id: string;
+  reviewer_id: string;
   reviewer_name: string;
   rating: number;
   comment: string | null;
@@ -56,8 +59,54 @@ export default function HostReviewDetail() {
   const [booking, setBooking] = useState<BookingContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   const goBack = () => router.replace('/(host)/requests');
+
+  function showReviewActions() {
+    if (!review) return;
+    Alert.alert(
+      review.reviewer_name ?? 'Review options',
+      undefined,
+      [
+        { text: 'Report review', onPress: () => setReportModalVisible(true) },
+        { text: `Block ${review.reviewer_name ?? 'this user'}`, style: 'destructive', onPress: handleBlockReviewer },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  }
+
+  async function handleReportReview(reason: string) {
+    if (!review) return;
+    setReportSubmitting(true);
+    const result = await reportContent('host_review', review.id, reason);
+    setReportSubmitting(false);
+    setReportModalVisible(false);
+    if (result.ok) {
+      Alert.alert('Report submitted', "Thanks — we'll take a look at this.");
+    } else {
+      Alert.alert('Could not submit report', 'Please try again in a moment.');
+    }
+  }
+
+  async function handleBlockReviewer() {
+    if (!review || !currentUserId) return;
+    const result = await blockUser(currentUserId, review.reviewer_id);
+    if (result.ok) {
+      // Don't leave the blocked person's review sitting on screen — the
+      // underlying row isn't deleted, this is just navigating away from
+      // it immediately rather than requiring a reload to notice the block.
+      Alert.alert(
+        'User blocked',
+        `You won't receive further messages from ${review.reviewer_name ?? 'this user'}.`,
+        [{ text: 'OK', onPress: goBack }]
+      );
+    } else {
+      Alert.alert('Could not block this user', result.error ?? 'Please try again.');
+    }
+  }
 
   useEffect(() => {
     if (!bookingId || !isSupabaseConfigured) {
@@ -83,11 +132,12 @@ export default function HostReviewDetail() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setError('Please sign in to view this review.'); return; }
+      setCurrentUserId(user.id);
 
       const { data: rev, error: revErr } = await supabase
         .from('reviews')
         .select(`
-          id, reviewer_name, rating, comment, tags,
+          id, reviewer_id, reviewer_name, rating, comment, tags,
           rating_friendliness, rating_location, rating_drop_off, rating_security,
           created_at, host_id
         `)
@@ -160,11 +210,20 @@ export default function HostReviewDetail() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={goBack}
-          // @ts-ignore
-          onClick={goBack}>
-          <Text style={styles.back}>← Back</Text>
-        </TouchableOpacity>
+        <View style={styles.topRow}>
+          <TouchableOpacity onPress={goBack}
+            // @ts-ignore
+            onClick={goBack}>
+            <Text style={styles.back}>← Back</Text>
+          </TouchableOpacity>
+          {review.reviewer_id && review.reviewer_id !== currentUserId && (
+            <TouchableOpacity onPress={showReviewActions}
+              // @ts-ignore
+              onClick={showReviewActions}>
+              <Text style={styles.menuBtn}>•••</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         <Text style={styles.heading}>New review</Text>
         <Text style={styles.sub}>From {review.reviewer_name}</Text>
@@ -235,6 +294,13 @@ export default function HostReviewDetail() {
           </Text>
         </View>
       </ScrollView>
+
+      <ReportReasonModal
+        visible={reportModalVisible}
+        submitting={reportSubmitting}
+        onSelect={handleReportReview}
+        onClose={() => setReportModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -243,7 +309,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   inner: { padding: Spacing.xl, paddingTop: 28, paddingBottom: 48 },
-  back: { fontSize: 15, color: Colors.primary, fontWeight: '600', marginBottom: 24 },
+  back: { fontSize: 15, color: Colors.primary, fontWeight: '600' },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+  menuBtn: { fontSize: 18, color: Colors.textLight, fontWeight: '800', paddingHorizontal: 8, paddingVertical: 4 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, marginBottom: 4 },
   sub: { fontSize: 16, color: Colors.textSecondary, marginBottom: 24 },
 
