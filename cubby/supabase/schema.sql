@@ -1594,3 +1594,287 @@ WITH CHECK (
       AND b.status = 'completed'
   )
 );
+
+-- -------------------------------------------------------------------------
+-- UGC moderation, Stage 1 (2026-08-19): report + block backend foundation
+-- -------------------------------------------------------------------------
+-- Apple Guideline 1.2 rejection requires a working report/flag mechanism, a
+-- working block mechanism, and content filtering — none of which existed
+-- (reviews.reported was a dormant column with zero write path anywhere in
+-- the app; admin-reviews's ?reported=true filter had nothing that could
+-- ever set it). This is backend-only: no client UI, no admin UI, and no
+-- change to any existing review/message display query. Client UI for this
+-- is a separate, later stage, approved separately.
+--
+-- Verified against production before writing this migration: live
+-- pg_policies on `messages` (2026-08-19) showed two duplicate PERMISSIVE
+-- INSERT policies ("Participants can insert messages" and "Participants
+-- can send messages") — a pre-existing drift from the "Participants can
+-- send messages in own conversations" policy tracked in Fix 4 above, not
+-- introduced by this change. PostgreSQL ORs multiple permissive policies
+-- for the same command together, which is exactly why the new
+-- blocked-pair policy below is declared AS RESTRICTIVE — a restrictive
+-- policy ANDs on top of the permissive set regardless of how many
+-- permissive policies exist, so it isn't silently bypassable by that
+-- existing drift (or any future duplicate permissive policy).
+--
+-- Local-Postgres RLS test suite (real `authenticated`/`anon` roles, not
+-- the table-owning superuser) confirmed: clean messages still send both
+-- directions; a blocked pair is rejected in BOTH directions; an unrelated
+-- conversation between the same host and a third traveller is unaffected;
+-- unblocking restores messaging; objectionable-language content is
+-- rejected on both traveller_reviews.comment and messages.body; report_content()
+-- derives the reported user from the actual content record (not a
+-- client-supplied value) for all three content types and rejects a report
+-- from anyone who isn't a legitimate party to that content, including a
+-- self-report attempt; a duplicate pending report from the same reporter
+-- on the same content is deduplicated rather than creating a second row;
+-- and users_are_blocked() only answers truthfully for a pair the caller is
+-- actually part of, returning FALSE to an uninvolved party probing an
+-- unrelated pair's relationship. No existing bookings, payments, reviews,
+-- or messages rows were read from or written to by this work — it ran
+-- entirely against a local disposable test database seeded with fixture
+-- data, never against production.
+
+CREATE TABLE IF NOT EXISTS content_reports (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  reporter_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  content_type TEXT NOT NULL CHECK (content_type IN ('host_review', 'traveller_review', 'message')),
+  content_id UUID NOT NULL,
+  reported_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'actioned', 'dismissed')),
+  action_taken TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ
+);
+ALTER TABLE content_reports ENABLE ROW LEVEL SECURITY;
+
+CREATE UNIQUE INDEX IF NOT EXISTS content_reports_no_duplicate_pending
+  ON content_reports (reporter_id, content_type, content_id) WHERE status = 'pending';
+
+-- No direct INSERT policy for authenticated on purpose — reporting only
+-- happens through report_content() below, which bypasses RLS as the
+-- function owner. A plain client insert has nothing to grant it access to.
+DROP POLICY IF EXISTS "Users can view own reports" ON content_reports;
+CREATE POLICY "Users can view own reports" ON content_reports
+  FOR SELECT USING (auth.uid() = reporter_id);
+
+-- Table-level privileges. Postgres checks GRANTs before RLS ever runs, so
+-- a base grant is required in addition to the policy above — but the
+-- REVOKE lines below are not optional cleanup, they're required for a
+-- fresh deployment to reach the intended state at all: Supabase's
+-- schema-level ALTER DEFAULT PRIVILEGES grants full CRUD to both anon and
+-- authenticated the instant this table is created, before any statement
+-- here runs. Final state after this block: authenticated has SELECT
+-- only — this table has no INSERT/UPDATE/DELETE policy at all, since
+-- reporting only happens through report_content() below (a SECURITY
+-- DEFINER function that bypasses RLS as the table owner) — and anon has
+-- nothing (no legitimate unauthenticated read path exists for this
+-- table). TRUNCATE is revoked explicitly and separately from the rest:
+-- unlike SELECT/INSERT/UPDATE/DELETE, TRUNCATE is not governed by RLS at
+-- all, so leaving it granted would bypass every policy above entirely.
+GRANT SELECT ON content_reports TO authenticated;
+REVOKE ALL ON content_reports FROM anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON content_reports FROM authenticated;
+
+CREATE TABLE IF NOT EXISTS blocked_users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  blocker_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  blocked_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(blocker_id, blocked_id),
+  CHECK (blocker_id != blocked_id)
+);
+ALTER TABLE blocked_users ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can block" ON blocked_users;
+CREATE POLICY "Users can block" ON blocked_users
+  FOR INSERT WITH CHECK (auth.uid() = blocker_id);
+DROP POLICY IF EXISTS "Users can view own blocks" ON blocked_users;
+CREATE POLICY "Users can view own blocks" ON blocked_users
+  FOR SELECT USING (auth.uid() = blocker_id);
+DROP POLICY IF EXISTS "Users can unblock" ON blocked_users;
+CREATE POLICY "Users can unblock" ON blocked_users
+  FOR DELETE USING (auth.uid() = blocker_id);
+
+-- Table-level privileges — same reasoning as content_reports above; the
+-- REVOKE lines are required, not optional, for the same reason (Supabase's
+-- default schema-level grant applies before this block runs). Final state:
+-- authenticated has exactly SELECT/INSERT/DELETE, matching the three RLS
+-- policies above (there is deliberately no UPDATE policy — a block
+-- relationship is inserted or deleted, never edited in place); anon has
+-- nothing. TRUNCATE revoked separately, same reason as content_reports —
+-- it bypasses RLS entirely regardless of policy.
+GRANT SELECT, INSERT, DELETE ON blocked_users TO authenticated;
+REVOKE ALL ON blocked_users FROM anon;
+REVOKE UPDATE, TRUNCATE, REFERENCES, TRIGGER ON blocked_users FROM authenticated;
+
+-- users_are_blocked(): the only way client code (or another function) can
+-- learn about a block relationship. Deliberately does NOT expose
+-- blocked_users as a general lookup — the CASE guard below means this only
+-- ever returns a truthful answer when the caller is one of the two users
+-- being asked about; anyone probing an unrelated pair always gets FALSE,
+-- regardless of the real answer.
+CREATE OR REPLACE FUNCTION users_are_blocked(user_a UUID, user_b UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT CASE
+    WHEN auth.uid() IS DISTINCT FROM user_a AND auth.uid() IS DISTINCT FROM user_b THEN FALSE
+    ELSE EXISTS (
+      SELECT 1 FROM blocked_users
+      WHERE (blocker_id = user_a AND blocked_id = user_b)
+         OR (blocker_id = user_b AND blocked_id = user_a)
+    )
+  END;
+$$;
+REVOKE ALL ON FUNCTION users_are_blocked(UUID, UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION users_are_blocked(UUID, UUID) TO authenticated;
+
+-- Blocked pair cannot exchange new messages. Declared AS RESTRICTIVE, not
+-- a normal permissive policy — see the drift note above for why a second
+-- permissive policy here would have been silently bypassable.
+DROP POLICY IF EXISTS "Blocked users cannot exchange new messages" ON messages;
+CREATE POLICY "Blocked users cannot exchange new messages" ON messages
+AS RESTRICTIVE
+FOR INSERT
+WITH CHECK (
+  NOT EXISTS (
+    SELECT 1 FROM conversations c
+    JOIN hosts h ON h.id = c.host_id
+    WHERE c.id = messages.conversation_id
+    AND (
+      users_are_blocked(auth.uid(), c.traveller_id)
+      OR users_are_blocked(auth.uid(), h.user_id)
+      OR (h.assigned_user_id IS NOT NULL AND users_are_blocked(auth.uid(), h.assigned_user_id))
+    )
+  )
+);
+
+-- report_content(): the only way to create a content_reports row. Derives
+-- reported_user_id itself from the actual content record server-side
+-- rather than trusting a client-supplied value (a client could otherwise
+-- report Message X while naming a completely unrelated user as the
+-- reported party). Because this is SECURITY DEFINER, it bypasses the
+-- underlying tables' own RLS entirely — so each content type re-derives
+-- and checks the reporter's legitimate visibility into that specific
+-- record independently, rather than assuming "knows the UUID" implies
+-- "may report it":
+--   * host_review (reviews table) — genuinely public content (any
+--     authenticated user can already read any host's reviews via
+--     host-detail.tsx), so existence alone is enough.
+--   * traveller_review — restricted to the traveller being reviewed or
+--     the host who wrote it, even though this table's own SELECT policy
+--     ("Traveller reviews are publicly viewable", above) is actually
+--     `USING (true)` — every client-side query happens to scope itself to
+--     `traveller_id = auth.uid()` or `reviewer_id = auth.uid()`, but that
+--     is an app-code convention, not an RLS-enforced boundary. This
+--     function does not rely on that convention and enforces its own
+--     stricter check regardless of what the table's RLS otherwise allows.
+--   * message — restricted to an actual participant (traveller or either
+--     host-owner column) of the conversation the message belongs to.
+CREATE OR REPLACE FUNCTION report_content(p_content_type TEXT, p_content_id UUID, p_reason TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_reported_user_id UUID;
+  v_reporter_id UUID := auth.uid();
+BEGIN
+  IF v_reporter_id IS NULL THEN RETURN json_build_object('ok', false, 'reason', 'not_authenticated'); END IF;
+  IF p_content_type NOT IN ('host_review','traveller_review','message') THEN
+    RETURN json_build_object('ok', false, 'reason', 'invalid_content_type');
+  END IF;
+
+  IF p_content_type = 'host_review' THEN
+    SELECT reviewer_id INTO v_reported_user_id FROM reviews WHERE id = p_content_id;
+  ELSIF p_content_type = 'traveller_review' THEN
+    SELECT reviewer_id INTO v_reported_user_id
+    FROM traveller_reviews
+    WHERE id = p_content_id AND (traveller_id = v_reporter_id OR reviewer_id = v_reporter_id);
+  ELSIF p_content_type = 'message' THEN
+    SELECT m.sender_id INTO v_reported_user_id
+    FROM messages m JOIN conversations c ON c.id = m.conversation_id JOIN hosts h ON h.id = c.host_id
+    WHERE m.id = p_content_id
+      AND (c.traveller_id = v_reporter_id OR h.user_id = v_reporter_id OR h.assigned_user_id = v_reporter_id);
+  END IF;
+
+  IF v_reported_user_id IS NULL THEN RETURN json_build_object('ok', false, 'reason', 'content_not_found_or_not_visible'); END IF;
+  IF v_reported_user_id = v_reporter_id THEN RETURN json_build_object('ok', false, 'reason', 'cannot_report_own_content'); END IF;
+
+  INSERT INTO content_reports (reporter_id, content_type, content_id, reported_user_id, reason)
+  VALUES (v_reporter_id, p_content_type, p_content_id, v_reported_user_id, p_reason)
+  ON CONFLICT DO NOTHING;
+
+  RETURN json_build_object('ok', true);
+END;
+$$;
+REVOKE ALL ON FUNCTION report_content(TEXT, UUID, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION report_content(TEXT, UUID, TEXT) TO authenticated;
+
+-- Objectionable-language filter: the authoritative, non-bypassable
+-- enforcement layer (a CHECK constraint, same pattern already used by
+-- bookings_payment_provider_check elsewhere in this schema) rather than
+-- something only enforced client-side.
+--
+-- Small, hand-curated, English-only v1 list (~47 terms): severe
+-- profanity, slurs, and explicit sexual/graphic terms. Deliberately
+-- excludes mild language (damn, hell, crap, etc.) — that's not what
+-- Apple Guideline 1.2 is targeting, and flagging it would just cause
+-- false positives on ordinary reviews. No AI/ML — a static list, matching
+-- the approved scope.
+--
+-- Whole-word matching only (\y...\y, Postgres's equivalent of \b) — a
+-- listed term must appear as its own word, not as a substring of an
+-- unrelated word (e.g. "cumbersome" does not match "cum", "raccoon" does
+-- not match "coon", "spice" does not match "spic"). Deliberately excludes
+-- standalone "dick" — it's a common given-name short form (Richard) and
+-- would false-positive on a legitimate host or traveller name;
+-- "dickhead" (compound, no name collision) is kept.
+--
+-- Stored as a plain array so the list itself is the only thing to edit
+-- later — the regex construction and \y boundaries don't need to change.
+CREATE OR REPLACE FUNCTION contains_objectionable_language(input TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql IMMUTABLE
+AS $$
+  SELECT input ~* ('\y(' || array_to_string(ARRAY[
+    -- severe profanity
+    'fuck', 'fucking', 'fucker', 'fucked', 'motherfucker',
+    'shit', 'bullshit', 'bitch', 'asshole', 'dickhead',
+    'cunt', 'whore', 'slut', 'bastard', 'twat',
+    -- slurs: racial / ethnic
+    'nigger', 'nigga', 'chink', 'spic', 'kike',
+    'wetback', 'gook', 'coon', 'paki', 'raghead',
+    -- slurs: homophobic / transphobic
+    'faggot', 'fag', 'dyke', 'tranny',
+    -- slurs: ableist
+    'retard', 'retarded', 'spastic',
+    -- explicit sexual / graphic
+    'rape', 'rapist', 'pedophile', 'pedo', 'molest',
+    'molester', 'incest', 'bestiality', 'cumshot', 'blowjob',
+    'handjob', 'deepthroat', 'gangbang', 'cum', 'porn'
+  ], '|') || ')\y')
+$$;
+
+DO $$ BEGIN
+  ALTER TABLE reviews ADD CONSTRAINT reviews_no_objectionable_language
+    CHECK (comment IS NULL OR NOT contains_objectionable_language(comment));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE traveller_reviews ADD CONSTRAINT traveller_reviews_no_objectionable_language
+    CHECK (comment IS NULL OR NOT contains_objectionable_language(comment));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE messages ADD CONSTRAINT messages_no_objectionable_language
+    CHECK (NOT contains_objectionable_language(body));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
