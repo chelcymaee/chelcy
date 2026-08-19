@@ -1492,3 +1492,105 @@ CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at
 -- constraint is unaffected, zero existing rows were touched, and every
 -- existing host still has user_id = assigned_user_id.
 ALTER TABLE hosts ALTER COLUMN user_id DROP NOT NULL;
+
+-- -------------------------------------------------------------------------
+-- SECURITY FIX (2026-08-19): traveller_reviews SELECT privacy exposure +
+-- INSERT impersonation/integrity gap
+-- -------------------------------------------------------------------------
+-- Discovered while building the UGC moderation Stage 1 report_content()
+-- function (separate work, PR #128) — comparing this table's actual
+-- visibility against what report_content() assumed surfaced two real,
+-- pre-existing, unrelated bugs. Handled here as its own security fix
+-- rather than folded into the moderation PR, so it can be reviewed and
+-- rolled back independently.
+--
+-- Live pg_policies + information_schema.role_table_grants (2026-08-19)
+-- showed 4 policies on this table — this repo only ever tracked 2 of
+-- them, meaning 2 were added directly against production at some point
+-- and never committed anywhere:
+--   * "Traveller reviews are publicly viewable" (tracked)   — SELECT USING (true)
+--   * "traveller_reviews_public_read"           (untracked) — SELECT USING (true), a duplicate
+--   * "Hosts can create traveller reviews"       (tracked)   — INSERT WITH CHECK (auth.uid() = reviewer_id)
+--   * "traveller_reviews_host_insert"            (untracked) — INSERT WITH CHECK (assigned_user_id = auth.uid()),
+--                                                                with NO reviewer_id check at all
+--
+-- Issue 1 — SELECT: two duplicate PERMISSIVE `USING (true)` policies made
+-- every row in this table publicly readable, and `anon` (not just
+-- `authenticated`) held a live SELECT grant — meaning the private review
+-- text a host writes about a specific traveller was readable by anyone
+-- holding the public anon API key, logged in or not, given any real
+-- booking_id. Every client-side query already happened to scope itself to
+-- the right user, but that's an app convention, not an RLS boundary —
+-- app/(traveller)/review-detail.tsx fetched the full row (comment
+-- included) by booking_id alone and only checked traveller_id ownership
+-- *after* the data had already left the server. Confirmed exploitable
+-- against a reproduction of the exact live policies before writing this
+-- fix (not theoretical): an unrelated traveller account, and a fully
+-- unauthenticated anon-role session, both successfully read another
+-- traveller's private review comment.
+--
+-- Issue 2 — INSERT: because permissive policies OR together, the
+-- untracked policy's missing reviewer_id check meant an assigned co-owner
+-- of a listing could insert a review attributed to a different
+-- reviewer_id than themselves (impersonation) — confirmed exploitable the
+-- same way before this fix.
+--
+-- Local Postgres RLS test suite (real authenticated/anon roles, built as
+-- a reproduction of these exact live policies) confirmed both issues were
+-- real before this fix, then confirmed all 15 required scenarios after
+-- it: reviewed traveller/writer/either host-ownership-field co-owner can
+-- read; an unrelated party and unauthenticated anon cannot; a legitimate
+-- reviewer can insert; reviewer_id impersonation, an unrelated listing
+-- owner, a fabricated booking/traveller relationship, a duplicate
+-- booking_id, and a non-completed booking are all rejected; a booking
+-- reaching 'completed' status unblocks its legitimate review. Also
+-- confirmed this migration is safe to run twice.
+--
+-- No production data was read from or written to — verified entirely
+-- against a disposable local test database. No admin/service-role code
+-- path is affected: no (admin) screen queries traveller_reviews directly
+-- as authenticated, and the two Edge Functions that read it
+-- (send-email, send-review-reminders) use the service-role key, which
+-- bypasses RLS regardless of policy.
+
+DROP POLICY IF EXISTS "Traveller reviews are publicly viewable" ON traveller_reviews;
+DROP POLICY IF EXISTS "traveller_reviews_public_read" ON traveller_reviews;
+
+DROP POLICY IF EXISTS "Traveller reviews visible to traveller and reviewing host" ON traveller_reviews;
+CREATE POLICY "Traveller reviews visible to traveller and reviewing host"
+ON traveller_reviews
+FOR SELECT
+USING (
+  auth.uid() = traveller_id
+  OR auth.uid() = reviewer_id
+  OR EXISTS (
+    SELECT 1 FROM hosts h
+    WHERE h.id = traveller_reviews.host_id
+      AND (h.user_id = auth.uid() OR h.assigned_user_id = auth.uid())
+  )
+);
+
+REVOKE SELECT ON traveller_reviews FROM anon;
+
+DROP POLICY IF EXISTS "Hosts can create traveller reviews" ON traveller_reviews;
+DROP POLICY IF EXISTS "traveller_reviews_host_insert" ON traveller_reviews;
+
+DROP POLICY IF EXISTS "Hosts can create traveller reviews for their own bookings" ON traveller_reviews;
+CREATE POLICY "Hosts can create traveller reviews for their own bookings"
+ON traveller_reviews
+FOR INSERT
+WITH CHECK (
+  auth.uid() = reviewer_id
+  AND EXISTS (
+    SELECT 1 FROM hosts h
+    WHERE h.id = traveller_reviews.host_id
+      AND (h.user_id = auth.uid() OR h.assigned_user_id = auth.uid())
+  )
+  AND EXISTS (
+    SELECT 1 FROM bookings b
+    WHERE b.id = traveller_reviews.booking_id
+      AND b.host_id = traveller_reviews.host_id
+      AND b.traveller_id = traveller_reviews.traveller_id
+      AND b.status = 'completed'
+  )
+);
