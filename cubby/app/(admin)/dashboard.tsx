@@ -8,6 +8,17 @@ async function adminFetchBookings() {
   return res.json();
 }
 
+// content_reports has no admin-facing RLS (deliberately — only an own-row
+// SELECT policy, see schema.sql). Unlike the other stats below, which read
+// straight off the anon-key client because their tables allow it, this one
+// has to go through the service-role admin-content-reports function or it
+// would silently return zero rows every time, not an error.
+async function adminFetchPendingReportsCount(): Promise<number> {
+  const res = await adminFetch('/admin-content-reports?status=pending', { method: 'GET' });
+  const { data } = await res.json();
+  return Array.isArray(data) ? data.length : 0;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ActivityItem {
@@ -30,6 +41,7 @@ interface Stats {
   openSupportMessages: number;
   pendingVerifications: number;
   totalUsers: number;
+  pendingContentReports: number;
 }
 
 interface Toast {
@@ -43,6 +55,7 @@ const EMPTY_STATS: Stats = {
   revenueMonth: 0, revenueTotal: 0,
   pendingHostApprovals: 0, pendingPartnerApplications: 0,
   openSupportMessages: 0, pendingVerifications: 0, totalUsers: 0,
+  pendingContentReports: 0,
 };
 
 const POLL_INTERVAL_MS = 30_000;
@@ -114,6 +127,11 @@ export default function AdminDashboard() {
       addToast('New host added', '🏠');
       newPulse.add('hosts');
     }
+    if (newStats.pendingContentReports > prev.pendingContentReports) {
+      const n = newStats.pendingContentReports - prev.pendingContentReports;
+      addToast(`${n} new content report${n > 1 ? 's' : ''}`, '🚨');
+      newPulse.add('reports');
+    }
 
     if (newPulse.size > 0) {
       setPulseKeys(newPulse);
@@ -142,6 +160,7 @@ export default function AdminDashboard() {
         bookingsResult,
         { data: recentApplications },
         { data: recentSupport },
+        pendingContentReports,
       ] = await Promise.all([
         supabase.from('hosts').select('*', { count: 'exact', head: true }),
         supabase.from('hosts').select('*', { count: 'exact', head: true }).eq('is_active', true),
@@ -153,6 +172,7 @@ export default function AdminDashboard() {
         adminFetchBookings(),
         supabase.from('partner_applications').select('id, business_name, created_at, status').order('created_at', { ascending: false }).limit(5),
         supabase.from('support_messages').select('id, subject, created_at, status, user_email').order('created_at', { ascending: false }).limit(5),
+        adminFetchPendingReportsCount(),
       ]);
 
       const allBookings = bookingsResult.data ?? [];
@@ -176,6 +196,7 @@ export default function AdminDashboard() {
         openSupportMessages: openSupport ?? 0,
         pendingVerifications: pendingVerifs ?? 0,
         totalUsers: totalUsers ?? 0,
+        pendingContentReports: pendingContentReports ?? 0,
       };
 
       setStats(newStats);
@@ -234,6 +255,10 @@ export default function AdminDashboard() {
   // ─── Needs Attention list (with pulse keys) ───────────────────────────────
 
   const needsAttention: Array<{ label: string; route: string; color: string; pulseKey: string }> = [
+    ...(stats.pendingContentReports > 0 ? [{
+      label: `${stats.pendingContentReports} content report${stats.pendingContentReports > 1 ? 's' : ''} pending — act within 24h`,
+      route: '/(admin)/content-reports', color: '#DC2626', pulseKey: 'reports',
+    }] : []),
     ...(stats.pendingPartnerApplications > 0 ? [{
       label: `${stats.pendingPartnerApplications} partner application${stats.pendingPartnerApplications > 1 ? 's' : ''} awaiting review`,
       route: '/(admin)/partner-applications', color: '#F59E0B', pulseKey: 'applications',
@@ -492,9 +517,21 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ---- Reviews ---- */}
-      <p style={s.sectionLabel}>Reviews</p>
+      {/* ---- Moderation ---- */}
+      <p style={s.sectionLabel}>Moderation</p>
       <div style={s.sectionCard}>
+        <div style={s.sectionRow} onClick={() => router.push('/(admin)/content-reports' as any)}>
+          <div style={s.sectionRowLeft}>
+            <span style={s.sectionRowIcon}>🚨</span>
+            <span style={s.sectionRowLabel}>Content Reports</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {stats.pendingContentReports > 0 && (
+              <span style={s.sectionRowBadge('#DC2626', pulseKeys.has('reports'))}>{stats.pendingContentReports} pending</span>
+            )}
+            <span style={s.attentionArrow}>›</span>
+          </div>
+        </div>
         <div style={s.sectionRowLast} onClick={() => router.push('/(admin)/reviews' as any)}>
           <div style={s.sectionRowLeft}>
             <span style={s.sectionRowIcon}>⭐</span>

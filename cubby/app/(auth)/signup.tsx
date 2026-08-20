@@ -19,6 +19,11 @@ export default function Signup() {
   const [role, setRole] = useState<Role>('traveller');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  // Apple's Guideline 1.2 rejection specifically asked for proof of EULA
+  // presentation before account creation — a passive "by signing up you
+  // agree" footer wasn't enough evidence. This must be actively checked,
+  // not just displayed, before the account can be created.
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   async function handleSignup() {
     if (!fullName || !email || !password) {
@@ -27,6 +32,10 @@ export default function Signup() {
     }
     if (password.length < 6) {
       setErrorMsg('Password must be at least 6 characters');
+      return;
+    }
+    if (!agreedToTerms) {
+      setErrorMsg('Please agree to the Terms of Service and Privacy Policy to continue');
       return;
     }
     setErrorMsg('');
@@ -186,10 +195,32 @@ export default function Signup() {
             secureTextEntry
           />
 
+          <TouchableOpacity
+            style={styles.checkboxRow}
+            onPress={() => setAgreedToTerms(a => !a)}
+            // @ts-ignore
+            onClick={() => setAgreedToTerms(a => !a)}
+          >
+            <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+              {agreedToTerms && <Text style={styles.checkboxTick}>✓</Text>}
+            </View>
+            <Text style={styles.checkboxLabel}>
+              I agree to the{' '}
+              <Text style={styles.termsLink} onPress={() => router.push('/(traveller)/terms')}>
+                Terms of Service
+              </Text>
+              {' '}and{' '}
+              <Text style={styles.termsLink} onPress={() => router.push('/(traveller)/privacy')}>
+                Privacy Policy
+              </Text>
+            </Text>
+          </TouchableOpacity>
+
           <Btn
             label={loading ? 'Creating account…' : 'Create account'}
             onPress={handleSignup}
             loading={loading}
+            disabled={!agreedToTerms}
             style={styles.btn}
           />
         </View>
@@ -200,18 +231,6 @@ export default function Signup() {
             <Text style={styles.footerLink}>Sign in</Text>
           </TouchableOpacity>
         </View>
-
-        <Text style={styles.terms}>
-          By signing up you agree to our{' '}
-          <Text style={styles.termsLink} onPress={() => router.push('/(traveller)/terms')}>
-            Terms of Service
-          </Text>
-          {' '}and{' '}
-          <Text style={styles.termsLink} onPress={() => router.push('/(traveller)/privacy')}>
-            Privacy Policy
-          </Text>
-          .
-        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -254,10 +273,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textPrimary,
   },
-  btn: { marginTop: 24 },
+  checkboxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 20 },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center', marginTop: 1,
+  },
+  checkboxChecked: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  checkboxTick: { color: Colors.white, fontSize: 14, fontWeight: '800' },
+  checkboxLabel: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
+  btn: { marginTop: 16 },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
   footerText: { color: Colors.textSecondary, fontSize: 15 },
   footerLink: { color: Colors.primary, fontSize: 15, fontWeight: '700' },
-  terms: { textAlign: 'center', color: Colors.textLight, fontSize: 12, marginTop: 16, lineHeight: 18 },
   termsLink: { color: Colors.primary, fontWeight: '600' },
 });
