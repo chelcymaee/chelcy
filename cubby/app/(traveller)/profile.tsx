@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import HostOnboardingChecklist from '../../src/components/HostOnboardingChecklist';
+import { signOutAndCleanupPushToken } from '../../src/lib/notifications';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MenuItem {
@@ -281,7 +282,10 @@ export default function Profile() {
 
   async function doSignOut() {
     if (isSupabaseConfigured) {
-      await supabase.auth.signOut();
+      // Cleans up this device's push-token row for the current user before
+      // actually signing out — must happen in that order, see
+      // signOutAndCleanupPushToken's own comment for why.
+      await signOutAndCleanupPushToken();
     }
     await AsyncStorage.removeItem('cubby_traveller_profile');
     router.replace('/');
@@ -302,7 +306,7 @@ export default function Profile() {
           setDeleteError('Could not delete account. Please contact support.');
           return;
         }
-        await supabase.auth.signOut();
+        await signOutAndCleanupPushToken();
       }
       await AsyncStorage.clear();
       router.replace('/');
