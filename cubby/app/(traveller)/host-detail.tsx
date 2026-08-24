@@ -13,6 +13,7 @@ import { HostDetailSkeleton } from '../../src/components/Skeleton';
 import Avatar from '../../src/components/Avatar';
 import ReportReasonModal from '../../src/components/ReportReasonModal';
 import { reportContent, blockUser, getBlockedUserIds } from '../../src/lib/moderation-service';
+import { promptGuestSignIn } from '../../src/lib/guest-prompt';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TODAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -341,7 +342,17 @@ export default function HostDetail() {
     if (!eligibleBookingId) return;
     router.push({ pathname: '/(traveller)/review', params: { hostId: id, hostName: host.display_name, bookingId: eligibleBookingId } });
   };
-  const goToBooking = () => router.push({ pathname: '/(traveller)/booking', params: { hostId: id, bagCount: String(bagCount), selectedDate: selectedDate ?? '' } });
+  // Apple Guideline 5.1.1(v): browsing (this whole screen) stays open to a
+  // guest, but booking is an account-based action — gate it here, at the
+  // point of use, rather than assuming a session exists once someone's
+  // this deep into the flow (they may have arrived here as a guest).
+  const goToBooking = () => {
+    if (!currentUserId) {
+      promptGuestSignIn('Sign in or create an account to book this storage spot.');
+      return;
+    }
+    router.push({ pathname: '/(traveller)/booking', params: { hostId: id, bagCount: String(bagCount), selectedDate: selectedDate ?? '' } });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -615,12 +626,16 @@ export default function HostDetail() {
                       </View>
                     </View>
                     <Text style={styles.reviewDate}>{r.created_at.slice(0, 7)}</Text>
+                    {/* r.reviewer_id !== currentUserId is always true for a guest
+                        (currentUserId is null), which is correct — a guest has no
+                        review of their own to exclude. The guard below is what
+                        actually gates Report/Block behind sign-in for them. */}
                     {r.reviewer_id && r.reviewer_id !== currentUserId && (
                       <TouchableOpacity
                         style={styles.reviewMenuBtn}
-                        onPress={() => showReviewActions(r)}
+                        onPress={() => currentUserId ? showReviewActions(r) : promptGuestSignIn('Sign in or create an account to report or block a user.')}
                         // @ts-ignore
-                        onClick={() => showReviewActions(r)}
+                        onClick={() => currentUserId ? showReviewActions(r) : promptGuestSignIn('Sign in or create an account to report or block a user.')}
                       >
                         <Text style={styles.reviewMenuBtnText}>•••</Text>
                       </TouchableOpacity>
