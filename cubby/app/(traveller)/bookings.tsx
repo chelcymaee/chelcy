@@ -7,6 +7,7 @@ import { Colors } from '../../src/constants/colors';
 import NotificationBell from '../../src/components/NotificationBell';
 import { BookingCardSkeleton } from '../../src/components/Skeleton';
 import { sendNotification } from '../../src/lib/notification-service';
+import { promptGuestSignIn } from '../../src/lib/guest-prompt';
 
 const STATUS_COLOR: Record<string, string> = {
   pending_payment: '#9CA3AF',
@@ -77,6 +78,10 @@ export default function Bookings() {
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  // Apple Guideline 5.1.1(v): this tab is reachable now that guest browsing
+  // exists (same Tabs layout as Explore), but bookings are inherently
+  // account-based — show a sign-in CTA instead of an authenticated query.
+  const [isGuest, setIsGuest] = useState(false);
   // Ticks once a second so the awaiting_host_confirmation countdowns stay
   // live. Display only — see formatResponseCountdown above.
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -101,6 +106,7 @@ export default function Bookings() {
       if (isSupabaseConfigured) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          setIsGuest(false);
           const { data } = await supabase
             .from('bookings')
             .select('*, hosts(display_name, location_name, user_id, assigned_user_id)')
@@ -117,6 +123,13 @@ export default function Bookings() {
             }
             return;
           }
+        } else {
+          // No session — guest browsing (Apple Guideline 5.1.1(v)). Don't
+          // fall through to the AsyncStorage demo-mode path below; that's
+          // for isSupabaseConfigured === false, a different scenario.
+          setIsGuest(true);
+          setBookings([]);
+          return;
         }
       }
       const raw = await AsyncStorage.getItem('cubby_bookings');
@@ -278,6 +291,29 @@ export default function Bookings() {
   const upcoming = bookings.filter(b => ['pending', 'awaiting_host_confirmation', 'confirmed', 'active'].includes(b.status ?? 'confirmed'));
   const past = bookings.filter(b => ['completed', 'cancelled', 'declined', 'expired'].includes(b.status ?? ''));
   const shown = tab === 'upcoming' ? upcoming : past;
+
+  if (isGuest) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.heading}>My Bookings</Text>
+        </View>
+        <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>🎟️</Text>
+          <Text style={styles.emptyTitle}>Sign in to see your bookings</Text>
+          <Text style={styles.emptySub}>Create an account or sign in to book storage and track your bookings here.</Text>
+          <TouchableOpacity
+            style={styles.exploreBtn}
+            onPress={() => promptGuestSignIn()}
+            // @ts-ignore
+            onClick={() => promptGuestSignIn()}
+          >
+            <Text style={styles.exploreBtnText}>Sign in →</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>

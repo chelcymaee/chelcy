@@ -101,6 +101,20 @@ export default function Welcome() {
         <TouchableOpacity style={styles.btnSecondary} onPress={() => router.push('/(auth)/login')} activeOpacity={0.85}>
           <Text style={styles.btnSecondaryText}>I already have an account</Text>
         </TouchableOpacity>
+        {/* Apple Guideline 5.1.1(v): browsing storage spots isn't
+            account-based, so it must be reachable without registering.
+            Account-based actions (booking, messaging, reporting/blocking)
+            still gate behind sign-in at the point of use — see
+            src/lib/guest-prompt.ts. */}
+        <TouchableOpacity
+          style={styles.btnGuest}
+          onPress={() => router.push('/(traveller)/explore')}
+          activeOpacity={0.7}
+          // @ts-ignore
+          onClick={() => router.push('/(traveller)/explore')}
+        >
+          <Text style={styles.btnGuestText}>Browse without an account</Text>
+        </TouchableOpacity>
       </Animated.View>
 
       <View style={styles.bottomRow}>
@@ -162,6 +176,8 @@ const styles = StyleSheet.create({
   btnPrimaryText: { fontSize: 17, fontWeight: '800', color: Colors.primary },
   btnSecondary: { borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)', borderRadius: 18, paddingVertical: 18, alignItems: 'center' },
   btnSecondaryText: { fontSize: 17, fontWeight: '600', color: Colors.white },
+  btnGuest: { paddingVertical: 10, alignItems: 'center' },
+  btnGuestText: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.75)', textDecorationLine: 'underline' },
   bottomRow: { alignItems: 'center', gap: 8 },
   location: { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
   partnerLink: { fontSize: 13, color: 'rgba(255,255,255,0.5)', textDecorationLine: 'underline' },

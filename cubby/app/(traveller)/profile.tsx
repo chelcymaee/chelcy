@@ -11,6 +11,7 @@ import { Colors } from '../../src/constants/colors';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import HostOnboardingChecklist from '../../src/components/HostOnboardingChecklist';
 import { signOutAndCleanupPushToken } from '../../src/lib/notifications';
+import { promptGuestSignIn } from '../../src/lib/guest-prompt';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MenuItem {
@@ -71,6 +72,10 @@ export default function Profile() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarToast, setAvatarToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  // Apple Guideline 5.1.1(v): this tab is reachable now that guest browsing
+  // exists (same Tabs layout as Explore) — show a sign-in CTA instead of a
+  // profile screen with nothing behind it.
+  const [isGuest, setIsGuest] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastY = useRef(new Animated.Value(-8)).current;
@@ -87,7 +92,12 @@ export default function Profile() {
   async function loadProfile() {
     if (isSupabaseConfigured) {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      if (!user) {
+        setIsGuest(true);
+        return;
+      }
+      setIsGuest(false);
+      {
         setEmail(user.email ?? '');
         const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
         if (profile) {
@@ -357,6 +367,29 @@ export default function Profile() {
       ],
     },
   ];
+
+  if (isGuest) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.heading}>Account</Text>
+        </View>
+        <View style={styles.guestState}>
+          <Text style={styles.guestStateEmoji}>👤</Text>
+          <Text style={styles.guestStateTitle}>Sign in to view your profile</Text>
+          <Text style={styles.guestStateSub}>Create an account or sign in to manage your bookings, reviews, and account details.</Text>
+          <TouchableOpacity
+            style={styles.guestStateBtn}
+            onPress={() => promptGuestSignIn()}
+            // @ts-ignore
+            onClick={() => promptGuestSignIn()}
+          >
+            <Text style={styles.guestStateBtnText}>Sign in →</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -653,6 +686,12 @@ const styles = StyleSheet.create({
 
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
   heading: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
+  guestState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  guestStateEmoji: { fontSize: 40, marginBottom: 12 },
+  guestStateTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6, textAlign: 'center' },
+  guestStateSub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginBottom: 20, lineHeight: 20 },
+  guestStateBtn: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28 },
+  guestStateBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
 
   // Profile card
   profileCard: {
