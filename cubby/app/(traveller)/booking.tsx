@@ -100,6 +100,13 @@ export default function Booking() {
 
   // Load host from AsyncStorage or Supabase — NOT from empty MOCK_HOSTS
   useEffect(() => {
+    // Expo Router reuses this screen instance when navigating from one
+    // host's booking screen to another (same route, new params) rather
+    // than unmounting/remounting it — so errorMsg from a previous host's
+    // failed attempt (bad hours, failed payment, etc.) would otherwise
+    // stay on screen for the new host, making a genuinely valid time look
+    // like it's being blocked.
+    setErrorMsg('');
     async function loadHost() {
       if (!hostId) { setHostLoading(false); return; }
       try {
