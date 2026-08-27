@@ -126,17 +126,17 @@ interface SearchParams {
   location: string; bags: number; selectedDate: string; dropOff: string; pickUp: string;
 }
 
+// Opening hours are deliberately NOT part of discovery filtering. A host
+// closing at 16:00 must still show up for a search defaulting to a
+// 5pm-6pm pick-up (or any traveller-chosen time) — otherwise the location
+// silently disappears from Explore with no explanation, which read as
+// "doesn't exist" rather than "closed at this time." Operating hours are
+// still shown on the host card/detail, and are enforced for real once the
+// traveller actually attempts to book (see booking.tsx's handleConfirm).
 function applyFilters(all: Host[], p: SearchParams): Host[] {
-  const day = isoToDayOfWeek(p.selectedDate);
-  const dropMin = slotStartMinutes(p.dropOff);
-  const pickMin = slotStartMinutes(p.pickUp);
   return all.filter(h => {
     if (!locationMatches(h.location_name, p.location)) return false;
     if (h.max_bags < p.bags) return false;
-    const days: string[] = h.available_days ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    if (!days.includes(day)) return false;
-    if (hhmm(h.available_from ?? '00:00') > dropMin) return false;
-    if (hhmm(h.available_until ?? '23:59') < pickMin) return false;
     return true;
   });
 }
