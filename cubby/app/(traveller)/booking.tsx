@@ -83,6 +83,17 @@ function isoToDayOfWeek(iso: string): string {
   return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(y, m - 1, d).getDay()];
 }
 
+// Same reasoning as explore.tsx's own (now-removed) hhmm() helper: a
+// host's available_from/available_until isn't guaranteed to be zero-padded
+// ("8:00" instead of "08:00") depending on how it was entered. Comparing
+// those as raw strings breaks — "09:00" >= "8:00" is false lexicographically
+// ('0' < '8'), even though 9am is genuinely after 8am. Parsing to minutes
+// makes the comparison correct regardless of padding.
+function hhmm(t: string): number {
+  const [h, m] = (t ?? '00:00').split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+
 export default function Booking() {
   const { hostId, bagCount, selectedDate: paramDate } = useLocalSearchParams<{ hostId: string; bagCount: string; selectedDate: string }>();
   const bags = parseInt(bagCount ?? '1');
@@ -189,7 +200,7 @@ export default function Booking() {
     // else in the app checks this today.
     const bookingDay = isoToDayOfWeek(bookingDate);
     const withinDays = host.available_days.includes(bookingDay);
-    const withinHours = dropTime >= host.available_from && pickTime <= host.available_until;
+    const withinHours = hhmm(dropTime) >= hhmm(host.available_from) && hhmm(pickTime) <= hhmm(host.available_until);
     if (!withinDays || !withinHours) {
       const hours = host.available_from && host.available_until
         ? ` ${host.display_name} is open ${host.available_from}–${host.available_until}.`
