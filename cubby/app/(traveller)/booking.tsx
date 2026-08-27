@@ -69,7 +69,18 @@ function normalizeHost(raw: any) {
     price_per_bag_per_day: raw.price_per_bag_per_day ?? raw.pricePerBag ?? 100,
     available_from: raw.available_from ?? raw.availableFrom ?? '08:00',
     available_until: raw.available_until ?? raw.availableUntil ?? '20:00',
+    // Wasn't previously read here — Explore used to be the only place hours
+    // were enforced at all. Needed now that handleConfirm() below is the
+    // real enforcement point.
+    available_days: raw.available_days ?? raw.availableDays ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
   };
+}
+
+// Same day-name convention as explore.tsx's isoToDayOfWeek — kept in sync
+// deliberately, not shared, since that's the only place it's used too.
+function isoToDayOfWeek(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(y, m - 1, d).getDay()];
 }
 
 export default function Booking() {
@@ -163,6 +174,23 @@ export default function Booking() {
     // twice concurrently for one tap. Checked first, synchronously, before
     // any state update or await, so it can't race with anything.
     if (loading) return;
+
+    // Operating-hours enforcement lives here, not in Explore's discovery
+    // filtering (see explore.tsx's applyFilters) — a host stays visible in
+    // search regardless of its hours, but can't actually be booked outside
+    // them. This is the one real enforcement point, client-side; nothing
+    // else in the app checks this today.
+    const bookingDay = isoToDayOfWeek(bookingDate);
+    const withinDays = host.available_days.includes(bookingDay);
+    const withinHours = dropTime >= host.available_from && pickTime <= host.available_until;
+    if (!withinDays || !withinHours) {
+      const hours = host.available_from && host.available_until
+        ? ` ${host.display_name} is open ${host.available_from}–${host.available_until}.`
+        : '';
+      setErrorMsg(`These times don't quite work for this location. Choose a drop-off and collection time within their opening hours to continue.${hours}`);
+      return;
+    }
+
     setErrorMsg('');
     setLoading(true);
     try {
