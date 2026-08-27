@@ -470,7 +470,14 @@ export default function AdminUsers() {
       <div style={{ height: 40 }} />
 
       {/* Detail sheet */}
-      {selectedUser && <UserDetail user={selectedUser} />}
+      {/* Called directly (UserDetail(...)), not rendered as <UserDetail />
+          — see manage-hosts.tsx's HostSheet for the full explanation: a
+          component defined inside another component's body gets a fresh
+          function identity every render, so React remounts its whole DOM
+          subtree each time, losing input focus after every keystroke.
+          Calling it as a plain function inlines its JSX instead, with no
+          new component boundary. */}
+      {selectedUser && UserDetail({ user: selectedUser })}
     </div>
   );
 }
