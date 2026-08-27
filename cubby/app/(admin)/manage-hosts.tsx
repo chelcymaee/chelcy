@@ -757,7 +757,16 @@ export default function ManageHosts() {
         </div>
       )}
 
-      {selectedHost && <HostSheet />}
+      {/* Called directly (HostSheet()), not rendered as <HostSheet /> — a
+          component defined inside another component's body gets a fresh
+          function identity on every render, so React treats it as a brand
+          new component type each time and remounts its whole DOM subtree.
+          For a form full of controlled <input>s, that means losing focus
+          after every single keystroke. Calling it as a plain function
+          instead just inlines its returned JSX into this render — no new
+          component boundary, so the inputs keep their identity across
+          re-renders and typing works normally. */}
+      {selectedHost && HostSheet()}
     </div>
   );
 }
