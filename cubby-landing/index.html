@@ -3,23 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cubby — Luggage Storage in Cape Town | Store. Explore. Collect.</title>
-  <meta name="description" content="Book trusted luggage storage in Cape Town with Cubby. Drop your bags with verified local hosts — cafés, hotels &amp; guesthouses — check out early, and explore hands-free." />
+  <title>Luggage Storage Cape Town | Cubby</title>
+  <meta name="description" content="Store your luggage with trusted local businesses across Cape Town. Find convenient short-term bag storage with Cubby and enjoy the city luggage-free." />
   <link rel="canonical" href="https://mycubby.co.za/" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://mycubby.co.za/" />
   <meta property="og:site_name" content="Cubby" />
-  <meta property="og:title" content="Cubby — Luggage Storage in Cape Town" />
-  <meta property="og:description" content="Drop your bags with verified local hosts in Cape Town and explore hands-free. Join the waitlist or become a storage partner." />
+  <meta property="og:title" content="Luggage Storage Cape Town | Cubby" />
+  <meta property="og:description" content="Store your luggage with trusted local businesses across Cape Town. Find convenient short-term bag storage with Cubby and enjoy the city luggage-free." />
   <meta property="og:image" content="https://mycubby.co.za/og-image.png" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Cubby — Luggage Storage in Cape Town" />
-  <meta name="twitter:description" content="Drop your bags with verified local hosts in Cape Town and explore hands-free. Join the waitlist or become a storage partner." />
+  <meta name="twitter:title" content="Luggage Storage Cape Town | Cubby" />
+  <meta name="twitter:description" content="Store your luggage with trusted local businesses across Cape Town. Find convenient short-term bag storage with Cubby and enjoy the city luggage-free." />
   <meta name="twitter:image" content="https://mycubby.co.za/og-image.png" />
+
+  <!-- Structured data: real, live entities only — no fabricated ratings/reviews -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Cubby",
+    "url": "https://mycubby.co.za/",
+    "sameAs": ["https://instagram.com/mycubbyapp"],
+    "email": "hello@mycubby.co.za"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "MobileApplication",
+    "name": "Cubby — Luggage Storage",
+    "operatingSystem": "iOS",
+    "applicationCategory": "TravelApplication",
+    "url": "https://apps.apple.com/za/app/cubby-luggage-storage/id6801520581",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "ZAR" }
+  }
+  </script>
 
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Cpath d='M18 2C13.03 2 9 6.03 9 11C9 17.25 18 26 18 26C18 26 27 17.25 27 11C27 6.03 22.97 2 18 2Z' fill='%23FF5C5C'/%3E%3Ccircle cx='18' cy='11' r='4' fill='white'/%3E%3Crect x='15' y='7' width='6' height='2.5' rx='1.25' fill='%23FF5C5C' stroke='white' stroke-width='1'/%3E%3Crect x='13' y='28' width='10' height='7' rx='2.5' fill='%23FF5C5C'/%3E%3Cline x1='18' y1='28' x2='18' y2='35' stroke='white' stroke-width='1.2'/%3E%3Cline x1='13' y1='31.5' x2='23' y2='31.5' stroke='white' stroke-width='1.2'/%3E%3C/svg%3E" />
 
@@ -241,6 +264,7 @@
     .section-title { text-align: center; font-size: clamp(28px, 4vw, 48px); font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
     .section-sub { text-align: center; color: var(--text-muted); font-size: 17px; max-width: 520px; margin: 0 auto 56px; }
     .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .steps-grid-3 { grid-template-columns: repeat(3, 1fr); }
     .step-card {
       background: var(--bg); border-radius: var(--radius); padding: 32px 24px;
       box-shadow: var(--card-shadow); text-align: center;
@@ -390,7 +414,6 @@
 
     /* FORMS */
     .form-section { padding: 96px 0; }
-    #waitlist { background: var(--bg); }
     #partner-apply { background: var(--white); }
     .form-wrap { max-width: 560px; margin: 0 auto; }
     .form-title { font-size: clamp(26px, 3.5vw, 40px); font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
@@ -502,10 +525,22 @@
     /* SVG LOGO */
     .logo-svg { width: 36px; height: 36px; }
 
+    /* MOBILE STICKY CTA */
+    .mobile-sticky-cta {
+      display: none;
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      background: rgba(255,255,255,.96); backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(0,0,0,.08);
+      box-shadow: 0 -4px 20px rgba(0,0,0,.06);
+    }
+    .mobile-sticky-cta .btn { width: 100%; justify-content: center; }
+
     /* RESPONSIVE */
     @media (max-width: 900px) {
       .trust-grid { grid-template-columns: repeat(3, 1fr); }
       .steps-grid { grid-template-columns: repeat(2, 1fr); }
+      .steps-grid-3 { grid-template-columns: repeat(3, 1fr); }
       .future-grid { grid-template-columns: repeat(2, 1fr); }
       .footer-grid { grid-template-columns: 1fr 1fr; }
     }
@@ -524,6 +559,8 @@
       .nav-text-link.hide-mobile { display: none; }
       .hero-sub { max-width: 100%; }
       .steps-grid { grid-template-columns: 1fr; }
+      .mobile-sticky-cta { display: block; }
+      body { padding-bottom: 76px; }
     }
 
     @media (max-width: 480px) {
@@ -555,8 +592,8 @@
         <span class="logo-wordmark">cubby</span>
       </a>
       <div class="nav-links">
-        <a href="#partner-apply" class="nav-text-link hide-mobile">Become a Partner</a>
-        <a href="#waitlist" class="btn btn-primary" style="padding: 10px 22px; font-size: 14px;">Join Waitlist</a>
+        <a href="#partner-apply" class="nav-text-link hide-mobile">Become a Host</a>
+        <a href="https://apps.apple.com/za/app/cubby-luggage-storage/id6801520581" class="btn btn-primary" target="_blank" rel="noopener" style="padding: 10px 22px; font-size: 14px;" data-track="app_store_click" data-track-location="nav">Download on the App Store</a>
       </div>
     </div>
   </div>
@@ -570,13 +607,13 @@
     <div class="hero-grid">
       <div class="hero-content">
         <div class="hero-eyebrow">
-          <span class="tag">📍 Launching in Cape Town</span>
+          <span class="tag">✅ Now live in Cape Town</span>
         </div>
-        <h1 class="hero-h1">Never drag your<br><span>luggage around</span><br>again.</h1>
-        <p class="hero-sub">Cubby connects travellers with trusted local luggage storage spots in Cape Town — so you can check out early, fly later, and explore freely, hands-free.</p>
+        <h1 class="hero-h1">Store your luggage.<br><span>Enjoy more</span><br>Cape Town.</h1>
+        <p class="hero-sub">Find trusted local places to securely store your bags between checkout, check-in, your flight, or whenever you need a few luggage-free hours in Cape Town.</p>
         <div class="hero-ctas">
-          <a href="#waitlist" class="btn btn-primary btn-lg">Join the waitlist →</a>
-          <a href="#partner-apply" class="btn btn-outline btn-lg">Become a partner</a>
+          <a href="https://apps.apple.com/za/app/cubby-luggage-storage/id6801520581" class="btn btn-primary btn-lg" target="_blank" rel="noopener" data-track="app_store_click" data-track-location="hero">Download on the App Store</a>
+          <a href="#how-it-works" class="btn btn-outline btn-lg" data-track="see_how_it_works_click" data-track-location="hero">See how it works</a>
         </div>
         <div class="hero-badges">
           <span class="badge"><span class="dot"></span> ID-verified hosts</span>
@@ -591,28 +628,28 @@
               <div class="phone-header">🗺️ Near you in Cape Town</div>
               <div class="phone-search">🔍 Search by area or name...</div>
               <div class="phone-card">
-                <div class="phone-card-name">Sea Point Café</div>
+                <div class="phone-card-name">Local café</div>
                 <div class="phone-card-meta">
                   <span class="phone-card-stars">★★★★★</span>
-                  <span class="phone-card-price">R150 / bag</span>
+                  <span class="phone-card-price">Set by host</span>
                 </div>
-                <div style="font-size:9px; color: #6BCB77; font-weight:700;">✓ Open now · 2 spots left</div>
+                <div style="font-size:9px; color: #6BCB77; font-weight:700;">✓ Open now</div>
               </div>
               <div class="phone-card">
-                <div class="phone-card-name">V&A Waterfront Hotel</div>
+                <div class="phone-card-name">City hotel</div>
                 <div class="phone-card-meta">
                   <span class="phone-card-stars">★★★★★</span>
-                  <span class="phone-card-price">R200 / bag</span>
+                  <span class="phone-card-price">Set by host</span>
                 </div>
-                <div style="font-size:9px; color: #6BCB77; font-weight:700;">✓ Open now · 5 spots left</div>
+                <div style="font-size:9px; color: #6BCB77; font-weight:700;">✓ Open now</div>
               </div>
               <div class="phone-card">
-                <div class="phone-card-name">Gardens Guesthouse</div>
+                <div class="phone-card-name">Nearby guesthouse</div>
                 <div class="phone-card-meta">
                   <span class="phone-card-stars">★★★★☆</span>
-                  <span class="phone-card-price">R120 / bag</span>
+                  <span class="phone-card-price">Set by host</span>
                 </div>
-                <div style="font-size:9px; color: #6BCB77; font-weight:700;">✓ Open now · 3 spots left</div>
+                <div style="font-size:9px; color: #6BCB77; font-weight:700;">✓ Open now</div>
               </div>
               <div class="phone-map-hint">📍 View on map</div>
             </div>
@@ -626,12 +663,12 @@
 <!-- PROBLEM -->
 <section id="problem" class="section">
   <div class="container">
-    <div class="section-label fade-up">The problem</div>
+    <div class="section-label fade-up">Checked out. Not flying yet?</div>
     <h2 class="fade-up">Sound <span>familiar?</span></h2>
     <div class="problem-grid">
       <div class="problem-card fade-up delay-1">
         <span class="problem-emoji">🧳</span>
-        <p class="problem-text"><span class="problem-accent">Checkout at 10am. Flight at 8pm.</span> 10 hours of dragging bags around the city — in the heat, on the train, through every café and museum.</p>
+        <p class="problem-text"><span class="problem-accent">Checkout at 10am. Flight at 8pm.</span> Your accommodation may need you out early, but that doesn't mean your day in Cape Town is over.</p>
       </div>
       <div class="problem-card fade-up delay-2">
         <span class="problem-emoji">🏨</span>
@@ -642,6 +679,9 @@
         <p class="problem-text">You want to explore Table Mountain, Camps Bay, the Winelands — <span class="problem-accent">but your bags are slowing you down.</span></p>
       </div>
     </div>
+    <div class="fade-up" style="text-align:center; margin-top:40px;">
+      <a href="https://apps.apple.com/za/app/cubby-luggage-storage/id6801520581" class="btn btn-outline-white" target="_blank" rel="noopener" data-track="find_a_cubby_click" data-track-location="problem">Find a Cubby →</a>
+    </div>
   </div>
 </section>
 
@@ -649,34 +689,28 @@
 <section id="how-it-works" class="section">
   <div class="container">
     <div class="section-eyebrow fade-up">
-      <span class="tag">Simple as 1-2-3-4</span>
+      <span class="tag">Simple as 1-2-3</span>
     </div>
-    <h2 class="section-title fade-up">How to Cubby</h2>
-    <p class="section-sub fade-up">Four steps between you and total freedom.</p>
-    <div class="steps-grid">
+    <h2 class="section-title fade-up">How Cubby works</h2>
+    <p class="section-sub fade-up">Three steps between you and total freedom.</p>
+    <div class="steps-grid steps-grid-3">
       <div class="step-card fade-up delay-1">
         <span class="step-emoji">📍</span>
         <div class="step-num">1</div>
         <div class="step-title">Find a Cubby</div>
-        <p class="step-desc">Search verified storage spots near you — cafés, hotels, guesthouses, and more.</p>
+        <p class="step-desc">Discover trusted luggage storage locations near you — cafés, hotels, guesthouses, and more.</p>
       </div>
       <div class="step-card fade-up delay-2">
-        <span class="step-emoji">🧳</span>
+        <span class="step-emoji">📱</span>
         <div class="step-num">2</div>
-        <div class="step-title">Drop your bags</div>
-        <p class="step-desc">Show your unique PIN to the host. Bags are checked in and secured instantly.</p>
+        <div class="step-title">Book your storage</div>
+        <p class="step-desc">Choose your location and storage time, and complete your booking securely in the app.</p>
       </div>
       <div class="step-card fade-up delay-3">
         <span class="step-emoji">🌍</span>
         <div class="step-num">3</div>
-        <div class="step-title">Explore freely</div>
-        <p class="step-desc">The city is yours. Table Mountain, Camps Bay, the V&A — hands free.</p>
-      </div>
-      <div class="step-card fade-up delay-4">
-        <span class="step-emoji">✅</span>
-        <div class="step-num">4</div>
-        <div class="step-title">Collect later</div>
-        <p class="step-desc">Pick up your bags when you're ready. Show your PIN, done.</p>
+        <div class="step-title">Drop, go &amp; enjoy</div>
+        <p class="step-desc">Leave your luggage with your Cubby host and enjoy Cape Town luggage-free until you're ready to collect it — just show your PIN.</p>
       </div>
     </div>
   </div>
@@ -688,7 +722,7 @@
     <div class="section-eyebrow fade-up">
       <span class="tag">🛡️ Built for peace of mind</span>
     </div>
-    <h2 class="section-title fade-up">Built on trust, not guesswork</h2>
+    <h2 class="section-title fade-up">Trusted places. Happy travels.</h2>
     <p class="section-sub fade-up">Hosts complete ID verification before they list. Every booking is PIN-secured and backed by in-app support.</p>
     <div class="trust-grid">
       <div class="trust-card fade-up delay-1">
@@ -709,7 +743,7 @@
       </div>
       <div class="trust-card fade-up delay-4">
         <span class="trust-icon">📍</span>
-        <div class="trust-label">Real Local Partners</div>
+        <div class="trust-label">Real Local Hosts</div>
       </div>
     </div>
   </div>
@@ -733,7 +767,7 @@
           <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Secure PIN handover</strong> — contactless, accountable, traceable</span></div>
         </div>
         <div style="margin-top:32px;">
-          <a href="#waitlist" class="btn btn-primary">Join the waitlist →</a>
+          <a href="https://apps.apple.com/za/app/cubby-luggage-storage/id6801520581" class="btn btn-primary" target="_blank" rel="noopener" data-track="app_store_click" data-track-location="travellers">Download Cubby</a>
         </div>
       </div>
       <div class="phone-wrap fade-up">
@@ -743,13 +777,13 @@
             <div class="app-list-item">
               <div class="app-avatar">☕</div>
               <div class="app-info">
-                <div class="app-name">Sea Point Café</div>
+                <div class="app-name">Your Cubby host</div>
                 <div class="app-detail">2 bags · 10:00 – 19:00</div>
               </div>
-              <div class="app-price">R300</div>
+              <div class="app-price">Set by host</div>
             </div>
             <div style="background: #F0FDF4; border-radius: 10px; padding: 10px 12px; font-size: 10px; font-weight: 600; color: #15803D;">
-              📍 12 Ocean View Dr, Sea Point
+              📍 Location shared after booking
             </div>
             <div style="background: white; border-radius: 10px; padding: 12px; text-align: center;">
               <div style="font-size: 10px; font-weight: 700; margin-bottom: 8px; color: #1A1A1A;">Your collection PIN</div>
@@ -773,13 +807,13 @@
     <div class="split-grid reverse">
       <div>
         <div class="calc-card fade-up">
-          <div class="calc-title">💸 Estimated earnings</div>
+          <div class="calc-title">💸 Host earnings estimate</div>
           <div class="calc-row">
             <span class="calc-label">Bags per day</span>
             <span class="calc-value">5 bags</span>
           </div>
           <div class="calc-row">
-            <span class="calc-label">Rate per bag</span>
+            <span class="calc-label">Your listed rate per bag</span>
             <span class="calc-value">R150</span>
           </div>
           <div class="calc-row">
@@ -787,37 +821,38 @@
             <span class="calc-value">30 days</span>
           </div>
           <div class="calc-row">
-            <span class="calc-label">Gross monthly total</span>
+            <span class="calc-label">Your total listed price</span>
             <span class="calc-value">R22,500</span>
           </div>
           <div class="calc-row">
-            <span class="calc-label">Cubby service fee (est.)</span>
-            <span class="calc-value">– R2,250</span>
+            <span class="calc-label">Cubby's share (30% of your listed price)</span>
+            <span class="calc-value">– R6,750</span>
           </div>
           <div class="calc-total">
             <div>
-              <div class="calc-total-label">Estimated monthly payout</div>
-              <div style="font-size:12px; opacity:.65; margin-top:2px;">After Cubby's service fee</div>
+              <div class="calc-total-label">Estimated monthly host payout</div>
+              <div style="font-size:12px; opacity:.65; margin-top:2px;">Hosts earn 70% of their own listed price</div>
             </div>
-            <div class="calc-total-value">≈ R20,250</div>
+            <div class="calc-total-value">≈ R15,750</div>
           </div>
-          <p style="font-size:12px; color: var(--text-muted); margin-top:16px; line-height:1.5;">No setup cost. No lock-in. You control your availability and capacity. <strong>This is an illustrative estimate</strong> — Cubby's exact service fee will be confirmed before launch.</p>
+          <p style="font-size:12px; color: var(--text-muted); margin-top:16px; line-height:1.5;">No setup cost. No lock-in. You control your availability and capacity. <strong>This is a host earnings estimate</strong> based on your own bags/rate/days, not what travellers pay at checkout — travellers pay an additional service fee on top of your listed price, which goes to Cubby and does not reduce your payout.</p>
         </div>
       </div>
       <div class="split-content">
         <div class="split-content-tag">
-          <span class="tag">🏪 For Partners</span>
+          <span class="tag">🏪 For Hosts</span>
         </div>
-        <h2 class="split-title fade-up">Turn spare space into<br>extra income.</h2>
-        <p class="split-desc fade-up">Got a café, hotel, guesthouse, or Airbnb in Cape Town? Become a Cubby partner and earn from storage you already have.</p>
+        <h2 class="split-title fade-up">Turn extra space into<br>extra income.</h2>
+        <p class="split-desc fade-up">Got a café, hotel, guesthouse, or Airbnb in Cape Town? Become a Cubby Host and earn additional income by securely storing travellers' luggage at your business. Cubby brings travellers through your doors while giving them a trusted place to leave their bags. Join Cubby's founding network of trusted Cape Town hosts.</p>
         <div class="benefit-list fade-up">
-          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Extra income</strong> — earn R100–R250 per bag, every day</span></div>
-          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>More foot traffic</strong> — travellers visit, travellers spend</span></div>
-          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Easy setup</strong> — onboarding takes less than 10 minutes</span></div>
-          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>You're in control</strong> — set your own hours and capacity</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Earn from unused space</strong> — R100–R250 per bag, every day</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Bring new travellers through your doors</strong> — travellers visit, travellers spend</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Manage bookings through Cubby</strong> — no calls, no admin hassle</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>Join a growing Cape Town travel network</strong> — no exclusivity requirement</span></div>
+          <div class="benefit-item"><div class="benefit-check">✓</div><span><strong>You're in control</strong> — set your own rate, hours and capacity</span></div>
         </div>
         <div style="margin-top:32px;">
-          <a href="#partner-apply" class="btn btn-primary">Apply to become a Cubby partner →</a>
+          <a href="#partner-apply" class="btn btn-primary" data-track="become_host_click" data-track-location="host-section">Become a Cubby Host →</a>
         </div>
       </div>
     </div>
@@ -861,72 +896,12 @@
   </div>
 </section>
 
-<!-- WAITLIST FORM -->
-<section id="waitlist" class="form-section">
-  <div class="container">
-    <div class="form-wrap">
-      <div class="section-eyebrow" style="justify-content:flex-start; margin-bottom:16px;">
-        <span class="tag">✈️ Early access</span>
-      </div>
-      <h2 class="form-title fade-up">Be first in Cape Town.</h2>
-      <p class="form-sub fade-up">Join the waitlist. We'll let you know the moment Cubby launches in your area.</p>
-      <div class="form-proof fade-up">
-        <div class="proof-avatars">
-          <div class="proof-avatar">T</div>
-          <div class="proof-avatar">S</div>
-          <div class="proof-avatar">A</div>
-        </div>
-        <span>Join 500+ travellers already on the waitlist</span>
-      </div>
-
-      <div id="waitlist-success" class="success-msg">
-        <span class="check">🎉</span>
-        <h3>You're on the list!</h3>
-        <p>We'll be in touch the moment Cubby launches in your city. Get ready to explore hands-free.</p>
-      </div>
-
-      <form id="waitlist-form" class="fade-up" name="waitlist" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate>
-        <input type="hidden" name="form-name" value="waitlist" />
-        <p style="display:none"><input name="bot-field" /></p>
-        <div class="form-row">
-          <div class="field">
-            <label for="w-name">Your name</label>
-            <input type="text" id="w-name" name="name" placeholder="Alex Johnson" />
-            <span class="field-error" id="w-name-err">Please enter your name.</span>
-          </div>
-          <div class="field">
-            <label for="w-email">Email address</label>
-            <input type="email" id="w-email" name="email" placeholder="alex@example.com" />
-            <span class="field-error" id="w-email-err">Please enter a valid email.</span>
-          </div>
-        </div>
-        <div class="field">
-          <label for="w-city">Your city</label>
-          <div class="select-wrap">
-            <select id="w-city" name="city">
-              <option value="">Select your city...</option>
-              <option value="cape-town">Cape Town</option>
-              <option value="johannesburg">Johannesburg</option>
-              <option value="durban">Durban</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <span class="field-error" id="w-city-err">Please select a city.</span>
-        </div>
-        <div class="form-submit">
-          <button type="submit" class="btn btn-primary btn-lg">Join the waitlist →</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</section>
-
 <!-- PARTNER FORM -->
 <section id="partner-apply" class="form-section">
   <div class="container">
     <div class="form-wrap">
       <div class="section-eyebrow" style="justify-content:flex-start; margin-bottom:16px;">
-        <span class="tag">🏪 Partner with us</span>
+        <span class="tag">🏪 Become a Host</span>
       </div>
       <h2 class="form-title fade-up">Earn extra income with Cubby.</h2>
       <p class="form-sub fade-up">Offer storage at your business and start earning. Applications take less than 2 minutes.</p>
@@ -934,10 +909,10 @@
       <div id="partner-success" class="success-msg">
         <span class="check">🤝</span>
         <h3>Application received!</h3>
-        <p>Thanks for applying to become a Cubby partner. Our team will review your application and be in touch within 2 business days.</p>
+        <p>Thanks for applying to become a Cubby Host. Our team will review your application and be in touch within 2 business days.</p>
       </div>
 
-      <form id="partner-form" class="fade-up" name="partner" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+      <form id="partner-form" class="fade-up" name="partner" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate data-track-form="host_application">
         <input type="hidden" name="form-name" value="partner" />
         <p style="display:none"><input name="bot-field" /></p>
         <div class="form-row">
@@ -993,7 +968,7 @@
           <span class="field-error" id="p-city-err">Please select a city.</span>
         </div>
         <div class="form-submit">
-          <button type="submit" class="btn btn-primary btn-lg">Apply to partner →</button>
+          <button type="submit" class="btn btn-primary btn-lg">Apply to become a Host →</button>
         </div>
       </form>
     </div>
@@ -1010,23 +985,43 @@
     <p class="section-sub fade-up">Straight answers, no fine print surprises.</p>
 
     <div class="faq-wrap">
-      <div class="faq-group-title fade-up">For travellers</div>
+      <div class="faq-group-title fade-up">About Cubby</div>
       <div class="faq-list">
         <details class="faq-item fade-up">
-          <summary>How does Cubby work?</summary>
+          <summary>What is Cubby?</summary>
+          <p>Cubby is a short-term luggage storage marketplace connecting travellers with trusted local businesses — cafés, hotels and guesthouses — around Cape Town, so you can explore the city without carrying your bags.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>Where is Cubby available?</summary>
+          <p>Cubby is live now in Cape Town. We're building out our host network here first, with more South African cities to follow.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>How does luggage storage work?</summary>
           <p>Find a nearby host — a café, hotel or guesthouse — on the map, book a drop-off window, and bring your bags over. You'll get a unique PIN to check your bags in and collect them later — no cash or paperwork needed.</p>
         </details>
         <details class="faq-item fade-up">
-          <summary>How are hosts verified?</summary>
-          <p>Every host completes ID verification before their space can go live on Cubby, and our team reviews each application before it's approved.</p>
+          <summary>How do I find a Cubby location?</summary>
+          <p>Download the Cubby app and search or browse the map for verified hosts near you in Cape Town.</p>
         </details>
         <details class="faq-item fade-up">
-          <summary>What happens if something goes wrong with my bags?</summary>
-          <p>We vet hosts before they join, and every booking is tracked with a secure PIN and a timestamped check-in and check-out. If anything feels off during your booking, our support team is on hand to help you sort it out directly with your host. Cubby doesn't currently offer a blanket insurance guarantee, so we'd recommend keeping valuables with you and relying on your own travel insurance for high-value items.</p>
+          <summary>How much does luggage storage cost?</summary>
+          <p>Each host sets their own rate per bag, typically in the R100–R250 range. You'll see the exact price before you book.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>How do I book?</summary>
+          <p>Download the Cubby app, choose a host and a storage window, and complete your booking securely in the app.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>How do I collect my luggage?</summary>
+          <p>Show your unique booking PIN to your host when you return — it's checked against your booking to confirm your bags are released to you.</p>
         </details>
         <details class="faq-item fade-up">
           <summary>Is my payment and information secure?</summary>
-          <p>Bookings will be processed through a secure payment provider, and hosts never see your card details — only what they need to confirm your drop-off.</p>
+          <p>Bookings are processed through Cubby's secure payment system, and hosts never see your card details — only what they need to confirm your drop-off.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>What happens if I need help with a booking?</summary>
+          <p>Cubby's in-app messaging and support team are on hand to help you sort things out directly with your host. Every booking is tracked with a secure PIN and a timestamped check-in and check-out. Cubby doesn't currently offer a blanket insurance guarantee, so we'd recommend keeping valuables with you and relying on your own travel insurance for high-value items.</p>
         </details>
         <details class="faq-item fade-up">
           <summary>Are Bag Runners or airport collection available yet?</summary>
@@ -1037,29 +1032,34 @@
       <div class="faq-group-title fade-up">For hosts</div>
       <div class="faq-list">
         <details class="faq-item fade-up">
-          <summary>How do I become a Cubby host?</summary>
-          <p>Apply using the form below with your business details. Our team reviews applications and verifies your identity before your listing goes live.</p>
+          <summary>Who are Cubby Hosts?</summary>
+          <p>Cubby Hosts are local Cape Town businesses — cafés, hotels and guesthouses — with spare space who offer secure luggage storage to travellers through the app.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>How are hosts selected?</summary>
+          <p>Every host completes ID verification before their space can go live on Cubby, and our team reviews each application before it's approved.</p>
+        </details>
+        <details class="faq-item fade-up">
+          <summary>Can my business become a Cubby Host?</summary>
+          <p>Yes — apply using the form below with your business details. Our team reviews applications and verifies your identity before your listing goes live.</p>
         </details>
         <details class="faq-item fade-up">
           <summary>How do payouts work?</summary>
-          <p>You set your own rate per bag. Cubby takes a small service fee from each booking to cover platform costs and pays out the rest. Exact payout timing and fee will be confirmed as we finalise our payment provider ahead of launch.</p>
+          <p>You set your own rate per bag. Hosts currently earn 70% of their listed storage price on every completed booking — Cubby's 30% share covers platform costs, payment processing and support. Payouts are processed by the Cubby team after each completed booking.</p>
         </details>
         <details class="faq-item fade-up">
           <summary>What does it cost to join?</summary>
-          <p>Nothing upfront — there's no signup or listing fee. You only pay a service fee on bookings you actually complete.</p>
-        </details>
-      </div>
-
-      <div class="faq-group-title fade-up">Launch</div>
-      <div class="faq-list">
-        <details class="faq-item fade-up">
-          <summary>When and where is Cubby launching?</summary>
-          <p>We're launching in Cape Town first. Join the waitlist and we'll email you the moment bookings open in your area, with more South African cities to follow.</p>
+          <p>Nothing upfront — there's no signup or listing fee. You only pay Cubby's share on bookings you actually complete.</p>
         </details>
       </div>
     </div>
   </div>
 </section>
+
+<!-- MOBILE STICKY CTA -->
+<div class="mobile-sticky-cta">
+  <a href="https://apps.apple.com/za/app/cubby-luggage-storage/id6801520581" class="btn btn-primary" target="_blank" rel="noopener" data-track="app_store_click" data-track-location="mobile-sticky">Download Cubby</a>
+</div>
 
 <!-- FOOTER -->
 <footer>
@@ -1068,13 +1068,14 @@
       <div>
         <span class="footer-logo-wordmark">cubby</span>
         <p class="footer-tagline">Store. Explore. Collect.</p>
-        <span class="footer-launch-badge">📍 Currently launching in Cape Town</span>
+        <span class="footer-launch-badge">✅ Now live in Cape Town</span>
       </div>
       <div>
         <div class="footer-col-title">Links</div>
         <div class="footer-links">
-          <a href="#" class="footer-link">Privacy Policy</a>
-          <a href="#" class="footer-link">Terms of Service</a>
+          <a href="https://apps.apple.com/za/app/cubby-luggage-storage/id6801520581" target="_blank" rel="noopener" class="footer-link" data-track="app_store_click" data-track-location="footer">Download on the App Store</a>
+          <a href="#partner-apply" class="footer-link">Become a Host</a>
+          <a href="/privacy" class="footer-link">Privacy Policy</a>
           <a href="mailto:hello@mycubby.co.za" class="footer-link">Contact</a>
         </div>
       </div>
@@ -1139,35 +1140,42 @@
     return Object.keys(data).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(data[k])).join('&');
   }
 
-  // Waitlist form
-  const waitlistForm = document.getElementById('waitlist-form');
-  waitlistForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = document.getElementById('w-name').value.trim();
-    const email = document.getElementById('w-email').value.trim();
-    const city = document.getElementById('w-city').value;
-    let valid = true;
-    valid = setError('w-name', 'w-name-err', !name) && valid;
-    valid = setError('w-email', 'w-email-err', !isValidEmail(email)) && valid;
-    valid = setError('w-city', 'w-city-err', !city) && valid;
-    if (!valid) return;
-
-    fetch('/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: encodeFormData({ 'form-name': 'waitlist', name, email, city }),
-    }).then(() => {
-      waitlistForm.style.display = 'none';
-      document.getElementById('waitlist-success').classList.add('show');
-      document.getElementById('waitlist-success').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }).catch(() => {
-      waitlistForm.style.display = 'none';
-      document.getElementById('waitlist-success').classList.add('show');
+  // --- Analytics event scaffold -----------------------------------------
+  // No third-party analytics script is wired in yet (none existed on this
+  // site before). This dispatcher fires documented, named events into
+  // window.dataLayer (GA4-compatible) when present, and always logs to
+  // window.__cubbyEvents so events are inspectable/testable without any
+  // provider installed. Once a provider + ID is chosen, wire it here in
+  // one place rather than scattering tracking calls through the page.
+  //
+  // Event names in use on this page:
+  //   app_store_click        { location: nav|hero|travellers|footer|mobile-sticky }
+  //   see_how_it_works_click  { location: hero }
+  //   find_a_cubby_click      { location: problem }
+  //   become_host_click       { location: host-section }
+  //   host_application_started    (first interaction with the host form)
+  //   host_application_completed  (host form submitted successfully)
+  window.__cubbyEvents = window.__cubbyEvents || [];
+  function trackEvent(name, props) {
+    const event = Object.assign({ event: name, ts: Date.now() }, props || {});
+    window.__cubbyEvents.push(event);
+    if (window.dataLayer) window.dataLayer.push(event);
+  }
+  document.querySelectorAll('[data-track]').forEach(el => {
+    el.addEventListener('click', () => {
+      trackEvent(el.getAttribute('data-track'), { location: el.getAttribute('data-track-location') || null });
     });
   });
 
-  // Partner form
+  // Partner (Host application) form
   const partnerForm = document.getElementById('partner-form');
+  let hostApplicationStarted = false;
+  partnerForm.addEventListener('focusin', () => {
+    if (!hostApplicationStarted) {
+      hostApplicationStarted = true;
+      trackEvent('host_application_started');
+    }
+  });
   partnerForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const business = document.getElementById('p-business').value.trim();
@@ -1193,18 +1201,15 @@
       partnerForm.style.display = 'none';
       document.getElementById('partner-success').classList.add('show');
       document.getElementById('partner-success').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      trackEvent('host_application_completed');
     }).catch(() => {
       partnerForm.style.display = 'none';
       document.getElementById('partner-success').classList.add('show');
+      trackEvent('host_application_completed');
     });
   });
 
   // Live validation clear on input
-  ['w-name', 'w-email', 'w-city'].forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('input', () => el.classList.remove('error'));
-    el.addEventListener('change', () => el.classList.remove('error'));
-  });
   ['p-business', 'p-contact', 'p-type', 'p-email', 'p-phone', 'p-city'].forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', () => el.classList.remove('error'));
