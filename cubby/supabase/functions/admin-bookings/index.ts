@@ -67,11 +67,14 @@ serve(async (req) => {
     // the real host/Cubby split (see revenue.tsx) instead of a flat 70/30
     // of total_price. refund_status/refund_requested_at/refunded_at/
     // refund_reference added so All Bookings can surface bookings still
-    // owed a manual refund (see the Refunds tab) — both additions purely
-    // additive, each screen ignores whichever fields it doesn't use.
+    // owed a manual refund (see the Refunds tab). completed_at/payout_status
+    // added so Host Payouts can group each host's completed bookings into
+    // weekly payout periods and show each booking's payout state — both
+    // read-only, neither written by this function. Every addition here is
+    // purely additive, each screen ignores whichever fields it doesn't use.
     const { data: bookings, error } = await supabase
       .from('bookings')
-      .select('id, status, total_price, base_storage_amount, host_payout_amount, bag_count, drop_off_date, created_at, host_id, traveller_id, refund_status, refund_requested_at, refunded_at, refund_reference, hosts(display_name)')
+      .select('id, status, total_price, base_storage_amount, host_payout_amount, bag_count, drop_off_date, created_at, completed_at, payout_status, host_id, traveller_id, refund_status, refund_requested_at, refunded_at, refund_reference, hosts(display_name)')
       .order('created_at', { ascending: false });
     if (error) throw error;
 
@@ -84,6 +87,8 @@ serve(async (req) => {
       bag_count: b.bag_count,
       drop_off_date: b.drop_off_date,
       created_at: b.created_at,
+      completed_at: b.completed_at,
+      payout_status: b.payout_status,
       host_id: b.host_id,
       host_display_name: b.hosts?.display_name ?? null,
       refund_status: b.refund_status,
