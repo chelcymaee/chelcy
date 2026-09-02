@@ -511,7 +511,10 @@ export default function AdminDashboard() {
         <div style={s.sectionRowLast} onClick={() => router.push('/(admin)/host-payouts' as any)}>
           <div style={s.sectionRowLeft}>
             <span style={s.sectionRowIcon}>🏦</span>
-            <span style={s.sectionRowLabel}>Host Bank Details</span>
+            <div>
+              <div style={s.sectionRowLabel}>Host Payouts</div>
+              <div style={{ fontSize: 12, color: '#9CA3AF' }}>Weekly earnings, payments & bank details</div>
+            </div>
           </div>
           <span style={s.attentionArrow}>›</span>
         </div>
