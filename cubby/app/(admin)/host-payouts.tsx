@@ -60,6 +60,7 @@ interface PayoutBooking {
   completed_at: string | null;
   host_payout_amount: number | null;
   payout_status: string | null;
+  host_paid_at: string | null;
 }
 
 // ─── Weekly payout period grouping ─────────────────────────────────────────
@@ -91,13 +92,31 @@ function formatDay(date: Date): string {
   return date.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+// 'YYYY-MM-DD' from a period's local-midnight start Date, using local
+// getters (not toISOString, which would convert to UTC and could shift
+// the calendar date). Sent to admin-mark-payout-paid as the plain
+// calendar-date identifier of "which Friday" — the server alone decides
+// the actual Africa/Johannesburg UTC boundaries for that date; this is
+// never a computed timestamp/boundary the server is asked to trust.
+function toDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 interface PayoutPeriod {
   key: string; // period start, ISO date — stable grouping/sort key
   start: Date;
   end: Date; // Thursday 23:59:59
   payoutDate: Date; // following Friday
   bookings: PayoutBooking[];
-  total: number; // sum of stored host_payout_amount ONLY — never recalculated here
+  total: number; // sum of stored host_payout_amount for EVERY booking in the
+                  // period, whatever its payout_status — "period earnings",
+                  // a historical record, never what gets EFT'd.
+  outstanding: number; // sum of ONLY status='pending_manual' bookings — the
+                        // actual amount still owed, and the only number the
+                        // Mark as Paid button may ever show or act on.
 }
 
 // Groups one host's completed bookings into Friday->Thursday periods.
@@ -113,11 +132,17 @@ function groupIntoPeriods(bookings: PayoutBooking[]): Map<string, PayoutPeriod> 
     if (!period) {
       const end = new Date(start.getTime() + 6 * DAY_MS + (DAY_MS - 1));
       const payoutDate = new Date(start.getTime() + 7 * DAY_MS);
-      period = { key, start, end, payoutDate, bookings: [], total: 0 };
+      period = { key, start, end, payoutDate, bookings: [], total: 0, outstanding: 0 };
       periods.set(key, period);
     }
     period.bookings.push(b);
     period.total += Number(b.host_payout_amount ?? 0);
+    // A refunded/voided booking never enters the amount about to be EFT'd,
+    // and once a booking is 'paid' it must not be counted as owed again —
+    // only 'pending_manual' bookings are actually outstanding.
+    if (b.payout_status === 'pending_manual') {
+      period.outstanding += Number(b.host_payout_amount ?? 0);
+    }
   }
   return periods;
 }
@@ -137,6 +162,8 @@ export default function HostPayouts() {
   // fight over the same piece of state.
   const [viewHostId, setViewHostId] = useState<string | null>(null);
   const [expandedPeriodKey, setExpandedPeriodKey] = useState<string | null>(null);
+  const [confirmPayPeriodKey, setConfirmPayPeriodKey] = useState<string | null>(null);
+  const [payingPeriodKey, setPayingPeriodKey] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => {
     loadData();
@@ -197,6 +224,47 @@ export default function HostPayouts() {
       const detailsRaw = await AsyncStorage.getItem('cubby_host_bank_details');
       if (hostsRaw) setHosts(JSON.parse(hostsRaw));
       if (detailsRaw) setBankDetails(JSON.parse(detailsRaw));
+    }
+  }
+
+  // Records that a week's manual EFT was made. Sends only hostId + which
+  // Friday (a plain calendar date) — never a booking list or a Rand
+  // amount. The server/RPC alone decides the eligible bookings and total;
+  // on success this reloads everything from the backend rather than
+  // trusting the pre-click UI total, so the dashboard never shows a
+  // number it merely assumed was marked.
+  async function markPeriodPaid(hostId: string, period: PayoutPeriod) {
+    setPayingPeriodKey(period.key);
+    setErrorMsg('');
+    try {
+      const res = await adminFetch('/admin-mark-payout-paid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hostId, periodStartDate: toDateString(period.start) }),
+      });
+      const result = await res.json();
+      if (result.error) {
+        showError(result.error);
+        return;
+      }
+      await loadData();
+      // count === 0 is a real, harmless outcome — not an error — from the
+      // RPC's own idempotency guard: e.g. a second click, or someone else
+      // already closed this period out in another tab. It must never be
+      // announced as a payment ("R0.00 marked as paid" would be
+      // confusing/misleading); the refreshed card itself (PAID badge,
+      // outstanding line, or button gone entirely) is the honest source
+      // of truth for what actually happened.
+      if (result.data.count === 0) {
+        showSuccess('Nothing outstanding to mark — this period may already be paid.');
+      } else {
+        showSuccess(`R${Number(result.data.total).toFixed(2)} marked as paid (${result.data.count} booking${result.data.count === 1 ? '' : 's'}).`);
+      }
+    } catch {
+      showError('Could not mark payout as paid. Please try again.');
+    } finally {
+      setPayingPeriodKey(null);
+      setConfirmPayPeriodKey(null);
     }
   }
 
@@ -296,7 +364,7 @@ export default function HostPayouts() {
       const start = periodStart(new Date());
       const end = new Date(start.getTime() + 6 * DAY_MS + (DAY_MS - 1));
       const payoutDate = new Date(start.getTime() + 7 * DAY_MS);
-      periods.set(currentPeriodKey, { key: currentPeriodKey, start, end, payoutDate, bookings: [], total: 0 });
+      periods.set(currentPeriodKey, { key: currentPeriodKey, start, end, payoutDate, bookings: [], total: 0, outstanding: 0 });
     }
     return Array.from(periods.values()).sort((a, b) => b.start.getTime() - a.start.getTime());
   }
@@ -416,6 +484,16 @@ export default function HostPayouts() {
       color: status === 'pending_manual' ? '#D97706' : status === 'voided_refunded' ? '#6B7280' : '#6B7280',
     }),
     emptyPeriods: { fontSize: 13, color: '#9CA3AF', fontStyle: 'italic', margin: '0 16px 16px' },
+
+    // Mark as Paid
+    outstandingLine: { fontSize: 13, color: '#D97706', fontWeight: 700, margin: '0 0 8px' },
+    markPaidBtn: { width: '100%', backgroundColor: '#2D6A4F', border: 'none', borderRadius: 12, padding: '12px', cursor: 'pointer', color: '#fff', fontSize: 14, fontWeight: 700 },
+    payConfirmBox: { marginTop: 10, backgroundColor: '#F0FDF4', border: '1.5px solid #2D6A4F', borderRadius: 12, padding: 14 },
+    payConfirmText: { fontSize: 13, color: '#1A1A1A', fontWeight: 600, margin: '0 0 12px', lineHeight: 1.5 },
+    payConfirmActions: { display: 'flex', gap: 10 },
+    paidBadge: { marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, backgroundColor: '#DCFCE7', borderRadius: 10, padding: '8px 12px' },
+    paidBadgeText: { fontSize: 13, fontWeight: 800, color: '#16A34A' },
+    paidBadgeDate: { fontSize: 12, fontWeight: 600, color: '#166534' },
   };
 
   if (viewHost) {
@@ -544,9 +622,22 @@ export default function HostPayouts() {
           <div style={s.list}>
             {previous.map(period => {
               const expanded = expandedPeriodKey === period.key;
+              const isConfirming = confirmPayPeriodKey === period.key;
+              const isPaying = payingPeriodKey === period.key;
+              // Fully resolved only if something was actually paid and
+              // nothing remains owed — a period that's R0 outstanding
+              // purely because every booking was refunded/voided never
+              // shows a false "PAID" badge.
+              const paidBookings = period.bookings.filter(b => b.payout_status === 'paid');
+              const fullyPaid = paidBookings.length > 0 && period.outstanding === 0;
+              const lastPaidAt = fullyPaid
+                ? paidBookings.reduce((latest: string | null, b) => (
+                    !latest || (b.host_paid_at && b.host_paid_at > latest) ? (b.host_paid_at as string) : latest
+                  ), null)
+                : null;
               return (
-                <div key={period.key} style={s.periodRow} onClick={() => setExpandedPeriodKey(expanded ? null : period.key)}>
-                  <div style={s.periodRowTop}>
+                <div key={period.key} style={s.periodRow}>
+                  <div style={s.periodRowTop} onClick={() => setExpandedPeriodKey(expanded ? null : period.key)}>
                     <div>
                       <p style={s.periodRange}>{formatDay(period.start)} – {formatDay(period.end)}</p>
                       <p style={s.periodPayout}>Payout {formatDay(period.payoutDate)}</p>
@@ -556,6 +647,39 @@ export default function HostPayouts() {
                       <p style={s.periodCount}>{period.bookings.length} booking{period.bookings.length === 1 ? '' : 's'}</p>
                     </div>
                   </div>
+
+                  {fullyPaid ? (
+                    <div style={s.paidBadge}>
+                      <span style={s.paidBadgeText}>✓ PAID</span>
+                      {!!lastPaidAt && <span style={s.paidBadgeDate}>Paid on {formatDay(new Date(lastPaidAt))}</span>}
+                    </div>
+                  ) : period.outstanding > 0 ? (
+                    isConfirming ? (
+                      <div style={s.payConfirmBox} onClick={e => e.stopPropagation()}>
+                        <p style={s.payConfirmText}>
+                          Mark R{period.outstanding.toFixed(2)} as paid to {viewHost.displayName}?
+                          <br />
+                          {formatDay(period.start)} – {formatDay(period.end)} · {period.bookings.filter(b => b.payout_status === 'pending_manual').length} booking{period.bookings.filter(b => b.payout_status === 'pending_manual').length === 1 ? '' : 's'}
+                        </p>
+                        <div style={s.payConfirmActions}>
+                          <button style={s.cancelBtn} onClick={() => setConfirmPayPeriodKey(null)} disabled={isPaying}>Cancel</button>
+                          <button style={s.saveBtn(isPaying)} onClick={() => markPeriodPaid(viewHost.id, period)} disabled={isPaying}>
+                            {isPaying ? 'Marking…' : 'Confirm'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 10 }} onClick={e => e.stopPropagation()}>
+                        {period.outstanding !== period.total && (
+                          <p style={s.outstandingLine}>Outstanding: R{period.outstanding.toFixed(2)}</p>
+                        )}
+                        <button style={s.markPaidBtn} onClick={() => setConfirmPayPeriodKey(period.key)}>
+                          Mark R{period.outstanding.toFixed(2)} as Paid
+                        </button>
+                      </div>
+                    )
+                  ) : null}
+
                   {expanded && (
                     <div style={s.bookingList}>
                       {period.bookings
