@@ -1111,6 +1111,113 @@ GRANT EXECUTE ON FUNCTION mark_refunded(UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION expire_overdue_booking(UUID) TO service_role;
 
 -- -------------------------------------------------------------------------
+-- Host weekly payout — mark as paid (admin dashboard, PR #2 of the Host
+-- Payouts feature; PR #1 was the read-only weekly earnings view)
+-- -------------------------------------------------------------------------
+--
+-- bookings.paid_at already exists but means something else entirely — it's
+-- set by confirm_booking_payment() when the TRAVELLER pays Cubby (traced
+-- directly: its only writer is the PayFast/Peach payment webhook path).
+-- Reusing it here would conflate two unrelated financial events on the
+-- same row. host_paid_at is a new, separate, nullable column: when Cubby
+-- actually pays the HOST, recorded only by mark_host_payout_paid() below.
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS host_paid_at TIMESTAMPTZ;
+
+-- mark_host_payout_paid(p_host_id, p_period_start_date) — admin records
+-- that a week's manual EFT to a host has been made.
+--
+-- p_period_start_date is a plain DATE (the Friday that starts the payout
+-- period, e.g. '2026-08-28') — a calendar date, not a client-computed
+-- timestamp. The server alone converts that into the actual UTC instant
+-- boundaries, interpreting it in Africa/Johannesburg (Cape Town) time —
+-- Cubby's payout week is a Cape Town business rule, so an admin's browser
+-- timezone must never be trusted to decide the financial cutoff. SA has no
+-- DST, but the AT TIME ZONE conversion (rather than a hardcoded +2) is
+-- used anyway so this stays correct even if that ever changes.
+--   Fri 00:00 SAST -> v_period_start (inclusive)
+--   next Fri 00:00 SAST -> v_period_end (exclusive)
+-- matches the Fri 00:00 - Thu 23:59:59 -> paid following Friday rule
+-- exactly, including the "a booking completed on the Friday itself starts
+-- the NEXT period" edge case, since v_period_end is an exclusive bound.
+--
+-- The eligible-bookings filter is the entire safety mechanism, same
+-- guarded-UPDATE idempotency pattern as mark_refunded above:
+--   host_id = p_host_id        -- never another host's bookings
+--   status = 'completed'       -- never a pending/active/cancelled booking
+--   payout_status = 'pending_manual'  -- never one already 'paid', and
+--                                        never one 'voided_refunded' by a
+--                                        refund — both are excluded simply
+--                                        by not matching this condition
+--   completed_at within [v_period_start, v_period_end)  -- only this exact
+--                                        Cape Town week, nothing else
+-- A second call (or a near-simultaneous double click) finds zero rows
+-- still at 'pending_manual' for that host+period and returns an empty,
+-- zero-total result rather than erroring or double-recording a payout —
+-- there is no way to mark the same booking paid twice.
+--
+-- The caller (admin-mark-payout-paid Edge Function) never supplies which
+-- bookings or how much — only host_id + which Friday. This function alone
+-- decides the eligible set and the total, via RETURNING *, and that
+-- returned data is the only source of truth the dashboard should ever
+-- display as "just marked paid" — never the pre-click UI total.
+CREATE OR REPLACE FUNCTION mark_host_payout_paid(p_host_id UUID, p_period_start_date DATE)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_period_start TIMESTAMPTZ;
+  v_period_end TIMESTAMPTZ;
+  v_is_admin boolean;
+  v_bookings JSONB;
+  v_total NUMERIC;
+  v_count INT;
+BEGIN
+  IF auth.role() <> 'service_role' THEN
+    SELECT COALESCE((SELECT is_admin FROM profiles WHERE id = auth.uid()), false) INTO v_is_admin;
+    IF NOT v_is_admin THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'not_admin');
+    END IF;
+  END IF;
+
+  v_period_start := (p_period_start_date::timestamp) AT TIME ZONE 'Africa/Johannesburg';
+  v_period_end := ((p_period_start_date + 7)::timestamp) AT TIME ZONE 'Africa/Johannesburg';
+
+  WITH updated AS (
+    UPDATE bookings b
+    SET payout_status = 'paid',
+        host_paid_at = now()
+    WHERE b.host_id = p_host_id
+      AND b.status = 'completed'
+      AND b.payout_status = 'pending_manual'
+      AND b.completed_at >= v_period_start
+      AND b.completed_at < v_period_end
+    RETURNING b.id, b.drop_off_date, b.bag_count, b.host_payout_amount, b.completed_at, b.host_paid_at
+  )
+  SELECT
+    COALESCE(jsonb_agg(to_jsonb(updated)), '[]'::jsonb),
+    COALESCE(SUM(host_payout_amount), 0),
+    COUNT(*)
+  INTO v_bookings, v_total, v_count
+  FROM updated;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'host_id', p_host_id,
+    'period_start_date', p_period_start_date,
+    'bookings', v_bookings,
+    'total', v_total,
+    'count', v_count
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION mark_host_payout_paid(UUID, DATE) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION mark_host_payout_paid(UUID, DATE) TO authenticated;
+
+-- -------------------------------------------------------------------------
 -- Booking lifecycle redesign — Phase 5: PayFast payment confirmation
 -- -------------------------------------------------------------------------
 -- A successful PayFast ITN no longer transitions a booking straight to
