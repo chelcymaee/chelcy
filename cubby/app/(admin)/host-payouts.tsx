@@ -147,6 +147,77 @@ function groupIntoPeriods(bookings: PayoutBooking[]): Map<string, PayoutPeriod> 
   return periods;
 }
 
+// ─── Payout History (cross-host) ───────────────────────────────────────────
+//
+// One entry per (host, period) that has actually been paid out — reuses
+// groupIntoPeriods per host (period keys are calendar-based, not
+// host-scoped, so grouping must stay split by host first to avoid two
+// different hosts' same-week periods colliding under one key) then
+// flattens across all hosts into a single sorted list.
+//
+// "Paid" here deliberately means the same thing the existing By Host view's
+// PAID badge already means: at least one booking in the period has
+// payout_status 'paid', AND nothing in that period is still
+// 'pending_manual'. A period isn't "history" while any part of it is still
+// owed — that's the current/outstanding view's job, not this one.
+interface HistoryEntry {
+  key: string; // `${hostId}:${period.key}` — period.key alone can collide across hosts
+  hostId: string;
+  hostName: string;
+  hostLocation: string;
+  start: Date;
+  end: Date;
+  payoutDate: Date;
+  paidAmount: number; // sum of ONLY payout_status === 'paid' bookings — never
+                       // period.total, which would also include any
+                       // refunded/voided bookings sharing the same period
+  paidBookings: PayoutBooking[]; // the exact bookings paidAmount is derived
+                                  // from — what the expanded row shows
+  lastPaidAt: string; // ISO string; every booking in one mark-as-paid call
+                       // shares the same host_paid_at, so max() here is
+                       // just a defensive reduce, not expected to vary
+}
+
+function buildPayoutHistory(allBookings: PayoutBooking[], hostsList: Host[]): HistoryEntry[] {
+  const hostById = new Map(hostsList.map(h => [h.id, h]));
+  const byHost = new Map<string, PayoutBooking[]>();
+  for (const b of allBookings) {
+    if (!byHost.has(b.host_id)) byHost.set(b.host_id, []);
+    byHost.get(b.host_id)!.push(b);
+  }
+
+  const entries: HistoryEntry[] = [];
+  for (const [hostId, hostBookings] of byHost) {
+    const periods = groupIntoPeriods(hostBookings);
+    for (const period of periods.values()) {
+      const paidBookings = period.bookings.filter(b => b.payout_status === 'paid');
+      if (paidBookings.length === 0 || period.outstanding > 0) continue;
+
+      const paidAmount = paidBookings.reduce((sum, b) => sum + Number(b.host_payout_amount ?? 0), 0);
+      const lastPaidAt = paidBookings.reduce((latest: string, b) => (
+        b.host_paid_at && b.host_paid_at > latest ? b.host_paid_at : latest
+      ), '');
+
+      const host = hostById.get(hostId);
+      entries.push({
+        key: `${hostId}:${period.key}`,
+        hostId,
+        hostName: host?.displayName ?? 'Unknown host',
+        hostLocation: host?.locationName ?? '',
+        start: period.start,
+        end: period.end,
+        payoutDate: period.payoutDate,
+        paidAmount,
+        paidBookings,
+        lastPaidAt,
+      });
+    }
+  }
+
+  entries.sort((a, b) => b.lastPaidAt.localeCompare(a.lastPaidAt));
+  return entries;
+}
+
 export default function HostPayouts() {
   const [hosts, setHosts] = useState<Host[]>([]);
   const [bankDetails, setBankDetails] = useState<Record<string, BankDetails>>({});
@@ -164,6 +235,12 @@ export default function HostPayouts() {
   const [expandedPeriodKey, setExpandedPeriodKey] = useState<string | null>(null);
   const [confirmPayPeriodKey, setConfirmPayPeriodKey] = useState<string | null>(null);
   const [payingPeriodKey, setPayingPeriodKey] = useState<string | null>(null);
+  // Top-level tab on the host-list screen only — independent of viewHostId
+  // (the By Host drill-down), which is unchanged. A separate expand key so
+  // expanding a row in History can never affect/collide with expandedPeriodKey
+  // inside a host's own Previous periods list.
+  const [viewMode, setViewMode] = useState<'byHost' | 'history'>('byHost');
+  const [expandedHistoryKey, setExpandedHistoryKey] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => {
     loadData();
@@ -494,6 +571,18 @@ export default function HostPayouts() {
     paidBadge: { marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, backgroundColor: '#DCFCE7', borderRadius: 10, padding: '8px 12px' },
     paidBadgeText: { fontSize: 13, fontWeight: 800, color: '#16A34A' },
     paidBadgeDate: { fontSize: 12, fontWeight: 600, color: '#166534' },
+
+    // Payout History tab
+    tabRow: { display: 'flex', gap: 8, margin: '0 16px 16px', backgroundColor: '#F0EAEA', borderRadius: 14, padding: 4 },
+    tab: (isActive: boolean) => ({
+      flex: 1, textAlign: 'center', padding: '10px', borderRadius: 11, border: 'none', cursor: 'pointer',
+      backgroundColor: isActive ? '#fff' : 'transparent',
+      color: isActive ? '#1A1A1A' : '#6B7280', fontWeight: 700, fontSize: 14,
+      boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+    }),
+    historyRowHost: { fontSize: 13, fontWeight: 700, color: '#1A1A1A', margin: '0 0 4px' },
+    historyRowLocation: { fontSize: 12, color: '#6B7280', margin: '0 0 8px' },
+    emptyHistory: { fontSize: 13, color: '#9CA3AF', fontStyle: 'italic', margin: '24px 16px', textAlign: 'center' },
   };
 
   if (viewHost) {
@@ -708,6 +797,11 @@ export default function HostPayouts() {
     );
   }
 
+  // History tab data — computed unconditionally (cheap: same bookings/hosts
+  // already in state for the By Host tab), so switching tabs is instant and
+  // never triggers a refetch.
+  const payoutHistory = buildPayoutHistory(bookings, hosts);
+
   return (
     <div style={s.page}>
       <div style={s.header}>
@@ -733,9 +827,15 @@ export default function HostPayouts() {
         </div>
       </div>
 
+      <div style={s.tabRow}>
+        <button style={s.tab(viewMode === 'byHost')} onClick={() => setViewMode('byHost')}>By Host</button>
+        <button style={s.tab(viewMode === 'history')} onClick={() => setViewMode('history')}>Payout History</button>
+      </div>
+
       {!!successMsg && <div style={s.successBox}>{successMsg}</div>}
       {!!errorMsg && !editingHostId && <div style={s.errorBox}>{errorMsg}</div>}
 
+      {viewMode === 'byHost' && (<>
       {editingHostId && (
         <div style={s.editForm}>
           <h2 style={s.editTitle}>Bank details — {editingHost?.displayName}</h2>
@@ -854,6 +954,59 @@ export default function HostPayouts() {
             );
           })}
         </div>
+      )}
+      </>)}
+
+      {viewMode === 'history' && (
+        payoutHistory.length === 0 ? (
+          <p style={s.emptyHistory}>No completed payouts yet. Mark a period as paid from the By Host tab to see it here.</p>
+        ) : (
+          <div style={s.list}>
+            {payoutHistory.map(entry => {
+              const expanded = expandedHistoryKey === entry.key;
+              return (
+                <div key={entry.key} style={s.periodRow}>
+                  <div onClick={() => setExpandedHistoryKey(expanded ? null : entry.key)}>
+                    <p style={s.historyRowHost}>{entry.hostName}</p>
+                    <p style={s.historyRowLocation}>{entry.hostLocation}</p>
+                    <div style={s.periodRowTop}>
+                      <div>
+                        <p style={s.periodRange}>{formatDay(entry.start)} – {formatDay(entry.end)}</p>
+                        <p style={s.periodPayout}>Payout {formatDay(entry.payoutDate)}</p>
+                      </div>
+                      <div>
+                        <p style={s.periodTotal}>R{entry.paidAmount.toFixed(2)}</p>
+                        <p style={s.periodCount}>{entry.paidBookings.length} booking{entry.paidBookings.length === 1 ? '' : 's'}</p>
+                      </div>
+                    </div>
+                    <div style={s.paidBadge}>
+                      <span style={s.paidBadgeText}>✓ PAID</span>
+                      {!!entry.lastPaidAt && <span style={s.paidBadgeDate}>Paid on {formatDay(new Date(entry.lastPaidAt))}</span>}
+                    </div>
+                  </div>
+
+                  {expanded && (
+                    <div style={s.bookingList}>
+                      {entry.paidBookings
+                        .slice()
+                        .sort((a, b) => (a.completed_at ?? '').localeCompare(b.completed_at ?? ''))
+                        .map(b => (
+                          <div key={b.id} style={s.bookingRow}>
+                            <div>
+                              <p style={s.bookingDate}>{b.drop_off_date}</p>
+                              <p style={s.bookingBags}>{b.bag_count} bag{b.bag_count === 1 ? '' : 's'}</p>
+                              <span style={s.payoutStatusPill(b.payout_status)}>{b.payout_status ?? 'unknown'}</span>
+                            </div>
+                            <p style={s.bookingAmount}>R{Number(b.host_payout_amount ?? 0).toFixed(2)}</p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )
       )}
 
       <div style={{ height: 40 }} />
