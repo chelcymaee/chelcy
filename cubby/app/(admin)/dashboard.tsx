@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { router } from 'expo-router';
 import { checkAdminSession, logoutAdmin, adminFetch } from '../../src/lib/admin-auth';
 import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
+import { currentJohannesburgPeriodKey, johannesburgPeriodStartKey } from '../../src/lib/payout-periods';
 
 async function adminFetchBookings() {
   const res = await adminFetch('/admin-bookings', { method: 'GET' });
@@ -69,6 +70,19 @@ interface TodayBookingItem {
   done: boolean; // status === 'completed'
 }
 
+// Host Payouts summary card. All three figures are drawn from the exact
+// same base population (status='completed' AND payout_status='pending_manual',
+// summing the stored host_payout_amount — never recalculated) so they
+// reconcile by construction: outstanding is derived as currentPeriod +
+// dueOverdue, not accumulated independently. See loadData().
+interface PayoutSummary {
+  outstanding: number;
+  dueOverdue: number;
+  currentPeriod: number;
+}
+
+const EMPTY_PAYOUT_SUMMARY: PayoutSummary = { outstanding: 0, dueOverdue: 0, currentPeriod: 0 };
+
 const EMPTY_STATS: Stats = {
   totalHosts: 0, activeHosts: 0, activeBookings: 0,
   revenueMonth: 0, revenueTotal: 0,
@@ -86,6 +100,7 @@ export default function AdminDashboard() {
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [dropOffsToday, setDropOffsToday] = useState<TodayBookingItem[]>([]);
   const [collectionsToday, setCollectionsToday] = useState<TodayBookingItem[]>([]);
+  const [payoutSummary, setPayoutSummary] = useState<PayoutSummary>(EMPTY_PAYOUT_SUMMARY);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -229,6 +244,32 @@ export default function AdminDashboard() {
       setDropOffsToday(todayDropOffs);
       setCollectionsToday(todayCollections);
 
+      // Host Payouts summary — same allBookings result, no separate fetch.
+      // Base population matches host-payouts.tsx's own definition of
+      // "outstanding" exactly: status='completed' AND payout_status=
+      // 'pending_manual', summing the stored host_payout_amount (never
+      // recalculated from price). 'paid'/'voided_refunded'/legacy 'pending'/
+      // null payout_status are all excluded, same as that screen.
+      // currentPeriod/dueOverdue partition that same population by
+      // Johannesburg payout period (see src/lib/payout-periods.ts, NOT
+      // host-payouts.tsx's browser-local periodStart() — deliberately not
+      // reused here, see that file's header comment). outstanding is
+      // derived as their sum rather than accumulated separately, so the
+      // three figures reconcile structurally, not just numerically.
+      const currentPeriodKey = currentJohannesburgPeriodKey();
+      let currentPeriod = 0;
+      let dueOverdue = 0;
+      for (const b of allBookings) {
+        if (b.status !== 'completed' || b.payout_status !== 'pending_manual' || !b.completed_at) continue;
+        const amount = Number(b.host_payout_amount ?? 0);
+        if (johannesburgPeriodStartKey(b.completed_at) === currentPeriodKey) {
+          currentPeriod += amount;
+        } else {
+          dueOverdue += amount;
+        }
+      }
+      setPayoutSummary({ outstanding: currentPeriod + dueOverdue, dueOverdue, currentPeriod });
+
       const newStats: Stats = {
         totalHosts: totalHosts ?? 0,
         activeHosts: activeHosts ?? 0,
@@ -363,6 +404,14 @@ export default function AdminDashboard() {
     todayRowTitle: { fontSize: 13, fontWeight: 700, color: '#1a1a1a' },
     todayRowSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
     todayDoneBadge: { fontSize: 10, fontWeight: 800, color: '#2D6A4F', backgroundColor: '#2D6A4F1A', borderRadius: 8, padding: '2px 6px', flexShrink: 0, whiteSpace: 'nowrap' as any },
+
+    // Host Payouts summary card
+    payoutCard: { margin: '0 12px', backgroundColor: '#fff', borderRadius: 14, border: '1px solid #F0EAEA', overflow: 'hidden', cursor: 'pointer' },
+    payoutGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, padding: 14 },
+    payoutStat: { textAlign: 'center' as any },
+    payoutVal: { fontSize: 18, fontWeight: 800, color: '#1a1a1a', margin: 0 },
+    payoutLabel: { fontSize: 11, color: '#6B7280', marginTop: 4, lineHeight: 1.3 },
+    payoutFooter: { fontSize: 12, fontWeight: 700, color: '#2D6A4F', textAlign: 'center' as any, padding: '0 14px 12px' },
 
     // Section cards
     sectionCard: { margin: '0 12px', backgroundColor: '#fff', borderRadius: 14, border: '1px solid #F0EAEA', overflow: 'hidden' },
@@ -518,6 +567,26 @@ export default function AdminDashboard() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ---- Host Payouts summary ---- */}
+      <p style={s.sectionLabel}>Host Payouts</p>
+      <div style={s.payoutCard} onClick={() => router.push('/(admin)/host-payouts' as any)}>
+        <div style={s.payoutGrid}>
+          <div style={s.payoutStat}>
+            <p style={s.payoutVal}>R{payoutSummary.outstanding.toFixed(0)}</p>
+            <p style={s.payoutLabel}>Outstanding</p>
+          </div>
+          <div style={s.payoutStat}>
+            <p style={s.payoutVal}>R{payoutSummary.dueOverdue.toFixed(0)}</p>
+            <p style={s.payoutLabel}>Due / overdue</p>
+          </div>
+          <div style={s.payoutStat}>
+            <p style={s.payoutVal}>R{payoutSummary.currentPeriod.toFixed(0)}</p>
+            <p style={s.payoutLabel}>Current period</p>
+          </div>
+        </div>
+        <p style={s.payoutFooter}>View Host Payouts ›</p>
       </div>
 
       {/* ---- Marketplace ---- */}
