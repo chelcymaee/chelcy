@@ -8,6 +8,16 @@ async function adminFetchBookings() {
   return res.json();
 }
 
+// "Today" for the Drop-offs & Collections panel below, pinned to South
+// African local time regardless of the admin's own browser timezone —
+// drop_off_date/pick_up_date are 'YYYY-MM-DD' strings computed from the
+// traveller's local device clock at booking time (see todayISO() in
+// DatePickerModal.tsx), which for Cubby's SA-only user base means SAST.
+// en-CA locale formats as YYYY-MM-DD, matching that stored format exactly.
+function todayInJohannesburg(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' }).format(new Date());
+}
+
 // content_reports has no admin-facing RLS (deliberately — only an own-row
 // SELECT policy, see schema.sql). Unlike the other stats below, which read
 // straight off the anon-key client because their tables allow it, this one
@@ -50,6 +60,15 @@ interface Toast {
   icon: string;
 }
 
+interface TodayBookingItem {
+  id: string;
+  host_display_name: string | null;
+  traveller_name: string | null;
+  bag_count: number;
+  time: string | null;
+  done: boolean; // status === 'completed'
+}
+
 const EMPTY_STATS: Stats = {
   totalHosts: 0, activeHosts: 0, activeBookings: 0,
   revenueMonth: 0, revenueTotal: 0,
@@ -65,6 +84,8 @@ const POLL_INTERVAL_MS = 30_000;
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats>(EMPTY_STATS);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [dropOffsToday, setDropOffsToday] = useState<TodayBookingItem[]>([]);
+  const [collectionsToday, setCollectionsToday] = useState<TodayBookingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -184,6 +205,29 @@ export default function AdminDashboard() {
       const revenueMonth = allBookings
         .filter((b: any) => ['confirmed', 'completed'].includes(b.status) && b.created_at >= firstOfMonth)
         .reduce((sum: number, b: any) => sum + (b.total_price ?? 0), 0);
+
+      // Today's Drop-offs & Collections — reuses the same allBookings result
+      // above, no separate fetch. Scoped to confirmed/completed bookings
+      // only: confirmed = expected drop-off, not yet checked in; completed =
+      // checked out (shown with ✓ Done). 'active' (already checked in,
+      // awaiting pickup) and 'pending'/'cancelled' are out of scope here.
+      const todayZA = todayInJohannesburg();
+      const toTodayItem = (b: any, time: string | null): TodayBookingItem => ({
+        id: b.id,
+        host_display_name: b.host_display_name ?? null,
+        traveller_name: b.traveller_name ?? null,
+        bag_count: b.bag_count ?? 0,
+        time,
+        done: b.status === 'completed',
+      });
+      const todayDropOffs = allBookings
+        .filter((b: any) => b.drop_off_date === todayZA && ['confirmed', 'completed'].includes(b.status))
+        .map((b: any) => toTodayItem(b, b.drop_off_time ?? null));
+      const todayCollections = allBookings
+        .filter((b: any) => b.pick_up_date === todayZA && ['confirmed', 'completed'].includes(b.status))
+        .map((b: any) => toTodayItem(b, b.pick_up_time ?? null));
+      setDropOffsToday(todayDropOffs);
+      setCollectionsToday(todayCollections);
 
       const newStats: Stats = {
         totalHosts: totalHosts ?? 0,
@@ -310,6 +354,16 @@ export default function AdminDashboard() {
     snapshotVal: { fontSize: 20, fontWeight: 800, color: '#1a1a1a', margin: 0 },
     snapshotLabel: { fontSize: 11, color: '#6B7280', marginTop: 4, lineHeight: 1.3 },
 
+    // Today's Drop-offs & Collections
+    todayGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '0 12px' },
+    todayCard: { backgroundColor: '#fff', borderRadius: 14, border: '1px solid #F0EAEA', overflow: 'hidden' },
+    todayCardHeader: { display: 'flex', alignItems: 'center', gap: 6, padding: '12px 14px 8px', fontSize: 13, fontWeight: 800, color: '#1a1a1a' },
+    todayEmpty: { padding: '4px 14px 14px', fontSize: 12, color: '#9CA3AF' },
+    todayRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, padding: '8px 14px', borderTop: '1px solid #F8F8F8' },
+    todayRowTitle: { fontSize: 13, fontWeight: 700, color: '#1a1a1a' },
+    todayRowSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+    todayDoneBadge: { fontSize: 10, fontWeight: 800, color: '#2D6A4F', backgroundColor: '#2D6A4F1A', borderRadius: 8, padding: '2px 6px', flexShrink: 0, whiteSpace: 'nowrap' as any },
+
     // Section cards
     sectionCard: { margin: '0 12px', backgroundColor: '#fff', borderRadius: 14, border: '1px solid #F0EAEA', overflow: 'hidden' },
     sectionRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #F8F8F8', cursor: 'pointer' },
@@ -428,6 +482,43 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* ---- Today's Drop-offs & Collections ---- */}
+      <p style={s.sectionLabel}>Today's Drop-offs & Collections</p>
+      <div style={s.todayGrid}>
+        <div style={s.todayCard}>
+          <div style={s.todayCardHeader}>📥 Drop-offs ({dropOffsToday.length})</div>
+          {dropOffsToday.length === 0 ? (
+            <p style={s.todayEmpty}>None today</p>
+          ) : dropOffsToday.map(item => (
+            <div key={item.id} style={s.todayRow}>
+              <div>
+                <div style={s.todayRowTitle}>{item.host_display_name ?? 'Unknown host'}</div>
+                <div style={s.todayRowSub}>
+                  {item.traveller_name ?? 'Traveller'} · {item.bag_count} bag{item.bag_count !== 1 ? 's' : ''}{item.time ? ` · ${item.time}` : ''}
+                </div>
+              </div>
+              {item.done && <span style={s.todayDoneBadge}>✓ Done</span>}
+            </div>
+          ))}
+        </div>
+        <div style={s.todayCard}>
+          <div style={s.todayCardHeader}>📤 Collections ({collectionsToday.length})</div>
+          {collectionsToday.length === 0 ? (
+            <p style={s.todayEmpty}>None today</p>
+          ) : collectionsToday.map(item => (
+            <div key={item.id} style={s.todayRow}>
+              <div>
+                <div style={s.todayRowTitle}>{item.host_display_name ?? 'Unknown host'}</div>
+                <div style={s.todayRowSub}>
+                  {item.traveller_name ?? 'Traveller'} · {item.bag_count} bag{item.bag_count !== 1 ? 's' : ''}{item.time ? ` · ${item.time}` : ''}
+                </div>
+              </div>
+              {item.done && <span style={s.todayDoneBadge}>✓ Done</span>}
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* ---- Marketplace ---- */}
       <p style={s.sectionLabel}>Marketplace</p>

@@ -72,13 +72,26 @@ serve(async (req) => {
     // bookings into weekly payout periods and show each booking's payout
     // state, including when it was actually paid — all three are
     // read-only here, written only by mark_host_payout_paid() (schema.sql),
-    // never by this function. Every addition here is purely additive, each
-    // screen ignores whichever fields it doesn't use.
+    // never by this function. pick_up_date/pick_up_time/drop_off_time added
+    // so the dashboard's Today's Drop-offs & Collections panel can match
+    // both ends of a booking against "today", not just the drop-off date.
+    // Every addition here is purely additive, each screen ignores whichever
+    // fields it doesn't use.
     const { data: bookings, error } = await supabase
       .from('bookings')
-      .select('id, status, total_price, base_storage_amount, host_payout_amount, bag_count, drop_off_date, created_at, completed_at, payout_status, host_paid_at, host_id, traveller_id, refund_status, refund_requested_at, refunded_at, refund_reference, hosts(display_name)')
+      .select('id, status, total_price, base_storage_amount, host_payout_amount, bag_count, drop_off_date, drop_off_time, pick_up_date, pick_up_time, created_at, completed_at, payout_status, host_paid_at, host_id, traveller_id, refund_status, refund_requested_at, refunded_at, refund_reference, hosts(display_name)')
       .order('created_at', { ascending: false });
     if (error) throw error;
+
+    // Batched traveller lookup: bookings has no FK to profiles, so this is
+    // one .in() query for every distinct traveller_id in the result set —
+    // never a query per booking. Service-role client, so profiles' own-row
+    // SELECT RLS doesn't apply here.
+    const travellerIds = [...new Set((bookings ?? []).map((b: any) => b.traveller_id).filter(Boolean))];
+    const { data: travellerProfiles } = travellerIds.length
+      ? await supabase.from('profiles').select('id, full_name').in('id', travellerIds)
+      : { data: [] as any[] };
+    const travellerById = new Map((travellerProfiles ?? []).map((p: any) => [p.id, p]));
 
     const data = (bookings ?? []).map((b: any) => ({
       id: b.id,
@@ -88,12 +101,17 @@ serve(async (req) => {
       host_payout_amount: b.host_payout_amount,
       bag_count: b.bag_count,
       drop_off_date: b.drop_off_date,
+      drop_off_time: b.drop_off_time,
+      pick_up_date: b.pick_up_date,
+      pick_up_time: b.pick_up_time,
       created_at: b.created_at,
       completed_at: b.completed_at,
       payout_status: b.payout_status,
       host_paid_at: b.host_paid_at,
       host_id: b.host_id,
       host_display_name: b.hosts?.display_name ?? null,
+      traveller_id: b.traveller_id,
+      traveller_name: travellerById.get(b.traveller_id)?.full_name ?? null,
       refund_status: b.refund_status,
       refund_requested_at: b.refund_requested_at,
       refunded_at: b.refunded_at,
