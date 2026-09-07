@@ -228,8 +228,18 @@ export default function AdminUsers() {
   }
 
   // ─── Detail sheet ─────────────────────────────────────────────────────────
-
-  function UserDetail({ user }: { user: User }) {
+  //
+  // Computed as a plain JSX-holding variable via an inline IIFE, not a
+  // nested function component — see the identical fix (and its full
+  // explanation) in manage-hosts.tsx's HostSheet. This one has no editable
+  // inputs today so it wasn't causing the reported typing bug itself, but
+  // it's the exact same anti-pattern (a component defined inside another
+  // component's render, forcing a full unmount/remount every parent
+  // re-render) and would reproduce the same bug the moment any field in
+  // here became editable.
+  const userDetail = (() => {
+    if (!selectedUser) return null;
+    const user = selectedUser;
     return (
       <div style={s.backdrop} onClick={(e) => { if (e.target === e.currentTarget) setSelectedUser(null); }}>
         <div style={s.sheet}>
@@ -390,7 +400,7 @@ export default function AdminUsers() {
         </div>
       </div>
     );
-  }
+  })();
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -470,7 +480,7 @@ export default function AdminUsers() {
       <div style={{ height: 40 }} />
 
       {/* Detail sheet */}
-      {selectedUser && <UserDetail user={selectedUser} />}
+      {userDetail}
     </div>
   );
 }

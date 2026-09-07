@@ -344,8 +344,20 @@ export default function ManageHosts() {
   };
 
   // ─── Detail sheet ────────────────────────────────────────────────────────────
-
-  function HostSheet() {
+  //
+  // Computed as a plain JSX-holding variable via an inline IIFE, NOT a
+  // nested function component (the previous `function HostSheet() {...}` +
+  // `<HostSheet />`). A component defined inside another component's body
+  // gets a brand-new function identity every render, so React treated
+  // every re-render here as an entirely new component type and fully
+  // unmounted+remounted this whole sheet — including every <input>/
+  // <textarea> inside the edit form — on every single keystroke. That's
+  // what caused the "type one letter, jump to top, lose focus/scroll"
+  // bug: each keystroke called setEditFields(), which re-rendered
+  // ManageHosts, which redefined HostSheet, which reset every input's DOM
+  // node and the sheet's scroll position. Same JSX, same behavior below —
+  // this is a structural fix only.
+  const hostSheet = (() => {
     if (!selectedHost) return null;
     const { host, ownerProfile, bookings, stats } = selectedHost;
     const days: string[] = editFields.available_days ?? host.available_days ?? ALL_DAYS;
@@ -686,7 +698,7 @@ export default function ManageHosts() {
         </div>
       </div>
     );
-  }
+  })();
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -757,7 +769,7 @@ export default function ManageHosts() {
         </div>
       )}
 
-      {selectedHost && <HostSheet />}
+      {hostSheet}
     </div>
   );
 }
