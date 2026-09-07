@@ -85,6 +85,12 @@ const DEFAULT_FILTERS: ActiveFilters = {
   verifiedOnly: false, fastResponders: false, priceRange: 'any', hostType: null,
 };
 
+// The one sentinel value locationMatches() below already treats as "no
+// location filter" (it strips "cape town"/"south africa" and matches
+// everything once nothing is left) — Explore's own initial state, and the
+// exact value "Reset map" restores. Defined once so both stay in sync.
+const DEFAULT_LOCATION = 'Cape Town, South Africa';
+
 // ─── Filter helpers ───────────────────────────────────────────────────────────
 
 function isoToDayOfWeek(iso: string): string {
@@ -455,7 +461,7 @@ export default function Explore() {
   const [userLocation, setUserLocation] = useState<LatLon | null>(null);
 
   // ── Filter state ──
-  const [location, setLocation] = useState('Cape Town, South Africa');
+  const [location, setLocation] = useState(DEFAULT_LOCATION);
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [dropOff, setDropOff] = useState('9am–10am');
   const [pickUp, setPickUp] = useState('5pm–6pm');
@@ -604,6 +610,18 @@ export default function Explore() {
   }, [userLocation, displayed]);
 
   const hasActiveFilters = !filtersAreDefault(filters, sortBy);
+
+  // "Reset map" — see the audit: neither map implementation actually moves
+  // its camera on a location search (native's initialRegion only applies
+  // once at mount; web's setCenter only ever tracks userLocation). Search
+  // narrows the pin SET via applyFilters()'s location match, not the
+  // viewport. So resetting is just clearing the search text back to its
+  // own default, which locationMatches() already treats as "match every
+  // host" — the full pin set reappears through the existing pipeline with
+  // no map-camera code needed. Deliberately only touches `location`: does
+  // not reset selectedDate/dropOff/pickUp/bags.
+  const showResetMap = location !== DEFAULT_LOCATION;
+  const resetMap = () => setLocation(DEFAULT_LOCATION);
 
   const presentTypes = useMemo(() => {
     const s = new Set(allHosts.map(h => h.business_type));
@@ -819,6 +837,17 @@ export default function Explore() {
                 </TouchableOpacity>
               )}
             </ScrollView>
+
+            {/* Reset map — only shown once the traveller has searched away
+                from the default Cape Town location. Only clears `location`;
+                does not touch date/drop-off/pick-up/bags. */}
+            {showResetMap && (
+              <TouchableOpacity style={S.resetMapBtn} onPress={resetMap}
+                // @ts-ignore
+                onClick={resetMap} activeOpacity={0.88}>
+                <Text style={S.resetMapBtnText}>↺ Reset map</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* ── Draggable bottom sheet ── */}
@@ -831,17 +860,13 @@ export default function Explore() {
               </Text>
             </View>
 
-            {/* Sort chips */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}
-              style={S.sortRow} contentContainerStyle={S.sortRowContent}>
-              {sortChipsContent}
-            </ScrollView>
-
-            {/* Filter chips */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}
-              style={S.filterRow} contentContainerStyle={S.filterRowContent}>
-              {filterChipsContent}
-            </ScrollView>
+            {/* Sort chips + secondary filter chips (Verified/Fast/Price/Host
+                type) hidden per the Explore polish pass — the search bar
+                above is now just Location/Date/Drop-off/Pick-up/Bags.
+                sortChipsContent/filterChipsContent (and everything they
+                depend on: filters, sortBy, presentTypes, toggle, etc.) are
+                deliberately left fully intact above, unrendered here, so
+                this is a one-line revert if these come back later. */}
 
             {/* Host list — nestedScrollEnabled so it scrolls independently */}
             <ScrollView style={S.sheetList} showsVerticalScrollIndicator={false}
@@ -904,9 +929,22 @@ export default function Explore() {
           <TouchableOpacity style={S.compactChip} onPress={cycleBags}
             // @ts-ignore
             onClick={cycleBags}><Text style={S.compactChipText}>🎒 {bags}</Text></TouchableOpacity>
-          {sortChipsContent}
-          {filterChipsContent}
+          {/* Sort chips + secondary filter chips (Verified/Fast/Price/Host
+              type) hidden per the Explore polish pass — sortChipsContent/
+              filterChipsContent are left fully intact above, unrendered
+              here, so this is a one-line revert if they come back later. */}
         </ScrollView>
+
+        {/* Reset map — only shown once the traveller has searched away from
+            the default Cape Town location. Only clears `location`; does not
+            touch date/drop-off/pick-up/bags. */}
+        {showResetMap && (
+          <TouchableOpacity style={S.resetMapBtn} onPress={resetMap}
+            // @ts-ignore
+            onClick={resetMap} activeOpacity={0.88}>
+            <Text style={S.resetMapBtnText}>↺ Reset map</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={{ marginLeft: 'auto' as any }}>
           <NotificationBell variant="traveller" />
@@ -978,6 +1016,21 @@ const S = StyleSheet.create({
   compactChipText: { fontSize: 12, fontWeight: '600', color: '#1A1A1A' },
   compactChipClear: { backgroundColor: '#FFF0F0' },
   compactChipClearText: { fontSize: 12, fontWeight: '700', color: '#EF4444' },
+
+  // ── Reset map ── deliberately distinct from compactChipClear above (that
+  // one clears sort/secondary filters, a different concept) — subtle,
+  // consistent with the existing compactChip look rather than the red
+  // "Clear" styling, since this isn't undoing a mistake, just returning to
+  // the default view.
+  resetMapBtn: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08, shadowRadius: 4, elevation: 3,
+  },
+  resetMapBtnText: { fontSize: 12, fontWeight: '600', color: '#1A1A1A' },
 
   // ── Bottom sheet ──
   sheet: {
