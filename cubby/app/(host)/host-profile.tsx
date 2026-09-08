@@ -446,6 +446,17 @@ export default function HostProfile() {
           value={location}
           placeholder="Search address or area…"
           onSelect={(r: LocationResult) => { setLocation(r.address); setLatitude(r.latitude); setLongitude(r.longitude); }}
+          // Manually editing the address text invalidates whatever
+          // coordinates were loaded/selected before it — clearing them
+          // (rather than tracking a separate "is this valid" flag) means
+          // save()'s existing `location.trim() && (!latitude || !longitude)`
+          // guard is the only validation, with nothing new to keep in sync.
+          // Also mirrors the typed text into `location` itself — otherwise
+          // save() would validate/persist stale text that no longer matches
+          // what's actually in the input. An untouched existing listing
+          // never calls this, so its loaded location + coordinates remain
+          // exactly as loaded.
+          onTextChange={(text: string) => { setLocation(text); setLatitude(0); setLongitude(0); }}
         />
 
         <Text style={styles.sectionTitle}>About your space</Text>
