@@ -13,6 +13,13 @@ export interface LocationResult {
 interface Props {
   value: string;
   onSelect: (result: LocationResult) => void;
+  // Fired on every raw keystroke (not debounced) — lets the parent
+  // invalidate a previously-selected location's coordinates the instant
+  // the address text is manually changed, before any new suggestion is
+  // picked. Optional: existing consumers that don't need this (e.g.
+  // admin's create-host.tsx, always a fresh form with nothing to
+  // invalidate) are unaffected.
+  onTextChange?: (text: string) => void;
   placeholder?: string;
   label?: string;
   inputStyle?: React.CSSProperties;
@@ -43,7 +50,7 @@ function loadMapsJS(): Promise<void> {
   return _mapsPromise;
 }
 
-export default function LocationPicker({ value, onSelect, placeholder, label, inputStyle }: Props) {
+export default function LocationPicker({ value, onSelect, onTextChange, placeholder, label, inputStyle }: Props) {
   const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -86,8 +93,13 @@ export default function LocationPicker({ value, onSelect, placeholder, label, in
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setLoading(true);
+      // No `types` restriction: Google's AutocompleteService only accepts a
+      // single type collection per request — ['geocode', 'establishment']
+      // was never a supported combination, and was silently preventing
+      // residential/street addresses from reliably appearing alongside
+      // businesses. Omitting it returns both.
       svcRef.current.getPlacePredictions(
-        { input: text, componentRestrictions: { country: 'za' }, types: ['geocode', 'establishment'] },
+        { input: text, componentRestrictions: { country: 'za' } },
         (preds: any[], status: string) => {
           setLoading(false);
           setSuggestions(status === 'OK' ? preds.slice(0, 5) : []);
@@ -99,6 +111,7 @@ export default function LocationPicker({ value, onSelect, placeholder, label, in
   function handleChange(text: string) {
     setQuery(text);
     setConfirmed(false);
+    onTextChange?.(text);
     search(text);
   }
 

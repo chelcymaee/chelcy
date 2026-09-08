@@ -15,11 +15,18 @@ export interface LocationResult {
 interface Props {
   value: string;
   onSelect: (result: LocationResult) => void;
+  // Fired on every raw keystroke (not debounced) — lets the parent
+  // invalidate a previously-selected location's coordinates the instant
+  // the address text is manually changed, before any new suggestion is
+  // picked. Optional: existing consumers that don't need this (e.g.
+  // admin's create-host.tsx, always a fresh form with nothing to
+  // invalidate) are unaffected.
+  onTextChange?: (text: string) => void;
   placeholder?: string;
   label?: string;
 }
 
-export default function LocationPicker({ value, onSelect, placeholder, label }: Props) {
+export default function LocationPicker({ value, onSelect, onTextChange, placeholder, label }: Props) {
   const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,7 +39,12 @@ export default function LocationPicker({ value, onSelect, placeholder, label }: 
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const url = `${PLACES_BASE}/place/autocomplete/json?input=${encodeURIComponent(text)}&components=country:za&types=geocode|establishment&key=${GOOGLE_MAPS_KEY}`;
+        // No `types` restriction: Google's Autocomplete API only accepts a
+        // single type collection per request ('geocode', 'establishment',
+        // etc.) — 'geocode|establishment' was never a supported combination,
+        // and was silently preventing residential/street addresses from
+        // reliably appearing alongside businesses. Omitting it returns both.
+        const url = `${PLACES_BASE}/place/autocomplete/json?input=${encodeURIComponent(text)}&components=country:za&key=${GOOGLE_MAPS_KEY}`;
         const res = await fetch(url);
         const json = await res.json();
         if (json.status === 'OK') {
@@ -56,6 +68,7 @@ export default function LocationPicker({ value, onSelect, placeholder, label }: 
   function handleChange(text: string) {
     setQuery(text);
     setConfirmed(false);
+    onTextChange?.(text);
     search(text);
   }
 
