@@ -3,6 +3,7 @@ import { useFocusEffect, router } from 'expo-router';
 import { formatResponseTime } from '../../src/lib/response-rate';
 import { computeHostRanking } from '../../src/lib/host-ranking';
 import { adminFetch } from '../../src/lib/admin-auth';
+import LocationPicker, { LocationResult } from '../../src/components/LocationPicker.web';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,11 +159,24 @@ export default function ManageHosts() {
 
   async function saveEdit() {
     if (!selectedHost) return;
+    // Same guard as host-profile.tsx (PR #153): a non-empty location paired
+    // with missing/cleared coordinates means either the address was
+    // manually retyped without picking a suggestion (onTextChange clears
+    // them), or this is a legacy row that never had valid coordinates —
+    // either way, never let 0/0 or null persist as a fake valid location.
+    // An untouched existing location's real coordinates are never cleared
+    // by anything above, so this never blocks a save that didn't touch
+    // location at all.
+    const editedLocation = (editFields.location_name ?? selectedHost.host.location_name ?? '').toString().trim();
+    if (editedLocation && (!editFields.latitude || !editFields.longitude)) {
+      setDetailError('Please select a location from the suggestions.');
+      return;
+    }
     setEditLoading(true);
     try {
       const updates: Record<string, any> = {};
       const h = selectedHost.host;
-      const fields = ['display_name', 'bio', 'location_name', 'business_type',
+      const fields = ['display_name', 'bio', 'location_name', 'latitude', 'longitude', 'business_type',
         'price_per_bag_per_day', 'max_bags', 'available_from', 'available_until',
         'available_days', 'is_active'];
       for (const f of fields) {
@@ -491,8 +505,23 @@ export default function ManageHosts() {
               <label style={{ fontSize: 12, color: '#6B7280', fontWeight: 600 }}>Name</label>
               <input style={s.input} value={editFields.display_name ?? ''} onChange={(e: any) => setEditFields((p: any) => ({ ...p, display_name: e.target.value }))} />
 
-              <label style={{ fontSize: 12, color: '#6B7280', fontWeight: 600 }}>Location</label>
-              <input style={s.input} value={editFields.location_name ?? ''} onChange={(e: any) => setEditFields((p: any) => ({ ...p, location_name: e.target.value }))} />
+              <LocationPicker
+                label="Location"
+                value={editFields.location_name ?? ''}
+                placeholder="Search address or area…"
+                inputStyle={s.input}
+                // Together: same pattern as create-host.tsx / host-profile.tsx
+                // (PR #153) — a real suggestion sets address + coordinates
+                // together, so they can never disagree.
+                onSelect={(r: LocationResult) => setEditFields((p: any) => ({ ...p, location_name: r.address, latitude: r.latitude, longitude: r.longitude }))}
+                // Manually retyping the address invalidates whatever
+                // coordinates were loaded/selected before it — clearing them
+                // (rather than a separate "is this valid" flag) means
+                // saveEdit()'s guard below is the only validation needed. An
+                // untouched existing listing never calls this, so its loaded
+                // location + coordinates remain exactly as loaded.
+                onTextChange={(text: string) => setEditFields((p: any) => ({ ...p, location_name: text, latitude: 0, longitude: 0 }))}
+              />
 
               <label style={{ fontSize: 12, color: '#6B7280', fontWeight: 600 }}>Bio</label>
               <textarea style={s.textarea} value={editFields.bio ?? ''} onChange={(e: any) => setEditFields((p: any) => ({ ...p, bio: e.target.value }))} />
