@@ -434,13 +434,6 @@ export default function HostDetail() {
 
           <View style={styles.divider} />
 
-          {/* Address warning */}
-          <View style={styles.addressWarning}>
-            <Text style={styles.addressWarningText}>ⓘ  Full address shared after booking confirmation</Text>
-          </View>
-
-          <View style={styles.divider} />
-
           {/* Bag tip card */}
           <View style={styles.bagTipCard}>
             <Text style={styles.bagTipText}>🧳  Choose the number of bags carefully to speed up your drop-off.</Text>
@@ -740,10 +733,6 @@ const styles = StyleSheet.create({
   openBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.white, letterSpacing: 0.5 },
 
   divider: { height: 8, backgroundColor: Colors.border, marginHorizontal: -20, marginVertical: 12 },
-
-  /* Address warning */
-  addressWarning: { paddingVertical: 4 },
-  addressWarningText: { fontSize: 13, color: '#F59E0B', lineHeight: 20 },
 
   /* Bag tip card */
   bagTipCard: {
