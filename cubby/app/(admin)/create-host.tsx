@@ -51,6 +51,8 @@ export default function CreateHost() {
   const [availableUntil, setAvailableUntil] = useState('');
   const [availableDays, setAvailableDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
   const [partnerEmail, setPartnerEmail] = useState('');
+  const [newAccountFullName, setNewAccountFullName] = useState('');
+  const [newAccountPassword, setNewAccountPassword] = useState('');
   const [active, setActive] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -77,6 +79,18 @@ export default function CreateHost() {
     const bags = parseInt(maxBags);
     if (isNaN(bags) || bags < 1 || bags > 200) { setErrorMsg('Max bags must be between 1 and 200. Got: ' + maxBags); log('FAIL: invalid bags: ' + maxBags); return; }
 
+    // New-account fields are optional — filling either one signals intent
+    // to create a Cubby account for this email rather than assign an
+    // existing one, so both plus a valid email are required together.
+    const isCreatingNewAccount = !isAdditionalListing && !!(newAccountFullName.trim() || newAccountPassword);
+    if (isCreatingNewAccount) {
+      const email = partnerEmail.trim();
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email || !EMAIL_RE.test(email)) { setErrorMsg('Enter a valid email to create a new host account.'); log('FAIL: invalid email for new account'); return; }
+      if (!newAccountFullName.trim()) { setErrorMsg('Host full name is required to create a new account.'); log('FAIL: no full name for new account'); return; }
+      if (newAccountPassword.length < 6) { setErrorMsg('Temporary password must be at least 6 characters.'); log('FAIL: weak temp password'); return; }
+    }
+
     log('Validation passed');
     setSaving(true);
     try {
@@ -95,7 +109,14 @@ export default function CreateHost() {
         // this call site honest about what it's actually requesting).
         const result = isAdditionalListing
           ? await createHost({ action: 'create_additional_listing', ownerUserId, payload: basePayload })
-          : await createHost({ action: 'create', payload: { ...basePayload, is_active: active }, partnerEmail: partnerEmail.trim() || undefined });
+          : await createHost({
+              action: 'create',
+              payload: { ...basePayload, is_active: active },
+              partnerEmail: partnerEmail.trim() || undefined,
+              ...(isCreatingNewAccount
+                ? { newAccountFullName: newAccountFullName.trim(), newAccountPassword }
+                : {}),
+            });
         log(isAdditionalListing ? 'Calling admin-hosts create_additional_listing action...' : 'Calling admin-hosts create action...');
         if (result.error) {
           log('CREATE ERROR: ' + result.error);
@@ -103,6 +124,7 @@ export default function CreateHost() {
           return;
         }
         log('Create success! Row ID: ' + (result.data?.id ?? 'unknown'));
+        setNewAccountPassword(''); // never keep the temp password around after submit
         setSuccessMsg(isAdditionalListing ? 'New listing created!' : 'Host profile created!');
         setTimeout(() => router.replace('/(admin)/manage-hosts'), 1500);
       } else {
@@ -228,7 +250,16 @@ export default function CreateHost() {
         {!isAdditionalListing && (
           <>
             <label style={s.fieldLabel}>Assign to User (Email) — optional</label>
-            <input style={s.input} type="email" value={partnerEmail} onChange={e => setPartnerEmail(e.target.value)} placeholder="host@example.com — must already have a Cubby account" />
+            <input style={s.input} type="email" value={partnerEmail} onChange={e => setPartnerEmail(e.target.value)} placeholder="host@example.com" />
+            <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6 }}>
+              If this email already has a Cubby account, that account is used as-is. To create a new account for them, also fill in the two fields below.
+            </div>
+
+            <label style={s.fieldLabel}>Host Full Name — for a new account only</label>
+            <input style={s.input} value={newAccountFullName} onChange={e => setNewAccountFullName(e.target.value)} placeholder="e.g. Thandi Nkosi" />
+
+            <label style={s.fieldLabel}>Temporary Password — for a new account only</label>
+            <input style={s.input} type="text" value={newAccountPassword} onChange={e => setNewAccountPassword(e.target.value)} placeholder="Give the host something readable — at least 6 characters" />
 
             <div style={s.switchRow}>
               <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a' }}>Active on launch</span>
