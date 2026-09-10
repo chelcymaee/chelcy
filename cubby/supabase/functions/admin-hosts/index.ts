@@ -187,20 +187,82 @@ serve(async (req) => {
 
       // Create a new host listing, optionally assigning + approving a partner
       if (action === 'create') {
-        const { payload, partnerEmail } = body as { payload: Record<string, unknown>; partnerEmail?: string };
+        const { payload, partnerEmail, newAccountFullName, newAccountPassword } = body as {
+          payload: Record<string, unknown>;
+          partnerEmail?: string;
+          // Only present when the admin is onboarding a host who has no
+          // Cubby account yet — see the "no profile found" branch below.
+          // The password is used exactly once, for the auth.admin.createUser
+          // call, and never touches profiles/hosts, logs, or error responses.
+          newAccountFullName?: string;
+          newAccountPassword?: string;
+        };
         if (!payload) return badRequest('payload required');
 
         let assignedUserId: string | null = null;
         let ownerIsVerified = false;
         if (partnerEmail?.trim()) {
+          const normalizedEmail = partnerEmail.trim().toLowerCase();
           const { data: profile } = await supabase
             .from('profiles')
             .select('id, is_verified')
-            .eq('email', partnerEmail.trim().toLowerCase())
+            .eq('email', normalizedEmail)
             .single();
-          if (!profile) return json({ error: `No account found for ${partnerEmail.trim()}. Ask them to sign up first.` }, 404);
-          assignedUserId = profile.id;
-          ownerIsVerified = profile.is_verified ?? false;
+
+          if (profile) {
+            // Existing account — reuse as-is. Never touch their Auth
+            // credentials or profile row here, per the founder's explicit
+            // requirement that an existing user's password is never changed.
+            assignedUserId = profile.id;
+            ownerIsVerified = profile.is_verified ?? false;
+          } else {
+            const fullName = newAccountFullName?.trim();
+            // Deliberately not trimmed — a copy-pasted temporary password
+            // should be used exactly as the admin entered it.
+            const tempPassword = newAccountPassword;
+
+            // No new-account fields supplied — preserve the original
+            // behavior verbatim for any existing caller/workflow.
+            if (!fullName || !tempPassword) {
+              return json({ error: `No account found for ${partnerEmail.trim()}. Ask them to sign up first.` }, 404);
+            }
+
+            // No on_auth_user_created trigger exists anywhere in this
+            // codebase's schema.sql (confirmed by audit) — the profiles row
+            // below is created explicitly, the same way signup.tsx's own
+            // confirmed-session branch does, rather than assumed.
+            const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+              email: normalizedEmail,
+              password: tempPassword,
+              email_confirm: true,
+              user_metadata: { full_name: fullName },
+            });
+            if (createErr || !created?.user) {
+              // Never let the temp password leak into an error response.
+              return json({ error: `Failed to create account for ${normalizedEmail}: ${createErr?.message ?? 'unknown error'}` }, 400);
+            }
+
+            const { error: profileErr } = await supabase.from('profiles').insert({
+              id: created.user.id,
+              email: normalizedEmail,
+              full_name: fullName,
+              role: 'host',
+            });
+            if (profileErr) {
+              // Auth account exists but the profile step failed — do not
+              // retry it automatically here (no cross-system transaction).
+              // A retry of this same request will find the new profiles
+              // row missing but the Auth user already registered; surface
+              // that plainly so it can be resolved manually rather than
+              // silently failing the whole request.
+              return json({
+                error: `Account for ${normalizedEmail} was created in Supabase Auth, but saving its profile failed (${profileErr.message}). Check Supabase Auth for this email before retrying.`,
+              }, 500);
+            }
+
+            assignedUserId = created.user.id;
+            ownerIsVerified = false;
+          }
         }
 
         const safePayload: Record<string, unknown> = {};
