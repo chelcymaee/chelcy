@@ -14,10 +14,16 @@ import { fetchPaymentOutcome, fetchBookingStatus } from '../../src/lib/payment-s
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
 import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
 
-const TIME_SLOTS = [
-  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
-];
+// Full-day whole-hour slots, '00:00' through '24:00' — previously hardcoded
+// to '07:00'–'18:00', which silently capped every host at 18:00 regardless
+// of their real hours and offered hours a host might already be closed for.
+// Filtered per-host below (by hhmm() against available_from/available_until)
+// rather than trimmed here, so this list itself never encodes any host's
+// hours. '24:00' is kept as a real, selectable slot (rather than wrapping
+// to '00:00') for a host whose available_until is '24:00' — hhmm() parses
+// it as plain minutes (1440), so it sorts and compares correctly as "later
+// than everything else that day" with no special-casing needed.
+const TIME_SLOTS = Array.from({ length: 25 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
 
 // Maps paygate-initiate's structured `code` field (see
 // supabase/functions/paygate-initiate/index.ts) to a traveller-facing
@@ -178,13 +184,25 @@ export default function Booking() {
 
   const isToday = bookingDate === todayISO();
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
-  const availableDropSlots = isToday
-    ? TIME_SLOTS.filter(t => {
-        const [h, m] = t.split(':').map(Number);
-        return h * 60 + m > nowMinutes + 30;
-      })
-    : TIME_SLOTS;
-  const availablePickSlots = TIME_SLOTS.filter(t => t > dropTime);
+  // Both lists are bounded by the host's actual hours (rounded inward to
+  // whole hours — a host open '07:30'–'17:30' offers '08:00' through
+  // '17:00', never a slot that would then fail handleConfirm()'s own check
+  // below) via hhmm(), the same numeric comparison that check already uses
+  // — not the raw string comparison this used to do, which only ever
+  // worked because every value being compared was already a well-formed,
+  // zero-padded TIME_SLOTS entry.
+  const openMinutes = hhmm(host.available_from);
+  const closeMinutes = hhmm(host.available_until);
+  const availableDropSlots = TIME_SLOTS.filter(t => {
+    const m = hhmm(t);
+    if (m < openMinutes || m > closeMinutes) return false;
+    if (isToday && m <= nowMinutes + 30) return false;
+    return true;
+  });
+  const availablePickSlots = TIME_SLOTS.filter(t => {
+    const m = hhmm(t);
+    return m > hhmm(dropTime) && m <= closeMinutes;
+  });
 
   async function handleConfirm() {
     // Re-entrancy guard, independent of the confirm button's `disabled`
