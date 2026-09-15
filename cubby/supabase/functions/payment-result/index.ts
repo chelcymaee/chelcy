@@ -86,9 +86,10 @@ serve(async (req) => {
       if (rpcErr) {
         console.error('confirm_booking_payment RPC error:', rpcErr);
       } else if (rpcResult?.ok) {
-        sendAwaitingHostNotifications(supabase, rpcResult.booking).catch(e =>
-          console.error('Notification error:', e)
-        );
+        // Awaited — can never throw (isolated/self-logging internally), so
+        // a notification failure can never turn this already-successful
+        // payment confirmation into a failure response.
+        await sendAwaitingHostNotifications(supabase, rpcResult.booking);
       } else if (rpcResult?.reason !== 'already_resolved') {
         console.warn('confirm_booking_payment did not confirm:', bookingId, rpcResult);
       }

@@ -178,19 +178,21 @@ Deno.serve(async (req) => {
 
     if (result?.ok) {
       console.log('[paygate-notify] Booking confirmed, now awaiting host confirmation:', bookingId);
-      // Fire-and-forget, same pattern payfast-itn already uses — a
-      // notification failure must never turn a genuinely successful,
+      // Awaited — sendAwaitingHostNotifications can never throw (every
+      // operation inside it is isolated and self-logging), so a
+      // notification failure can never turn this genuinely successful,
       // already-recorded payment into a non-OK response PayGate would
-      // retry. Only reachable here, on a FRESH confirm_booking_payment
-      // success (never on already_resolved below, and never before the
-      // checksum/amount/TRANSACTION_STATUS checks above have all passed) —
-      // the RPC's own guarded UPDATE (WHERE status = 'pending_payment')
-      // means result.ok is true at most once per booking, so a duplicate/
-      // retried notify, or a race with paygate-query's reconciliation
-      // fallback, can never reach this line twice for the same booking.
-      sendAwaitingHostNotifications(supabase, result.booking).catch((e) =>
-        console.error('[paygate-notify] Notification error:', e)
-      );
+      // retry; awaiting it only means the response isn't returned until
+      // delivery has genuinely been attempted, rather than possibly
+      // abandoned mid-flight. Only reachable here, on a FRESH
+      // confirm_booking_payment success (never on already_resolved below,
+      // and never before the checksum/amount/TRANSACTION_STATUS checks
+      // above have all passed) — the RPC's own guarded UPDATE (WHERE
+      // status = 'pending_payment') means result.ok is true at most once
+      // per booking, so a duplicate/retried notify, or a race with
+      // paygate-query's reconciliation fallback, can never reach this line
+      // twice for the same booking.
+      await sendAwaitingHostNotifications(supabase, result.booking);
       return ok();
     }
 
