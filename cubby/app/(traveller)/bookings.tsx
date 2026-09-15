@@ -288,7 +288,7 @@ export default function Bookings() {
     })();
   }, [bookings, nowTick, checkedExpiryIds]);
 
-  const upcoming = bookings.filter(b => ['pending', 'awaiting_host_confirmation', 'confirmed', 'active'].includes(b.status ?? 'confirmed'));
+  const upcoming = bookings.filter(b => ['pending_payment', 'pending', 'awaiting_host_confirmation', 'confirmed', 'active'].includes(b.status ?? 'confirmed'));
   const past = bookings.filter(b => ['completed', 'cancelled', 'declined', 'expired'].includes(b.status ?? ''));
   const shown = tab === 'upcoming' ? upcoming : past;
 
@@ -429,7 +429,7 @@ export default function Bookings() {
                   </View>
                 </View>
 
-                {status === 'pending' && (
+                {(status === 'pending' || status === 'pending_payment') && (
                   <View style={styles.pendingCard}>
                     <Text style={styles.pendingText}>⏳ Payment pending — your PIN will appear once payment is confirmed</Text>
                   </View>

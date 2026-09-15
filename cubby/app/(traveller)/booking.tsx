@@ -182,6 +182,24 @@ export default function Booking() {
   const platformFee = Math.round(total * 0.1);
   const grandTotal = total + platformFee;
 
+  // Shared by both the first-read success path and the post-reconciliation
+  // path below, so the two can't drift into two different param shapes for
+  // the same destination screen.
+  function goToBookingConfirmation() {
+    router.replace({
+      pathname: '/(traveller)/booking-confirmation',
+      params: {
+        hostName: host.display_name,
+        dropOff: dropTime,
+        pickUp: pickTime,
+        bags: String(bags),
+        total: String(grandTotal),
+        pin,
+        date: bookingDate,
+      },
+    });
+  }
+
   const isToday = bookingDate === todayISO();
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
   // Both lists are bounded by the host's actual hours (rounded inward to
@@ -336,23 +354,45 @@ export default function Booking() {
             // same state logic living here.
             const status = await fetchBookingStatus(booking.id);
             if (status === 'confirmed') {
-              router.replace({
-                pathname: '/(traveller)/booking-confirmation',
-                params: {
-                  hostName: host.display_name,
-                  dropOff: dropTime,
-                  pickUp: pickTime,
-                  bags: String(bags),
-                  total: String(grandTotal),
-                  pin,
-                  date: bookingDate,
-                },
-              });
+              goToBookingConfirmation();
             } else {
               router.replace('/(traveller)/bookings');
             }
           } else if (outcome === 'pending') {
-            setErrorMsg('Payment is processing. Check your bookings tab in a few minutes.');
+            // First read raced ahead of paygate-notify — exactly what
+            // happened in the real R165 incident, where PayGate had already
+            // charged the card but the webhook hadn't landed by the time
+            // this screen checked. paygate-query independently re-verifies
+            // the payment with PayGate itself (checksum, amount, ownership)
+            // before ever calling confirm_booking_payment — see
+            // supabase/functions/paygate-query. One bounded attempt, not a
+            // poll loop; still inside this function's own setLoading(true)/
+            // finally, so the existing "Booking…" loading state covers it —
+            // no separate spinner needed.
+            //
+            // The call's own success/failure and JSON body are deliberately
+            // never used to decide navigation below — only the booking's
+            // own re-fetched row is. A failed/unreachable reconciliation
+            // attempt must fall through to the same "still processing"
+            // outcome as a genuinely-still-pending payment, never to a
+            // false "payment failed".
+            await supabase.functions.invoke('paygate-query', {
+              body: { bookingId: booking.id },
+            }).catch(() => {});
+
+            const statusAfterReconcile = await fetchBookingStatus(booking.id);
+
+            if (statusAfterReconcile === 'confirmed') {
+              goToBookingConfirmation();
+            } else if (statusAfterReconcile === 'pending_payment' || !statusAfterReconcile) {
+              setErrorMsg('Payment is processing. Check your bookings tab in a few minutes.');
+            } else if (statusAfterReconcile === 'cancelled') {
+              setErrorMsg('Payment was not completed. Please try again.');
+            } else {
+              // e.g. awaiting_host_confirmation — same destination the
+              // first-read success branch above already uses.
+              router.replace('/(traveller)/bookings');
+            }
           } else {
             setErrorMsg('Payment was not completed. Please try again.');
           }
