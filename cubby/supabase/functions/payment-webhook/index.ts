@@ -111,9 +111,10 @@ serve(async (req) => {
 
       if (rpcResult?.ok) {
         console.log(`Booking ${bookingId} now awaiting host confirmation`);
-        sendAwaitingHostNotifications(supabase, rpcResult.booking).catch(e =>
-          console.error('Notification error:', e)
-        );
+        // Awaited — can never throw (isolated/self-logging internally), so
+        // a notification failure can never turn this already-successful
+        // payment confirmation into a failure response.
+        await sendAwaitingHostNotifications(supabase, rpcResult.booking);
       } else if (rpcResult?.reason === 'already_resolved') {
         // Duplicate or stale webhook call — benign, no re-notify, no reset.
         console.log('Duplicate/stale webhook call, already resolved:', bookingId, rpcResult.status);

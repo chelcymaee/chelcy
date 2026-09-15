@@ -161,10 +161,13 @@ Deno.serve(async (req) => {
 
       if (rpcResult?.ok) {
         console.log('[payfast-itn] Booking now awaiting host confirmation:', bookingId);
-        // Send notifications + emails (fire-and-forget)
-        sendAwaitingHostNotifications(supabase, rpcResult.booking).catch(e =>
-          console.error('[payfast-itn] Notification error:', e)
-        );
+        // Awaited — sendAwaitingHostNotifications can never throw (every
+        // operation inside it is isolated and self-logging), so this can
+        // never turn this already-successful payment confirmation into a
+        // failure response. Awaiting it just means this response isn't
+        // returned until notification delivery has genuinely been
+        // attempted, rather than possibly abandoned mid-flight.
+        await sendAwaitingHostNotifications(supabase, rpcResult.booking);
       } else if (rpcResult?.reason === 'already_resolved') {
         // Duplicate or stale ITN — benign, PayFast retries legitimately.
         console.log('[payfast-itn] Duplicate/stale ITN, already resolved:', bookingId, rpcResult.status);
