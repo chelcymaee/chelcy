@@ -20,6 +20,10 @@ const ALLOWED_HOST_FIELDS: Record<string, true> = {
   price_per_bag_per_day: true, max_bags: true, available_from: true,
   available_until: true, available_days: true, is_active: true,
   owner_is_verified: true,
+  // Admin-controlled only for now — never exposed to host self-service
+  // editing (host-profile.tsx uses its own direct client write, not this
+  // allowlist, and deliberately doesn't include this field).
+  instant_booking: true,
 };
 
 serve(async (req) => {

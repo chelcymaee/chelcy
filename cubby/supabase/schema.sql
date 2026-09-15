@@ -1268,6 +1268,17 @@ ALTER TABLE bookings
 ALTER TABLE bookings
   ADD COLUMN IF NOT EXISTS paygate_pay_request_id TEXT;
 
+-- instant_booking: per-host/location booking mode. false (default) is
+-- today's Request to Book behavior, unchanged for every existing host —
+-- confirm_booking_payment below still produces awaiting_host_confirmation
+-- and a 30-minute host_response_deadline exactly as before. true skips the
+-- host-approval hold entirely: a verified payment confirms the booking
+-- immediately, with no deadline (host approval simply never happens for
+-- that booking). Admin-controlled only for now (see admin-hosts Edge
+-- Function) — host self-service editing (host-profile.tsx) deliberately
+-- does not expose this.
+ALTER TABLE hosts ADD COLUMN IF NOT EXISTS instant_booking BOOLEAN DEFAULT false;
+
 -- confirm_booking_payment(p_booking_id, p_payment_reference, p_payment_provider)
 -- — the one authoritative payment-confirmation transition, shared by every
 -- payment provider's webhook (payfast-itn, and the legacy Peach
@@ -1305,6 +1316,21 @@ ALTER TABLE bookings
 -- ok = true). A payment_reference collision with a different booking (data
 -- anomaly or replay) is caught explicitly via the UNIQUE constraint above
 -- rather than silently succeeding or throwing a raw DB error.
+--
+-- Instant Book branch: v_instant_booking is read from the booking's own
+-- host row BEFORE the guarded UPDATE, purely so the UPDATE itself can stay
+-- one atomic statement. This is safe to read unguarded (unlike the booking
+-- row itself) because hosts.instant_booking isn't being raced by concurrent
+-- payment confirmations the way bookings.status is — it's a slow-changing
+-- per-host setting, not per-booking state. The client can never influence
+-- this value: it has no write path to hosts.instant_booking at all (see
+-- admin-hosts's allowlist), so which branch runs here is determined
+-- entirely by which host the booking already points to, not by anything a
+-- traveller's device sends. If the booking id doesn't exist at all,
+-- v_instant_booking simply stays NULL (treated as false by the CASE
+-- below) — harmless, since the guarded UPDATE then won't match any row
+-- either and the existing not_found path below handles it exactly as
+-- before.
 CREATE OR REPLACE FUNCTION confirm_booking_payment(
   p_booking_id UUID,
   p_payment_reference TEXT,
@@ -1317,13 +1343,18 @@ SET search_path = public
 AS $$
 DECLARE
   v_booking bookings;
+  v_instant_booking boolean;
 BEGIN
+  SELECT h.instant_booking INTO v_instant_booking
+  FROM bookings b JOIN hosts h ON h.id = b.host_id
+  WHERE b.id = p_booking_id;
+
   UPDATE bookings b
-  SET status = 'awaiting_host_confirmation',
+  SET status = CASE WHEN v_instant_booking THEN 'confirmed' ELSE 'awaiting_host_confirmation' END,
       payment_provider = p_payment_provider,
       payment_reference = p_payment_reference,
       paid_at = now(),
-      host_response_deadline = now() + interval '30 minutes'
+      host_response_deadline = CASE WHEN v_instant_booking THEN NULL ELSE now() + interval '30 minutes' END
   WHERE b.id = p_booking_id
     AND b.status = 'pending_payment'
   RETURNING * INTO v_booking;

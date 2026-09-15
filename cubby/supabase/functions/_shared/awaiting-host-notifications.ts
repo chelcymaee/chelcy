@@ -42,13 +42,28 @@ export async function sendAwaitingHostNotifications(
     ? await supabase.from('profiles').select('full_name, email').eq('id', hostOwnerId).single()
     : { data: null };
 
-  // In-app + push: traveller — payment received, waiting on host.
+  // In-app + push: traveller. Same authoritative-status branch as the host
+  // block below — 'confirmed' means Instant Book, where there is no host
+  // step to wait on, so the copy must not tell the traveller they're
+  // waiting for a response that will never come. Title reuses the exact
+  // "Booking confirmed ✅" wording requests.tsx already sends when a host
+  // accepts a Request to Book booking, for consistency; the body differs
+  // since no host action actually happened here.
   if (booking.traveller_id) {
+    const isInstantBook = booking.status === 'confirmed';
+    const travellerTitle = isInstantBook ? 'Booking confirmed ✅' : 'Payment received — waiting on host';
+    const travellerBody = isInstantBook
+      ? 'Your booking is confirmed automatically — no host approval needed. Check your bookings for the drop-off PIN.'
+      : "Your payment went through. We're waiting for the host to confirm your booking.";
+    const travellerPushBody = isInstantBook
+      ? 'No approval needed — your bags are booked in. Check your bookings for the drop-off PIN.'
+      : "We're waiting for your host to confirm. You'll be notified as soon as they respond.";
+
     await supabase.from('notifications').insert({
       user_id: booking.traveller_id,
       type: 'booking_submitted',
-      title: 'Payment received — waiting on host',
-      body: "Your payment went through. We're waiting for the host to confirm your booking.",
+      title: travellerTitle,
+      body: travellerBody,
       related_booking_id: booking.id,
     }).catch(() => {});
 
@@ -57,20 +72,36 @@ export async function sendAwaitingHostNotifications(
       headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
       body: JSON.stringify({
         user_id: booking.traveller_id,
-        title: 'Payment received — waiting on host',
-        body: "We're waiting for your host to confirm. You'll be notified as soon as they respond.",
+        title: travellerTitle,
+        body: travellerPushBody,
         data: { type: 'booking_submitted', booking_id: booking.id },
       }),
     }).catch(() => {});
   }
 
-  // In-app + push: host — new request needs a response before the deadline.
+  // In-app + push: host. `booking.status` here is whatever
+  // confirm_booking_payment actually decided (see schema.sql) — this file
+  // never re-derives or re-checks the host's instant_booking flag itself,
+  // it only reads the outcome. 'confirmed' means Instant Book: the booking
+  // needs no host action at all, so the copy must not say "accept or
+  // decline" or reference a deadline that was never set. Anything else
+  // (awaiting_host_confirmation) is today's unchanged Request to Book copy.
   if (hostOwnerId) {
+    const isInstantBook = booking.status === 'confirmed';
+    const hostTitle = isInstantBook ? 'New Cubby booking 🧳' : 'New booking request ⏳';
+    const bagLabel = `${booking.bag_count} bag${booking.bag_count === 1 ? '' : 's'}`;
+    const hostBody = isInstantBook
+      ? `${bagLabel} booked for ${booking.drop_off_date} at ${booking.drop_off_time}. No action needed.`
+      : 'A traveller has paid and is waiting on your response. Accept or decline before the deadline, or it will expire automatically.';
+    const hostPushBody = isInstantBook
+      ? 'No action needed — the booking is already confirmed.'
+      : 'Respond before the deadline or it will expire automatically.';
+
     await supabase.from('notifications').insert({
       user_id: hostOwnerId,
       type: 'booking_submitted',
-      title: 'New booking request ⏳',
-      body: 'A traveller has paid and is waiting on your response. Accept or decline before the deadline, or it will expire automatically.',
+      title: hostTitle,
+      body: hostBody,
       related_booking_id: booking.id,
     }).catch(() => {});
 
@@ -79,8 +110,8 @@ export async function sendAwaitingHostNotifications(
       headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_SECRET },
       body: JSON.stringify({
         user_id: hostOwnerId,
-        title: 'New booking request ⏳',
-        body: 'Respond before the deadline or it will expire automatically.',
+        title: hostTitle,
+        body: hostPushBody,
         data: { type: 'booking_submitted', booking_id: booking.id },
       }),
     }).catch(() => {});

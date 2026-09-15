@@ -178,7 +178,7 @@ export default function ManageHosts() {
       const h = selectedHost.host;
       const fields = ['display_name', 'bio', 'location_name', 'latitude', 'longitude', 'business_type',
         'price_per_bag_per_day', 'max_bags', 'available_from', 'available_until',
-        'available_days', 'is_active'];
+        'available_days', 'is_active', 'instant_booking'];
       for (const f of fields) {
         if (editFields[f] !== h[f]) updates[f] = editFields[f];
       }
@@ -564,6 +564,14 @@ export default function ManageHosts() {
                 <input type="checkbox" checked={editFields.is_active ?? host.is_active} onChange={(e: any) => setEditFields((p: any) => ({ ...p, is_active: e.target.checked }))} />
                 Active (visible to travellers)
               </label>
+
+              <label style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, cursor: 'pointer' }}>
+                <input type="checkbox" checked={editFields.instant_booking ?? host.instant_booking ?? false} onChange={(e: any) => setEditFields((p: any) => ({ ...p, instant_booking: e.target.checked }))} />
+                Instant Book
+              </label>
+              <p style={{ fontSize: 11, color: '#9CA3AF', margin: '0 0 10px 24px' }}>
+                Bookings are confirmed automatically after successful payment. Host approval is not required.
+              </p>
 
               <div style={s.btnRow}>
                 <button style={{ ...s.btn('#2D6A4F', '#fff'), flex: 1 }} onClick={saveEdit} disabled={editLoading}>
