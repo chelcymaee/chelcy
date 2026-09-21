@@ -106,6 +106,19 @@ function slotStartMinutes(slot: string): number {
   return h * 60;
 }
 
+// A pick-up slot like "5pm–6pm" means the traveller could arrive any time
+// up to 6pm, not just at 5pm — so covering the full selected window means
+// the host must still be open at the slot's END, not just its start. Same
+// parsing shape as slotStartMinutes, just reading the second half of the
+// slot string.
+function slotEndMinutes(slot: string): number {
+  const part = slot.split('–')[1].trim().toLowerCase();
+  const h = parseInt(part, 10);
+  if (part.includes('pm') && h !== 12) return (h + 12) * 60;
+  if (part.includes('am') && h === 12) return 0;
+  return h * 60;
+}
+
 function hhmm(t: string): number {
   const [h, m] = (t ?? '00:00').split(':').map(Number);
   return h * 60 + (m || 0);
@@ -130,19 +143,43 @@ function locationMatches(hostLoc: string, search: string): boolean {
 
 interface SearchParams {
   location: string; bags: number; selectedDate: string; dropOff: string; pickUp: string;
+  // True only once the traveller has actually opened the respective time
+  // picker and chosen a slot — never true just because dropOff/pickUp
+  // still hold their initial default string. See the comment on
+  // applyFilters below for why this matters.
+  dropOffSelected: boolean; pickUpSelected: boolean;
 }
 
-// Opening hours are deliberately NOT part of discovery filtering. A host
-// closing at 16:00 must still show up for a search defaulting to a
-// 5pm-6pm pick-up (or any traveller-chosen time) — otherwise the location
-// silently disappears from Explore with no explanation, which read as
-// "doesn't exist" rather than "closed at this time." Operating hours are
-// still shown on the host card/detail, and are enforced for real once the
-// traveller actually attempts to book (see booking.tsx's handleConfirm).
+// Day filtering ALWAYS applies: the selected date is converted to its
+// weekday and checked against each host's available_days, regardless of
+// whether the traveller has touched the time filters at all.
+//
+// Time-window filtering only applies once the traveller has deliberately
+// selected BOTH a drop-off and a pick-up slot (dropOffSelected &&
+// pickUpSelected) — Explore initializes dropOff/pickUp to default-looking
+// values ('9am–10am' / '5pm–6pm') purely for the chip labels, and those
+// defaults must never silently eliminate hosts the traveller never asked
+// to filter by (e.g. every host closing before 18:00 disappearing on
+// first load because of an untouched '5pm–6pm' default). Once both are
+// selected, the check covers the FULL selected window — the start of the
+// drop-off slot and the END of the pick-up slot (a traveller picking
+// "5pm–6pm" could arrive any time up to 6pm) — against
+// available_from/available_until.
+//
+// This mirrors booking.tsx's own handleConfirm() enforcement (same
+// isoToDayOfWeek/hhmm comparison shape), so a host that appears here
+// should also pass that final booking-time guard, which remains the
+// authoritative check regardless of what Explore shows.
 function applyFilters(all: Host[], p: SearchParams): Host[] {
+  const weekday = isoToDayOfWeek(p.selectedDate);
+  const timeSelected = p.dropOffSelected && p.pickUpSelected;
+  const dropMinutes = slotStartMinutes(p.dropOff);
+  const pickMinutes = slotEndMinutes(p.pickUp);
   return all.filter(h => {
     if (!locationMatches(h.location_name, p.location)) return false;
     if (h.max_bags < p.bags) return false;
+    if (!h.available_days.includes(weekday)) return false;
+    if (timeSelected && (dropMinutes < hhmm(h.available_from) || pickMinutes > hhmm(h.available_until))) return false;
     return true;
   });
 }
@@ -465,6 +502,13 @@ export default function Explore() {
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [dropOff, setDropOff] = useState('9am–10am');
   const [pickUp, setPickUp] = useState('5pm–6pm');
+  // False until the traveller actually opens the respective time picker
+  // and taps a slot — see applyFilters' comment for why this must stay
+  // separate from dropOff/pickUp's own default-looking string values.
+  // Deliberately never reset back to false once set: changing an
+  // already-deliberately-picked time is still a deliberate choice.
+  const [dropOffSelected, setDropOffSelected] = useState(false);
+  const [pickUpSelected, setPickUpSelected] = useState(false);
   const [bags, setBags] = useState(1);
   const [sortBy, setSortBy] = useState<SortOption>('recommended');
   const [filters, setFilters] = useState<ActiveFilters>(DEFAULT_FILTERS);
@@ -589,8 +633,8 @@ export default function Explore() {
   // ── Derived data ──────────────────────────────────────────────────────────
 
   const params = useMemo<SearchParams>(() => ({
-    location, bags, selectedDate, dropOff, pickUp,
-  }), [location, bags, selectedDate, dropOff, pickUp]);
+    location, bags, selectedDate, dropOff, pickUp, dropOffSelected, pickUpSelected,
+  }), [location, bags, selectedDate, dropOff, pickUp, dropOffSelected, pickUpSelected]);
 
   const displayed = useMemo(() => {
     const base = applyFilters(allHosts, params);
@@ -880,8 +924,8 @@ export default function Explore() {
         {/* ── Modals ── */}
         <LocationModal visible={showLocation} onSelect={setLocation} onClose={() => setShowLocation(false)} />
         <DatePickerModal visible={showDatePicker} selected={selectedDate} onSelect={setSelectedDate} onClose={() => setShowDatePicker(false)} />
-        <TimePickerModal visible={showDropOff} title="Drop-off Time" selected={dropOff} onSelect={setDropOff} onClose={() => setShowDropOff(false)} />
-        <TimePickerModal visible={showPickUp} title="Pick-up Time" selected={pickUp} onSelect={setPickUp} onClose={() => setShowPickUp(false)} />
+        <TimePickerModal visible={showDropOff} title="Drop-off Time" selected={dropOff} onSelect={(t) => { setDropOff(t); setDropOffSelected(true); }} onClose={() => setShowDropOff(false)} />
+        <TimePickerModal visible={showPickUp} title="Pick-up Time" selected={pickUp} onSelect={(t) => { setPickUp(t); setPickUpSelected(true); }} onClose={() => setShowPickUp(false)} />
 
         {/* ── Location permission card (first launch only) ── */}
         {showPermCard && (
@@ -973,8 +1017,8 @@ export default function Explore() {
       {/* Modals */}
       <LocationModal visible={showLocation} onSelect={setLocation} onClose={() => setShowLocation(false)} />
       <DatePickerModal visible={showDatePicker} selected={selectedDate} onSelect={setSelectedDate} onClose={() => setShowDatePicker(false)} />
-      <TimePickerModal visible={showDropOff} title="Drop-off Time" selected={dropOff} onSelect={setDropOff} onClose={() => setShowDropOff(false)} />
-      <TimePickerModal visible={showPickUp} title="Pick-up Time" selected={pickUp} onSelect={setPickUp} onClose={() => setShowPickUp(false)} />
+      <TimePickerModal visible={showDropOff} title="Drop-off Time" selected={dropOff} onSelect={(t) => { setDropOff(t); setDropOffSelected(true); }} onClose={() => setShowDropOff(false)} />
+      <TimePickerModal visible={showPickUp} title="Pick-up Time" selected={pickUp} onSelect={(t) => { setPickUp(t); setPickUpSelected(true); }} onClose={() => setShowPickUp(false)} />
     </SafeAreaView>
   );
 }
