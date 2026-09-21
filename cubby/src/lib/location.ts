@@ -28,9 +28,27 @@ export function formatWalkLabel(meters: number): string {
   return `${walkMinutes(meters)} min walk`;
 }
 
-// Request foreground location permission and return current coordinates (native only)
+// Request location permission and return current coordinates. Native uses
+// expo-location's permission flow (untouched below); web uses the browser's
+// own navigator.geolocation permission prompt — no custom UI, so the
+// traveller sees the same native browser dialog they'd see on any site.
+// Never throws: denial, an unsupported browser, and a timeout all resolve to
+// null so callers can treat "no location" as one uniform, safe case.
 export async function getUserLocation(): Promise<LatLon | null> {
-  if (Platform.OS === 'web') return null;
+  if (Platform.OS === 'web') {
+    try {
+      if (typeof navigator === 'undefined' || !navigator.geolocation) return null;
+      return await new Promise<LatLon | null>(resolve => {
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
+        );
+      });
+    } catch {
+      return null;
+    }
+  }
   try {
     const Location = require('expo-location');
     const { status } = await Location.requestForegroundPermissionsAsync();
