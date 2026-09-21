@@ -64,7 +64,11 @@ const TYPE_LABELS: Record<string, string> = {
   airbnb: 'Airbnb', tour_operator: 'Tour Op', home: 'Home', other: 'Other',
 };
 
-type SortOption = 'recommended' | 'price_asc' | 'rating' | 'fastest' | 'most_trusted';
+// 'nearest' is exposed only through the dedicated Nearest chip near the
+// search controls (see the topBarNative/topBarWeb rows below) — it is
+// deliberately NOT added to SORT_OPTIONS, which only feeds the old
+// sortChipsContent row that stays unrendered per the Explore polish pass.
+type SortOption = 'recommended' | 'price_asc' | 'rating' | 'fastest' | 'most_trusted' | 'nearest';
 
 const SORT_OPTIONS: { id: SortOption; label: string }[] = [
   { id: 'recommended', label: '✨ Recommended' },
@@ -187,7 +191,7 @@ function applyFilters(all: Host[], p: SearchParams): Host[] {
 type RankedHostCard = Host & { ranking_score: number; ranking_signals: RankingSignals };
 
 function applySortAndSecondaryFilters(
-  ranked: RankedHostCard[], sortBy: SortOption, filters: ActiveFilters,
+  ranked: RankedHostCard[], sortBy: SortOption, filters: ActiveFilters, userLocation: LatLon | null,
 ): RankedHostCard[] {
   let out = ranked.filter(h => {
     if (filters.verifiedOnly && !h.owner_is_verified) return false;
@@ -206,6 +210,24 @@ function applySortAndSecondaryFilters(
       const s = (r: RankingSignals) => r.verificationPts + r.reviewCountPts + r.responseRatePts;
       return s(b.ranking_signals) - s(a.ranking_signals);
     });
+    case 'nearest': {
+      // Defensive fail-safe: if location becomes unavailable while Nearest
+      // is still selected (e.g. permission revoked mid-session), fall back
+      // to the already-filtered, unsorted list rather than crash or
+      // fabricate a distance. The component itself also resets sortBy back
+      // to 'recommended' when this happens (see the userLocation effect in
+      // Explore()), so this branch is a safety net, not the primary path.
+      if (!userLocation) return out;
+      // Hosts without real coordinates must never rank ahead of hosts with
+      // them — same truthy lat/long check the CLOSEST-badge logic and the
+      // map components already use elsewhere in this file.
+      const withCoords = out.filter(h => h.latitude && h.longitude);
+      const withoutCoords = out.filter(h => !(h.latitude && h.longitude));
+      withCoords.sort((a, b) =>
+        haversineMeters(userLocation, { lat: a.latitude, lon: a.longitude }) -
+        haversineMeters(userLocation, { lat: b.latitude, lon: b.longitude }));
+      return [...withCoords, ...withoutCoords];
+    }
     default: return out;
   }
 }
@@ -638,8 +660,17 @@ export default function Explore() {
 
   const displayed = useMemo(() => {
     const base = applyFilters(allHosts, params);
-    return applySortAndSecondaryFilters(base as RankedHostCard[], sortBy, filters);
-  }, [allHosts, params, sortBy, filters]);
+    return applySortAndSecondaryFilters(base as RankedHostCard[], sortBy, filters, userLocation);
+  }, [allHosts, params, sortBy, filters, userLocation]);
+
+  // Defensive fail-safe: if location becomes unavailable (permission
+  // revoked, GPS lost) while Nearest is active, drop back to Recommended
+  // rather than leave the traveller on a sort mode whose chip has also just
+  // disappeared (the chip itself is only rendered while userLocation is
+  // truthy — see the topBarNative/topBarWeb rows below).
+  useEffect(() => {
+    if (!userLocation && sortBy === 'nearest') setSortBy('recommended');
+  }, [userLocation, sortBy]);
 
   const closestId = useMemo(() => {
     if (!userLocation) return null;
@@ -676,6 +707,11 @@ export default function Explore() {
     setFilters(f => ({ ...f, [key]: f[key] === value ? DEFAULT_FILTERS[key] : value }));
 
   const cycleBags = () => setBags(n => n === 8 ? 1 : n + 1);
+
+  // Toggle, not a plain select: tapping while already active returns to
+  // Recommended, so the traveller can get back to the default ordering
+  // without the old (now-removed-from-the-UI) full sort row.
+  const toggleNearest = () => setSortBy(s => s === 'nearest' ? 'recommended' : 'nearest');
 
   const dropOffLabel = dropOff.split('–')[0];
   const pickUpLabel = pickUp.split('–')[0];
@@ -871,6 +907,18 @@ export default function Explore() {
                 onClick={cycleBags}>
                 <Text style={S.compactChipText}>🎒 {bags} bag{bags > 1 ? 's' : ''}</Text>
               </TouchableOpacity>
+              {/* Nearest — the one dedicated, always-visible-when-possible
+                  sort control (a toggle, not the old multi-option sort
+                  row). Only rendered once userLocation resolves, so a
+                  traveller never sees a dead/disabled chip while location
+                  is denied or unavailable. */}
+              {userLocation && (
+                <TouchableOpacity style={[S.compactChip, sortBy === 'nearest' && S.compactChipActive]} onPress={toggleNearest}
+                  // @ts-ignore
+                  onClick={toggleNearest}>
+                  <Text style={[S.compactChipText, sortBy === 'nearest' && S.compactChipActiveText]}>📍 Nearest</Text>
+                </TouchableOpacity>
+              )}
               {/* Clear all if active */}
               {hasActiveFilters && (
                 <TouchableOpacity style={[S.compactChip, S.compactChipClear]}
@@ -973,6 +1021,16 @@ export default function Explore() {
           <TouchableOpacity style={S.compactChip} onPress={cycleBags}
             // @ts-ignore
             onClick={cycleBags}><Text style={S.compactChipText}>🎒 {bags}</Text></TouchableOpacity>
+          {/* Nearest — see the matching native-layout chip above for why
+              this is a toggle rendered only once userLocation resolves,
+              rather than restoring the old sort row. */}
+          {userLocation && (
+            <TouchableOpacity style={[S.compactChip, sortBy === 'nearest' && S.compactChipActive]} onPress={toggleNearest}
+              // @ts-ignore
+              onClick={toggleNearest}>
+              <Text style={[S.compactChipText, sortBy === 'nearest' && S.compactChipActiveText]}>📍 Nearest</Text>
+            </TouchableOpacity>
+          )}
           {/* Sort chips + secondary filter chips (Verified/Fast/Price/Host
               type) hidden per the Explore polish pass — sortChipsContent/
               filterChipsContent are left fully intact above, unrendered
@@ -1060,6 +1118,11 @@ const S = StyleSheet.create({
   compactChipText: { fontSize: 12, fontWeight: '600', color: '#1A1A1A' },
   compactChipClear: { backgroundColor: '#FFF0F0' },
   compactChipClearText: { fontSize: 12, fontWeight: '700', color: '#EF4444' },
+  // Nearest chip's active state — same dark-fill treatment as sortChipActive
+  // below, kept as its own pair since it applies on top of compactChip
+  // (rounder/larger) rather than sortChip's own base style.
+  compactChipActive: { backgroundColor: '#1A1A1A' },
+  compactChipActiveText: { color: '#FFFFFF' },
 
   // ── Reset map ── deliberately distinct from compactChipClear above (that
   // one clears sort/secondary filters, a different concept) — subtle,
