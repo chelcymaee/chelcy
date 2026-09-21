@@ -41,21 +41,7 @@ export async function getUserLocation(): Promise<LatLon | null> {
       return await new Promise<LatLon | null>(resolve => {
         navigator.geolocation.getCurrentPosition(
           pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-          // TEMPORARY diagnostic logging — behaviour is unchanged, this still
-          // always resolves null on any error. Added only to tell apart
-          // PERMISSION_DENIED / POSITION_UNAVAILABLE / TIMEOUT from the
-          // console, since all three currently look identical to callers.
-          // Remove once the Vercel preview investigation is done.
-          err => {
-            const codeNames: Record<number, string> = {
-              1: 'PERMISSION_DENIED', 2: 'POSITION_UNAVAILABLE', 3: 'TIMEOUT',
-            };
-            console.warn(
-              `[getUserLocation] web geolocation error — code=${err.code} ` +
-              `(${codeNames[err.code] ?? 'UNKNOWN'}), message="${err.message}"`,
-            );
-            resolve(null);
-          },
+          () => resolve(null),
           { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
         );
       });
