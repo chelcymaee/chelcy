@@ -1092,16 +1092,31 @@ $$;
 -- restricted to service_role only — the scheduled sweep is the one caller
 -- allowed to invoke it with no per-row ownership check, since it runs with
 -- no end user attached. A normal authenticated client can only reach it
--- indirectly through check_booking_expiry's ownership check above. This
--- was verified locally: a non-privileged role attempting to call
--- expire_overdue_booking directly gets a Postgres insufficient_privilege
--- error, not a silent bypass.
+-- indirectly through check_booking_expiry's ownership check above.
+--
+-- CORRECTION (found during PR #168's production verification): the local
+-- test this comment used to describe covered only the PUBLIC pseudo-role.
+-- Supabase's project bootstrap separately grants EXECUTE on every new
+-- public-schema function directly to anon/authenticated via its own
+-- default-privileges rule — a second, independent grant that REVOKE ALL
+-- ... FROM PUBLIC never touches. That left expire_overdue_booking callable
+-- by anon/authenticated in production until the explicit revoke below was
+-- added. Its own guarded UPDATE (host_response_deadline <= now(), neither
+-- client-writable) meant this couldn't be used to bypass the deadline or
+-- fabricate a transition, but it was still reachable by roles it was never
+-- meant to be reachable by, so it's closed the same way.
 REVOKE ALL ON FUNCTION accept_booking(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION decline_booking(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION cancel_awaiting_booking(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION expire_overdue_booking(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION check_booking_expiry(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION mark_refunded(UUID, TEXT) FROM PUBLIC;
+-- expire_overdue_booking is service_role-only (the other five above are
+-- deliberately authenticated-callable, each with its own in-function
+-- ownership/auth check) — REVOKE ALL FROM PUBLIC alone doesn't strip
+-- Supabase's separate default-privileges grant to these two named roles,
+-- so it must be revoked from them explicitly too.
+REVOKE EXECUTE ON FUNCTION expire_overdue_booking(UUID) FROM anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION accept_booking(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION decline_booking(UUID) TO authenticated;
@@ -1382,7 +1397,15 @@ EXCEPTION
 END;
 $$;
 
+-- REVOKE ALL FROM PUBLIC alone doesn't strip Supabase's separate
+-- default-privileges grant of EXECUTE to anon/authenticated on every new
+-- public-schema function — see the same fix applied to
+-- expire_overdue_booking above (PR #168 production verification). Revoked
+-- explicitly here too so a future schema application can't silently
+-- reopen this service-role-only payment RPC to those roles, even though
+-- production was independently confirmed already correctly restricted.
 REVOKE ALL ON FUNCTION confirm_booking_payment(UUID, TEXT, TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION confirm_booking_payment(UUID, TEXT, TEXT) FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION confirm_booking_payment(UUID, TEXT, TEXT) TO service_role;
 
 -- The Phase 2/3 dormant Accept / Decline / Cancel buttons are wired to
@@ -2081,5 +2104,11 @@ AS $$
   RETURNING *;
 $$;
 
+-- REVOKE ALL FROM PUBLIC alone doesn't strip Supabase's separate
+-- default-privileges grant of EXECUTE to anon/authenticated on every new
+-- public-schema function — confirmed live in production (this function
+-- was found callable by both immediately after first deploy) and fixed
+-- the same way for expire_overdue_booking/confirm_booking_payment above.
 REVOKE ALL ON FUNCTION claim_pickup_reminders() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION claim_pickup_reminders() FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION claim_pickup_reminders() TO service_role;
