@@ -2016,3 +2016,70 @@ DO $$ BEGIN
     CHECK (NOT contains_objectionable_language(body));
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+-- -------------------------------------------------------------------------
+-- Pickup reminder (30-minute traveller push)
+-- -------------------------------------------------------------------------
+--
+-- pickup_reminder_sent_at — same one-time-transition-marker idiom already
+-- used for paid_at/declined_at/expired_at/completed_at/refunded_at: a
+-- nullable TIMESTAMPTZ set exactly once, doubling as the idempotency guard.
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS pickup_reminder_sent_at TIMESTAMPTZ;
+
+-- claim_pickup_reminders() — the one authoritative eligibility + claim
+-- transition for this feature, in the same spirit as expire_overdue_booking:
+-- a single guarded UPDATE ... RETURNING is the entire implementation, so two
+-- concurrent sweep invocations can never both claim the same row (ordinary
+-- Postgres row-locking serializes the write, same property already relied
+-- on for expire_overdue_booking).
+--
+-- Eligibility: status = 'confirmed' only (the sole status meaning paid AND
+-- accepted/Instant-Booked — see PR #168 audit); pickup strictly in the
+-- future and no more than 30 minutes away; never claimed before. A pickup
+-- that has already passed, or is more than 30 minutes out, is left alone —
+-- a later sweep run picks it up once it enters the window. This is a wide,
+-- recurring window (not a narrow one aligned to a single cron tick)
+-- specifically so a single delayed or skipped ~15-minute cron run doesn't
+-- cause a booking to be silently skipped forever; pickup_reminder_sent_at
+-- is what actually prevents duplicates across the many sweep runs that will
+-- see the same still-eligible row before it's claimed.
+--
+-- pick_up_date/pick_up_time are plain TEXT ("YYYY-MM-DD" / "HH:MM") with no
+-- stored timezone — Cubby is Cape Town-only, so every existing screen
+-- already treats them as Africa/Johannesburg wall-clock time (see
+-- src/lib/payout-periods.ts for the same-timezone convention in the other
+-- direction). `AT TIME ZONE 'Africa/Johannesburg'` on the naive
+-- concatenated timestamp converts it to the correct UTC instant for
+-- comparison against now(), correctly handling a pickup that crosses
+-- midnight since the comparison is against absolute instants, not calendar-
+-- date strings (verified against a real Postgres instance, including a
+-- pickup 10 minutes after a frozen "23:55 Johannesburg" clock).
+--
+-- Deliberately does not consider notification_preferences at all — that
+-- check belongs where every other notification-preference check in this
+-- codebase already lives (the Edge Function/service layer, see
+-- pickup-reminder-sweep), not in this claim function. Claiming is
+-- unconditional so a booking is never re-considered on a later sweep
+-- regardless of whether the traveller's preference was on or off at claim
+-- time — see pickup-reminder-sweep's own comment for why that's the right
+-- split.
+--
+-- Not directly callable by end users — see the REVOKE/GRANT block below.
+CREATE OR REPLACE FUNCTION claim_pickup_reminders()
+RETURNS SETOF bookings
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE bookings
+  SET pickup_reminder_sent_at = now()
+  WHERE status = 'confirmed'
+    AND pickup_reminder_sent_at IS NULL
+    AND (pick_up_date || ' ' || pick_up_time)::timestamp AT TIME ZONE 'Africa/Johannesburg' > now()
+    AND (pick_up_date || ' ' || pick_up_time)::timestamp AT TIME ZONE 'Africa/Johannesburg' <= now() + interval '30 minutes'
+  RETURNING *;
+$$;
+
+REVOKE ALL ON FUNCTION claim_pickup_reminders() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION claim_pickup_reminders() TO service_role;
