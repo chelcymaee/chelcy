@@ -4,6 +4,8 @@ import { formatResponseTime } from '../../src/lib/response-rate';
 import { computeHostRanking } from '../../src/lib/host-ranking';
 import { adminFetch } from '../../src/lib/admin-auth';
 import LocationPicker, { LocationResult } from '../../src/components/LocationPicker.web';
+import WeeklyHoursEditor from '../../src/components/WeeklyHoursEditor';
+import { DayAbbr, DayHours, expandLegacyToWeeklyHours, deriveLegacyFields } from '../../src/lib/host-hours';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -177,10 +179,17 @@ export default function ManageHosts() {
       const updates: Record<string, any> = {};
       const h = selectedHost.host;
       const fields = ['display_name', 'bio', 'location_name', 'latitude', 'longitude', 'business_type',
-        'price_per_bag_per_day', 'max_bags', 'available_from', 'available_until',
-        'available_days', 'is_active', 'instant_booking'];
+        'price_per_bag_per_day', 'max_bags', 'weekly_hours', 'is_active', 'instant_booking'];
       for (const f of fields) {
         if (editFields[f] !== h[f]) updates[f] = editFields[f];
+      }
+      // PR #171: whenever weekly_hours actually changed, send its
+      // deterministic legacy compatibility mirror alongside it in the same
+      // update, so the two can never land out of sync on this row — see
+      // deriveLegacyFields() for the exact mapping. weekly_hours stays the
+      // only field anything treats as authoritative.
+      if (updates.weekly_hours) {
+        Object.assign(updates, deriveLegacyFields(updates.weekly_hours));
       }
       if (Object.keys(updates).length === 0) { setEditing(false); return; }
       const result = await callAdminHosts('PATCH', {}, { hostId: h.id, updates });
@@ -374,13 +383,17 @@ export default function ManageHosts() {
   const hostSheet = (() => {
     if (!selectedHost) return null;
     const { host, ownerProfile, bookings, stats } = selectedHost;
-    const days: string[] = editFields.available_days ?? host.available_days ?? ALL_DAYS;
-
-    function toggleDay(d: string) {
-      const current: string[] = editFields.available_days ?? host.available_days ?? ALL_DAYS;
-      const next = current.includes(d) ? current.filter((x: string) => x !== d) : [...current, d];
-      setEditFields((prev: any) => ({ ...prev, available_days: next }));
-    }
+    // PR #171: seed the editor from whichever already has weekly_hours
+    // (editFields first, since it reflects in-progress edits), falling
+    // back to expanding the legacy fields for a host that predates this
+    // feature — same expansion the production backfill performs in SQL,
+    // so a not-yet-migrated host's editor opens showing its real current
+    // schedule rather than a blank one.
+    const weeklyHoursValue: Record<DayAbbr, DayHours> = editFields.weekly_hours ?? host.weekly_hours ?? expandLegacyToWeeklyHours({
+      available_from: editFields.available_from ?? host.available_from ?? '08:00',
+      available_until: editFields.available_until ?? host.available_until ?? '20:00',
+      available_days: editFields.available_days ?? host.available_days ?? ALL_DAYS,
+    });
 
     const recentBookings = bookings.slice(0, 5);
 
@@ -480,8 +493,12 @@ export default function ManageHosts() {
                 ['Bio', host.bio ?? '—'],
                 ['Price', `R${host.price_per_bag_per_day}/bag/day`],
                 ['Max bags', host.max_bags],
-                ['Hours', `${host.available_from ?? '—'} – ${host.available_until ?? '—'}`],
-                ['Days', (host.available_days ?? ALL_DAYS).join(', ')],
+                ['Hours', host.weekly_hours
+                  ? ALL_DAYS.map(d => {
+                      const dh = host.weekly_hours[d];
+                      return `${d} ${dh?.open ? `${dh.from}–${dh.until}` : 'Closed'}`;
+                    }).join(' · ')
+                  : `${(host.available_days ?? ALL_DAYS).join(', ')} · ${host.available_from ?? '—'}–${host.available_until ?? '—'}`],
                 ['Rating', host.rating > 0 ? `${host.rating} ★ (${host.review_count} reviews)` : 'No reviews yet'],
                 ['Created', new Date(host.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })],
                 ['ID', <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#9CA3AF' }}>{host.id}</span>],
@@ -542,23 +559,11 @@ export default function ManageHosts() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 12, color: '#6B7280', fontWeight: 600 }}>Opens</label>
-                  <input style={s.input} type="time" value={editFields.available_from ?? '08:00'} onChange={(e: any) => setEditFields((p: any) => ({ ...p, available_from: e.target.value }))} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 12, color: '#6B7280', fontWeight: 600 }}>Closes</label>
-                  <input style={s.input} type="time" value={editFields.available_until ?? '20:00'} onChange={(e: any) => setEditFields((p: any) => ({ ...p, available_until: e.target.value }))} />
-                </div>
-              </div>
-
-              <label style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, display: 'block', marginBottom: 6 }}>Available days</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as any, marginBottom: 10 }}>
-                {ALL_DAYS.map(d => (
-                  <button key={d} style={s.dayChip(days.includes(d))} onClick={() => toggleDay(d)}>{d}</button>
-                ))}
-              </div>
+              <label style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, display: 'block', marginBottom: 6 }}>Opening hours</label>
+              <WeeklyHoursEditor
+                value={weeklyHoursValue}
+                onChange={(next) => setEditFields((p: any) => ({ ...p, weekly_hours: next }))}
+              />
 
               <label style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, cursor: 'pointer' }}>
                 <input type="checkbox" checked={editFields.is_active ?? host.is_active} onChange={(e: any) => setEditFields((p: any) => ({ ...p, is_active: e.target.checked }))} />

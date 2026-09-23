@@ -14,6 +14,7 @@ import Avatar from '../../src/components/Avatar';
 import ReportReasonModal from '../../src/components/ReportReasonModal';
 import { reportContent, blockUser, getBlockedUserIds } from '../../src/lib/moderation-service';
 import { promptGuestSignIn } from '../../src/lib/guest-prompt';
+import { getDayHours } from '../../src/lib/host-hours';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TODAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -54,6 +55,7 @@ function normalizeHost(raw: any, ownerIsVerified?: boolean) {
     available_from: raw.available_from ?? raw.availableFrom ?? '08:00',
     available_until: raw.available_until ?? raw.availableUntil ?? '20:00',
     available_days: raw.available_days ?? raw.availableDays ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    weekly_hours: raw.weekly_hours ?? raw.weeklyHours ?? null,
     max_bags: raw.max_bags ?? raw.maxBags ?? 10,
     storage_features: raw.storage_features ?? [],
     photos: raw.photos ?? [],
@@ -329,7 +331,7 @@ export default function HostDetail() {
     </SafeAreaView>
   );
 
-  const isOpen = host.available_days.includes(TODAY_ABBR);
+  const isOpen = getDayHours(host, TODAY_ABBR).open;
   const total = host.price_per_bag_per_day * bagCount;
 
   const decreaseBags = () => setBagCount(Math.max(1, bagCount - 1));
@@ -502,13 +504,13 @@ export default function HostDetail() {
           <View style={styles.hoursTable}>
             {ALL_DAYS.map(day => {
               const isToday = day === TODAY_ABBR;
-              const isAvailable = host.available_days.includes(day);
+              const dayHours = getDayHours(host, day);
               return (
                 <View key={day} style={styles.hoursRow}>
                   <Text style={[styles.hoursDay, isToday && styles.hoursBold]}>{day}</Text>
-                  {isAvailable ? (
+                  {dayHours.open ? (
                     <Text style={[styles.hoursTime, isToday && styles.hoursBold]}>
-                      {host.available_from} – {host.available_until}
+                      {dayHours.from} – {dayHours.until}
                     </Text>
                   ) : (
                     <Text style={styles.hoursClosed}>Closed</Text>

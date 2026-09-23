@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isSupabaseConfigured } from '../../src/lib/supabase';
 import LocationPicker, { LocationResult } from '../../src/components/LocationPicker.web';
 import { adminFetch as adminHostsFetch } from '../../src/lib/admin-auth';
+import WeeklyHoursEditor from '../../src/components/WeeklyHoursEditor';
+import { DayAbbr, DayHours, expandLegacyToWeeklyHours, deriveLegacyFields } from '../../src/lib/host-hours';
 
 async function createHost(body: object) {
   const res = await adminHostsFetch('/admin-hosts', {
@@ -27,8 +29,6 @@ const BUSINESS_TYPES: { value: BusinessType; label: string; emoji: string }[] = 
   { value: 'other', label: 'Other', emoji: '📍' },
 ];
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
 export default function CreateHost() {
   // Multi-listing: arriving here from manage-hosts.tsx's "Add Another
   // Listing for This Owner" button carries these two params. Their presence
@@ -47,9 +47,13 @@ export default function CreateHost() {
   const [businessType, setBusinessType] = useState<BusinessType>('café');
   const [pricePerBag, setPricePerBag] = useState('');
   const [maxBags, setMaxBags] = useState('');
-  const [availableFrom, setAvailableFrom] = useState('');
-  const [availableUntil, setAvailableUntil] = useState('');
-  const [availableDays, setAvailableDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  // PR #171: per-day hours, replacing the old shared from/until/days trio.
+  // Same default shape those fields used to produce (Mon-Fri 08:00-20:00,
+  // Sat/Sun closed) so a fresh Create Host form starts from an equivalent
+  // baseline, just already expressed per-day.
+  const [weeklyHours, setWeeklyHours] = useState<Record<DayAbbr, DayHours>>(
+    () => expandLegacyToWeeklyHours({ available_from: '08:00', available_until: '20:00', available_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] }),
+  );
   const [partnerEmail, setPartnerEmail] = useState('');
   const [newAccountFullName, setNewAccountFullName] = useState('');
   const [newAccountPassword, setNewAccountPassword] = useState('');
@@ -61,10 +65,6 @@ export default function CreateHost() {
     console.log('[create-host]', msg);
   }
   const [successMsg, setSuccessMsg] = useState('');
-
-  function toggleDay(day: string) {
-    setAvailableDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
-  }
 
   async function handleSave() {
     setErrorMsg(''); setSuccessMsg('');
@@ -95,12 +95,19 @@ export default function CreateHost() {
     setSaving(true);
     try {
       if (isSupabaseConfigured) {
+        // PR #171: weekly_hours is authoritative — the legacy fields below
+        // are a deterministic compatibility mirror only (derived, never
+        // hand-edited), kept synchronized so a freshly created host never
+        // sits with obviously contradictory legacy data (e.g. weekly_hours
+        // saying Sunday closed while available_days still defaulted to
+        // every day). See deriveLegacyFields() for the exact mapping.
+        const legacyMirror = deriveLegacyFields(weeklyHours);
         const basePayload = {
           display_name: displayName.trim(), bio: bio.trim(), location_name: locationName.trim(),
           latitude: latitude || null, longitude: longitude || null,
           business_type: businessType, price_per_bag_per_day: parseInt(pricePerBag), max_bags: parseInt(maxBags),
-          available_from: availableFrom.trim() || '08:00', available_until: availableUntil.trim() || '20:00',
-          available_days: availableDays,
+          weekly_hours: weeklyHours,
+          ...legacyMirror,
         };
         // Multi-listing: additional listings always go through
         // create_additional_listing — never 'create' — and are always
@@ -133,8 +140,7 @@ export default function CreateHost() {
         hosts.push({
           id: Date.now().toString(), displayName: displayName.trim(), bio: bio.trim(),
           locationName: locationName.trim(), businessType, pricePerBag: price, maxBags: bags,
-          availableFrom: availableFrom.trim() || '08:00', availableUntil: availableUntil.trim() || '20:00',
-          availableDays, partnerEmail: partnerEmail.trim(), active, createdAt: new Date().toISOString(),
+          weeklyHours, partnerEmail: partnerEmail.trim(), active, createdAt: new Date().toISOString(),
         });
         await AsyncStorage.setItem('cubby_hosts', JSON.stringify(hosts));
         setSuccessMsg('Host profile created!');
@@ -234,18 +240,8 @@ export default function CreateHost() {
         <label style={s.fieldLabel}>Max Bags (1–50) *</label>
         <input style={s.input} type="number" value={maxBags} onChange={e => setMaxBags(e.target.value)} placeholder="e.g. 10" min="1" max="50" />
 
-        <label style={s.fieldLabel}>Available From</label>
-        <input style={s.input} value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} placeholder="e.g. 08:00" />
-
-        <label style={s.fieldLabel}>Available Until</label>
-        <input style={s.input} value={availableUntil} onChange={e => setAvailableUntil(e.target.value)} placeholder="e.g. 18:00" />
-
-        <label style={s.fieldLabel}>Available Days</label>
-        <div style={s.daysRow}>
-          {DAYS.map(day => (
-            <button key={day} style={s.dayChip(availableDays.includes(day))} onClick={() => toggleDay(day)}>{day}</button>
-          ))}
-        </div>
+        <label style={s.fieldLabel}>Opening Hours</label>
+        <WeeklyHoursEditor value={weeklyHours} onChange={setWeeklyHours} />
 
         {!isAdditionalListing && (
           <>

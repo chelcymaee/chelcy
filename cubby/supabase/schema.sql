@@ -2112,3 +2112,45 @@ $$;
 REVOKE ALL ON FUNCTION claim_pickup_reminders() FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION claim_pickup_reminders() FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION claim_pickup_reminders() TO service_role;
+
+-- -------------------------------------------------------------------------
+-- Per-day host opening hours (PR #171)
+-- -------------------------------------------------------------------------
+--
+-- available_from/available_until/available_days force every open day onto
+-- the same hours (see PR #171 audit) — a host open Mon-Fri 08:00-17:00 and
+-- Sat 09:00-13:00 could only ever be represented as one shared range for
+-- both. weekly_hours is a nullable JSONB column, one object per host
+-- keyed by day abbreviation, each value {"open": bool, "from": "HH:MM",
+-- "until": "HH:MM"} (from/until omitted when closed) — see
+-- src/lib/host-hours.ts for the shared getDayHours() reader every consumer
+-- (Explore, booking, host-detail) now goes through, and for the exact
+-- open/closed precedence rules.
+--
+-- The three legacy columns are kept, unremoved, and still the source of
+-- truth for any host with weekly_hours IS NULL — see the backfill below
+-- and getDayHours()'s own fallback for why removing them isn't safe yet.
+ALTER TABLE hosts
+  ADD COLUMN IF NOT EXISTS weekly_hours JSONB;
+
+-- One-time, idempotent backfill: every host that doesn't have weekly_hours
+-- yet gets one built directly from their current available_days/
+-- available_from/available_until, so a correctly migrated host's per-day
+-- schedule is byte-for-byte equivalent to what those legacy fields already
+-- produced — no existing host can become unavailable or gain hours it
+-- didn't already have. Safe to re-run: the WHERE clause means a host that
+-- already has weekly_hours (e.g. set by the new admin editor after this
+-- migration first ran) is never overwritten by a later re-application of
+-- this same schema file.
+UPDATE hosts
+SET weekly_hours = (
+  SELECT jsonb_object_agg(
+    day,
+    CASE WHEN day = ANY(available_days)
+      THEN jsonb_build_object('open', true, 'from', available_from, 'until', available_until)
+      ELSE jsonb_build_object('open', false)
+    END
+  )
+  FROM unnest(ARRAY['Mon','Tue','Wed','Thu','Fri','Sat','Sun']) AS day
+)
+WHERE weekly_hours IS NULL;

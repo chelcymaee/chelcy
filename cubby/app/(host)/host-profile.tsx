@@ -45,6 +45,14 @@ export default function HostProfile() {
   const [fromTime, setFromTime] = useState('08:00');
   const [untilTime, setUntilTime] = useState('20:00');
   const [days, setDays] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+  // PR #171: true once this listing has a weekly_hours schedule, meaning
+  // it's authoritative and the legacy from/until/days fields below must
+  // become read-only — editing them here could no longer ever change what
+  // the app actually uses for this host, so letting a host edit them would
+  // silently do nothing while looking like it worked. The real per-day
+  // editor is admin-only for now (see WeeklyHoursEditor); this screen just
+  // needs to stop offering an editor that can no longer take effect.
+  const [hasWeeklyHours, setHasWeeklyHours] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [storageFeatures, setStorageFeatures] = useState<string[]>([]);
 
@@ -84,6 +92,7 @@ export default function HostProfile() {
     setFromTime('08:00');
     setUntilTime('20:00');
     setDays(DAYS);
+    setHasWeeklyHours(false);
     setIsActive(true);
     setStorageFeatures([]);
     setPhotos([]);
@@ -141,6 +150,7 @@ export default function HostProfile() {
         setFromTime(data.available_from ?? '08:00');
         setUntilTime(data.available_until ?? '20:00');
         setDays(data.available_days ?? DAYS);
+        setHasWeeklyHours(!!data.weekly_hours);
         setIsActive(data.is_active ?? true);
         setStorageFeatures(data.storage_features ?? []);
         setPhotos(data.photos ?? []);
@@ -176,6 +186,7 @@ export default function HostProfile() {
   }
 
   function toggleDay(d: string) {
+    if (hasWeeklyHours) return; // read-only once weekly_hours governs this listing
     setDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
   }
 
@@ -315,9 +326,18 @@ export default function HostProfile() {
               business_type: type,
               price_per_bag_per_day: price,
               max_bags: bags,
-              available_from: fromTime,
-              available_until: untilTime,
-              available_days: days,
+              // PR #171: once weekly_hours governs this listing, these
+              // legacy fields are read-only in the UI above and must never
+              // be written back here — sending them (even unchanged) would
+              // be pointless at best, and a stale/incorrect legacy value
+              // would be actively misleading to anything that still reads
+              // them defensively. Only ever included on a not-yet-migrated
+              // listing where they're still the real source of truth.
+              ...(hasWeeklyHours ? {} : {
+                available_from: fromTime,
+                available_until: untilTime,
+                available_days: days,
+              }),
               is_active: isActive,
               storage_features: storageFeatures,
             })
@@ -507,26 +527,32 @@ export default function HostProfile() {
 
         {/* Hours */}
         <Text style={styles.sectionTitle}>Available hours</Text>
-        <View style={styles.hoursRow}>
+        {hasWeeklyHours && (
+          <Text style={styles.sectionSub}>
+            Your listing now uses day-by-day opening hours, set by Cubby admin. Contact support to update your hours.
+          </Text>
+        )}
+        <View style={[styles.hoursRow, hasWeeklyHours && { opacity: 0.5 }]}>
           <View style={styles.hoursField}>
             <Text style={styles.hoursLabel}>From</Text>
-            <TextInput style={styles.hoursInput} value={fromTime} onChangeText={setFromTime} placeholder="08:00" placeholderTextColor={Colors.textLight} />
+            <TextInput style={styles.hoursInput} value={fromTime} onChangeText={setFromTime} editable={!hasWeeklyHours} placeholder="08:00" placeholderTextColor={Colors.textLight} />
           </View>
           <Text style={styles.hoursDash}>–</Text>
           <View style={styles.hoursField}>
             <Text style={styles.hoursLabel}>Until</Text>
-            <TextInput style={styles.hoursInput} value={untilTime} onChangeText={setUntilTime} placeholder="20:00" placeholderTextColor={Colors.textLight} />
+            <TextInput style={styles.hoursInput} value={untilTime} onChangeText={setUntilTime} editable={!hasWeeklyHours} placeholder="20:00" placeholderTextColor={Colors.textLight} />
           </View>
         </View>
 
         {/* Days */}
         <Text style={styles.sectionTitle}>Available days</Text>
-        <View style={styles.daysRow}>
+        <View style={[styles.daysRow, hasWeeklyHours && { opacity: 0.5 }]}>
           {DAYS.map(d => (
             <TouchableOpacity
               key={d}
               style={[styles.dayChip, days.includes(d) && styles.dayChipActive]}
               onPress={() => toggleDay(d)}
+              disabled={hasWeeklyHours}
               // @ts-ignore
               onClick={() => toggleDay(d)}
             >

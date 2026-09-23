@@ -18,7 +18,7 @@ const ALLOWED_HOST_FIELDS: Record<string, true> = {
   display_name: true, bio: true, location_name: true, latitude: true,
   longitude: true, business_type: true,
   price_per_bag_per_day: true, max_bags: true, available_from: true,
-  available_until: true, available_days: true, is_active: true,
+  available_until: true, available_days: true, weekly_hours: true, is_active: true,
   owner_is_verified: true,
   // Admin-controlled only for now — never exposed to host self-service
   // editing (host-profile.tsx uses its own direct client write, not this
