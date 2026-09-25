@@ -1,3 +1,5 @@
+import { WeeklyHours } from '../lib/host-hours';
+
 export type UserRole = 'traveller' | 'host' | 'runner' | 'both';
 
 export interface UserProfile {
@@ -24,9 +26,10 @@ export interface Host {
   photos: string[];
   price_per_bag_per_day: number; // in ZAR
   max_bags: number;
-  available_from: string;        // "08:00"
-  available_until: string;       // "20:00"
-  available_days: string[];      // ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+  available_from: string;        // "08:00" — legacy, kept for backward compatibility
+  available_until: string;       // "20:00" — legacy, kept for backward compatibility
+  available_days: string[];      // ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] — legacy, kept for backward compatibility
+  weekly_hours?: WeeklyHours | null; // per-day schedule — authoritative once present, see src/lib/host-hours.ts
   rating: number;
   review_count: number;
   response_rate: number | null;  // null = new host, no data yet

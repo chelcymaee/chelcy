@@ -17,6 +17,7 @@ import { rankHosts, rankingLabel, rankingReason, RankingSignals } from '../../sr
 import HostMapComponent from '../../src/components/HostMap';
 import { getUserLocation, haversineMeters, formatDistance, formatWalkLabel, LatLon } from '../../src/lib/location';
 import { ExploreCardSkeleton } from '../../src/components/Skeleton';
+import { getDayHours } from '../../src/lib/host-hours';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 // Raw window height — still used for webMap sizing (web has no iOS safe-area
@@ -182,8 +183,12 @@ function applyFilters(all: Host[], p: SearchParams): Host[] {
   return all.filter(h => {
     if (!locationMatches(h.location_name, p.location)) return false;
     if (h.max_bags < p.bags) return false;
-    if (!h.available_days.includes(weekday)) return false;
-    if (timeSelected && (dropMinutes < hhmm(h.available_from) || pickMinutes > hhmm(h.available_until))) return false;
+    // PR #171: per-day hours — see src/lib/host-hours.ts. Same day-always-
+    // gated / time-only-once-both-selected shape as before, just reading
+    // that specific weekday's own hours instead of one shared range.
+    const dayHours = getDayHours(h, weekday);
+    if (!dayHours.open) return false;
+    if (timeSelected && (dropMinutes < hhmm(dayHours.from!) || pickMinutes > hhmm(dayHours.until!))) return false;
     return true;
   });
 }
@@ -260,6 +265,7 @@ function normalizeHost(raw: any): Host {
     available_from: raw.available_from ?? '08:00',
     available_until: raw.available_until ?? '20:00',
     available_days: raw.available_days ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    weekly_hours: raw.weekly_hours ?? null,
     max_bags: raw.max_bags ?? 10,
     photos: raw.photos ?? [],
     is_active: raw.is_active ?? true,

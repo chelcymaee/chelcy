@@ -13,6 +13,7 @@ import { supabase, isSupabaseConfigured, PUBLIC_FUNCTIONS_URL } from '../../src/
 import { fetchPaymentOutcome, fetchBookingStatus } from '../../src/lib/payment-status';
 import { MOCK_HOSTS } from '../../src/lib/mock-data';
 import DatePickerModal, { todayISO, formatDateLabel } from '../../src/components/DatePickerModal';
+import { getDayHours } from '../../src/lib/host-hours';
 
 // Full-day whole-hour slots, '00:00' through '24:00' — previously hardcoded
 // to '07:00'–'18:00', which silently capped every host at 18:00 regardless
@@ -79,6 +80,7 @@ function normalizeHost(raw: any) {
     // were enforced at all. Needed now that handleConfirm() below is the
     // real enforcement point.
     available_days: raw.available_days ?? raw.availableDays ?? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    weekly_hours: raw.weekly_hours ?? raw.weeklyHours ?? null,
   };
 }
 
@@ -202,22 +204,30 @@ export default function Booking() {
 
   const isToday = bookingDate === todayISO();
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
-  // Both lists are bounded by the host's actual hours (rounded inward to
-  // whole hours — a host open '07:30'–'17:30' offers '08:00' through
-  // '17:00', never a slot that would then fail handleConfirm()'s own check
-  // below) via hhmm(), the same numeric comparison that check already uses
-  // — not the raw string comparison this used to do, which only ever
-  // worked because every value being compared was already a well-formed,
-  // zero-padded TIME_SLOTS entry.
-  const openMinutes = hhmm(host.available_from);
-  const closeMinutes = hhmm(host.available_until);
+  // PR #171: per-day hours — see src/lib/host-hours.ts. bookingDate's own
+  // weekday now resolves its own hours rather than one host-wide range, so
+  // e.g. a host open Mon-Fri 08:00-17:00 and Sat 09:00-13:00 correctly
+  // offers different slots depending on which day is selected.
+  const bookingDay = isoToDayOfWeek(bookingDate);
+  const dayHours = getDayHours(host, bookingDay);
+  // Both lists are bounded by the host's actual hours for this day (rounded
+  // inward to whole hours — a host open '07:30'–'17:30' offers '08:00'
+  // through '17:00', never a slot that would then fail handleConfirm()'s
+  // own check below) via hhmm(), the same numeric comparison that check
+  // already uses — not the raw string comparison this used to do, which
+  // only ever worked because every value being compared was already a
+  // well-formed, zero-padded TIME_SLOTS entry.
+  const openMinutes = dayHours.open ? hhmm(dayHours.from!) : 0;
+  const closeMinutes = dayHours.open ? hhmm(dayHours.until!) : 0;
   const availableDropSlots = TIME_SLOTS.filter(t => {
+    if (!dayHours.open) return false;
     const m = hhmm(t);
     if (m < openMinutes || m > closeMinutes) return false;
     if (isToday && m <= nowMinutes + 30) return false;
     return true;
   });
   const availablePickSlots = TIME_SLOTS.filter(t => {
+    if (!dayHours.open) return false;
     const m = hhmm(t);
     return m > hhmm(dropTime) && m <= closeMinutes;
   });
@@ -233,14 +243,18 @@ export default function Booking() {
     // filtering (see explore.tsx's applyFilters) — a host stays visible in
     // search regardless of its hours, but can't actually be booked outside
     // them. This is the one real enforcement point, client-side; nothing
-    // else in the app checks this today.
-    const bookingDay = isoToDayOfWeek(bookingDate);
-    const withinDays = host.available_days.includes(bookingDay);
-    const withinHours = hhmm(dropTime) >= hhmm(host.available_from) && hhmm(pickTime) <= hhmm(host.available_until);
+    // else in the app checks this today. Re-derives bookingDay/dayHours
+    // rather than reusing the ones above, matching this file's existing
+    // convention of not sharing state between the slot lists above and
+    // this function.
+    const confirmDay = isoToDayOfWeek(bookingDate);
+    const confirmHours = getDayHours(host, confirmDay);
+    const withinDays = confirmHours.open;
+    const withinHours = confirmHours.open && hhmm(dropTime) >= hhmm(confirmHours.from!) && hhmm(pickTime) <= hhmm(confirmHours.until!);
     if (!withinDays || !withinHours) {
-      const hours = host.available_from && host.available_until
-        ? ` ${host.display_name} is open ${host.available_from}–${host.available_until}.`
-        : '';
+      const hours = confirmHours.open
+        ? ` ${host.display_name} is open ${confirmHours.from}–${confirmHours.until} on ${confirmDay}.`
+        : ` ${host.display_name} is closed on ${confirmDay}.`;
       setErrorMsg(`These times don't quite work for this location. Choose a drop-off and collection time within their opening hours to continue.${hours}`);
       return;
     }
