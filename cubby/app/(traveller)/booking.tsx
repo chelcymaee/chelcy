@@ -67,6 +67,24 @@ function paygateInitiateErrorMessage(code: string | undefined): string {
   }
 }
 
+// Raised by enforce_booking_hours() (see supabase/schema.sql) — the
+// authoritative, server-side rejection when a submitted drop-off/pick-up
+// time falls outside the host's real operating hours. The client-side
+// check in handleConfirm() above already blocks this for the stock UI;
+// this exists purely as defense-in-depth against a bypassed/modified
+// client, so it should only ever surface here in practice for exactly
+// that case. Any other insert failure (network error, unexpected DB
+// error, etc.) falls through to the existing generic message rather than
+// exposing raw database detail to the traveller.
+const BOOKING_OUTSIDE_HOURS_ERROR = 'booking_outside_operating_hours';
+
+function bookingInsertErrorMessage(error: { message?: string } | null): string {
+  if (error?.message === BOOKING_OUTSIDE_HOURS_ERROR) {
+    return "These times don't quite work for this location. Choose a drop-off and collection time within their opening hours to continue.";
+  }
+  return 'Could not create booking. Please try again.';
+}
+
 function normalizeHost(raw: any) {
   return {
     id: raw.id,
@@ -284,7 +302,7 @@ export default function Booking() {
           .single();
 
         if (bookingError || !booking) {
-          setErrorMsg('Could not create booking. Please try again.');
+          setErrorMsg(bookingInsertErrorMessage(bookingError));
           return;
         }
 
