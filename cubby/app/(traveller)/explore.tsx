@@ -96,6 +96,11 @@ const DEFAULT_FILTERS: ActiveFilters = {
 // exact value "Reset map" restores. Defined once so both stay in sync.
 const DEFAULT_LOCATION = 'Cape Town, South Africa';
 
+// Explore's own initial drop-off/pick-up time slots — defined once so the
+// useState initializers below and resetExploreSearch() can't drift apart.
+const DEFAULT_DROP_OFF = '9am–10am';
+const DEFAULT_PICK_UP = '5pm–6pm';
+
 // ─── Filter helpers ───────────────────────────────────────────────────────────
 
 function isoToDayOfWeek(iso: string): string {
@@ -528,8 +533,8 @@ export default function Explore() {
   // ── Filter state ──
   const [location, setLocation] = useState(DEFAULT_LOCATION);
   const [selectedDate, setSelectedDate] = useState(todayISO());
-  const [dropOff, setDropOff] = useState('9am–10am');
-  const [pickUp, setPickUp] = useState('5pm–6pm');
+  const [dropOff, setDropOff] = useState(DEFAULT_DROP_OFF);
+  const [pickUp, setPickUp] = useState(DEFAULT_PICK_UP);
   // False until the traveller actually opens the respective time picker
   // and taps a slot — see applyFilters' comment for why this must stay
   // separate from dropOff/pickUp's own default-looking string values.
@@ -543,6 +548,7 @@ export default function Explore() {
 
   // ── Loading state ──
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   // ── Modal state ──
   const [showPermCard, setShowPermCard] = useState(false);
@@ -632,6 +638,7 @@ export default function Explore() {
 
   async function loadHosts() {
     setLoading(true);
+    setLoadError(false);
     try {
       if (isSupabaseConfigured) {
         const { data } = await supabase
@@ -641,7 +648,9 @@ export default function Explore() {
       }
       const raw = await AsyncStorage.getItem('cubby_hosts');
       if (raw) setAllHosts(rankHosts(JSON.parse(raw).map(normalizeHost).filter((h: Host) => h.is_active)));
-    } catch {} finally {
+    } catch {
+      setLoadError(true);
+    } finally {
       setLoading(false);
     }
   }
@@ -704,6 +713,27 @@ export default function Explore() {
   const showResetMap = location !== DEFAULT_LOCATION;
   const resetMap = () => setLocation(DEFAULT_LOCATION);
 
+  // Reset filters (zero-results / load-error empty state) — unlike resetMap
+  // above, this restores the traveller's whole search (location + date +
+  // times + secondary filters/sort) back to Explore's own defaults, since a
+  // zero-result state is usually caused by the date/time constraint, not
+  // just location. dropOffSelected/pickUpSelected go back to false too —
+  // same "not yet deliberately chosen" meaning as on first mount, so
+  // applyFilters' time-window check switches back off until the traveller
+  // deliberately picks a time again. Reuses the exact same
+  // defaults/constants already used by this file's own useState
+  // initializers — no new default values.
+  const resetExploreSearch = () => {
+    setLocation(DEFAULT_LOCATION);
+    setSelectedDate(todayISO());
+    setDropOff(DEFAULT_DROP_OFF);
+    setPickUp(DEFAULT_PICK_UP);
+    setDropOffSelected(false);
+    setPickUpSelected(false);
+    setFilters(DEFAULT_FILTERS);
+    setSortBy('recommended');
+  };
+
   const presentTypes = useMemo(() => {
     const s = new Set(allHosts.map(h => h.business_type));
     return ['cafe', 'hotel', 'hostel', 'guesthouse', 'airbnb'].filter(t => s.has(t));
@@ -721,8 +751,6 @@ export default function Explore() {
 
   const dropOffLabel = dropOff.split('–')[0];
   const pickUpLabel = pickUp.split('–')[0];
-
-  const es = emptyState(filters);
 
   // ── Filter chips ──────────────────────────────────────────────────────────
 
@@ -798,19 +826,27 @@ export default function Explore() {
 
   const hostListContent = loading ? (
     [1, 2, 3].map(i => <ExploreCardSkeleton key={i} />)
+  ) : loadError ? (
+    <View style={S.empty}>
+      <Text style={S.emptyEmoji}>⚠️</Text>
+      <Text style={S.emptyTitle}>Couldn't load Cubby spots</Text>
+      <Text style={S.emptyText}>Please try again.</Text>
+      <TouchableOpacity style={S.clearFiltersBtn} onPress={loadHosts}
+        // @ts-ignore
+        onClick={loadHosts}>
+        <Text style={S.clearFiltersBtnText}>Try again</Text>
+      </TouchableOpacity>
+    </View>
   ) : displayed.length === 0 ? (
     <View style={S.empty}>
-      <Text style={S.emptyEmoji}>{es.emoji}</Text>
-      <Text style={S.emptyTitle}>{es.title}</Text>
-      <Text style={S.emptyText}>{es.sub}</Text>
-      {hasActiveFilters && (
-        <TouchableOpacity style={S.clearFiltersBtn}
-          onPress={() => { setFilters(DEFAULT_FILTERS); setSortBy('recommended'); }}
-          // @ts-ignore
-          onClick={() => { setFilters(DEFAULT_FILTERS); setSortBy('recommended'); }}>
-          <Text style={S.clearFiltersBtnText}>Clear filters</Text>
-        </TouchableOpacity>
-      )}
+      <Text style={S.emptyEmoji}>🔍</Text>
+      <Text style={S.emptyTitle}>No Cubby spots match your search</Text>
+      <Text style={S.emptyText}>Try changing your date, times or location to see more storage options.</Text>
+      <TouchableOpacity style={S.clearFiltersBtn} onPress={resetExploreSearch}
+        // @ts-ignore
+        onClick={resetExploreSearch}>
+        <Text style={S.clearFiltersBtnText}>Reset filters</Text>
+      </TouchableOpacity>
     </View>
   ) : (
     displayed.map(host => (
