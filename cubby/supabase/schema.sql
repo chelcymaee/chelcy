@@ -2154,3 +2154,203 @@ SET weekly_hours = (
   FROM unnest(ARRAY['Mon','Tue','Wed','Thu','Fri','Sat','Sun']) AS day
 )
 WHERE weekly_hours IS NULL;
+
+-- ---------------------------------------------------------------------------
+-- PR #173: server-side booking-hours enforcement
+-- ---------------------------------------------------------------------------
+-- The PR #173 audit found that drop_off_date/drop_off_time/pick_up_date/
+-- pick_up_time are written exactly once, at booking creation, by the
+-- client's direct `bookings` INSERT (app/(traveller)/booking.tsx) — and
+-- never again by any of the status-transition RPCs above
+-- (confirm_booking_payment, accept_booking, decline_booking,
+-- cancel_awaiting_booking, cancel_own_booking, expire_overdue_booking,
+-- respond_to_pending_booking) or by complete-booking/mark_refunded. That
+-- makes the INSERT (and, defensively, any future UPDATE of these four
+-- columns) the one authoritative place a booking's requested times can be
+-- validated against the host's real operating hours — closing it here means
+-- an invalid booking can never be created in the first place, so it can
+-- never reach paygate-initiate/payfast-create: payment can never be
+-- initiated for an out-of-hours booking. None of the functions/RPCs listed
+-- above are touched by this change.
+
+-- parse_hhmm_minutes(t) — strict "HH:MM" -> minutes-since-midnight parser.
+-- Returns NULL (never raises) for anything that isn't safely interpretable —
+-- missing, non-numeric, out-of-range hour/minute, or an ill-formed "24:MM"
+-- for MM<>0. NULL propagates to a fail-closed rejection in
+-- booking_time_within_hours() below, per the approved PR #173 decision: a
+-- malformed value must never be silently coerced (unlike the client's own
+-- hhmm() in booking.tsx/explore.tsx, which defaults an unparseable value to
+-- '00:00' — that shortcut is deliberately NOT reproduced here).
+CREATE OR REPLACE FUNCTION parse_hhmm_minutes(t TEXT)
+RETURNS INT
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  v_match TEXT[];
+  v_h INT;
+  v_m INT;
+BEGIN
+  IF t IS NULL THEN
+    RETURN NULL;
+  END IF;
+  v_match := regexp_match(btrim(t), '^([0-9]{1,2}):([0-9]{2})$');
+  IF v_match IS NULL THEN
+    RETURN NULL;
+  END IF;
+  v_h := v_match[1]::int;
+  v_m := v_match[2]::int;
+  IF v_m < 0 OR v_m > 59 OR v_h < 0 OR v_h > 24 THEN
+    RETURN NULL;
+  END IF;
+  -- "24:00" is a real, deliberately-supported sentinel for midnight close
+  -- (see booking.tsx's TIME_SLOTS comment) — "24:MM" for any other MM is not.
+  IF v_h = 24 AND v_m <> 0 THEN
+    RETURN NULL;
+  END IF;
+  RETURN v_h * 60 + v_m;
+EXCEPTION WHEN OTHERS THEN
+  RETURN NULL;
+END;
+$$;
+
+-- booking_time_within_hours(p_host, p_date, p_time) — true only if p_time (a
+-- plain "HH:MM" string) falls within p_host's operating window for the
+-- weekday p_date (a plain "YYYY-MM-DD" string) falls on.
+--
+-- Weekday is derived purely from the calendar date itself (EXTRACT(DOW ...)
+-- on a DATE value has no time-of-day or timezone component — there is no
+-- now()/clock reference anywhere in this function). Cubby's booking dates/
+-- times are authoritatively Africa/Johannesburg wall-clock values by
+-- construction (the only timezone Cubby operates in, matching the same
+-- explicit convention already used by src/lib/payout-periods.ts and the
+-- admin dashboard's todayInJohannesburg()) — this function never re-derives
+-- or re-interprets them against the connecting client/device's own
+-- timezone, which is not trusted for anything authoritative here.
+--
+-- Precedence mirrors src/lib/host-hours.ts's getDayHours() exactly:
+--   1. weekly_hours present at all -> fully authoritative. A day missing
+--      from the object, or explicitly {"open": false}, is closed. A day
+--      marked open whose "open"/"from"/"until" can't be safely parsed FAILS
+--      CLOSED rather than silently falling back to the legacy fields or to
+--      any default.
+--   2. weekly_hours IS NULL -> legacy available_days/available_from/
+--      available_until, reproducing pre-weekly_hours behaviour. The same
+--      fail-closed parsing applies here too, for the same reason: a
+--      malformed availability configuration must never silently permit a
+--      booking, regardless of which of the two sources it came from.
+--   3. Otherwise closed.
+--
+-- Overnight hours (until < from) are not specially supported, matching
+-- src/lib/host-hours.ts today: such a day's window can never be satisfied
+-- by the plain from<=until comparison below, so it is effectively
+-- unbookable — an existing limitation this function preserves rather than
+-- fixes.
+--
+-- Only the drop-off and pick-up endpoints are validated (each against its
+-- own date's weekday, independently — the two dates are not required to
+-- match; the schema already allows them to differ and the current UI
+-- simply doesn't expose that yet). No day "in between" is checked.
+CREATE OR REPLACE FUNCTION booking_time_within_hours(p_host hosts, p_date TEXT, p_time TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_date DATE;
+  v_weekday TEXT;
+  v_day_json JSONB;
+  v_from TEXT;
+  v_until TEXT;
+  v_from_min INT;
+  v_until_min INT;
+  v_time_min INT;
+BEGIN
+  BEGIN
+    v_date := p_date::date;
+  EXCEPTION WHEN OTHERS THEN
+    RETURN FALSE; -- unparseable date -> cannot prove validity -> reject
+  END;
+
+  v_weekday := (ARRAY['Sun','Mon','Tue','Wed','Thu','Fri','Sat'])[EXTRACT(DOW FROM v_date)::int + 1];
+
+  IF p_host.weekly_hours IS NOT NULL THEN
+    v_day_json := p_host.weekly_hours -> v_weekday;
+    IF v_day_json IS NULL THEN
+      RETURN FALSE; -- day missing from the object => closed
+    END IF;
+
+    IF jsonb_typeof(v_day_json -> 'open') IS DISTINCT FROM 'boolean' THEN
+      RETURN FALSE; -- malformed/missing 'open' flag => fail closed
+    END IF;
+
+    IF NOT (v_day_json ->> 'open')::boolean THEN
+      RETURN FALSE; -- closed day
+    END IF;
+
+    v_from := v_day_json ->> 'from';
+    v_until := v_day_json ->> 'until';
+  ELSE
+    IF NOT COALESCE(v_weekday = ANY(p_host.available_days), FALSE) THEN
+      RETURN FALSE; -- closed day (legacy)
+    END IF;
+    v_from := p_host.available_from;
+    v_until := p_host.available_until;
+  END IF;
+
+  v_from_min := parse_hhmm_minutes(v_from);
+  v_until_min := parse_hhmm_minutes(v_until);
+  IF v_from_min IS NULL OR v_until_min IS NULL THEN
+    RETURN FALSE; -- malformed hours on an "open" day => fail closed
+  END IF;
+
+  v_time_min := parse_hhmm_minutes(p_time);
+  IF v_time_min IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  RETURN v_time_min >= v_from_min AND v_time_min <= v_until_min;
+END;
+$$;
+
+-- enforce_booking_hours() — BEFORE INSERT/UPDATE trigger on bookings.
+-- Validates the drop-off leg against drop_off_date's own weekday and the
+-- pick-up leg against pick_up_date's own weekday, independently. Raises a
+-- plain, stable exception message ('booking_outside_operating_hours') that
+-- app/(traveller)/booking.tsx maps to traveller-facing copy — see that
+-- file's bookingError handling.
+--
+-- SECURITY INVOKER (the default — no SECURITY DEFINER here): hosts already
+-- has a public "Hosts are publicly viewable" SELECT policy (USING (true)),
+-- so this trigger needs no elevated privilege to read the host row it
+-- validates against, and running as the invoking role is the more
+-- conservative choice. No RLS or GRANT changes are needed or made.
+CREATE OR REPLACE FUNCTION enforce_booking_hours()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_host hosts;
+BEGIN
+  SELECT * INTO v_host FROM hosts WHERE id = NEW.host_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'booking_host_not_found';
+  END IF;
+
+  IF NOT booking_time_within_hours(v_host, NEW.drop_off_date, NEW.drop_off_time) THEN
+    RAISE EXCEPTION 'booking_outside_operating_hours';
+  END IF;
+
+  IF NOT booking_time_within_hours(v_host, NEW.pick_up_date, NEW.pick_up_time) THEN
+    RAISE EXCEPTION 'booking_outside_operating_hours';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_enforce_booking_hours ON bookings;
+CREATE TRIGGER trg_enforce_booking_hours
+BEFORE INSERT OR UPDATE OF drop_off_date, drop_off_time, pick_up_date, pick_up_time
+ON bookings
+FOR EACH ROW
+EXECUTE FUNCTION enforce_booking_hours();
