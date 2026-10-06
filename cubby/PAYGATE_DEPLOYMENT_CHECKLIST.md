@@ -54,6 +54,9 @@ Set via `npx supabase secrets set <NAME>=<value>` or **Supabase Dashboard → Se
 | `SUPABASE_SERVICE_ROLE_KEY` | `paygate-initiate`, `paygate-notify`, `paygate-return`, `paygate-query` — used by every other server-role Edge Function in this project already. |
 | `ADMIN_SECRET` | `paygate-query`'s `x-admin-secret` auth path; indirectly `send-push`/`send-email` via `sendAwaitingHostNotifications`. Used by `booking-expiry-sweep`, `complete-booking`, admin-* already. **Must be the same value** every server-to-server caller already shares — do not create a second, payment-specific secret with this name. |
 | `RESEND_API_KEY` | `send-email`, now indirectly triggered by every PayGate confirmation (PR #72). Should already exist if host/traveller emails work today for PayFast/Peach bookings — confirm, don't assume, since this is a new, real dependency for PayGate specifically now. |
+| `PUBLIC_FUNCTIONS_URL` | `paygate-initiate` (builds `RETURN_URL`). **Added PR #76 (2026-08-04), after this checklist was first written.** Routes browser-facing URLs to the custom domain `https://api.mycubby.co.za` instead of the default `*.supabase.co` domain, which silently rewrites `text/html` Edge Function responses to `text/plain` and breaks the auto-submit/return pages. Falls back to the old default if unset — confirm it's actually set, don't assume. See Section 4 below, now updated to reflect this. |
+
+**Client-side counterpart, not a Supabase secret but required for the same fix to actually take effect:** `EXPO_PUBLIC_FUNCTIONS_URL` (read in `src/lib/supabase.ts`, baked into the app bundle at **build time**, same caveat as Section 5 below) must also point at `https://api.mycubby.co.za` for the app itself to navigate to `paygate-redirect` on the correct domain. `src/lib/supabase.ts`'s own comment notes env var injection is unreliable on Expo web specifically — confirm directly for whichever build is used for testing, don't assume it took effect.
 
 ### 2.2 PayGate credentials still pending (from Fawwaz)
 
@@ -88,11 +91,13 @@ Once credentials are issued, confirm in the PayGate developer portal (exact menu
 
 PayWeb3 has **no dashboard-configured NOTIFY_URL/RETURN_URL and no CANCEL_URL at all** (confirmed against official docs earlier in this engagement — cancellation arrives as a non-approved `TRANSACTION_STATUS` on the same return leg). Every URL PayGate is told about is built dynamically, per-request, from `SUPABASE_URL` inside `paygate-initiate`. For the current production project, that resolves to these exact literal values:
 
+**Updated 2026-10-06:** the Return and Redirect-bridge rows below originally showed the default `*.supabase.co` domain — accurate when this table was first written, but superseded by PR #76 (2026-08-04, see Section 2.1's `PUBLIC_FUNCTIONS_URL`/`EXPO_PUBLIC_FUNCTIONS_URL` entries). The literal URLs below now depend on those two variables actually being set; if either is unset, the corresponding row silently falls back to the old `*.supabase.co` form shown in Notify's row, which breaks HTML rendering for Return/Redirect specifically (Notify is unaffected either way — it only ever returns `text/plain`).
+
 | Purpose | Literal URL for this project | Built by |
 |---|---|---|
-| Notify (server-to-server webhook) | `https://gqgxahqmndkaeyuvhliv.supabase.co/functions/v1/paygate-notify` | `paygate-initiate/index.ts` line ~124, fixed for every request |
-| Return (browser redirect back) | `https://gqgxahqmndkaeyuvhliv.supabase.co/functions/v1/paygate-return?bookingId=<booking's own UUID>` | `paygate-initiate/index.ts` line ~119, `bookingId` varies per request |
-| Redirect bridge (internal — never sent to PayGate, the app navigates here itself) | `https://gqgxahqmndkaeyuvhliv.supabase.co/functions/v1/paygate-redirect?payRequestId=...&checksum=...` | Client-side, `app/(traveller)/booking.tsx`, from `paygate-initiate`'s response |
+| Notify (server-to-server webhook) | `https://gqgxahqmndkaeyuvhliv.supabase.co/functions/v1/paygate-notify` | `paygate-initiate/index.ts` line ~124, fixed for every request — always the default domain, never affected by `PUBLIC_FUNCTIONS_URL` |
+| Return (browser redirect back) | `https://api.mycubby.co.za/functions/v1/paygate-return?bookingId=<booking's own UUID>` **if `PUBLIC_FUNCTIONS_URL` is set** (else falls back to the `*.supabase.co` form) | `paygate-initiate/index.ts`, via `PUBLIC_FUNCTIONS_URL`; `bookingId` varies per request |
+| Redirect bridge (internal — never sent to PayGate, the app navigates here itself) | `https://api.mycubby.co.za/functions/v1/paygate-redirect?payRequestId=...&checksum=...` **if `EXPO_PUBLIC_FUNCTIONS_URL` is set in the app build** (else falls back to the `*.supabase.co` form) | Client-side, `app/(traveller)/booking.tsx`, via `PUBLIC_FUNCTIONS_URL` constant in `src/lib/supabase.ts`, from `paygate-initiate`'s response |
 | PayGate's own hosted initiate endpoint | `https://secure.paygate.co.za/payweb3/initiate.trans` | Fixed constant, `_shared/paygate.ts` |
 | PayGate's own hosted checkout endpoint | `https://secure.paygate.co.za/payweb3/process.trans` | Fixed constant, `_shared/paygate.ts` |
 | PayGate's own hosted query endpoint | `https://secure.paygate.co.za/payweb3/query.trans` | Fixed constant, `_shared/paygate.ts` |
