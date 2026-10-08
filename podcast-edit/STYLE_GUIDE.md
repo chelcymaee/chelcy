@@ -25,3 +25,16 @@ Taken from the reference edit (`copy_069B9C34-…` parts 3 then 2). Apply this t
 - Trim the sitting-down and standing-up at the start and end.
 - Shorten pauses to about 0.2 s. Keep laughs and reactions.
 - Audio at −14 LUFS (standard for reels), with a light high-pass, light denoise and gentle compression.
+
+## Sound effects (added in v3)
+- Effects are made in-house (`sfx/`), so there's nothing to license: whoosh, pop, impact, sparkle, sad trombone, cha-ching, suspense sting, referee whistle.
+- Each effect sits about 9–12 dB under the voices and never covers a word that matters. Use one effect per joke or hype moment. Don't put effects on every cut.
+- Pair them as follows:
+  - sticker pop-in → whoosh + pop
+  - big claim or hype line → impact, plus a short zoom-in to about 1.15×
+  - "phenomenal" or "amazing" → sparkle
+  - a fail or bad stat → sad trombone
+  - money or numbers → cha-ching
+  - "I'm scared" or tension → suspense sting
+  - sign-off → whistle
+- Zoom-ins apply to the picture only. Captions and stickers stay the same size.
