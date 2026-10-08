@@ -38,3 +38,15 @@ Taken from the reference edit (`copy_069B9C34-…` parts 3 then 2). Apply this t
   - "I'm scared" or tension → suspense sting
   - sign-off → whistle
 - Zoom-ins apply to the picture only. Captions and stickers stay the same size.
+
+## v5 additions
+- **Every pop-up has its own sound.**
+  - Players by position: QB → throw + catch, RB → footsteps + tackle, WR → swish + crowd "ooh", others → pop.
+  - Logos: Vikings → war horn, Chiefs → drums, 49ers → coin chime, Rams → deep horn, Broncos → gallop.
+  - Articles: notification pop.
+- **Article cards**: screenshots go on rounded, white-bordered cards that bounce in at the moment they're mentioned. Several headlines on the same topic stack into a pile. Where a card corrects a spoken number, keep the caption exactly as said and let the card show the real figure. A fact-check badge is fine when its number is worked out from data visible on screen.
+- **Moments**:
+  - hook banner for the first ~2 s
+  - grey-out for a fail line (with the sad trombone)
+  - red vignette + shake for fear lines
+  - VS lightning clash + thunder for head-to-heads
