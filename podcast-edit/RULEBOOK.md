@@ -124,6 +124,8 @@ Every sound is made in-house with `sfx.py` and `sfx2.py`, so there's nothing to 
 | 49ers | `coin_chime` |
 | Rams | `deep_horn` |
 | Broncos | `gallop` |
+| Seahawks | `hawk_cry` |
+| Full-screen celebration cutaway | `impact` + `crowd_cheer` |
 | Article card | `card_pop` |
 | Cartoon sticker | `whoosh` + `pop` |
 
@@ -142,6 +144,16 @@ Every sound is made in-house with `sfx.py` and `sfx2.py`, so there's nothing to 
   - [ ] Check frames from every shot: right speaker, face in frame, no sticker on a face or caption.
   - [ ] Check spectrograms of any new sound effect (no silent or broken synth). This is how the trombone bug was caught.
   - [ ] Captions start on the first word and end on the last word.
+
+## 9b. Footage that is already cut
+
+If the raw video is already vertical and cut between cameras (like `mock_pod_seahawks`):
+- Keep the camera cuts.
+- Detect them with ffmpeg's scene filter (`select='gt(scene,0.3)'`).
+- Track the face for each shot and re-crop to rule-book framing (crop 1400×2489 from 4K for close-ups, 1400×1244 for the split-screen top half).
+- `episodes/mock_pod_seahawks/build.py` is the template for this layout: hook split screen, panels, cutaway, stickers and sound cues.
+- Crop article and stat screenshots to the relevant region **before** fitting them into the panel, so the text stays readable on a phone.
+- Captions in split mode sit just above the split line (MarginV 965), never on top of the panel.
 
 ## 10. Delivery
 
