@@ -9,7 +9,9 @@ CYAN, GREEN, RED = (49, 198, 232), (43, 211, 75), (232, 49, 46)
 
 # ---------- pacing (source seconds) ----------
 START, END = 0.10, 26.40
-CUTS = [(1.55, 2.10), (3.35, 4.15), (9.35, 9.70), (17.60, 18.10)]
+CUTS = [(1.55, 2.10), (3.35, 4.15), (17.60, 18.10)]
+_q = lambda t: (round(t * 30000 / 1001) - 0.5) * 1001 / 30000
+START, END = _q(START), _q(END); CUTS = [(_q(a), _q(b)) for a, b in CUTS]
 keep = []; cur = START
 for a, b in CUTS: keep.append((cur, a)); cur = b
 keep.append((cur, END))
@@ -23,8 +25,9 @@ def E(t):  # source -> edit time
 DUR = E(END)
 
 # ---------- camera shots (source) with 4K face centre ----------
-SHOTS = [(0, 7.54, 648, 1088), (7.54, 9.08, 1384, 1700), (9.08, 15.58, 688, 1116), (15.58, 16.15, 1424, 1584),
-         (16.15, 21.09, 664, 1040), (21.09, 25.59, 1396, 1588), (25.59, 26.6, 528, 1116)]
+C = [(round(x * 30000 / 1001) - 0.5) * 1001 / 30000 for x in [0, 7.5409, 9.0757, 15.5822, 16.1495, 21.0877, 25.5922, 26.6]]   # half a frame before each camera cut's first frame
+SHOTS = [(C[0], C[1], 648, 1088), (C[1], C[2], 1384, 1700), (C[2], C[3], 688, 1116), (C[3], C[4], 1424, 1584),
+         (C[4], C[5], 664, 1040), (C[5], C[6], 1396, 1588), (C[6], C[7], 528, 1116)]
 def full_crop(cx, cy):   # 9:16 close-up, face ~1/3 width
     w, h = 1400, 2489; x = min(max(cx - w // 2, 0), 2160 - w); y = min(max(cy - int(0.45 * h), 0), 3840 - h); return w, h, x, y
 def top_crop(cx, cy):    # 9:8 for split top half
@@ -32,10 +35,20 @@ def top_crop(cx, cy):    # 9:8 for split top half
 
 # ---------- layout windows (source times) ----------
 SPLITS = [  # (t0, t1, panel name)
-    (0.10, 3.35, 'hook'), (6.20, 9.35, 'article'), (13.65, 14.85, 'trio'), (14.85, 16.15, 'offense'), (16.15, 19.25, 'defense')]
+    (0.10, 3.35, 'hook'), (6.20, 9.0657, 'article'), (13.65, 14.85, 'trio'), (14.85, 16.1395, 'offense'), (16.1395, 19.25, 'defense')]
 CUTAWAY = (19.25, 21.15, 5.6)   # source window, broll start
 ZOOMS = [(9.70, 11.05)]
 STICKERS = [('st_b2b.png', 12.05, 13.65, 540, 330), ('st_trophy.png', 24.40, 26.10, 540, 330)]
+
+# snap all edit points to the source frame grid so layout changes land on exact frames
+def q(t): return (round(t * FPS) - 0.5) / FPS
+SNAP = {9.0657: C[2], 16.1395: C[4], 21.15: C[5]}
+sn = lambda t: SNAP.get(t, q(t))
+SPLITS = [(sn(a), sn(b), n) for a, b, n in SPLITS]; CUTAWAY = (sn(CUTAWAY[0]), sn(CUTAWAY[1]), CUTAWAY[2])
+ZOOMS = [(q(a), q(b)) for a, b in ZOOMS]; STICKERS = [(f, q(a), q(b), x, y) for f, a, b, x, y in STICKERS]
+HF = 0.0
+OFF = 1 / FPS   # concat output runs one frame behind the E() timeline
+def EN(t0, t1): return f"between(t,{(t0 + OFF) if t0 > 0.01 else -1:.4f},{t1 + OFF - 0.001:.4f})"
 
 # ---------- panels (1080x960 frames) ----------
 def fit(im, W, H, cover):
@@ -51,7 +64,7 @@ def make_panel(name, src, dur, cover, crop=None, box=None, stamp=None):
     if crop: im = im.crop(crop)
     bg = None if cover else backdrop(im)
     base, s = fit(im, 1080 if cover else 1000, 960 if cover else 880, cover)
-    n = int(dur * FPS) + 2; out = f'pan_{name}'; os.makedirs(out, exist_ok=True)
+    n = int(dur * FPS) + 8; out = f'pan_{name}'; os.makedirs(out, exist_ok=True)
     st = stamp_img(*stamp) if stamp else None
     for i in range(n):
         t = i / FPS; z = 1.0 + 0.08 * t / max(dur, 0.1)          # slow zoom 100 -> 108 %
@@ -108,7 +121,7 @@ for w in ws:
     if len(g) == 3 or re.search(r'[.,?!]$', w['w']) or len(txt) > 14: groups.append(g); g = []
 if g: groups.append(g)
 def clean(s): return re.sub(r'[.,?!]', '', s).upper()
-def ts(t): t = max(t, 0); return f"{int(t // 3600)}:{int(t % 3600 // 60):02d}:{t % 60:05.2f}"
+def ts(t): t = max(t + 1 / FPS, 0); return f"{int(t // 3600)}:{int(t % 3600 // 60):02d}:{t % 60:05.2f}"
 split_e = [(E(a), E(b)) for a, b, n in SPLITS if n != 'hook']; hook_e = (E(SPLITS[0][0]), E(SPLITS[0][1]))
 hdr = """[Script Info]
 ScriptType: v4.00+
@@ -150,22 +163,22 @@ for i, (a, b, cx, cy) in enumerate(pieces):
     fc.append(f"[0:a]atrim={a:.3f}:{b:.3f},asetpts=PTS-STARTPTS[a{i}]")
 n = len(pieces)
 fc.append("".join(f"[f{i}][t{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=2:a=1[full0][top][voice0]")
-zexpr = "+".join(f"between(t,{E(a):.3f},{E(b):.3f})" for a, b in ZOOMS)
+zexpr = "+".join(EN(E(a), E(b)) for a, b in ZOOMS)
 fc.append(f"[full0]split[fz0][fz1];[fz1]crop=940:1672:70:150,scale=1080:1920:flags=lanczos[fzz];[fz0][fzz]overlay=0:0:enable='{zexpr}'[full]")
-splen = "+".join(f"between(t,{E(a):.3f},{E(b):.3f})" for a, b, _ in SPLITS)
+splen = "+".join(EN(E(a), E(b)) for a, b, _ in SPLITS)
 fc.append(f"[full][top]overlay=0:0:enable='{splen}'[v0]"); prev = 'v0'; k = 2
 for a, b, name in SPLITS:
     inputs += ['-framerate', f'{FPS}', '-i', f'pan_{name}/%04d.png']
-    fc.append(f"[{k}:v]setpts=PTS+{E(a):.3f}/TB[p{k}];[{prev}][p{k}]overlay=0:960:eof_action=pass:enable='between(t,{E(a):.3f},{E(b):.3f})'[v{k}]"); prev = f'v{k}'; k += 1
+    fc.append(f"[{k}:v]setpts=PTS+{max(E(a) + OFF - 2 / FPS, 0):.4f}/TB[p{k}];[{prev}][p{k}]overlay=0:960:eof_action=pass:enable='{EN(E(a), E(b))}'[v{k}]"); prev = f'v{k}'; k += 1
 ca, cb, cs = CUTAWAY
-fc.append(f"[1:v]trim={cs}:{cs + (E(cb) - E(ca)):.3f},setpts=PTS-STARTPTS+{E(ca):.3f}/TB,scale=1080:1920:flags=lanczos,setsar=1[br];[{prev}][br]overlay=0:0:eof_action=pass:enable='between(t,{E(ca):.3f},{E(cb):.3f})'[vb]"); prev = 'vb'
+fc.append(f"[1:v]trim={cs - 0.1}:{cs + (E(cb) - E(ca)) + 0.3:.3f},setpts=PTS-STARTPTS+{E(ca) + OFF - 0.1:.4f}/TB,scale=1080:1920:flags=lanczos,setsar=1[br];[{prev}][br]overlay=0:0:eof_action=pass:enable='{EN(E(ca), E(cb))}'[vb]"); prev = 'vb'
 # hook title + stickers with bounce
 pops = [('fx_hook.png', SPLITS[0][0], SPLITS[0][1], 540, 960)] + STICKERS
 for f_, a, b, cx, cy in pops:
     t0, t1 = E(a), E(b); D = t1 - t0
     inputs += ['-loop', '1', '-framerate', f'{FPS}', '-t', f'{D + 0.05:.2f}', '-i', f_]
     S = f"if(lt(t\\,0.18)\\,0.25+0.95*t/0.18\\,if(lt(t\\,0.30)\\,1.2-0.2*(t-0.18)/0.12\\,if(gt(t\\,{D - 0.15:.2f})\\,max(0.02\\,({D:.2f}-t)/0.15)\\,1)))"
-    fc.append(f"[{k}:v]format=rgba,scale=w='trunc(iw*{S}/2)*2':h='trunc(ih*{S}/2)*2':eval=frame,setpts=PTS+{t0:.3f}/TB[s{k}];[{prev}][s{k}]overlay=x='{cx}-w/2':y='{cy}-h/2+7*sin(2*PI*0.7*(t-{t0:.3f}))':eval=frame:enable='between(t,{t0:.3f},{t1:.3f})'[v{k}]"); prev = f'v{k}'; k += 1
+    fc.append(f"[{k}:v]format=rgba,scale=w='trunc(iw*{S}/2)*2':h='trunc(ih*{S}/2)*2':eval=frame,setpts=PTS+{(t0 + OFF) if t0 > 0.01 else 0:.4f}/TB[s{k}];[{prev}][s{k}]overlay=x='{cx}-w/2':y='{cy}-h/2+7*sin(2*PI*0.7*(t-{t0 + OFF:.4f}))':eval=frame:enable='{EN(t0, t1)}'[v{k}]"); prev = f'v{k}'; k += 1
 fc.append(f"[{prev}]subtitles=captions.ass:fontsdir={FONTS}[v]")
 # audio
 fc.append("[voice0]highpass=f=80,afftdn=nr=8:nf=-45,acompressor=threshold=-20dB:ratio=2.5:attack=10:release=200,loudnorm=I=-14:TP=-1.5:LRA=9,aresample=48000[voice]")

@@ -144,6 +144,12 @@ Every sound is made in-house with `sfx.py` and `sfx2.py`, so there's nothing to 
   - [ ] Check frames from every shot: right speaker, face in frame, no sticker on a face or caption.
   - [ ] Check spectrograms of any new sound effect (no silent or broken synth). This is how the trombone bug was caught.
   - [ ] Captions start on the first word and end on the last word.
+  - [ ] **Frame-accurate transitions:** run `tools/glitchscan.py <reel>`. It must report no `FLASH` and no `SHORT SHOT`. Then view every transition at ±2 frames.
+    - Put every edit point **halfway between frames**, at `(round(t*fps) - 0.5)/fps`, never on a frame timestamp. Otherwise a frame at a camera cut lands in the wrong shot and gets the wrong crop.
+    - Overlay `enable` windows and overlay-stream `setpts` run **+1 frame** relative to the concat timeline.
+    - Start overlay streams (panels, B-roll) 2 frames early, and give them extra tail frames so they never run out at the handover.
+    - Anything that starts at 0:00 must be on from frame 0.
+    - A layout change next to a camera cut must use the **same** boundary as the cut.
 
 ## 9b. Footage that is already cut
 
