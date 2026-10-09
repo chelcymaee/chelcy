@@ -1,0 +1,258 @@
+<title>Cubby Founding Host Proposal</title>
+<style>
+  /* Layout: single reusable proposal body; only the cover's business name and <title> change per link (via #slug hash), matching how the real 18-page deck only personalizes its cover */
+  :root {
+    --bg: #FFFFFF; --surface: #F7F5F3; --fg: #17120F; --muted: #66605B;
+    --accent: #F0523F; --accent-2: #FF8A5C; --pill-bg: #FDE6E2; --border: #EFE8E2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17120F; --surface: #221B17; --fg: #F5EEE8; --muted: #C2B4AA;
+      --accent: #FF7A5C; --accent-2: #FFB07A; --pill-bg: #3A241E; --border: #332821;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17120F; --surface: #221B17; --fg: #F5EEE8; --muted: #C2B4AA;
+    --accent: #FF7A5C; --accent-2: #FFB07A; --pill-bg: #3A241E; --border: #332821;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; }
+  h1, h2, h3 { font-weight: 800; text-wrap: balance; }
+  .script { font-family: "Playfair Display", Georgia, serif; font-style: italic; color: var(--accent); font-weight: 600; }
+
+  .hero { background: linear-gradient(135deg, var(--accent) 0%, #D9382A 55%, var(--accent-2) 100%); color: #fff; padding: 48px 20px 60px; }
+  .hero-inner { max-width: 640px; margin: 0 auto; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.4); border-radius: 999px; padding: 7px 16px; margin-bottom: 24px; }
+  .hero h1 { font-size: clamp(32px, 6vw, 44px); line-height: 1.1; margin: 0 0 14px; }
+  .hero p { font-size: 16px; line-height: 1.6; max-width: 46ch; opacity: .95; margin: 0 0 24px; }
+  .prepared { font-size: 14px; opacity: .92; display: flex; flex-direction: column; gap: 4px; border-top: 1px solid rgba(255,255,255,.3); padding-top: 16px; max-width: 320px; }
+
+  main { max-width: 640px; margin: 0 auto; padding: 0 20px; }
+  section { padding: 48px 0; border-bottom: 1px solid var(--border); }
+  section:last-of-type { border-bottom: none; }
+  .pill-light { display: inline-block; font-size: 12px; font-weight: 700; color: var(--accent); background: var(--pill-bg); border-radius: 999px; padding: 6px 14px; margin-bottom: 14px; }
+  h2 { font-size: 25px; margin: 0 0 14px; }
+  p { line-height: 1.65; margin: 0 0 14px; max-width: 64ch; color: var(--muted); }
+  p.lead { font-size: 16px; }
+
+  .founder { display: flex; gap: 24px; align-items: flex-start; }
+  .founder img { width: 130px; height: auto; border-radius: 12px; flex: 0 0 auto; object-fit: cover; }
+  @media (max-width: 480px) { .founder { flex-direction: column; } .founder img { width: 100%; max-width: 200px; } }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border-radius: 14px; padding: 20px; }
+  .card .icon { font-size: 22px; margin-bottom: 10px; display: block; }
+  .card h3 { font-size: 15px; font-weight: 700; margin: 0 0 6px; }
+  .card p { font-size: 13.5px; margin: 0; }
+
+  .steps { display: flex; flex-direction: column; gap: 0; margin-top: 8px; }
+  .step { display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .step:last-child { border-bottom: none; }
+  .step-num { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .step-body h3 { font-size: 15px; margin: 0 0 4px; font-weight: 700; }
+  .step-body p { font-size: 14px; margin: 0; }
+
+  .earnings { background: var(--surface); border-radius: 16px; padding: 22px; margin-top: 18px; }
+  .earnings-row { display: flex; justify-content: space-between; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .earnings-row:last-child { border-bottom: none; }
+  .earnings-row .val { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .payout { background: var(--accent); color: #fff; border-radius: 12px; padding: 16px 18px; margin-top: 14px; display: flex; justify-content: space-between; align-items: center; }
+  .payout .label { font-size: 13px; opacity: .9; }
+  .payout .val { font-size: 22px; font-weight: 800; }
+  .note { font-size: 13px; margin-top: 14px; }
+
+  .faq-item { padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .faq-item:last-child { border-bottom: none; }
+  .faq-item h3 { font-size: 15px; margin: 0 0 6px; font-weight: 700; color: var(--fg); }
+  .faq-item p { font-size: 14px; margin: 0; }
+  .tbc { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; color: var(--accent); border: 1px solid var(--accent); border-radius: 5px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
+
+  .cta-section { background: linear-gradient(135deg, var(--accent) 0%, #D9382A 55%, var(--accent-2) 100%); color: #fff; padding: 48px 20px 56px; }
+  .cta-inner { max-width: 640px; margin: 0 auto; }
+  .cta-section h2 { color: #fff; }
+  .cta-section p { color: rgba(255,255,255,.92); }
+  .contact-card { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.3); border-radius: 14px; padding: 18px 20px; margin-top: 20px; display: flex; flex-direction: column; gap: 7px; font-size: 14px; }
+
+  .signoff { max-width: 640px; margin: 0 auto; padding: 36px 20px 56px; font-size: 14px; color: var(--muted); }
+  .signoff .script { font-size: 20px; display: block; margin-bottom: 2px; }
+
+  .notfound { max-width: 480px; margin: 80px auto; padding: 0 20px; text-align: center; }
+  .notfound h2 { margin-bottom: 10px; }
+  [hidden] { display: none !important; }
+</style>
+
+<div id="app">
+
+  <div id="proposal-view">
+    <div class="hero">
+      <div class="hero-inner">
+        <span class="pill">🧳 Founding Hosts — Cape Town</span>
+        <h1>Turn Your Space<br>Into Income.</h1>
+        <p>An invitation to become one of Cape Town's Founding Cubby Hosts — before we open this up to anyone else.</p>
+        <div class="prepared">
+          <span>Prepared for <strong id="business-name">Business name</strong></span>
+          <span>Prepared by Cubby, Cape Town · October 2026 · Private Beta</span>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <section>
+        <span class="pill-light">👋 Welcome</span>
+        <h2>Thank you for considering Cubby.</h2>
+        <p class="lead">You're reading this because a conversation started somewhere about turning space you already have into something more. We're not going to spend this page trying to convince you — Cubby is still young, in Private Beta, building carefully in Cape Town. Where something isn't finished yet, we'll say so. Where a number matters, we'll show our working.</p>
+      </section>
+
+      <section>
+        <span class="pill-light">👋 From the founder</span>
+        <h2>A Note From Our Founder</h2>
+        <div class="founder">
+          <img src="data:image/jpeg;base64,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" alt="Chelcy, founder of Cubby">
+          <div>
+            <p>I built Cubby because I'm a traveller too. After countless trips, I kept running into the same problem: checking out hours before my flight and having to drag my luggage around for the rest of the day.</p>
+            <p>That's what inspired Cubby — a simple, trusted way for travellers to enjoy every last hour of their trip, while giving local businesses the chance to earn extra income from secure, unused space they already have.</p>
+            <p><span class="script">Chelcy</span><br><strong style="color:var(--fg); font-size:13px;">Founder, Cubby</strong></p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <span class="pill-light">💰 For hosts</span>
+        <h2>Turn unused space into monthly income.</h2>
+        <p>Join Cape Town's founding network of trusted luggage storage hosts — the first group of local businesses helping travellers store their bags safely, before Cubby opens more widely.</p>
+        <div class="grid">
+          <div class="card"><span class="icon">🏷️</span><h3>Extra income</h3><p>A spare room, storage area, or back office becomes a small, steady revenue line, with no change to what you already do.</p></div>
+          <div class="card"><span class="icon">🚶</span><h3>More people through your door</h3><p>Drop-offs and collections bring in real foot traffic alongside your existing guests.</p></div>
+          <div class="card"><span class="icon">🧩</span><h3>Fits around what you do</h3><p>No new premises, no new staff — Cubby works alongside your existing operation.</p></div>
+          <div class="card"><span class="icon">🌍</span><h3>A proven model</h3><p>City bag-storage networks already run in London, Barcelona and Tokyo. Cape Town doesn't have a trusted local one yet.</p></div>
+        </div>
+      </section>
+
+      <section>
+        <span class="pill-light">⚙️ How it works</span>
+        <h2>What a booking looks like, from your side.</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><div class="step-body"><h3>Traveller finds you</h3><p>Your listing appears to nearby travellers searching Cubby, with your hours, pricing and photos.</p></div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-body"><h3>Booking request comes in</h3><p>You see the date, time window and number of bags in your Host Dashboard.</p></div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-body"><h3>Bags dropped off</h3><p>The traveller shows their unique PIN. You check it, store the bags, mark the booking active.</p></div></div>
+          <div class="step"><div class="step-num">4</div><div class="step-body"><h3>Bags collected</h3><p>Traveller returns, shows the same PIN, you hand the bags back and mark it complete.</p></div></div>
+        </div>
+      </section>
+
+      <section>
+        <span class="pill-light">💰 What you'll earn</span>
+        <h2>A worked example, not a marketing number.</h2>
+        <div class="earnings">
+          <div class="earnings-row"><span>Your listed rate</span><span class="val">R150 / bag / day</span></div>
+          <div class="earnings-row"><span>Bags stored, 30 days</span><span class="val">5 / day</span></div>
+          <div class="earnings-row"><span>Gross booking value</span><span class="val">R22,500</span></div>
+          <div class="earnings-row"><span>+ traveller's 10% booking fee</span><span class="val">R2,250</span></div>
+          <div class="earnings-row"><span>Total booking value</span><span class="val">R24,750</span></div>
+          <div class="payout"><span class="label">You receive (70% split)</span><span class="val">R17,325</span></div>
+        </div>
+        <p class="note">Example only, at 5 bags/day every day of the month. Your typical rate range is R100–R250 per bag per day. No setup cost, no lock-in — listing is free and you can pause or leave at any time.</p>
+      </section>
+
+      <section>
+        <span class="pill-light">🪪 Getting started</span>
+        <h2>From application to your first payout.</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><div class="step-body"><h3>Apply</h3><p>You, or the Cubby team on your behalf, submit your details.</p></div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-body"><h3>Verification</h3><p>Upload a valid ID and a selfie; the Cubby team reviews and approves.</p></div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-body"><h3>Go live</h3><p>The Cubby team creates and activates your listing together with you.</p></div></div>
+          <div class="step"><div class="step-num">4</div><div class="step-body"><h3>Earn</h3><p>Requests arrive in your dashboard — you decide what to accept, and get paid 70% by EFT after each completed booking.</p></div></div>
+        </div>
+      </section>
+
+      <section>
+        <span class="pill-light">🛡️ Security &amp; trust</span>
+        <h2>What's actually in place.</h2>
+        <div class="grid">
+          <div class="card"><span class="icon">🪪</span><h3>ID verification</h3><p>Every host and traveller is reviewed before approval.</p></div>
+          <div class="card"><span class="icon">🔢</span><h3>PIN-based handover</h3><p>Bags are never handed over on trust alone.</p></div>
+          <div class="card"><span class="icon">💳</span><h3>No card details stored</h3><p>All payments run through Cubby's payment provider.</p></div>
+          <div class="card"><span class="icon">🛠️</span><h3>Admin-reviewed listings</h3><p>Every listing is reviewed and activated by the Cubby team.</p></div>
+        </div>
+        <p class="note">Insurance &amp; bag coverage <span class="tbc">TBC</span> — not yet confirmed before public launch. We'll explain exactly what's covered, in writing, before it's announced to hosts or travellers.</p>
+      </section>
+
+      <section>
+        <span class="pill-light">❓ Questions</span>
+        <h2>Frequently asked.</h2>
+        <div class="faq-item"><h3>Do I have to accept every booking request?</h3><p>No — you review and choose to accept or decline each one from your Host Dashboard.</p></div>
+        <div class="faq-item"><h3>How long can luggage stay with me?</h3><p>Bookings are same-day — a set drop-off and pick-up window, not multi-day storage.</p></div>
+        <div class="faq-item"><h3>Is there a contract or minimum commitment?</h3><p>No — listing is free, with no lock-in. Pause or leave at any time.</p></div>
+        <div class="faq-item"><h3>How quickly do I get paid?</h3><p>70% of the total booking value once complete, paid manually by EFT. Exact turnaround <span class="tbc">TBC</span> before public launch.</p></div>
+        <div class="faq-item"><h3>What if a bag is lost or damaged in my care?</h3><p>No confirmed insurance or liability process exists yet <span class="tbc">TBC</span> — this will be explained clearly before public launch.</p></div>
+      </section>
+
+      <section style="border-bottom:none;">
+        <span class="pill-light">🙋 Who can become a host</span>
+        <h2>If you have secure space, there's a good chance you qualify.</h2>
+        <p>What you'll need: a secure, lockable space to store bags for the day; valid ID for verification; South African bank account details for payouts; and consistent availability during the hours you set.</p>
+        <p>Onboarding is currently team-assisted rather than fully self-serve — after your application is approved, the Cubby team sets up your listing together with you.</p>
+      </section>
+    </main>
+
+    <div class="cta-section">
+      <div class="cta-inner">
+        <span class="pill">🚀 Join the founding network</span>
+        <h2>Join Cape Town's<br>founding network.</h2>
+        <p>We're carefully selecting our first group of trusted partners before public launch. If you'd like to be considered, just reply to the email this came with — I'd love to hear your thoughts.</p>
+        <div class="contact-card">
+          <span>📧 hello@cubbyapp.co.za</span>
+          <span>📱 WhatsApp / Phone: +27 77 460 9484</span>
+          <span>📷 Instagram: @mycubbyapp</span>
+          <span>📍 Cape Town, South Africa</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="signoff">
+      <span class="script">Chelcy</span>
+      Founder, Cubby — Cape Town, South Africa
+    </div>
+  </div>
+
+  <div id="notfound-view" class="notfound" hidden>
+    <h2>Proposal link not recognised</h2>
+    <p>This link doesn't match a business we have on file. Please check the link you were sent, or reply to the email it came with.</p>
+  </div>
+
+</div>
+
+<script>
+  // Lookup of slug -> business name. Add one entry per business contacted; nothing else needs to change.
+  var BUSINESSES = {
+    "the-pottery-camps-bay": "The Pottery Camps Bay",
+    "tiger-s-milk-camps-bay": "Tiger's Milk Camps Bay",
+    "dizzys-bar": "Dizzys Bar",
+    "the-marly-boutique-hotel": "The Marly Boutique Hotel",
+    "the-bay-hotel": "The Bay Hotel",
+    "south-beach-camps-bay": "South Beach Camps Bay",
+    "the-onyx-apartment-hotel": "The Onyx Apartment Hotel"
+  };
+
+  function route() {
+    var slug = (location.hash || "").replace(/^#/, "");
+    var name = BUSINESSES[slug];
+    var proposalView = document.getElementById("proposal-view");
+    var notfoundView = document.getElementById("notfound-view");
+    if (name) {
+      document.getElementById("business-name").textContent = name;
+      document.title = name + " — Founding Host Proposal";
+      proposalView.hidden = false;
+      notfoundView.hidden = true;
+    } else {
+      proposalView.hidden = true;
+      notfoundView.hidden = false;
+      document.title = "Cubby Founding Host Proposal";
+    }
+  }
+
+  window.addEventListener("hashchange", route);
+  route();
+</script>
