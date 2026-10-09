@@ -37,6 +37,9 @@ ARTICLES / STATS TO SCREENSHOT (one per claim worth backing up or correcting)
   ...
 CARDS / PRODUCTS (exact card: player, year, set, parallel, serial #)
   1. ...
+SOLD LISTINGS / PRICE COMPS (screenshot showing price, bids, date) for every sale mentioned
+HOOK HERO IMAGE: one strong image for the opening title (e.g. the two players or the card)
+B-ROLL / REACTION CLIPS (optional, clips you have rights to): game footage, reaction moments
 CAPTIONS I'M UNSURE OF (please tell me the exact words)
   1. <time>: "<model A>" vs "<model B>"
 ```
@@ -146,6 +149,28 @@ Every sound is made in-house with `sfx.py` and `sfx2.py`, so there's nothing to 
 - Send the preview (CRF 25, under 30 MB) in chat. Then list what was added with reel timestamps, plus anything still unsure.
 
 ---
+
+## 11. Inspiration layer (We The Hobby reels, `assets/inspo/`)
+
+These rules sit **on top of** sections 2–10. Captions stay exactly as in section 4: Barlow ExtraBold, ALL CAPS, the spoken word in `#31C6E8`. Do **not** copy their yellow italic captions.
+
+- **Split-screen B-roll mode:** use it for anything the viewer must *read or inspect*: articles, sold listings, stat tables, and card close-ups.
+  - Speaker crop in the **top half** (1080×960, face centred about 55% down that half).
+  - Asset fills the **bottom half** (1080×960, cover-fit on a dark or blurred backdrop).
+  - **Captions move to the split line** (about 50% down the frame) while split mode is on.
+  - Hold for the length of the point, usually 2–5 s.
+  - Quick name or logo mentions still use the bounce-in stickers (section 5).
+- **Hook title card:** runs for the first 3–5 s.
+  - White rounded box, two lines, centred at about 45% height.
+  - Key words coloured: **cyan `#31C6E8`** for the main term, **green `#2BD34B`** for money or gains, **red `#E8312E`** for losses or shock. One relevant emoji is allowed.
+  - A **hero image** sits directly below the box, as a thumbnail-style composite (for example, the two players side by side, or the card on a fire background).
+- **Annotations on cards and listings:**
+  - A red (`#E8312E`) circle, box or arrow draws on over about 0.3 s around the key detail (sale price, date, card label, serial number).
+  - **Stamped numbers** (a big condensed red or green figure with a black outline, for example "-$39K" or "+58") slam in with an impact sound.
+- **Slow zoom on stills:** every still image in split or full-screen mode slowly zooms in, 100% → 108% over its hold.
+- **Scrolling screenshots:** long lists (price comps, game logs) scroll upward slowly in the bottom half.
+- **Full-screen cutaways:** 1–2 s of user-supplied game footage or a reaction clip to land a joke or a hype line. Captions stay on.
+- **Pace:** a new visual (host cut, B-roll, card, annotation) every 1–3 s. No dead stretches over about 4 s with nothing changing.
 
 ## Tool reference (`podcast-edit/tools/`)
 
