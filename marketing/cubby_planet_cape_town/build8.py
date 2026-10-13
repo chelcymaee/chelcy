@@ -50,7 +50,7 @@ COVER = {'IMG_0318.MOV'}
 OWN = {'IMG_9926.MOV', 'IMG_9927.2.MOV', 'IMG_9928.MOV', 'IMG_9930.MOV', 'IMG_9934.MOV', 'IMG_9941.MOV', 'IMG_9943.MOV', 'RED', 'IMG_0691.MOV', '85d9bf5f-65da-4e71-b9ca-e27790bae003.MP4'}
 from concurrent.futures import ThreadPoolExecutor
 def anon(i):
-    p = f'seg/{i:02d}.mp4'; subprocess.run(['python3', 'emojify2.py', p, p + '.emo.mp4', '0', '2'], check=True); os.replace(p + '.emo.mp4', p)
+    p = f'seg/{i:02d}.mp4'; subprocess.run(['python3', 'emoji2p.py', p, p + '.emo.mp4'], check=True); os.replace(p + '.emo.mp4', p)
 with ThreadPoolExecutor(3) as ex: list(ex.map(anon, [i for i, sg in enumerate(SEG) if sg[2] in COVER]))
 open('seg/list.txt', 'w').write("".join(f"file '{os.path.basename(p)}'\n" for p in lst))
 subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'seg/list.txt', '-c', 'copy', 'base.mp4'], check=True)

@@ -9,6 +9,6 @@ A nature-documentary parody (81 s, 1080×1920) about the rare Cape Town "Suitcas
 - **Logo:** `cubby_logo_transparent.png`, redrawn as a clean transparent PNG from the Instagram avatar.
 - **Claims** follow the site's own terms. It says "trusted local spot" and shows the app's own "ID-verified host" screens. It makes no insurance claim.
 - **Rebuild:** `python build8.py` (word-anchored timeline; reads `vo11/` = `voiceover/elevenlabs/`) (needs the source clips from the `cubby-broll-1` draft release in `src/`).
-- **Privacy:** the two walkers in the "rare species" clip (IMG_0318, used in two shots) each get a tracked cartoon emoji over their head: sunglasses on the left, wink on the right (`emojify2.py ... 0 2`: YOLOX-s person detection, the two biggest people per frame, emoji art in `graphics/emoji/`). Every other clip is left as shot.
+- **Privacy:** the two walkers in the "rare species" clip (IMG_0318, used in two shots) each get a cartoon emoji over their head: sunglasses on the left, wink on the right (`emoji2p.py`: YOLOX-s person boxes on every frame, the two tallest whole-body boxes split left/right, outlier rejection and smoothing so the emoji glides with the head). Every other clip is left as shot. (`emojify2.py` is the older every-person version, not used.)
 - **Script** is gender-neutral ("our specimen", "they"), because the clips feature different people.
 - **Captions** use the script's exact words, timed to the voice by aligning against speech-to-text, so a misheard word never reaches the screen.
