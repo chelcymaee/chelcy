@@ -45,12 +45,13 @@ for i, (a, b, f, s, mode) in enumerate(SEG):
             vf += f",trim=end_frame={play},tpad=stop_mode=clone:stop_duration=5,zoompan=z='if(lt(on,{play}),1,1+0.18*min(1,(on-{play})/{n - play}))':x='iw/2-iw/zoom/2':y='ih*0.45-ih/zoom*0.45':d=1:s={W}x{H}:fps={FPS}"
         cmd = ['ffmpeg', '-v', 'error', '-y', '-ss', str(s), '-i', SRC + f, '-vf', vf, '-frames:v', str(n)]
     subprocess.run(cmd + ['-an', '-c:v', 'libx264', '-crf', '16', '-preset', 'fast', '-pix_fmt', 'yuv420p', '-r', str(FPS), out], check=True)
-# hide strangers: emoji over every person's head (the user's own Bo-Kaap clips and empty clips are left alone)
+# hide the two walkers in the 'rare species' clip (used twice) with an emoji each; every other clip is left as shot
+COVER = {'IMG_0318.MOV'}
 OWN = {'IMG_9926.MOV', 'IMG_9927.2.MOV', 'IMG_9928.MOV', 'IMG_9930.MOV', 'IMG_9934.MOV', 'IMG_9941.MOV', 'IMG_9943.MOV', 'RED', 'IMG_0691.MOV', '85d9bf5f-65da-4e71-b9ca-e27790bae003.MP4'}
 from concurrent.futures import ThreadPoolExecutor
 def anon(i):
-    p = f'seg/{i:02d}.mp4'; subprocess.run(['python3', 'emojify2.py', p, p + '.emo.mp4', str(i)], check=True); os.replace(p + '.emo.mp4', p)
-with ThreadPoolExecutor(3) as ex: list(ex.map(anon, [i for i, sg in enumerate(SEG) if sg[2] not in OWN]))
+    p = f'seg/{i:02d}.mp4'; subprocess.run(['python3', 'emojify2.py', p, p + '.emo.mp4', '0', '2'], check=True); os.replace(p + '.emo.mp4', p)
+with ThreadPoolExecutor(3) as ex: list(ex.map(anon, [i for i, sg in enumerate(SEG) if sg[2] in COVER]))
 open('seg/list.txt', 'w').write("".join(f"file '{os.path.basename(p)}'\n" for p in lst))
 subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'seg/list.txt', '-c', 'copy', 'base.mp4'], check=True)
 

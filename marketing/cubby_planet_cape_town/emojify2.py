@@ -1,9 +1,9 @@
 # Cover every person's head in a 1080x1920 clip with a cartoon emoji that follows them.
 # Person boxes from YOLOX-s (two overlapping square tiles + full frame), tracked by IoU.
-# usage: emojify2.py in.mp4 out.mp4 [seed]
+# usage: emojify2.py in.mp4 out.mp4 [seed] [max people: only the N biggest people per frame, left-to-right emoji]
 import sys, subprocess, numpy as np, cv2, onnxruntime as ort
 from PIL import Image
-src, dst = sys.argv[1], sys.argv[2]; seed = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+src, dst = sys.argv[1], sys.argv[2]; seed = int(sys.argv[3]) if len(sys.argv) > 3 else 0; MAXP = int(sys.argv[4]) if len(sys.argv) > 4 else 0
 W, H, FPS = 1080, 1920, 30
 EMO = [Image.open(f'g/emoji/e{i}.png').convert('RGBA') for i in range(1, 5)]
 sess = ort.InferenceSession('../models/yolox_s.onnx', providers=['CPUExecutionProvider'])
@@ -65,14 +65,23 @@ for tr in tracks:
     for f in range(lo, hi + 1): per[f].append((tr['id'], *[np.interp(f, p[:, 0], p[:, k]) for k in range(1, 5)]))
 out = subprocess.Popen(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
                         '-c:v', 'libx264', '-crf', '16', '-preset', 'fast', '-pix_fmt', 'yuv420p', dst], stdin=subprocess.PIPE)
-cache = {}
+cache = {}; prev = []
 for f in range(N):
     im = Image.fromarray(frames[f])
     placed = []
     for tid, x1, y1, x2, y2 in sorted(per[f], key=lambda p: -(p[4] - p[2])):
         cx, cy, size = head((x1, y1, x2, y2)); size = int(size)
-        if any(np.hypot(cx - px, cy - py) < 0.75 * max(size, ps) for px, py, ps in placed): continue   # same person, track hand-over
-        placed.append((cx, cy, size))
+        if any(np.hypot(cx - px, cy - py) < 0.75 * max(size, ps) for px, py, ps, _ in placed): continue   # same person, track hand-over
+        placed.append((cx, cy, size, tid))
+    if MAXP:   # keep only the main subjects; emoji stays with the person by left/right position
+        placed = sorted(sorted(placed, key=lambda p: -p[2])[:MAXP], key=lambda p: p[0])
+        for slot, (cx, cy, size, _) in enumerate(placed):
+            if len(placed) < MAXP and prev: slot = min(range(len(prev)), key=lambda k: abs(prev[k][0] - cx))
+            e = EMO[(slot + seed) % 4].resize((size, size), Image.LANCZOS)
+            im.paste(e, (int(cx - size / 2), int(cy - size / 2)), e)
+        if len(placed) == MAXP: prev = placed
+        out.stdin.write(im.tobytes()); continue
+    for cx, cy, size, tid in placed:
         key = (tid, size)
         if key not in cache: cache[key] = EMO[(tid + seed) % 4].resize((size, size), Image.LANCZOS)
         im.paste(cache[key], (int(cx - size / 2), int(cy - size / 2)), cache[key])
