@@ -6,7 +6,7 @@ FPS = 30; W, H = 1080, 1920
 F9 = '../fonts/barlow-condensed-latin-900-normal.ttf'
 SRC = 'src/'
 REC = SRC + 'ScreenRecording_10-13-2026.1-42-58.PM_1.MP4'
-vo = json.load(open('vo2/vo_timing.json')); TOTAL = round(vo['total'] + 0.5, 2)
+vo = json.load(open('vo4/vo_timing.json')); TOTAL = round(vo['total'] + 0.5, 2)
 def T(line, word, n=1):
     c = 0
     for w in vo['words']:
@@ -24,7 +24,7 @@ B = [round(x * 30) / 30 for x in B]
 SEG = [(B[0], B[1], 'IMG_0314.MOV', 0.5, ''), (B[1], B[2], 'IMG_0317.MOV', 0.0, ''), (B[2], B[3], 'IMG_0315.MOV', 0.0, ''),
        (B[3], B[4], 'IMG_0316.MOV', 0.0, ''), (B[4], B[5], 'IMG_0318.MOV', 0.2, 'freeze%.3f' % T('l02', 'SUITCASE')),
        (B[5], B[6], '127a72f5-1212-4d84-845b-1beb71301bfe.MP4', 0.0, ''), (B[6], B[7], '5a6e859e-d744-4540-aa6a-58cb623466fc.MP4', 0.0, ''),
-       (B[7], B[8], 'IMG_0318.MOV', 3.2, ''), (B[8], B[9], 'IMG_9877.MOV', 0.5, ''),
+       (B[7], round((B[7] + 2.1) * 30) / 30, 'IMG_0691.MOV', 0.0, ''), (round((B[7] + 2.1) * 30) / 30, B[8], 'IMG_0318.MOV', 4.2, ''), (B[8], B[9], 'IMG_9877.MOV', 0.5, ''),
        (B[9], B[10], 'IMG_9273.MOV', 5.0, ''), (B[10], B[11], 'IMG_9274.MOV', 4.0, ''),
        (B[11], B[12], 'IMG_9926.MOV', 0.0, ''), (B[12], B[13], 'IMG_9927.2.MOV', 0.5, ''), (B[13], B[14], 'IMG_9928.MOV', 0.0, ''),
        (B[14], B[15], 'IMG_9930.MOV', 0.4, ''), (B[15], B[16], 'IMG_9934.MOV', 0.0, ''), (B[16], B[17], '85d9bf5f-65da-4e71-b9ca-e27790bae003.MP4', 0.5, ''),
@@ -39,6 +39,7 @@ for i, (a, b, f, s, mode) in enumerate(SEG):
         cmd = ['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i', f'color=c=0xF5333F:s={W}x{H}:r={FPS}', '-frames:v', str(n)]
     else:
         vf = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS},setsar=1"
+        if not mode: vf += ",tpad=stop_mode=clone:stop_duration=30"   # never run short: hold last frame if a line outlasts the clip
         if mode.startswith('freeze'):
             tf = float(mode[6:]) - a; play = round(tf * FPS)
             vf += f",trim=end_frame={play},tpad=stop_mode=clone:stop_duration=5,zoompan=z='if(lt(on,{play}),1,1+0.18*min(1,(on-{play})/{n - play}))':x='iw/2-iw/zoom/2':y='ih*0.45-ih/zoom*0.45':d=1:s={W}x{H}:fps={FPS}"
@@ -166,7 +167,7 @@ open('captions.ass', 'w').write(hdr + "\n".join(ev) + "\n"); open('captions.srt'
 fc.append(f"[{prev}]subtitles=captions.ass:fontsdir=../fonts[v]")
 
 # ---------------- audio: VO + music bed (ducked) + SFX ----------------
-inputs += ['-i', 'vo2/vo_full.wav', '-i', '../sfx/doc_strings.wav']; vi, mi = k, k + 1; k += 2
+inputs += ['-i', 'vo4/vo_full.wav', '-i', '../sfx/doc_strings.wav']; vi, mi = k, k + 1; k += 2
 fc.append(f"[{vi}:a]aresample=48000,aformat=channel_layouts=stereo,highpass=f=70,acompressor=threshold=-18dB:ratio=2:attack=10:release=150,loudnorm=I=-15:TP=-2:LRA=7,aresample=48000,asplit[vo1][vo2]")
 fc.append(f"[{mi}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=-20dB,atrim=0:{TOTAL}[bed0];[bed0][vo2]sidechaincompress=threshold=0.03:ratio=6:attack=20:release=400[bed]")
 CUES = [('card_pop', 0.35, -10), ('card_pop', T('l02', 'FORD'), -10), ('card_pop', T('l02', 'STANDARD'), -10),
@@ -185,5 +186,5 @@ for j, (c, t0, gdb) in enumerate(CUES):
     fc.append(f"[{k + j}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume={gdb}dB,adelay={int(t0 * 1000)}|{int(t0 * 1000)}[x{j}]")
 fc.append("[vo1][bed]" + "".join(f"[x{j}]" for j in range(len(CUES))) + f"amix=inputs={len(CUES) + 2}:duration=longest:normalize=0,alimiter=limit=0.7:level=false,apad,atrim=0:{TOTAL}[a]")
 subprocess.run(['ffmpeg', '-v', 'error', '-y'] + inputs + ['-filter_complex', ";".join(fc), '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-crf', '20', '-preset', 'medium',
-                '-pix_fmt', 'yuv420p', '-r', str(FPS), '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-t', str(TOTAL), 'cubby_reel_v2.mp4'], check=True)
+                '-pix_fmt', 'yuv420p', '-r', str(FPS), '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-t', str(TOTAL), 'cubby_reel_v4.mp4'], check=True)
 print('done', TOTAL)
