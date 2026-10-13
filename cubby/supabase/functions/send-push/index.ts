@@ -90,6 +90,11 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Declared here (not inside the block below) so the notificationId it
+    // carries is still reachable at the claim call sites, after delivery
+    // has been attempted.
+    let authResult: Awaited<ReturnType<typeof authorizeClientPush>> | undefined;
+
     // admin_secret and admin_session callers are already fully trusted
     // server/admin paths — unchanged, no extra check. Only a plain
     // signed-in-user caller (client_jwt) needs the relationship check and
@@ -170,21 +175,9 @@ Deno.serve(async (req) => {
         return false;
       };
 
-      const claim = (client: SupabaseClient) => async (notificationId: string): Promise<boolean> => {
-        // Atomic single-use claim — same "claim before act" pattern as the
-        // Phase 1 event ledger's ON CONFLICT DO NOTHING RETURNING.
-        const { data } = await client
-          .from('notifications')
-          .update({ pushed_at: new Date().toISOString() })
-          .eq('id', notificationId)
-          .is('pushed_at', null)
-          .select('id');
-        return !!data && data.length > 0;
-      };
-
-      const authResult = await authorizeClientPush(
+      authResult = await authorizeClientPush(
         { callerId: signedInUserId!, userId: user_id, title, body },
-        { lookup, checkRelationship: checkRelationship(supabase), claim: claim(supabase) },
+        { lookup, checkRelationship: checkRelationship(supabase) },
         new Date().toISOString(),
       );
       if (!authResult.authorized) {
@@ -195,12 +188,32 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Claims the matched notification so it can never authorize another
+    // push. Deliberately NOT called until after delivery is confirmed (see
+    // the three call sites below) — claiming earlier would permanently
+    // lose the notification the moment Expo's API has a bad day, since the
+    // claim and the actual push are two independent operations with no
+    // shared transaction. Only relevant for authMethod === 'client_jwt';
+    // admin_secret/admin_session callers never produce a notificationId.
+    const claimPushedNotification = async (notificationId: string): Promise<void> => {
+      await supabase
+        .from('notifications')
+        .update({ pushed_at: new Date().toISOString() })
+        .eq('id', notificationId)
+        .is('pushed_at', null);
+    };
+
     const { data: tokens } = await supabase
       .from('push_tokens')
       .select('token')
       .eq('user_id', user_id);
 
     if (!tokens || tokens.length === 0) {
+      // Nothing to deliver to — there's no device to fail to reach, so
+      // this is a legitimate terminal state, not a lost delivery. Safe to
+      // claim: the same (sent: 0) outcome was already the pre-existing
+      // behavior for this branch before any of this round's changes.
+      if (authResult?.notificationId) await claimPushedNotification(authResult.notificationId);
       return new Response(JSON.stringify({ sent: 0 }), {
         status: 200, headers: { ...cors, 'Content-Type': 'application/json' },
       });
@@ -214,17 +227,40 @@ Deno.serve(async (req) => {
       sound: 'default',
     }));
 
-    const pushRes = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Accept-Encoding': 'gzip, deflate',
-      },
-      body: JSON.stringify(messages),
-    });
+    let pushRes: Response;
+    try {
+      pushRes = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Accept-Encoding': 'gzip, deflate',
+        },
+        body: JSON.stringify(messages),
+      });
+    } catch (fetchError) {
+      // Network failure reaching Expo — definitely not delivered. Do NOT
+      // claim; this notification must remain retriable.
+      console.error(`send-push: Expo request failed for user ${user_id}:`, fetchError);
+      return new Response(JSON.stringify({ error: 'Push delivery failed, not claimed — safe to retry' }), {
+        status: 502, headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
 
     console.log(`send-push: sent ${messages.length} push(es) to user ${user_id}, expo status ${pushRes.status}`);
+
+    if (!pushRes.ok) {
+      // Expo itself rejected the request (e.g. malformed payload, outage).
+      // Same reasoning as the network-failure case above: not delivered,
+      // must not claim, must stay retriable.
+      return new Response(JSON.stringify({ error: 'Push delivery failed, not claimed — safe to retry' }), {
+        status: 502, headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Only now — after Expo has confirmed it accepted the request — is it
+    // safe to make this notification unavailable for future pushes.
+    if (authResult?.notificationId) await claimPushedNotification(authResult.notificationId);
 
     return new Response(JSON.stringify({ sent: messages.length }), {
       status: 200, headers: { ...cors, 'Content-Type': 'application/json' },

@@ -31,13 +31,27 @@
 //      deliberately NOT a new authorization model — it's the same one,
 //      applied a second time at the push layer for defense in depth.
 //   2. Single-use claim — the matched notification row can authorize at
-//      most one push, ever, via an atomic claim (same ON CONFLICT-style
-//      pattern as the Phase 1 event ledger: claim before act, never after).
+//      most one push, ever.
 //
-// Order of operations matters for correctness: look up an unclaimed match,
-// check the relationship, and ONLY THEN claim it. An unrelated caller's
-// rejected attempt must never consume the claim — otherwise it would
-// permanently block the legitimate push that hasn't happened yet.
+// Unlike the Phase 1 event ledger (where "claim" and "act" are both DB
+// writes inside one transaction, so a ledger claim and its row never
+// diverge), this module's "act" is an external network call to Expo's push
+// API that can fail independently of anything in this database. Claiming
+// BEFORE that call — the Phase 1 "claim before act" pattern — would
+// permanently and silently lose the notification the moment Expo's API has
+// a bad day: the row stays claimed forever with no delivery ever having
+// happened, and no caller can ever retry it.
+//
+// So this module deliberately does NOT claim. authorizeClientPush only
+// looks up an unclaimed match and checks the relationship; it hands the
+// caller (index.ts) the matched notification's id and leaves the actual
+// single-use claim (via the exported ClaimNotificationPush type) to be
+// called ONLY after Expo has confirmed the push was actually sent. That
+// trades a narrow window — two truly concurrent legitimate calls for the
+// very same notification could each get as far as a real Expo send before
+// either claims — for eliminating permanent data loss on delivery failure.
+// A rare possible duplicate push is an acceptable cost; silently dropping a
+// real notification forever is not.
 //
 // This preserves the existing request shape (user_id/title/body) that
 // installed iOS clients already send via dispatchPush(), so no client
@@ -117,19 +131,25 @@ export interface ClientPushAuthorizationResult {
   reason:
     | 'matched_existing_notification'
     | 'no_matching_authorized_notification'
-    | 'caller_not_related_to_notification'
-    | 'notification_already_used';
+    | 'caller_not_related_to_notification';
+  // Present only when authorized — the caller MUST claim this via
+  // ClaimNotificationPush, but only after confirming the push was actually
+  // delivered. Never claim on the strength of authorization alone.
+  notificationId?: string;
 }
 
 export interface ClientPushDependencies {
   lookup: RecentNotificationLookup;
   checkRelationship: RelationshipCheck;
-  claim: ClaimNotificationPush;
 }
 
 // Only called for the 'client_jwt' auth method — admin_secret and
 // admin_session callers are already fully trusted and skip this check
 // entirely (see send-push/index.ts).
+//
+// Deliberately does NOT claim the notification — see the file header.
+// The caller is responsible for claiming it (via ClaimNotificationPush)
+// strictly after confirming the push was actually sent.
 export async function authorizeClientPush(
   request: ClientPushRequest,
   deps: ClientPushDependencies,
@@ -163,12 +183,5 @@ export async function authorizeClientPush(
     return { authorized: false, reason: 'caller_not_related_to_notification' };
   }
 
-  const claimed = await deps.claim(match.id);
-  if (!claimed) {
-    // Lost a race to another legitimate call, or (now structurally
-    // impossible on the happy path) already used.
-    return { authorized: false, reason: 'notification_already_used' };
-  }
-
-  return { authorized: true, reason: 'matched_existing_notification' };
+  return { authorized: true, reason: 'matched_existing_notification', notificationId: match.id };
 }

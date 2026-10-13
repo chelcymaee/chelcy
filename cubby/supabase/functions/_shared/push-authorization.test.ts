@@ -11,7 +11,7 @@ import {
   type ClientPushDependencies,
 } from './push-authorization.ts';
 
-// ─── resolveAuthMethod (unchanged from round 1) ─────────────────────────────
+// ─── resolveAuthMethod (unchanged) ──────────────────────────────────────────
 
 test('resolveAuthMethod: admin secret header match wins even if a user is also signed in', () => {
   const method = resolveAuthMethod({
@@ -64,14 +64,24 @@ test('resolveAuthMethod: nothing matches -> unauthenticated', () => {
 });
 
 // ─── Test helpers ───────────────────────────────────────────────────────────
+//
+// NOTE: ClientPushDependencies no longer includes a `claim` function —
+// authorizeClientPush deliberately never claims a notification itself (see
+// the file header for why: claiming before confirmed Expo delivery can
+// permanently lose a legitimate notification). The single-use claim is now
+// index.ts's responsibility, called only after a successful push send,
+// which isn't unit-testable here without Deno — verified instead by
+// reading send-push/index.ts's control flow directly and by the live,
+// rollback-wrapped SQL checks run against production this session (claim
+// succeeds once, a second claim attempt on the same row affects zero
+// rows).
 
 function makeDeps(opts: {
   match?: MatchedNotification | null;
   relationshipResult?: boolean | ((args: RelationshipCheckArgs) => boolean);
-  claimResult?: boolean;
-  calls?: { lookup: RecentNotificationLookupArgs[]; relationship: RelationshipCheckArgs[]; claim: string[] };
+  calls?: { lookup: RecentNotificationLookupArgs[]; relationship: RelationshipCheckArgs[] };
 }): ClientPushDependencies {
-  const calls = opts.calls ?? { lookup: [], relationship: [], claim: [] };
+  const calls = opts.calls ?? { lookup: [], relationship: [] };
   return {
     lookup: async (args) => {
       calls.lookup.push(args);
@@ -81,10 +91,6 @@ function makeDeps(opts: {
       calls.relationship.push(args);
       if (typeof opts.relationshipResult === 'function') return opts.relationshipResult(args);
       return opts.relationshipResult ?? false;
-    },
-    claim: async (id) => {
-      calls.claim.push(id);
-      return opts.claimResult ?? true;
     },
   };
 }
@@ -101,16 +107,15 @@ test('authorizeClientPush: THE ORIGINAL VULNERABILITY — no matching row at all
   );
   assert.equal(result.authorized, false);
   assert.equal(result.reason, 'no_matching_authorized_notification');
+  assert.equal(result.notificationId, undefined);
 });
 
-// ─── authorizeClientPush: unrelated caller (gap #1 closed this round) ──────
+// ─── authorizeClientPush: unrelated caller ──────────────────────────────────
 
 test('authorizeClientPush: UNRELATED CALLER — real, recent, correctly-worded notification exists, but caller has no relationship to it', async () => {
-  const calls = { lookup: [], relationship: [], claim: [] } as any;
   const deps = makeDeps({
     match: { id: 'notif-1', type: 'booking_cancelled', relatedBookingId: 'booking-1' },
     relationshipResult: false, // caller is a total stranger to this booking
-    calls,
   });
 
   const result = await authorizeClientPush(
@@ -120,19 +125,17 @@ test('authorizeClientPush: UNRELATED CALLER — real, recent, correctly-worded n
 
   assert.equal(result.authorized, false);
   assert.equal(result.reason, 'caller_not_related_to_notification');
-  assert.equal(calls.claim.length, 0, 'an unrelated caller must never consume the single-use claim');
+  assert.equal(result.notificationId, undefined);
 });
 
-test('authorizeClientPush: unrelated caller cannot even partially succeed by knowing static copy for a DIFFERENT real recipient', async () => {
+test('authorizeClientPush: unrelated caller cannot succeed by knowing static copy for a DIFFERENT real recipient', async () => {
   // Static-copy types (identical text for every occurrence) were exactly
-  // the case the pre-round-2 fix left open: content matched, but nothing
+  // the case the round-1 fix left open: content matched, but nothing
   // bound the caller to this specific target. Confirm the relationship
   // check is actually consulted with the real recipient/caller pair.
-  const calls = { lookup: [], relationship: [], claim: [] } as any;
   const deps = makeDeps({
     match: { id: 'notif-2', type: 'booking_confirmed', relatedBookingId: 'booking-2' },
     relationshipResult: (args: RelationshipCheckArgs) => args.callerId === 'the-real-host',
-    calls,
   });
 
   const rejected = await authorizeClientPush(
@@ -147,20 +150,25 @@ test('authorizeClientPush: unrelated caller cannot even partially succeed by kno
     deps, NOW,
   );
   assert.equal(accepted.authorized, true);
+  assert.equal(accepted.notificationId, 'notif-2');
 });
 
-// ─── authorizeClientPush: replay (gap #2 closed this round) ────────────────
+// ─── authorizeClientPush: replay — enforced at the DB/index.ts layer, not here ─
 
-test('authorizeClientPush: REPLAY — the same notification cannot authorize a second push', async () => {
-  let claimed = false;
+test('authorizeClientPush: REPLAY — once the real DB excludes a claimed row, lookup returning null correctly re-rejects', async () => {
+  // authorizeClientPush itself has no memory between calls — single-use is
+  // enforced by the real lookup's `pushed_at IS NULL` filter in index.ts.
+  // This test documents that contract: once a row is claimed (simulated
+  // here by the second lookup call returning null, exactly as the real
+  // `.is('pushed_at', null)` filter would produce), authorization
+  // correctly fails on the "replay".
+  let callCount = 0;
   const deps: ClientPushDependencies = {
-    lookup: async () => ({ id: 'notif-3', type: 'review_received', relatedBookingId: 'booking-3' }),
-    checkRelationship: async () => true,
-    claim: async () => {
-      if (claimed) return false; // already used
-      claimed = true;
-      return true;
+    lookup: async () => {
+      callCount += 1;
+      return callCount === 1 ? { id: 'notif-3', type: 'review_received', relatedBookingId: 'booking-3' } : null;
     },
+    checkRelationship: async () => true,
   };
 
   const first = await authorizeClientPush(
@@ -168,57 +176,44 @@ test('authorizeClientPush: REPLAY — the same notification cannot authorize a s
     deps, NOW,
   );
   assert.equal(first.authorized, true);
+  assert.equal(first.notificationId, 'notif-3');
 
   const second = await authorizeClientPush(
     { callerId: 'traveller-1', userId: 'host-user-1', title: 'Jane reviewed your listing', body: '⭐ You got a 5-star review!' },
     deps, NOW,
   );
   assert.equal(second.authorized, false);
-  assert.equal(second.reason, 'notification_already_used');
+  assert.equal(second.reason, 'no_matching_authorized_notification');
 });
 
-test('authorizeClientPush: a rejected unrelated-caller attempt does not block the later legitimate push', async () => {
-  // Order-of-operations regression test: claim must happen AFTER the
-  // relationship check, never before, or an attacker could grief a real
-  // notification by "using it up" with a doomed, unrelated request.
-  const calls = { lookup: [], relationship: [], claim: [] } as any;
-  let notificationClaimed = false;
-  const deps: ClientPushDependencies = {
-    lookup: async (args) => {
-      calls.lookup.push(args);
-      return { id: 'notif-4', type: 'booking_cancelled', relatedBookingId: 'booking-4' };
-    },
-    checkRelationship: async (args) => {
-      calls.relationship.push(args);
-      return args.callerId === 'real-traveller';
-    },
-    claim: async (id) => {
-      calls.claim.push(id);
-      if (notificationClaimed) return false;
-      notificationClaimed = true;
-      return true;
-    },
-  };
+test('authorizeClientPush: an unrelated caller\'s rejected attempt never affects a later legitimate lookup', async () => {
+  // Since authorizeClientPush never claims anything, this is now
+  // structurally guaranteed rather than something to race-test — but
+  // confirm the same mocked (always-unclaimed) match still authorizes the
+  // real caller after a stranger's attempt was rejected.
+  const deps = makeDeps({
+    match: { id: 'notif-4', type: 'booking_cancelled', relatedBookingId: 'booking-4' },
+    relationshipResult: (args) => args.callerId === 'real-traveller',
+  });
 
   const attackerAttempt = await authorizeClientPush(
     { callerId: 'random-stranger', userId: 'host-user-1', title: 'Booking cancelled', body: 'A traveller cancelled their upcoming booking with you.' },
     deps, NOW,
   );
   assert.equal(attackerAttempt.authorized, false);
-  assert.equal(attackerAttempt.reason, 'caller_not_related_to_notification');
-  assert.equal(notificationClaimed, false, 'unrelated attempt must not consume the claim');
 
   const legitimateAttempt = await authorizeClientPush(
     { callerId: 'real-traveller', userId: 'host-user-1', title: 'Booking cancelled', body: 'A traveller cancelled their upcoming booking with you.' },
     deps, NOW,
   );
   assert.equal(legitimateAttempt.authorized, true);
+  assert.equal(legitimateAttempt.notificationId, 'notif-4');
 });
 
 // ─── authorizeClientPush: legitimate cross-user notifications still work ───
 
 test('authorizeClientPush: legitimate self-push never needs the relationship DB call', async () => {
-  const calls = { lookup: [], relationship: [], claim: [] } as any;
+  const calls = { lookup: [], relationship: [] } as any;
   const deps = makeDeps({
     match: { id: 'notif-5', type: 'verification_approved', relatedBookingId: null },
     calls,
@@ -230,6 +225,7 @@ test('authorizeClientPush: legitimate self-push never needs the relationship DB 
   );
 
   assert.equal(result.authorized, true);
+  assert.equal(result.notificationId, 'notif-5');
   assert.equal(calls.relationship.length, 0, 'self-push should skip the relationship DB round trip entirely');
 });
 
@@ -244,6 +240,7 @@ test('authorizeClientPush: legitimate host-to-traveller push (booking_confirmed)
     deps, NOW,
   );
   assert.equal(result.authorized, true);
+  assert.equal(result.notificationId, 'notif-6');
 });
 
 test('authorizeClientPush: legitimate traveller-to-host push (booking_cancelled) succeeds', async () => {
@@ -288,7 +285,7 @@ test('authorizeClientPush: milestone_reached rejected for a caller with zero sha
   assert.equal(result.reason, 'caller_not_related_to_notification');
 });
 
-// ─── window boundary (unchanged behavior from round 1) ──────────────────────
+// ─── window boundary (unchanged) ────────────────────────────────────────────
 
 test('authorizeClientPush: passes the correct recency window to the lookup', async () => {
   let receivedSinceIso = '';
