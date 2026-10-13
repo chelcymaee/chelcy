@@ -7,13 +7,16 @@ def shadow(im,blur=14,off=(6,10),a=120):
     W,H=im.size; p=30; out=Image.new('RGBA',(W+2*p,H+2*p),(0,0,0,0))
     sh=Image.new('RGBA',out.size,(0,0,0,a)); m=Image.new('L',out.size,0); m.paste(im.split()[3],(p+off[0],p+off[1]))
     out.paste(sh,(0,0),m.filter(ImageFilter.GaussianBlur(blur))); out.alpha_composite(im,(p,p)); return out
-def label(top,main,name,accent=CY):   # field-notes label: small caps line + big line
-    f1,f2=font(46,False),font(78); d0=ImageDraw.Draw(Image.new('RGBA',(1,1)))
-    w=int(max(d0.textlength(top,font=f1),d0.textlength(main,font=f2)))+90; H=170
+def label(top,main,name,accent=CY):   # bright sticker label: yellow (or accent) fill, black text, slight tilt
+    YEL=(255,214,10); fill=YEL if accent==CY else accent; txtc=INK if fill==YEL or fill==(255,196,40) else WH
+    f1,f2=font(46,False),font(80); d0=ImageDraw.Draw(Image.new('RGBA',(1,1)))
+    w=int(max(d0.textlength(top,font=f1),d0.textlength(main,font=f2)))+70; H=176
     im=Image.new('RGBA',(w,H),(0,0,0,0)); d=ImageDraw.Draw(im)
-    d.rounded_rectangle((0,0,w-1,H-1),radius=26,fill=(18,18,18,235),outline=accent,width=5)
-    d.ellipse((30,30,52,52),fill=accent); d.text((64,16),top,font=f1,fill=accent)
-    d.text((30,68),main,font=f2,fill=WH); shadow(im).save(f'g/{name}.png')
+    d.rounded_rectangle((0,0,w-1,H-1),radius=30,fill=fill,outline=INK,width=7)
+    d.text((36,14),top,font=f1,fill=txtc); d.text((34,66),main,font=f2,fill=txtc)
+    im=im.rotate(-2.5,expand=True,resample=Image.BICUBIC)
+    a=im.split()[3].filter(ImageFilter.MaxFilter(17)); b=Image.new('RGBA',im.size,(0,0,0,0)); b.paste(Image.new('RGBA',im.size,WH),(0,0),a); b.alpha_composite(im)
+    shadow(b).save(f'g/{name}.png')
 def stamp(text,name,col=RED,rot=-8,size=120):
     f=font(size); d0=ImageDraw.Draw(Image.new('RGBA',(1,1))); w=int(d0.textlength(text,font=f))+80+(130 if text=='SECURE' else 0); h=size+70
     im=Image.new('RGBA',(w,h),(0,0,0,0)); d=ImageDraw.Draw(im)
