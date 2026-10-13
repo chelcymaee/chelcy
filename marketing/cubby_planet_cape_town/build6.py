@@ -16,7 +16,7 @@ def T(line, word, n=1):
     raise KeyError((line, word, n))
 def SP(line, i=0): return vo['spans'][line][i]
 B = [0, T('l02', 'FORD') - 0.3, T('l02', 'STANDARD'), T('l02', 'WITH'), T('l02', 'WE'), SP('l03'), T('l03', 'WITH'), SP('l04'), T('l04', 'DAILY'),
-     SP('l05'), T('l05', 'LOCALS'), SP('l06'), T('l06', 'SUITCASE'), SP('l07'), SP('l08'), SP('l09'), SP('l10'), T('l10', 'THE'), T('l10', 'DROP'),
+     SP('l05'), T('l05', 'LOCALS'), SP('l06'), T('l06', 'SO'), SP('l07'), SP('l08'), SP('l09'), SP('l10'), T('l10', 'THE'), T('l10', 'DROP'),
      SP('l11'), T('l11', 'AND'), SP('l12'), TOTAL]
 B = [round(x * 30) / 30 for x in B]
 
@@ -94,7 +94,7 @@ OV = [('g/lab_location.png', 0.35, SP('l01', 1), 540, 260, 'slide'),
       ('g/lab_lionshead.png', T('l04', "LION'S"), T('l04', 'THE'), 540, 260, 'slide'), ('g/bubble.png', T('l04', 'THE'), T('l04', 'DAILY'), 540, 560, 'pop'),
       ('g/st_daily.png', T('l04', 'DAILY'), SP('l05'), 540, 760, 'stamp'),
       ('g/lab_tasting.png', T('l05', 'QUICK') - 0.2, T('l05', 'IT', 2), 540, 260, 'slide'), ('g/st_6hrs.png', T('l05', 'NEVER'), SP('l06'), 540, 560, 'stamp'),
-      ('g/st_notinvited.png', T('l06', 'NOT'), SP('l07'), 540, 620, 'stamp'),
+      ('g/steps1.png', T('l06', 'STEPS'), T('l06', 'SO'), 540, 600, 'pop'), ('g/steps2.png', T('l06', 'SO'), SP('l07'), 540, 600, 'stamp'),
       ('g/lab_wind.png', T('l07', 'THE'), SP('l08'), 540, 260, 'slide'),
       ('g/boarding.png', SP('l08'), T('l08', 'NOW'), 540, 560, 'pop'), ('g/st_nownow.png', T('l08', 'NOW'), SP('l09'), 540, 1180, 'stamp'),
       ('g/logo_pop.png', T('l10', 'CUBBY'), B[17], 540, 760, 'pop'),
@@ -174,7 +174,7 @@ CUES = [('card_pop', 0.35, -10), ('card_pop', T('l02', 'FORD'), -10), ('card_pop
         ('impact', T('l02', 'SUITCASE'), -8), ('whoosh', T('l02', 'SUITCASE') - 0.1, -10),
         ('pop', T('l03', 'RESCUE'), -9), ('pop', T('l03', 'ICED'), -9), ('pop', T('l03', 'MATCHING'), -9), ('record_scratch', T('l03', 'NEVER'), -7),
         ('card_pop', T('l04', "LION'S"), -10), ('pop', T('l04', 'THE'), -9), ('impact', T('l04', 'DAILY'), -8),
-        ('card_pop', T('l05', 'QUICK') - 0.2, -10), ('impact', T('l05', 'NEVER'), -8), ('impact', T('l06', 'NOT'), -8),
+        ('card_pop', T('l05', 'QUICK') - 0.2, -10), ('impact', T('l05', 'NEVER'), -8), ('pop', T('l06', 'STEPS'), -8), ('impact', T('l06', 'SO'), -8), ('record_scratch', T('l06', 'UPHILL'), -12),
         ('wind_gust', T('l07', 'THE') - 0.1, -8), ('card_pop', T('l07', 'THE'), -11), ('pop', SP('l08'), -9), ('impact', T('l08', 'NOW'), -8), ('sad_trombone', T('l08', 'THURSDAY'), -11),
         ('angel_choir', SP('l09'), -8), ('sparkle', T('l10', 'CUBBY'), -8), ('whoosh', B[17] - 0.1, -10),
         ('pop', T('l10', 'CAFE'), -7), ('pop', T('l10', 'GUEST'), -7), ('pop', T('l10', 'SHOP'), -7), ('pop', T('l10', 'SHOP') + 0.4, -8),
@@ -186,5 +186,5 @@ for j, (c, t0, gdb) in enumerate(CUES):
     fc.append(f"[{k + j}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume={gdb}dB,adelay={int(t0 * 1000)}|{int(t0 * 1000)}[x{j}]")
 fc.append("[vo1][bed]" + "".join(f"[x{j}]" for j in range(len(CUES))) + f"amix=inputs={len(CUES) + 2}:duration=longest:normalize=0,alimiter=limit=0.7:level=false,apad,atrim=0:{TOTAL}[a]")
 subprocess.run(['ffmpeg', '-v', 'error', '-y'] + inputs + ['-filter_complex', ";".join(fc), '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-crf', '20', '-preset', 'medium',
-                '-pix_fmt', 'yuv420p', '-r', str(FPS), '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-t', str(TOTAL), 'cubby_reel_v5.mp4'], check=True)
+                '-pix_fmt', 'yuv420p', '-r', str(FPS), '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-t', str(TOTAL), 'cubby_reel_v6.mp4'], check=True)
 print('done', TOTAL)
