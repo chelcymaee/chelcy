@@ -11,21 +11,29 @@
 //      app/(admin)/verifications.tsx, sending a push after an admin
 //      approves/rejects a verification. See
 //      supabase/functions/_shared/admin-session.ts.
-//   3. Supabase JWT — any other signed-in client caller. Previously this
-//      meant ANY signed-in user could push arbitrary title/body to an
-//      arbitrary user_id with no relationship check at all — confirmed via
-//      read-only inspection, not yet exploited as far as this review found.
-//      Fixed below: a path-3 caller may only trigger a push for content
-//      that already exists as a real, recent `notifications` row for that
-//      exact user_id/title/body. See _shared/push-authorization.ts for the
-//      full rationale and the accepted residual risk (narrow replay of a
-//      target's own recent real notification, not arbitrary content).
+//   3. Supabase JWT — any other signed-in client caller. v9 (deployed)
+//      closed the original hole — ANY signed-in user could push arbitrary
+//      title/body to an arbitrary user_id with no relationship check at
+//      all — by requiring a matching, recent `notifications` row for the
+//      exact user_id/title/body. That left two known gaps, both closed
+//      below (not yet deployed): replay of the same real notification, and
+//      an unrelated caller triggering/replaying a static-copy notification
+//      they had no part in. See _shared/push-authorization.ts for the full
+//      design — it re-applies the existing `notifications` RLS policy's own
+//      relationship model rather than inventing a new one, plus a
+//      single-use claim on the notification row.
 //
 // Deploy: npx supabase functions deploy send-push
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireAdminSession } from '../_shared/admin-session.ts';
-import { resolveAuthMethod, authorizeClientPush, type RecentNotificationLookupArgs } from '../_shared/push-authorization.ts';
+import {
+  resolveAuthMethod,
+  authorizeClientPush,
+  type RecentNotificationLookupArgs,
+  type MatchedNotification,
+  type RelationshipCheckArgs,
+} from '../_shared/push-authorization.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -84,22 +92,101 @@ Deno.serve(async (req) => {
 
     // admin_secret and admin_session callers are already fully trusted
     // server/admin paths — unchanged, no extra check. Only a plain
-    // signed-in-user caller (client_jwt) needs the new relationship check,
-    // since that's the path that previously had none at all.
+    // signed-in-user caller (client_jwt) needs the relationship check and
+    // single-use claim, since that's the path that previously had neither.
     if (authMethod === 'client_jwt') {
-      const lookup = async (args: RecentNotificationLookupArgs): Promise<{ found: boolean }> => {
+      const lookup = async (args: RecentNotificationLookupArgs): Promise<MatchedNotification | null> => {
+        // pushed_at IS NULL is the single-use gate: a row already consumed
+        // by a prior push (legitimate or not) can never match again.
         const { data: rows } = await supabase
           .from('notifications')
-          .select('id')
+          .select('id, type, related_booking_id')
           .eq('user_id', args.userId)
           .eq('title', args.title)
           .eq('body', args.body)
+          .is('pushed_at', null)
           .gte('created_at', args.sinceIso)
           .limit(1);
-        return { found: !!rows && rows.length > 0 };
+        const row = rows?.[0];
+        return row ? { id: row.id, type: row.type, relatedBookingId: row.related_booking_id } : null;
       };
 
-      const authResult = await authorizeClientPush({ userId: user_id, title, body }, lookup, new Date().toISOString());
+      // Plain single-table queries only (no embedded-resource filters) —
+      // easier to verify correct by inspection than a cross-table
+      // PostgREST embed, which matters more here than brevity.
+      const checkRelationship = (client: SupabaseClient) => async (args: RelationshipCheckArgs): Promise<boolean> => {
+        // Mirrors the notifications table's own INSERT policy exactly —
+        // see push-authorization.ts's header for why. Fails closed on any
+        // DB error. No new DB object required: every query here runs as
+        // the service role directly against bookings/hosts, same tables
+        // the policy's own logic reads at INSERT time.
+        if (args.relatedBookingId) {
+          const { data: booking, error: bookingError } = await client
+            .from('bookings')
+            .select('traveller_id, host_id')
+            .eq('id', args.relatedBookingId)
+            .maybeSingle();
+
+          if (!bookingError && booking) {
+            const { data: host, error: hostError } = await client
+              .from('hosts')
+              .select('user_id, assigned_user_id')
+              .eq('id', booking.host_id)
+              .maybeSingle();
+
+            if (!hostError && host) {
+              const travellerToHost = booking.traveller_id === args.callerId
+                && (args.recipientId === host.user_id || args.recipientId === host.assigned_user_id);
+              const hostToTraveller = (args.callerId === host.user_id || args.callerId === host.assigned_user_id)
+                && args.recipientId === booking.traveller_id;
+              if (travellerToHost || hostToTraveller) return true;
+            }
+          }
+        }
+
+        if (args.type === 'milestone_reached') {
+          // Any shared booking history at all, with the caller as
+          // traveller and the recipient as that booking's host — exactly
+          // the leniency the notifications policy's own milestone branch
+          // allows, since the real client never sets related_booking_id
+          // on a milestone_reached notification.
+          const { data: hostRows, error: hostError } = await client
+            .from('hosts')
+            .select('id')
+            .or(`user_id.eq.${args.recipientId},assigned_user_id.eq.${args.recipientId}`);
+
+          if (!hostError && hostRows && hostRows.length > 0) {
+            const hostIds = hostRows.map((h: { id: string }) => h.id);
+            const { data: bookingRows, error: bookingsError } = await client
+              .from('bookings')
+              .select('id')
+              .eq('traveller_id', args.callerId)
+              .in('host_id', hostIds)
+              .limit(1);
+            if (!bookingsError && bookingRows && bookingRows.length > 0) return true;
+          }
+        }
+
+        return false;
+      };
+
+      const claim = (client: SupabaseClient) => async (notificationId: string): Promise<boolean> => {
+        // Atomic single-use claim — same "claim before act" pattern as the
+        // Phase 1 event ledger's ON CONFLICT DO NOTHING RETURNING.
+        const { data } = await client
+          .from('notifications')
+          .update({ pushed_at: new Date().toISOString() })
+          .eq('id', notificationId)
+          .is('pushed_at', null)
+          .select('id');
+        return !!data && data.length > 0;
+      };
+
+      const authResult = await authorizeClientPush(
+        { callerId: signedInUserId!, userId: user_id, title, body },
+        { lookup, checkRelationship: checkRelationship(supabase), claim: claim(supabase) },
+        new Date().toISOString(),
+      );
       if (!authResult.authorized) {
         console.warn(`send-push: rejected client_jwt push — caller ${signedInUserId} -> target ${user_id}, reason: ${authResult.reason}`);
         return new Response(JSON.stringify({ error: 'Not authorized to push to this recipient' }), {
