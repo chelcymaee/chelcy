@@ -11,12 +11,21 @@
 //      app/(admin)/verifications.tsx, sending a push after an admin
 //      approves/rejects a verification. See
 //      supabase/functions/_shared/admin-session.ts.
-//   3. Supabase JWT — any other signed-in client caller.
+//   3. Supabase JWT — any other signed-in client caller. Previously this
+//      meant ANY signed-in user could push arbitrary title/body to an
+//      arbitrary user_id with no relationship check at all — confirmed via
+//      read-only inspection, not yet exploited as far as this review found.
+//      Fixed below: a path-3 caller may only trigger a push for content
+//      that already exists as a real, recent `notifications` row for that
+//      exact user_id/title/body. See _shared/push-authorization.ts for the
+//      full rationale and the accepted residual risk (narrow replay of a
+//      target's own recent real notification, not arbitrary content).
 //
 // Deploy: npx supabase functions deploy send-push
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireAdminSession } from '../_shared/admin-session.ts';
+import { resolveAuthMethod, authorizeClientPush, type RecentNotificationLookupArgs } from '../_shared/push-authorization.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -35,22 +44,29 @@ Deno.serve(async (req) => {
     const adminSecret = req.headers.get('x-admin-secret');
     const authHeader = req.headers.get('authorization');
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    let authed = false;
 
-    if (ADMIN_SECRET && adminSecret === ADMIN_SECRET) {
-      authed = true;
-    } else if (authHeader) {
+    const adminSecretMatches = !!ADMIN_SECRET && adminSecret === ADMIN_SECRET;
+
+    let adminSessionOk = false;
+    let signedInUserId: string | null = null;
+    if (!adminSecretMatches && authHeader) {
       const adminSession = await requireAdminSession(req, adminClient);
-      if (adminSession.ok) {
-        authed = true;
-      } else {
+      adminSessionOk = adminSession.ok;
+      if (!adminSessionOk) {
         const token = authHeader.replace('Bearer ', '');
         const { data: { user } } = await adminClient.auth.getUser(token);
-        authed = !!user;
+        signedInUserId = user?.id ?? null;
       }
     }
 
-    if (!authed) {
+    const authMethod = resolveAuthMethod({
+      adminSecretHeader: adminSecret,
+      adminSecretEnv: ADMIN_SECRET,
+      adminSessionOk,
+      signedInUserId,
+    });
+
+    if (authMethod === 'unauthenticated') {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...cors, 'Content-Type': 'application/json' },
       });
@@ -65,6 +81,32 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // admin_secret and admin_session callers are already fully trusted
+    // server/admin paths — unchanged, no extra check. Only a plain
+    // signed-in-user caller (client_jwt) needs the new relationship check,
+    // since that's the path that previously had none at all.
+    if (authMethod === 'client_jwt') {
+      const lookup = async (args: RecentNotificationLookupArgs): Promise<{ found: boolean }> => {
+        const { data: rows } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', args.userId)
+          .eq('title', args.title)
+          .eq('body', args.body)
+          .gte('created_at', args.sinceIso)
+          .limit(1);
+        return { found: !!rows && rows.length > 0 };
+      };
+
+      const authResult = await authorizeClientPush({ userId: user_id, title, body }, lookup, new Date().toISOString());
+      if (!authResult.authorized) {
+        console.warn(`send-push: rejected client_jwt push — caller ${signedInUserId} -> target ${user_id}, reason: ${authResult.reason}`);
+        return new Response(JSON.stringify({ error: 'Not authorized to push to this recipient' }), {
+          status: 403, headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     const { data: tokens } = await supabase
       .from('push_tokens')
