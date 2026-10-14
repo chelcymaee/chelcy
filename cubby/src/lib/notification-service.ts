@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
+import { triggerNotificationRpc } from './notification-rpc';
 
 export type NotificationType =
   | 'new_message'
@@ -100,7 +101,7 @@ export async function sendNotification(opts: SendNotificationOptions): Promise<v
   dispatchPush(userId, title, body, { type, ...data }).catch(() => {});
 }
 
-async function dispatchPush(
+export async function dispatchPush(
   userId: string,
   title: string,
   body: string,
@@ -117,4 +118,41 @@ async function dispatchPush(
     },
     body: JSON.stringify({ user_id: userId, title, body, data }),
   });
+}
+
+// ─── Stage 2 Phase 1/2 — secure notification RPCs ───────────────────────────
+//
+// Replaces the direct notifications-table insert + manual preference check
+// + manual dedup in sendNotification() above, for the booking and review
+// flows that now have a server-side RPC doing all of that atomically and
+// with event-specific authorization. See src/lib/notification-rpc.ts for
+// the (Node-testable, React-Native-free) trigger/push-dispatch logic this
+// wires up to the real Supabase client.
+//
+// Both never throw — see notification-rpc.ts's header. Call sites should
+// call these AFTER their own booking/review action has already succeeded,
+// and never let a failure here affect that action's own success/failure.
+
+export async function triggerBookingNotification(
+  bookingId: string,
+  event: 'booking_confirmed' | 'booking_declined' | 'booking_confirmed_legacy' | 'booking_declined_legacy' | 'booking_cancelled',
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  return triggerNotificationRpc(
+    'create_booking_notification',
+    { p_booking_id: bookingId, p_event: event },
+    { callRpc: (fn, args) => supabase.rpc(fn, args), dispatchPush },
+  );
+}
+
+export async function triggerReviewNotification(
+  bookingId: string,
+  reviewedParty: 'host' | 'traveller',
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  return triggerNotificationRpc(
+    'create_review_notification',
+    { p_booking_id: bookingId, p_reviewed_party: reviewedParty },
+    { callRpc: (fn, args) => supabase.rpc(fn, args), dispatchPush },
+  );
 }

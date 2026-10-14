@@ -7,7 +7,7 @@
  */
 
 import { supabase } from './supabase';
-import { sendNotification } from './notification-service';
+import { triggerReviewNotification } from './notification-service';
 
 const SUPABASE_URL = 'https://gqgxahqmndkaeyuvhliv.supabase.co';
 
@@ -100,22 +100,22 @@ async function notifyHostOfReview(p: SubmitHostReviewParams, reviewId?: string):
     .from('hosts').select('assigned_user_id, display_name').eq('id', p.hostId).single();
   if (!host?.assigned_user_id) return;
 
-  await sendNotification({
-    userId: host.assigned_user_id,
-    type: 'review_received',
-    title: `${p.reviewerName} reviewed your listing`,
-    body: p.rating === 5 ? '⭐ You got a 5-star review!' : `They gave you ${p.rating} stars.`,
-    data: {
-      bookingId: p.bookingId,
-      reviewId,
-      reviewType: 'host_review',
-      reviewerName: p.reviewerName,
-      rating: p.rating,
-    },
-    relatedBookingId: p.bookingId,
-  });
+  // review_received, milestone_reached and the reciprocal review_request
+  // nudge are all now written server-side by create_review_notification
+  // (Stage 2 Phase 1/2) in a single call — it independently re-validates
+  // the caller against the real review row and applies the recipient's
+  // notification preferences itself. Replaces the three separate
+  // sendNotification() calls that used to live in this function. Never
+  // awaited into this function's own error path: a notification failure
+  // must not look like a failed review submission.
+  if (p.bookingId) {
+    triggerReviewNotification(p.bookingId, 'host').catch(err =>
+      console.error('[review-service] create_review_notification (host) failed:', err));
+  }
 
-  // Milestone check
+  // Milestone check — kept here independently of the RPC above because the
+  // milestone email below needs the raw milestone/detail strings, which the
+  // RPC doesn't expose (and email is unrelated to Stage 2, untouched).
   const { data: stats } = await supabase.from('reviews').select('rating').eq('host_id', p.hostId);
   if (stats?.length) {
     const fiveStarCount = stats.filter((r: any) => r.rating === 5).length;
@@ -131,35 +131,12 @@ async function notifyHostOfReview(p: SubmitHostReviewParams, reviewId?: string):
     else if (avgRating >= 4.8 && totalReviews >= 5) { milestone = '4.8★ average rating'; detail = 'You rank among the top Cubby hosts.'; }
 
     if (milestone) {
-      await sendNotification({
-        userId: host.assigned_user_id,
-        type: 'milestone_reached',
-        title: `🏆 Milestone: ${milestone}`,
-        body: detail ?? '',
-      });
       // send-email resolves the recipient email itself, server-side, from
       // hostUserId — and binds hostUserId to a review this caller actually
       // wrote before trusting it (see send-email/index.ts). The client
       // never reads another user's profiles row here; hostName is only
       // ever the public hosts.display_name as a fallback.
       fireEmail({ emailType: 'milestone_reached', data: { hostUserId: host.assigned_user_id, hostName: host.display_name, milestone, detail } });
-    }
-  }
-
-  // Reciprocal prompt to host if they haven't reviewed traveller yet
-  if (p.bookingId) {
-    const { data: existingHostReview } = await supabase
-      .from('traveller_reviews').select('id').eq('booking_id', p.bookingId).maybeSingle();
-    if (!existingHostReview) {
-      const { data: traveller } = await supabase.from('profiles').select('full_name').eq('id', p.userId).single();
-      await sendNotification({
-        userId: host.assigned_user_id,
-        type: 'review_request',
-        title: `${p.reviewerName} just reviewed you`,
-        body: 'Now review them — it only takes 30 seconds.',
-        data: { bookingId: p.bookingId, travellerId: p.userId, travellerName: traveller?.full_name ?? p.reviewerName },
-        relatedBookingId: p.bookingId,
-      });
     }
   }
 
@@ -220,41 +197,14 @@ export async function submitTravellerReview(p: SubmitTravellerReviewParams): Pro
 }
 
 async function notifyTravellerOfReview(p: SubmitTravellerReviewParams, reviewId?: string): Promise<void> {
-  const avg = Math.round(
-    (p.ratings.rating_respectful + p.ratings.rating_on_time + p.ratings.rating_communication) / 3
-  );
-
-  await sendNotification({
-    userId: p.travellerId,
-    type: 'review_received',
-    title: `${p.hostName} reviewed you`,
-    body: avg >= 4 ? '🌟 Great news — you got a positive review!' : 'You have a new review.',
-    data: {
-      bookingId: p.bookingId,
-      reviewId,
-      reviewType: 'traveller_review',
-      hostName: p.hostName,
-      avg,
-    },
-    relatedBookingId: p.bookingId,
-  });
-
-  // Reciprocal prompt — if traveller hasn't reviewed host yet
-  const { data: existingTravellerReview } = await supabase
-    .from('reviews').select('id').eq('booking_id', p.bookingId).maybeSingle();
-  if (!existingTravellerReview) {
-    const { data: booking } = await supabase.from('bookings').select('host_id').eq('id', p.bookingId).single();
-    if (booking?.host_id) {
-      await sendNotification({
-        userId: p.travellerId,
-        type: 'review_request',
-        title: `${p.hostName} just reviewed you`,
-        body: 'Return the favour — review your host now.',
-        data: { bookingId: p.bookingId, hostId: booking.host_id, hostName: p.hostName },
-        relatedBookingId: p.bookingId,
-      });
-    }
-  }
+  // review_received and the reciprocal review_request nudge are both now
+  // written server-side by create_review_notification (Stage 2 Phase
+  // 1/2) in a single call — see notifyHostOfReview() above for the same
+  // pattern and rationale. Never awaited into this function's own error
+  // path: a notification failure must not look like a failed review
+  // submission.
+  triggerReviewNotification(p.bookingId, 'traveller').catch(err =>
+    console.error('[review-service] create_review_notification (traveller) failed:', err));
 
   // Email traveller — same pattern: send-email resolves everything
   // server-side from this reviewId.
