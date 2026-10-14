@@ -30,6 +30,7 @@ import { requireAdminSession } from '../_shared/admin-session.ts';
 import {
   resolveAuthMethod,
   authorizeClientPush,
+  countSuccessfulExpoTickets,
   type RecentNotificationLookupArgs,
   type MatchedNotification,
   type RelationshipCheckArgs,
@@ -190,17 +191,33 @@ Deno.serve(async (req) => {
 
     // Claims the matched notification so it can never authorize another
     // push. Deliberately NOT called until after delivery is confirmed (see
-    // the three call sites below) — claiming earlier would permanently
-    // lose the notification the moment Expo's API has a bad day, since the
-    // claim and the actual push are two independent operations with no
-    // shared transaction. Only relevant for authMethod === 'client_jwt';
+    // the call sites below) — claiming earlier would permanently lose the
+    // notification the moment Expo's API has a bad day, since the claim
+    // and the actual push are two independent operations with no shared
+    // transaction. Only relevant for authMethod === 'client_jwt';
     // admin_secret/admin_session callers never produce a notificationId.
+    //
+    // Checks both the update's own error and whether a row was actually
+    // affected. An unaffected row (0 rows, no error) means a concurrent
+    // legitimate call already claimed it first — the push this call just
+    // sent was still genuinely delivered, so this is the accepted, narrow
+    // concurrent-duplicate risk documented in push-authorization.ts, not a
+    // bug. Logged either way for observability; behavior is unchanged.
     const claimPushedNotification = async (notificationId: string): Promise<void> => {
-      await supabase
+      const { data: claimedRows, error: claimError } = await supabase
         .from('notifications')
         .update({ pushed_at: new Date().toISOString() })
         .eq('id', notificationId)
-        .is('pushed_at', null);
+        .is('pushed_at', null)
+        .select('id');
+
+      if (claimError) {
+        console.error(`send-push: failed to claim notification ${notificationId} after confirmed delivery:`, claimError);
+        return;
+      }
+      if (!claimedRows || claimedRows.length === 0) {
+        console.warn(`send-push: notification ${notificationId} was already claimed by a concurrent call — this call's push was still sent (documented concurrent-duplicate risk, not an error)`);
+      }
     };
 
     const { data: tokens } = await supabase
@@ -247,22 +264,49 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`send-push: sent ${messages.length} push(es) to user ${user_id}, expo status ${pushRes.status}`);
+    console.log(`send-push: request sent for ${messages.length} token(s) to user ${user_id}, expo HTTP status ${pushRes.status}`);
 
     if (!pushRes.ok) {
-      // Expo itself rejected the request (e.g. malformed payload, outage).
-      // Same reasoning as the network-failure case above: not delivered,
-      // must not claim, must stay retriable.
+      // Expo itself rejected the HTTP request (e.g. malformed payload,
+      // outage). Same reasoning as the network-failure case above: not
+      // delivered, must not claim, must stay retriable.
       return new Response(JSON.stringify({ error: 'Push delivery failed, not claimed — safe to retry' }), {
         status: 502, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
 
-    // Only now — after Expo has confirmed it accepted the request — is it
-    // safe to make this notification unavailable for future pushes.
+    // A 200 from Expo only means the HTTP request was accepted — NOT that
+    // any individual push was delivered. Expo reports per-message outcome
+    // in the response body (`data[i].status`), and a 200 can still wrap
+    // all-error tickets (e.g. DeviceNotRegistered) or come back with no
+    // `data` at all on a request-level error. countSuccessfulExpoTickets
+    // is the one source of truth for "how many actually went out" — it is
+    // what both the claim decision and the reported `sent` count use.
+    let pushResBody: unknown;
+    try {
+      pushResBody = await pushRes.json();
+    } catch (parseError) {
+      console.error(`send-push: could not parse Expo response body for user ${user_id}:`, parseError);
+      return new Response(JSON.stringify({ error: 'Push delivery unconfirmed, not claimed — safe to retry' }), {
+        status: 502, headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const ticketsOk = countSuccessfulExpoTickets(pushResBody);
+
+    if (ticketsOk === 0) {
+      console.warn(`send-push: Expo accepted the HTTP request but reported zero successful tickets for user ${user_id}:`, JSON.stringify(pushResBody));
+      return new Response(JSON.stringify({ error: 'Push delivery failed (no successful tickets), not claimed — safe to retry' }), {
+        status: 502, headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Only now — after Expo has confirmed at least one ticket actually
+    // succeeded — is it safe to make this notification unavailable for
+    // future pushes.
     if (authResult?.notificationId) await claimPushedNotification(authResult.notificationId);
 
-    return new Response(JSON.stringify({ sent: messages.length }), {
+    return new Response(JSON.stringify({ sent: ticketsOk }), {
       status: 200, headers: { ...cors, 'Content-Type': 'application/json' },
     });
   } catch (e) {

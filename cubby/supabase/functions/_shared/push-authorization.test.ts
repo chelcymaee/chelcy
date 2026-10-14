@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   resolveAuthMethod,
   authorizeClientPush,
+  countSuccessfulExpoTickets,
   PUSH_MATCH_WINDOW_MS,
   type RecentNotificationLookupArgs,
   type RelationshipCheckArgs,
@@ -299,4 +300,53 @@ test('authorizeClientPush: passes the correct recency window to the lookup', asy
 
   const expectedSince = new Date(new Date('2026-10-13T10:05:00.000Z').getTime() - PUSH_MATCH_WINDOW_MS).toISOString();
   assert.equal(receivedSinceIso, expectedSince);
+});
+
+// ─── countSuccessfulExpoTickets ──────────────────────────────────────────────
+//
+// THE SPECIFIC BUG THIS COVERS: Expo's push API returns HTTP 200 even when
+// every individual ticket failed (e.g. DeviceNotRegistered) — a 200 status
+// alone is not proof of delivery. These tests exist because send-push's
+// earlier draft treated `pushRes.ok` as "delivered" and would have claimed
+// (and reported success for) a notification Expo never actually sent.
+
+test('countSuccessfulExpoTickets: all tickets ok', () => {
+  const n = countSuccessfulExpoTickets({ data: [{ status: 'ok', id: 'a' }, { status: 'ok', id: 'b' }] });
+  assert.equal(n, 2);
+});
+
+test('countSuccessfulExpoTickets: THE BUG — HTTP 200 body with every ticket errored must count as zero', () => {
+  const n = countSuccessfulExpoTickets({
+    data: [
+      { status: 'error', message: 'DeviceNotRegistered', details: { error: 'DeviceNotRegistered' } },
+      { status: 'error', message: 'MessageTooBig' },
+    ],
+  });
+  assert.equal(n, 0);
+});
+
+test('countSuccessfulExpoTickets: mixed success/failure counts only the successes', () => {
+  const n = countSuccessfulExpoTickets({
+    data: [
+      { status: 'ok', id: 'a' },
+      { status: 'error', message: 'DeviceNotRegistered' },
+      { status: 'ok', id: 'c' },
+    ],
+  });
+  assert.equal(n, 2);
+});
+
+test('countSuccessfulExpoTickets: request-level error response (no data field) counts as zero', () => {
+  const n = countSuccessfulExpoTickets({ errors: [{ code: 'API_ERROR', message: 'Invalid request' }] });
+  assert.equal(n, 0);
+});
+
+test('countSuccessfulExpoTickets: malformed/empty bodies all count as zero', () => {
+  assert.equal(countSuccessfulExpoTickets(null), 0);
+  assert.equal(countSuccessfulExpoTickets(undefined), 0);
+  assert.equal(countSuccessfulExpoTickets('not an object'), 0);
+  assert.equal(countSuccessfulExpoTickets({}), 0);
+  assert.equal(countSuccessfulExpoTickets({ data: 'not an array' }), 0);
+  assert.equal(countSuccessfulExpoTickets({ data: [] }), 0);
+  assert.equal(countSuccessfulExpoTickets({ data: [null, undefined] }), 0);
 });

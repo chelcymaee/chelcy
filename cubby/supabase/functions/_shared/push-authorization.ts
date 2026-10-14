@@ -185,3 +185,36 @@ export async function authorizeClientPush(
 
   return { authorized: true, reason: 'matched_existing_notification', notificationId: match.id };
 }
+
+// ─── Expo delivery confirmation ─────────────────────────────────────────────
+//
+// Expo's push API (https://exp.host/--/api/v2/push/send) returns HTTP 200
+// even when individual tickets failed — the real per-message outcome is
+// `body.data[i].status`, either 'ok' or 'error'. A request-level rejection
+// (malformed payload, auth failure) comes back as `body.errors` instead of
+// `body.data`, with no per-ticket data at all. Treating `response.ok` alone
+// as "delivered" — which the original implementation did — is wrong on
+// both counts: a 200 can wrap all-error tickets, and `data` may not exist.
+//
+// Kept here (not in index.ts) so it's testable under plain Node, same as
+// the rest of this file.
+export interface ExpoPushTicket {
+  status?: string;
+  message?: string;
+  details?: { error?: string };
+}
+
+export interface ExpoPushResponseBody {
+  data?: ExpoPushTicket[];
+  errors?: unknown[];
+}
+
+// Returns the number of tickets Expo itself reported as 'ok'. Zero for a
+// request-level error response, a malformed/unexpected body, or a body
+// whose tickets all errored.
+export function countSuccessfulExpoTickets(body: unknown): number {
+  if (!body || typeof body !== 'object') return 0;
+  const tickets = (body as ExpoPushResponseBody).data;
+  if (!Array.isArray(tickets)) return 0;
+  return tickets.filter((t) => t && t.status === 'ok').length;
+}
