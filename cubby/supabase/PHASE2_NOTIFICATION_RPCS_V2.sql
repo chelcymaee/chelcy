@@ -1,37 +1,38 @@
 -- ============================================================
--- Stage 2 Phase 2 — give create_booking_notification and
--- create_review_notification a return value, so the client can dispatch
--- push for exactly the row(s) that were actually inserted, without
--- reconstructing title/body text itself (which would risk drifting from
--- what send-push's v10 authorization check requires: an exact match
--- against a real, recent `notifications` row).
+-- Stage 2 Phase 2 — versioned notification RPCs with return values
 --
--- NOT YET APPLIED. Prepared for separate approval, per the Phase 2
--- client-migration instructions.
+-- NOT YET APPLIED. Prepared for separate approval.
 --
--- Postgres will not let CREATE OR REPLACE FUNCTION change a function's
--- return type (RETURNS void -> RETURNS TABLE(...)), so this must DROP
--- then CREATE. Both functions are currently uncalled by any client code
--- (confirmed before Phase 2's implementation began), so there is no
--- window where an in-flight caller could be broken by the signature
--- change — this is not a "safe because nothing changes" migration, it's
--- "safe because nothing depends on the old signature yet."
+-- Supersedes the earlier PHASE1_RPC_RETURN_VALUES.sql draft, which
+-- proposed DROP + CREATE on the live create_booking_notification /
+-- create_review_notification functions. Rejected on review: dropping a
+-- live function introduces a window where it doesn't exist, and risks
+-- restoring its REVOKE/GRANT state incorrectly. That file has been
+-- removed from the repo.
 --
--- Internal logic (status/caller-role validation, preference checks,
+-- This version is purely additive instead: two new, separately-named
+-- functions (create_booking_notification_v2 / create_review_notification_v2).
+-- The original create_booking_notification / create_review_notification
+-- are NOT touched by this migration — they keep executing exactly as
+-- deployed, for any caller still using them. Internal logic in the _v2
+-- functions is otherwise byte-for-byte identical to the live v1
+-- functions (status/caller-role validation, preference checks,
 -- dedup-by-event-key, the legacy bridge, milestone conditions, the
--- reciprocal review_request nudge) is otherwise BYTE-FOR-BYTE identical
--- to the deployed PHASE1_NOTIFICATION_RPCS.sql — the only change at each
--- insert site is adding a matching `return query select ...` so the
--- caller gets back exactly what was written (or nothing, if a
--- preference/dedup check suppressed it). Verified: RETURN QUERY SELECT
--- calls across different branches of the same function all correctly
--- accumulate into the final result set (tested in a rolled-back
--- transaction against this project).
+-- reciprocal review_request nudge) — the only addition is
+-- RETURNS TABLE(...) plus a matching RETURN QUERY SELECT at each insert
+-- site, so the caller gets back exactly the row(s) actually written (or
+-- none, if a preference/dedup/legacy-bridge check suppressed it) for
+-- push dispatch. A row is only ever returned immediately after its own
+-- successful INSERT — a duplicate or preference-suppressed event
+-- produces zero rows, so the client never dispatches a push for it.
+--
+-- Verified: RETURN QUERY SELECT calls across different branches of the
+-- same function correctly accumulate into the final result set, and the
+-- exact returned shape matches real schema (both tested in rolled-back
+-- transactions against this project in the prior round).
 -- ============================================================
 
-drop function if exists public.create_booking_notification(uuid, text);
-
-create function public.create_booking_notification(
+create function public.create_booking_notification_v2(
   p_booking_id uuid,
   p_event text  -- 'booking_confirmed' | 'booking_declined' | 'booking_confirmed_legacy'
                 -- | 'booking_declined_legacy' | 'booking_cancelled'
@@ -150,12 +151,10 @@ begin
 end;
 $$;
 
-revoke all on function public.create_booking_notification(uuid, text) from public, anon;
-grant execute on function public.create_booking_notification(uuid, text) to authenticated;
+revoke all on function public.create_booking_notification_v2(uuid, text) from public, anon;
+grant execute on function public.create_booking_notification_v2(uuid, text) to authenticated;
 
-drop function if exists public.create_review_notification(uuid, text);
-
-create function public.create_review_notification(
+create function public.create_review_notification_v2(
   p_booking_id uuid,
   p_reviewed_party text  -- 'host' | 'traveller'
 )
@@ -365,5 +364,5 @@ begin
 end;
 $$;
 
-revoke all on function public.create_review_notification(uuid, text) from public, anon;
-grant execute on function public.create_review_notification(uuid, text) to authenticated;
+revoke all on function public.create_review_notification_v2(uuid, text) from public, anon;
+grant execute on function public.create_review_notification_v2(uuid, text) to authenticated;

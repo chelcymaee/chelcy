@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
-import { triggerNotificationRpc } from './notification-rpc';
+import { triggerNotificationRpc, assertPushDeliverySucceeded } from './notification-rpc';
 
 export type NotificationType =
   | 'new_message'
@@ -110,7 +110,7 @@ export async function dispatchPush(
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) return;
 
-  await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -118,9 +118,17 @@ export async function dispatchPush(
     },
     body: JSON.stringify({ user_id: userId, title, body, data }),
   });
+
+  // send-push can resolve normally with a non-OK status (unauthorized,
+  // delivery failed and intentionally not claimed — see
+  // supabase/functions/send-push/index.ts) — that must not be silently
+  // treated as a successful push. Throwing here lets every caller's
+  // existing `.catch()` log it instead of swallowing it as success.
+  const bodyText = res.ok ? '' : await res.text().catch(() => '');
+  assertPushDeliverySucceeded(res.ok, res.status, bodyText);
 }
 
-// ─── Stage 2 Phase 1/2 — secure notification RPCs ───────────────────────────
+// ─── Stage 2 Phase 2 — secure notification RPCs ─────────────────────────────
 //
 // Replaces the direct notifications-table insert + manual preference check
 // + manual dedup in sendNotification() above, for the booking and review
@@ -128,6 +136,18 @@ export async function dispatchPush(
 // with event-specific authorization. See src/lib/notification-rpc.ts for
 // the (Node-testable, React-Native-free) trigger/push-dispatch logic this
 // wires up to the real Supabase client.
+//
+// Calls the _v2 RPCs (supabase/PHASE2_NOTIFICATION_RPCS_V2.sql) — additive,
+// separately-named functions that return the row(s) they actually wrote,
+// so push dispatch gets exact content rather than reconstructing it here.
+// The original void-returning create_booking_notification/
+// create_review_notification remain live and untouched for any other
+// caller. REQUIRES PHASE2_NOTIFICATION_RPCS_V2.sql to be applied before
+// this client code is deployed — until then, calling a _v2 function that
+// doesn't exist yet fails the whole RPC call (logged, not thrown further;
+// see notification-rpc.ts), which also means the in-app notification row
+// itself would not be written, not just push. Do not deploy this code
+// ahead of that migration.
 //
 // Both never throw — see notification-rpc.ts's header. Call sites should
 // call these AFTER their own booking/review action has already succeeded,
@@ -139,7 +159,7 @@ export async function triggerBookingNotification(
 ): Promise<void> {
   if (!isSupabaseConfigured) return;
   return triggerNotificationRpc(
-    'create_booking_notification',
+    'create_booking_notification_v2',
     { p_booking_id: bookingId, p_event: event },
     { callRpc: (fn, args) => supabase.rpc(fn, args), dispatchPush },
   );
@@ -151,7 +171,7 @@ export async function triggerReviewNotification(
 ): Promise<void> {
   if (!isSupabaseConfigured) return;
   return triggerNotificationRpc(
-    'create_review_notification',
+    'create_review_notification_v2',
     { p_booking_id: bookingId, p_reviewed_party: reviewedParty },
     { callRpc: (fn, args) => supabase.rpc(fn, args), dispatchPush },
   );
