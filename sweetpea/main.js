@@ -120,28 +120,22 @@
     { at: .77, side: 1, size: 1.08, scheme: 'cream', tilt: 18, seed: 2 },
     { at: .92, side: -1, size: .85, scheme: 'peach', tilt: -8, seed: 5, maxOpen: .38 }
   ];
-  const flowers = FLOWERS.map(f => {
-    const s = stemAt(f.at);
-    const bx = s.x + f.side * 46 * f.size, by = s.y - 34 * f.size;
-    const pedicel = el('path', {
-      d: `M${s.x} ${s.y} Q${s.x + f.side * 30 * f.size} ${s.y - 6} ${bx} ${by}`,
-      fill: 'none', stroke: '#86A35F', 'stroke-width': 3, 'stroke-linecap': 'round', pathLength: 1
-    }, sway);
-    pedicel.style.strokeDasharray = '1';
-    const outer = el('g', { transform: `translate(${bx} ${by}) rotate(${f.tilt}) scale(${f.side * -f.size} ${f.size})` }, sway);
-    const g = el('g', {}, outer);
-    const id = `sp-f${f.seed}-${f.scheme}`;
+  // One sweet pea flower (banner, two wings, keel, calyx) drawn around its base at (0, 0).
+  let flowerCount = 0;
+  const buildFlower = (parent, scheme, seed) => {
+    const g = el('g', {}, parent);
+    const id = `sp-f${flowerCount++}`;
+    const [core, mid] = SCHEMES[scheme];
     const part = (d, fillUrl, veins, clipId) => {
       const grp = el('g', {}, g);
       const cp = el('clipPath', { id: clipId }, defs);
       el('path', { d }, cp);
-      el('path', { d, fill: fillUrl, stroke: SCHEMES[f.scheme][0], 'stroke-opacity': .18, 'stroke-width': .8 }, grp);
-      const vg = el('g', { 'clip-path': `url(#${clipId})`, stroke: SCHEMES[f.scheme][0], 'stroke-opacity': .2, 'stroke-width': .7, fill: 'none' }, grp);
+      el('path', { d, fill: fillUrl, stroke: core, 'stroke-opacity': .18, 'stroke-width': .8 }, grp);
+      const vg = el('g', { 'clip-path': `url(#${clipId})`, stroke: core, 'stroke-opacity': .2, 'stroke-width': .7, fill: 'none' }, grp);
       veins.forEach(v => el('path', { d: v }, vg));
       el('path', { d, fill: 'url(#sp-sheen)', opacity: .7 }, grp);
       return grp;
     };
-    const bannerD = petal(0, -10, 70, 56, 0, f.seed, .14);
     const bannerVeins = [];
     for (let k = 0; k < 11; k++) {
       const a = (-150 + k * 12) * Math.PI / 180;
@@ -151,13 +145,34 @@
       const a = (-90 + side * (-62 + (k - 1.5) * 16)) * Math.PI / 180;
       return `M0 -6 L${Math.cos(a) * 80} ${-6 + Math.sin(a) * 80}`;
     });
-    const banner = part(bannerD, `url(#sp-${f.scheme}-banner)`, bannerVeins, `${id}-b`);
-    const wingL = part(petal(0, -6, 28, 40, -64, f.seed + 2), `url(#sp-${f.scheme}-wing)`, wingVeins(1), `${id}-wl`);
-    const wingR = part(petal(0, -6, 28, 40, 64, f.seed + 3), `url(#sp-${f.scheme}-wing)`, wingVeins(-1), `${id}-wr`);
-    const keel = el('path', { d: petal(0, -2, 6, 14, 6, f.seed), fill: SCHEMES[f.scheme][1], stroke: SCHEMES[f.scheme][0], 'stroke-opacity': .3, 'stroke-width': .8 }, g);
+    const banner = part(petal(0, -10, 70, 56, 0, seed, .14), `url(#sp-${scheme}-banner)`, bannerVeins, `${id}-b`);
+    const wingL = part(petal(0, -6, 28, 40, -64, seed + 2), `url(#sp-${scheme}-wing)`, wingVeins(1), `${id}-wl`);
+    const wingR = part(petal(0, -6, 28, 40, 64, seed + 3), `url(#sp-${scheme}-wing)`, wingVeins(-1), `${id}-wr`);
+    const keel = el('path', { d: petal(0, -2, 6, 14, 6, seed), fill: mid, stroke: core, 'stroke-opacity': .3, 'stroke-width': .8 }, g);
     el('path', { d: 'M0 -6 L-11 10 L-3 2 L0 14 L3 2 L11 10 Z', fill: '#7E9B57' }, g);   // calyx
     el('ellipse', { cx: 0, cy: 2, rx: 5, ry: 7, fill: '#86A35F' }, g);
-    return { ...f, pedicel, g, banner, wingL, wingR, keel };
+    return { g, banner, wingL, wingR, keel };
+  };
+
+  // grow: 0 → 1 the bud appears; open: 0 (tight bud) → 1 (fully open).
+  const setFlower = (fl, grow, open) => {
+    fl.g.setAttribute('transform', `scale(${grow * (.42 + .58 * open)})`);
+    fl.banner.setAttribute('transform', `translate(0 -10) rotate(${lerp(-10, 0, open)}) scale(${lerp(.2, 1, open)} ${lerp(.62, 1, open)}) translate(0 10)`);
+    fl.wingL.setAttribute('transform', `translate(0 -6) rotate(${lerp(52, 0, open)}) scale(${lerp(.22, 1, open)} ${lerp(.7, 1, open)}) translate(0 6)`);
+    fl.wingR.setAttribute('transform', `translate(0 -6) rotate(${lerp(-52, 0, open)}) scale(${lerp(.22, 1, open)} ${lerp(.7, 1, open)}) translate(0 6)`);
+    fl.keel.setAttribute('opacity', clamp(open * 2));
+  };
+
+  const flowers = FLOWERS.map(f => {
+    const s = stemAt(f.at);
+    const bx = s.x + f.side * 46 * f.size, by = s.y - 34 * f.size;
+    const pedicel = el('path', {
+      d: `M${s.x} ${s.y} Q${s.x + f.side * 30 * f.size} ${s.y - 6} ${bx} ${by}`,
+      fill: 'none', stroke: '#86A35F', 'stroke-width': 3, 'stroke-linecap': 'round', pathLength: 1
+    }, sway);
+    pedicel.style.strokeDasharray = '1';
+    const outer = el('g', { transform: `translate(${bx} ${by}) rotate(${f.tilt}) scale(${f.side * -f.size} ${f.size})` }, sway);
+    return { ...f, pedicel, ...buildFlower(outer, f.scheme, f.seed) };
   });
 
   const STEM_START = .02, STEM_DUR = .5;
@@ -176,11 +191,7 @@
       const reach = STEM_START + f.at * STEM_DUR;
       const open = easeInOut(clamp((p - reach - .04) / .2)) * (f.maxOpen ?? 1);
       f.pedicel.style.strokeDashoffset = 1 - grow;
-      f.g.setAttribute('transform', `scale(${grow * (.42 + .58 * open)})`);
-      f.banner.setAttribute('transform', `translate(0 -10) rotate(${lerp(-10, 0, open)}) scale(${lerp(.2, 1, open)} ${lerp(.62, 1, open)}) translate(0 10)`);
-      f.wingL.setAttribute('transform', `translate(0 -6) rotate(${lerp(52, 0, open)}) scale(${lerp(.22, 1, open)} ${lerp(.7, 1, open)}) translate(0 6)`);
-      f.wingR.setAttribute('transform', `translate(0 -6) rotate(${lerp(-52, 0, open)}) scale(${lerp(.22, 1, open)} ${lerp(.7, 1, open)}) translate(0 6)`);
-      f.keel.setAttribute('opacity', clamp(open * 2));
+      setFlower(f, grow, open);
     });
 
     // Intro fades as the stem starts to climb.
@@ -215,20 +226,28 @@
     track.style.transform = `translateX(${-((window.scrollY * .35) % third)}px)`;
   };
 
-  /* ---------- 5. Process stem ---------- */
+  /* ---------- 5. Process: the stem grows and a sweet pea opens at each step ---------- */
   const steps = document.querySelector('.process__steps');
   const stem = steps.querySelector('path');
   const stepEls = [...steps.querySelectorAll('.step')];
   stem.setAttribute('pathLength', '1');
   stem.style.strokeDasharray = '1';
+  const stepFlowers = stepEls.map((s, i) => {
+    const svg = s.querySelector('.step__flower');
+    const tilt = [-14, 10, -6][i % 3];
+    const holder = el('g', { transform: `rotate(${tilt}) scale(${i % 2 ? -1 : 1} 1)` }, svg);
+    return buildFlower(holder, ['peach', 'blush', 'berry'][i % 3], 3 + i * 2);
+  });
 
   const drawProcess = () => {
     const r = steps.getBoundingClientRect();
-    const p = clamp((window.innerHeight * .65 - r.top) / r.height);
+    const p = clamp((window.innerHeight * .75 - r.top) / r.height);
     stem.style.strokeDashoffset = 1 - p;
-    stepEls.forEach(s => {
-      const at = (s.offsetTop + 20) / steps.offsetHeight;
-      s.classList.toggle('is-open', p >= at);
+    stepEls.forEach((s, i) => {
+      const at = Math.min(.82, (s.offsetTop + 10) / steps.offsetHeight);
+      const grow = easeOut(clamp((p - at) / .05));
+      const open = easeInOut(clamp((p - at - .02) / .12));
+      setFlower(stepFlowers[i], grow, open);
     });
   };
 
@@ -262,7 +281,7 @@
     drawNav();
     if (reduceMotion) {
       stem.style.strokeDashoffset = 0;
-      stepEls.forEach(s => s.classList.add('is-open'));
+      stepFlowers.forEach(f => setFlower(f, 1, 1));
       return;
     }
     drawBloom(sectionProgress(bloom));
