@@ -100,12 +100,18 @@ p { margin: 0 0 1em; }
 @media (max-width: 720px) { .nav__links { display: none; } }
 
 /* 1. Bloom hero */
-.bloom { height: 380vh; position: relative; }
+.bloom { height: 340vh; position: relative; }
 .bloom__stage {
   position: sticky; top: 0; height: 100vh; height: 100svh;
   overflow: hidden; background: var(--blush);
 }
-.bloom__flower { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bloom__plant {
+  position: absolute; bottom: 0; right: 4vw;
+  width: min(46vw, 620px); height: 96%;
+  overflow: visible;
+}
+.bloom__sway { transform-box: view-box; transform-origin: 262px 1000px; animation: sway 7s ease-in-out infinite; }
+@keyframes sway { 0%, 100% { transform: rotate(-.8deg); } 50% { transform: rotate(.9deg); } }
 .bloom__intro {
   position: absolute; inset: 0; z-index: 2;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -128,9 +134,15 @@ p { margin: 0 0 1em; }
 }
 .bloom__reveal.is-live { pointer-events: auto; }
 .bloom__reveal .display { margin-bottom: 28px; }
-.bloom__reveal .display em { color: var(--cream); }
+.bloom__reveal .display em { color: var(--peach); }
 .bloom__reveal .lead { margin-bottom: 32px; }
 .bloom__reveal .btn { align-self: flex-start; }
+@media (max-width: 720px) {
+  .bloom__plant { right: 50%; translate: 50% 0; width: 100%; height: 56%; top: 8%; bottom: auto; }
+  .bloom__reveal { justify-content: flex-end; padding-bottom: 7vh; }
+  .bloom__reveal .display { font-size: clamp(2.6rem, 12vw, 3.4rem); margin-bottom: 14px; }
+  .bloom__reveal .lead { margin-bottom: 20px; }
+}
 
 /* 2. Statement */
 .statement { height: 260vh; background: var(--peach); position: relative; }
@@ -258,5 +270,5 @@ p { margin: 0 0 1em; }
   .statement__text .w { opacity: 1; }
   .reveal { opacity: 1; transform: none; transition: none; }
   .step__bud { transform: none; transition: none; }
-  .contact__sun, .bloom__hint span { animation: none; }
+  .contact__sun, .bloom__hint span, .bloom__sway { animation: none; }
 }
