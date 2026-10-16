@@ -6,7 +6,7 @@ import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import { Colors } from '../../src/constants/colors';
 import NotificationBell from '../../src/components/NotificationBell';
 import { BookingCardSkeleton } from '../../src/components/Skeleton';
-import { sendNotification } from '../../src/lib/notification-service';
+import { triggerBookingNotification } from '../../src/lib/notification-service';
 import { promptGuestSignIn } from '../../src/lib/guest-prompt';
 
 const STATUS_COLOR: Record<string, string> = {
@@ -157,18 +157,12 @@ export default function Bookings() {
           showToast("Couldn't reach the server — please try again.");
           rpcSucceeded = false;
         } else if (result?.ok) {
-          // Notify the host that the traveller cancelled
-          const booking = bookings.find(b => b.id === bookingId);
-          const hostUserId = booking?.hosts?.assigned_user_id ?? booking?.hosts?.user_id;
-          if (hostUserId) {
-            sendNotification({
-              userId: hostUserId,
-              type: 'booking_cancelled',
-              title: 'Booking cancelled',
-              body: 'A traveller cancelled their upcoming booking with you.',
-              relatedBookingId: bookingId,
-            }).catch(() => {});
-          }
+          // Notify the host that the traveller cancelled. Routed through
+          // create_booking_notification (Stage 2 Phase 1/2) rather than a
+          // direct insert — the RPC independently re-validates that this
+          // booking is really cancelled and that the caller is really its
+          // traveller before writing anything.
+          triggerBookingNotification(bookingId, 'booking_cancelled').catch(() => {});
         } else {
           showToast(
             result?.reason === 'not_found_or_not_cancellable'
@@ -222,17 +216,9 @@ export default function Bookings() {
         } else {
           showToast('Booking cancelled');
           // Notify the host — only for a fresh cancellation, not a no-op.
-          const booking = bookings.find(b => b.id === bookingId);
-          const hostUserId = booking?.hosts?.assigned_user_id ?? booking?.hosts?.user_id;
-          if (hostUserId) {
-            sendNotification({
-              userId: hostUserId,
-              type: 'booking_cancelled',
-              title: 'Booking cancelled',
-              body: 'A traveller cancelled their upcoming booking with you.',
-              relatedBookingId: bookingId,
-            }).catch(e => console.error('[bookings] notification send failed:', bookingId, e));
-          }
+          // Routed through create_booking_notification, see cancelBooking() above.
+          triggerBookingNotification(bookingId, 'booking_cancelled')
+            .catch(e => console.error('[bookings] notification send failed:', bookingId, e));
         }
       } else {
         switch (result?.reason) {

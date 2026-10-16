@@ -10,7 +10,7 @@ import { supabase, isSupabaseConfigured } from '../../src/lib/supabase';
 import NotificationBell from '../../src/components/NotificationBell';
 import Avatar from '../../src/components/Avatar';
 import { recalculateHostResponseRate } from '../../src/lib/response-rate';
-import { sendNotification } from '../../src/lib/notification-service';
+import { triggerBookingNotification } from '../../src/lib/notification-service';
 import { useSelectedHost } from '../../src/lib/host-context';
 
 // Booking statuses used across Cubby:
@@ -93,23 +93,6 @@ function formatResponseCountdown(
     : `${minutes}:${pad(seconds)} left to respond`;
   return { text, state: 'active' };
 }
-
-// ─── Notification copy — used by respondToRequest() below (Phase 5) ─────────
-// hostNewRequest/travellerAwaitingHost moved to payfast-itn/index.ts, since
-// payment confirmation (not accept/decline) is what triggers those now.
-// travellerExpired lives in booking-expiry-sweep/index.ts, next to the
-// transition that actually produces it. This file only needs the two
-// outcomes a host's own Accept/Decline tap can cause.
-const NOTIFICATION_COPY = {
-  travellerAccepted: {
-    title: 'Booking confirmed ✅',
-    body: 'Your host accepted your booking. Check your bookings for the drop-off PIN.',
-  },
-  travellerDeclined: {
-    title: 'Booking declined',
-    body: "Your host wasn't able to accept this booking. Your refund has been queued for processing — try another host nearby!",
-  },
-} as const;
 
 // Demo fallback when Supabase is not configured
 const DEMO_REQUESTS: HostBooking[] = [
@@ -303,17 +286,18 @@ export default function Requests() {
       if (newStatus === 'confirmed') showToast('Booking accepted ✓');
       if (newStatus === 'cancelled') showToast('Booking declined');
 
-      // Notify the traveller of the host's decision
+      // Notify the traveller of the host's decision. Routed through the
+      // secure create_booking_notification RPC (Stage 2 Phase 1/2) rather
+      // than a direct notifications insert — the RPC re-validates the
+      // booking's actual status and that the caller is really its host
+      // before writing anything. Never awaited/thrown into this action's
+      // own success path: a notification failure must not look like a
+      // failed booking update.
       if (booking?.traveller_id && isSupabaseConfigured) {
-        sendNotification({
-          userId: booking.traveller_id,
-          type: newStatus === 'confirmed' ? 'booking_confirmed' : 'booking_declined',
-          title: newStatus === 'confirmed' ? 'Booking confirmed ✅' : 'Booking declined',
-          body: newStatus === 'confirmed'
-            ? 'Your booking has been accepted. Check your bookings for the PIN.'
-            : 'Your booking request was not accepted. Try another host nearby!',
-          relatedBookingId: bookingId,
-        }).catch(() => {});
+        triggerBookingNotification(
+          bookingId,
+          newStatus === 'confirmed' ? 'booking_confirmed_legacy' : 'booking_declined_legacy',
+        ).catch((e) => console.error('[requests] legacy booking notification failed:', bookingId, e));
       }
     } finally {
       setActionId(null);
@@ -348,14 +332,13 @@ export default function Requests() {
         showToast(action === 'accept' ? 'Booking accepted ✓' : 'Booking declined');
         const booking = bookings.find(b => b.id === bookingId);
         if (booking?.traveller_id) {
-          const copy = action === 'accept' ? NOTIFICATION_COPY.travellerAccepted : NOTIFICATION_COPY.travellerDeclined;
-          sendNotification({
-            userId: booking.traveller_id,
-            type: action === 'accept' ? 'booking_confirmed' : 'booking_declined',
-            title: copy.title,
-            body: copy.body,
-            relatedBookingId: bookingId,
-          }).catch(e => console.error('[requests] notification send failed:', bookingId, e));
+          // Routed through create_booking_notification (Stage 2 Phase 1/2)
+          // — see updateStatus() above for why. Never blocks/reverses the
+          // accept_booking/decline_booking result already shown above.
+          triggerBookingNotification(
+            bookingId,
+            action === 'accept' ? 'booking_confirmed' : 'booking_declined',
+          ).catch(e => console.error('[requests] notification send failed:', bookingId, e));
         }
       } else {
         switch (result?.reason) {

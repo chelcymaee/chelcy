@@ -4,6 +4,7 @@
 **Covers:** `paygate-initiate`, `paygate-redirect`, `paygate-notify`, `paygate-return`, `paygate-query`, `_shared/paygate.ts`, `confirm_booking_payment` and the booking lifecycle it feeds into.
 **Purpose:** The single reference for verifying or troubleshooting the payment system — every time, not just before first launch. Use it for the initial sandbox verification, for any future re-verification after a change to a paygate-* function, and for live incident troubleshooting once real payments are enabled.
 **Not covered:** the deprecated Peach functions (`create-payment`, `payment-page`, `payment-result`, `payment-webhook`) and the legacy PayFast functions (`payfast-*`) — kept for reference only, no longer part of the live payment path. `PROJECT_MASTER_PLAN.md` remains the source of truth for their status.
+**Status update (2026-10-06):** `NOTIFY_FIELD_ORDER` — previously this document's one `⚠️ BLOCKING PRE-LAUNCH ITEM` — is now resolved via historical production evidence rather than a dedicated sandbox run. See Section 9's checklist item for the full evidence and its one preserved caveat before citing this elsewhere.
 
 ---
 
@@ -30,6 +31,7 @@ Set via `npx supabase secrets set <NAME>=<value>` (from `cubby/`) or **Supabase 
 | `SUPABASE_SERVICE_ROLE_KEY` | `paygate-initiate`, `paygate-notify`, `paygate-return`, `paygate-query` | Required for every DB read/write and every `confirm_booking_payment` RPC call. `paygate-redirect` is the one exception — it has no Supabase client at all by design. |
 | `ADMIN_SECRET` | `paygate-query` (the `x-admin-secret` server-to-server auth path), and indirectly `_shared/awaiting-host-notifications.ts` / `send-push` / `send-email` (now called by `paygate-notify`/`paygate-query` on every fresh confirm, per PR #72) | Same secret already used by `booking-expiry-sweep`, `complete-booking`, and the admin-* functions — **do not set a different value for payment functions**; it must be the one value every server-to-server caller in this codebase already shares. |
 | `RESEND_API_KEY` | `send-email` (indirect dependency — needed for the host/traveller notification emails a successful payment now triggers, per PR #72) | Not read by any paygate-* function directly, but required for the notification pipeline in Section 0/Item 2 to actually deliver email. |
+| `PUBLIC_FUNCTIONS_URL` | `paygate-initiate` (builds `RETURN_URL`) | **Added PR #76 (2026-08-04), after this runbook was first written — not in the original version of this table.** Supabase's default `*.supabase.co` domain rewrites `text/html` Edge Function responses to `text/plain` (confirmed live, documented Supabase anti-abuse behavior), which broke `paygate-redirect`/`paygate-return`'s auto-submit pages. This secret points browser-facing URLs at the project's custom domain (`https://api.mycubby.co.za`) instead. Falls back to the old default if unset — **fails silently, not loudly**, so confirm it's actually set rather than assuming PR #76 is in effect. See also `EXPO_PUBLIC_FUNCTIONS_URL` — the client-side counterpart (`src/lib/supabase.ts`) that must *also* be set, in the app build itself, for the app to navigate to the same custom domain rather than the default one (`PAYGATE_DEPLOYMENT_CHECKLIST.md` Section 5). Note `src/lib/supabase.ts`'s own comment that env var injection is unreliable on Expo web specifically — worth confirming directly for whichever build is actually used, not assumed from the variable being set in general. |
 
 **Verify secrets are set (without ever printing values):**
 ```bash
@@ -194,10 +196,13 @@ pending_payment
    │  confirm_booking_payment(booking_id, payment_reference, 'paygate')
    │  called by: paygate-notify (primary) or paygate-query (reconciliation fallback)
    │  guard: status = 'pending_payment'
-   ▼
-awaiting_host_confirmation           (paid_at, host_response_deadline = now()+30min set here)
-   │
-   ├─ accept_booking(booking_id)                    ──▶ confirmed
+   │  branches on hosts.instant_booking (read at call time) — see note below
+   ├──────────────────────────────────────────────────────────────┐
+   ▼ (instant_booking = false — Request-to-Book, the default)     ▼ (instant_booking = true — Instant Book, PR #160)
+awaiting_host_confirmation                                      confirmed
+   (paid_at, host_response_deadline = now()+30min set here)        (paid_at set, host_response_deadline = NULL — no accept/
+   │                                                                 decline step; same column-level outcome as a Request-
+   ├─ accept_booking(booking_id)                    ──▶ confirmed   to-Book booking after a host accepts)
    │  guard: status='awaiting_host_confirmation' AND host_response_deadline > now()
    │
    ├─ decline_booking(booking_id)                    ──▶ declined
@@ -218,7 +223,9 @@ confirmed
 completed   (completed_at, host_payout_amount, cubby_amount, payout_status='pending_manual' set here)
 ```
 
-**Never expected for a PayGate booking:** a transition straight from `pending_payment` to `confirmed` or `completed` — `awaiting_host_confirmation` is never skipped. If you ever see this in real data, it means a booking's status was written outside `confirm_booking_payment`/`accept_booking` — a direct `.update()` bypassing the guarded RPCs — and is worth investigating as a genuine anomaly, not routine variation.
+**Added 2026-10-06:** the Instant Book branch (right-hand path above) did not exist when this section was first written — `hosts.instant_booking` was added by PR #160 (2026-09-15). When testing against a host with `instant_booking = true`, landing on `confirmed` directly (never `awaiting_host_confirmation`) is the **expected, correct** outcome, not the anomaly the line below describes — confirm which mode the test host is in before interpreting the result either way.
+
+**Never expected for a PayGate booking against a Request-to-Book host (`instant_booking = false`):** a transition straight from `pending_payment` to `confirmed` or `completed`, skipping `awaiting_host_confirmation`. If you see this for a host confirmed to be in Request-to-Book mode, it means a booking's status was written outside `confirm_booking_payment`/`accept_booking` — a direct `.update()` bypassing the guarded RPCs — and is worth investigating as a genuine anomaly, not routine variation.
 
 **Idempotency:** every transition above is guarded by its own `WHERE status = '<expected prior state>'` clause inside a `SECURITY DEFINER` function — a duplicate/retried call (PayGate retrying `paygate-notify`, a race between `paygate-notify` and `paygate-query`, a double-tap on Accept) always resolves to `{ok:false, reason:'already_resolved', status:<current status>}` rather than a second transition or a corrupted state.
 
@@ -321,8 +328,21 @@ No logging at all, by design (no Supabase client, no I/O beyond returning HTML).
 
 **Blocking — must be true before enabling real (non-test) payments:**
 
-- [ ] **`NOTIFY_FIELD_ORDER` confirmed against a real sandbox notify payload's actual `CHECKSUM`** — the one item marked `⚠️ BLOCKING PRE-LAUNCH ITEM` in `_shared/paygate.ts`. This also governs `paygate-query`'s response checksum (documented as inheriting the same caveat), so confirming it once during Section 4's sandbox run settles both.
-- [ ] A complete sandbox payment has been run through the **full chain** (Section 4) with every checklist item in 4.3 passing.
+- [x] **`NOTIFY_FIELD_ORDER` verified via historical production evidence (resolved 2026-10-06) — not via a dedicated sandbox run.** `_shared/paygate.ts` itself still carries its original `⚠️ BLOCKING PRE-LAUNCH ITEM` comment — deliberately left unedited pending a separate code-comment pass — but for the purposes of this checklist, treat this item as closed on the following basis:
+
+  Booking `60add457-8138-4006-a449-2fafdc6626b6` (created 2026-09-15 11:28 UTC, paid 2026-09-15 11:57 UTC, host "Piazza St. Johns") is real production data, queried read-only and reviewed 2026-10-06. Its state:
+  - `total_price=165` / `base_storage_amount=150` / `traveller_service_fee=15` — matches "the real R165 PayGate transaction" referenced in commit `caccdc8` ("Fix traveller payment recovery and pending booking visibility"), confirming both are the same incident.
+  - `paygate_pay_request_id` = a well-formed GUID (`19E7D5AE-6622-B379-0B75-F3BC44B0A735`) — this column is written **only** by `paygate-initiate`, and only after *its own* response checksum (`RESPONSE_FIELD_ORDER`, already independently confirmed against PayGate's official worked example) verifies. Its presence proves a genuine `initiate.trans` round-trip with PayGate's real servers occurred.
+  - `payment_reference` = `1246195502` — numeric, and **distinct from** `paygate_pay_request_id`. Both `paygate-notify` and `paygate-query` prefer PayGate's `TRANSACTION_ID` over `PAY_REQUEST_ID` as this value; a distinct value here means a real `TRANSACTION_ID` field was present and parsed from whatever PayGate response was received.
+  - `paid_at` is populated, and `host_response_deadline` is set to exactly `paid_at + 30 minutes` — the **Request-to-Book** branch of `confirm_booking_payment` (see Section 6) — consistent with this host's `instant_booking` flag being `false` at the time of this booking (it reads `true` today; Instant Book, PR #160, merged the same day, after this booking was already confirmed).
+  - The booking later `expired` via the normal guarded `expire_overdue_booking` path (`expired_at` and `refund_requested_at` identical to the microsecond, confirming one atomic guarded UPDATE, exactly as the code predicts) — not completed, not manually touched.
+  - `traveller_id` equals this host's `user_id`/`assigned_user_id` — the traveller and the host owner were the same person, strongly indicating a deliberate, controlled self-test rather than a customer transaction.
+
+  None of the above is reachable without `confirm_booking_payment` having actually executed, which — on every code path in this codebase capable of calling it for a `paygate` booking (`paygate-notify`, `paygate-query`; no other function, and no client-callable path, can reach it — `GRANT EXECUTE` is `service_role`-only) — requires a `NOTIFY_FIELD_ORDER`-based checksum to have verified against a real PayGate response first. `_shared/paygate.ts` is confirmed byte-identical (via `git diff`) between this booking's creation date and current `main` — no formula drift to account for.
+
+  **Caveat, preserved deliberately:** no surviving Edge Function log or raw payload establishes whether this specific confirmation ran through `paygate-notify` or `paygate-query` — both functions use `NOTIFY_FIELD_ORDER` for this exact verification, so the distinction doesn't change the conclusion for this checklist item, but this should **not** be characterized as "a captured raw NOTIFY payload was inspected" — it wasn't. This is strong circumstantial production evidence, not a reproduced, logged test.
+
+- [ ] A complete sandbox payment has been run through the **full chain** (Section 4) with every checklist item in 4.3 passing. *(Note: the `NOTIFY_FIELD_ORDER` sub-concern this item originally existed to cover is now resolved above — this line remains open for the other reasons it covers: current deployment status, current PayGate dashboard config, and the deep-link/return-page checks below, none of which the historical evidence speaks to.)*
 - [ ] All five paygate-* functions deployed with `--no-verify-jwt` (Section 3), confirmed via `npx supabase functions list`.
 - [ ] All secrets in Section 1 confirmed set via `npx supabase secrets list` (names only — never verify by printing a value).
 - [ ] PayGate dashboard items in Section 2 confirmed, especially that the configured `PAYGATE_ENCRYPTION_KEY` is current (not rotated since it was last set in Supabase).
@@ -331,7 +351,7 @@ No logging at all, by design (no Supabase client, no I/O beyond returning HTML).
 - [x] **Gap #2 (Section 0) resolved**: `paygate-notify`/`paygate-query` both call `sendAwaitingHostNotifications` on a fresh confirm (PR #72, merged to `main` 2026-07-31).
 - [ ] **PR #71 and PR #72 are actually deployed**, not just merged to `main` — merging the branch does not deploy the Edge Functions (Section 3) or ship a new app build. Confirm `paygate-notify`/`paygate-query` were redeployed after PR #72, and that the app build travellers actually use includes PR #71's `booking.tsx`/`app/_layout.tsx`/`payment-success.tsx` changes.
 - [ ] **The deep-link trust fix from PR #71's final review is exercised at least once in the real sandbox run**: confirm the return page (Section 4, Step 5) and, if testable, the backgrounded-app fallback path (`app/_layout.tsx` → `payment-success.tsx`) both correctly wait for/reflect the booking's real DB status rather than an instant "confirmed" based on the redirect alone.
-- [ ] `RETURN_FIELD_ORDER` and `NOTIFY_FIELD_ORDER`'s exact field *order* (not just field list) have both been byte-for-byte confirmed against real PayGate responses at least once — `INITIATE_FIELD_ORDER`/`RESPONSE_FIELD_ORDER` already were, against PayGate's own worked examples in their docs.
+- [ ] `RETURN_FIELD_ORDER`'s exact field *order* (not just field list) has been confirmed against a real PayGate return callback at least once — `INITIATE_FIELD_ORDER`/`RESPONSE_FIELD_ORDER` already were, against PayGate's own worked examples in their docs, and `NOTIFY_FIELD_ORDER` is now covered by the historical evidence above. `RETURN_FIELD_ORDER` is lower-stakes if wrong (`paygate-return` is explicitly non-authoritative — see Section 8), but remains genuinely unconfirmed either way.
 
 **Non-blocking but recommended before real payments:**
 
