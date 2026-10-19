@@ -11,13 +11,14 @@
 
 ## 1. Version bump
 
-Current `app.json`: `"version": "1.0.5"`. `eas.json`'s `production` build profile has `"autoIncrement": true`, so EAS will bump the iOS build number automatically — but the **marketing version** (`1.0.5`) does not bump itself. Decide and bump it in `app.json` before building (e.g. `1.0.6`) so the App Store listing reflects a real release, not a resubmission of 1.0.5.
+- [x] Bumped `app.json` `"version"`: `1.0.5` → `1.0.6`. `eas.json`'s `production` build profile has `"autoIncrement": true`, so EAS assigns the iOS build number remotely (`appVersionSource: "remote"`) — this bump only covers the marketing version, which doesn't move on its own.
 
 ## 2. Pre-build verification (reuse what already exists — no new audit)
 
-- [ ] `npm test` / the existing Node test suites still pass: `push-authorization.test.ts` (21 tests), `notification-rpc.test.ts` (11 tests).
-- [ ] `npx tsc --noEmit` — compare against the baseline already established in PR #174 (pre-existing Deno/edge-function noise is expected; no *new* error categories).
-- [ ] `npx expo export -p web` still succeeds as a build sanity check (does not substitute for a native build, but catches bundler-level breakage cheaply before spending an EAS build).
+- [x] Node test suites pass: `push-authorization.test.ts` + `notification-rpc.test.ts`, 32/32.
+- [x] `npx tsc --noEmit` on current `main` (`b014e97`) — every `app/`/`src/` error present today already existed in the pre-sprint baseline (commit `2d909ad`, confirmed via a side-by-side worktree diff); zero new error categories. `supabase/functions/**` Deno noise is expected and unrelated to the native bundle.
+- [x] `npx expo export -p web` succeeds — 1525 modules, zero errors, matches PR #174's own report.
+- [ ] **Not verified from this session — network-blocked:** EAS login state, iOS signing credentials, and App Store Connect submit configuration. This sandbox's outbound network policy rejects `cdp.expo.dev` (confirmed via a live 403 at the proxy level, same restriction already hit against `app.mycubby.co.za` and `*.supabase.co` earlier in this engagement) — no `eas` CLI command can reach Expo's servers from here, independent of what credentials exist. Must be run from an environment with real network access to `expo.dev`/`*.easbuild.net`.
 - [ ] Confirm `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` are set correctly for production in the EAS project's environment variables (`eas env:list production` or the EAS dashboard) — not just in local `.env`. Same for `EXPO_PUBLIC_SENTRY_DSN` and `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` if used on iOS.
 - [ ] Re-read `notification-service.ts`'s deployment-order comment: the client now hard-depends on the `_v2` RPCs existing. Since both are confirmed live, this build is safe to ship — but if any further SQL changes are planned before this build goes out, re-check this gate again right before building.
 
