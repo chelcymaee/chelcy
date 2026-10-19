@@ -20,12 +20,17 @@
   /* Message bubble, like a sent text. Emoji are swapped for Apple-style images by the script below. */
   .bubble {
     position: relative; display: flex; justify-content: center; align-items: center; gap: 12px;
-    background: var(--white); border-radius: 48px; height: 120px;
-    box-shadow: 0 6px 24px rgba(120, 50, 40, .06);
+    border-radius: 48px; height: 120px; isolation: isolate;
   }
-  .bubble::after {
+  /* Bubble fill and tail share one translucent layer, so where they overlap there is no darker seam. */
+  .bubble .bg {
+    position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+    opacity: .55; filter: drop-shadow(0 6px 18px rgba(120, 50, 40, .05));
+  }
+  .bubble .bg::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #fff; }
+  .bubble .bg::after {
     content: ""; position: absolute; left: -9px; bottom: 0; width: 40px; height: 34px;
-    background: inherit; clip-path: path("M40 0 C40 18 30 30 0 34 C22 34 34 30 40 26 Z");
+    background: #fff; clip-path: path("M40 0 C40 18 30 30 0 34 C22 34 34 30 40 26 Z");
   }
   .bubble img { width: 58px; height: 58px; }
 
@@ -102,6 +107,7 @@
     document.querySelectorAll('.bubble').forEach(b => {
       const chars = [...seg.segment(b.textContent.trim())].map(s => s.segment);
       b.textContent = '';
+      b.appendChild(Object.assign(document.createElement('span'), { className: 'bg' }));
       chars.forEach(ch => {
         const code = [...ch].map(c => c.codePointAt(0).toString(16)).filter(c => c !== 'fe0f').join('-');
         const img = document.createElement('img');
