@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sweetpea — Winter emoji combos carousel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..800,100,1;1,9..144,400..800,100,1&display=swap" rel="stylesheet">
+<style>
+  /* Instagram portrait carousel, 1080 × 1350. Each .slide is exported as one PNG. */
+  :root {
+    --blush: #F4DBD7; --peach: #ED8C80; --gold: #E4AB55; --yellow: #F0E6AE;
+    --cherry: #F1614E; --cream: #FFF8F3; --ink: #2B1A17;
+    --emoji: "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #777; display: flex; flex-direction: column; gap: 40px; padding: 40px; width: max-content; }
+  .slide { width: 1080px; height: 1350px; position: relative; overflow: hidden; }
+  .slide > svg.deco { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .accent { font: 600 30px/1 "Barlow Condensed", sans-serif; letter-spacing: .22em; text-transform: uppercase; }
+  .mark { position: absolute; left: 50%; bottom: 54px; translate: -50% 0; width: 44px; opacity: .9; }
+
+  /* Message bubble, like a sent text */
+  .bubble {
+    position: relative; display: flex; justify-content: center; align-items: center; gap: 10px;
+    background: rgba(255, 248, 243, .82); border-radius: 44px; height: 112px;
+    font: 60px/1 var(--emoji); letter-spacing: 2px;
+    box-shadow: 0 10px 30px rgba(120, 50, 40, .10);
+  }
+  .bubble::after {
+    content: ""; position: absolute; left: -10px; bottom: 0; width: 40px; height: 34px;
+    background: inherit; border-bottom-right-radius: 30px;
+    clip-path: path("M40 0 C40 18 30 30 0 34 C22 34 34 30 40 26 Z");
+  }
+
+  /* Slide 1 — cover */
+  .s1 { background: var(--blush); }
+  .s1 .title { position: absolute; top: 330px; left: 0; right: 0; text-align: center; color: var(--ink); }
+  .s1 .title .accent { color: var(--peach); margin-bottom: 34px; }
+  .s1 h1 { font: 600 196px/.88 "Fraunces", serif; font-variation-settings: "SOFT" 100, "WONK" 0; letter-spacing: -.01em; }
+  .s1 h1 span { display: block; font-size: 132px; margin-top: 8px; }
+  .s1 .sub { font: italic 500 84px/1 "Fraunces", serif; font-variation-settings: "SOFT" 100, "WONK" 1; color: var(--peach); margin-top: 26px; }
+  .s1 .bubble { position: absolute; left: 50%; translate: -50% 0; top: 905px; width: 520px; }
+  .s1 .swipe { position: absolute; right: 70px; bottom: 60px; color: var(--ink); opacity: .7; }
+
+  /* Slides 2 & 3 — the combos */
+  .grid { position: absolute; left: 80px; right: 80px; top: 220px; display: grid; grid-template-columns: 1fr 1fr; gap: 44px 40px; }
+  .grid .bubble { font-size: 62px; height: 132px; border-radius: 52px; }
+  .head { position: absolute; top: 120px; left: 0; right: 0; text-align: center; }
+  .head h2 { font: italic 600 64px/1 "Fraunces", serif; font-variation-settings: "SOFT" 100, "WONK" 1; }
+  .s2 { background: var(--peach); color: var(--cream); }
+  .s3 { background: var(--yellow); color: var(--ink); }
+  .s3 .bubble { background: rgba(255, 252, 248, .9); }
+  .foot { position: absolute; left: 0; right: 0; bottom: 150px; text-align: center; }
+</style>
+</head>
+<body>
+
+  <!-- 1. Cover -->
+  <section class="slide s1" id="slide-1">
+    <svg class="deco" viewBox="0 0 1080 1350" id="deco-1"></svg>
+    <div class="title">
+      <p class="accent">Sweetpea Social</p>
+      <h1>WINTER<span>EMOJI COMBOS</span></h1>
+      <p class="sub">you didn’t know you needed</p>
+    </div>
+    <div class="bubble">🏔️❄️☕🎀🤍</div>
+    <p class="accent swipe">Swipe →</p>
+    <img class="mark" src="../../assets/initials-peach.svg" alt="">
+  </section>
+
+  <!-- 2. Combos -->
+  <section class="slide s2" id="slide-2">
+    <svg class="deco" viewBox="0 0 1080 1350" id="deco-2"></svg>
+    <div class="head"><p class="accent">Copy · paste · post</p></div>
+    <div class="grid">
+      <div class="bubble">⛷️🏔️☕🤍</div>
+      <div class="bubble">🧣🫖📖🕯️</div>
+      <div class="bubble">🔥🪵🍫🍷</div>
+      <div class="bubble">🥾🌲❄️📸</div>
+      <div class="bubble">🎿✨🥂🎀</div>
+      <div class="bubble">🛷🦌🌨️💗</div>
+      <div class="bubble">🧤☕🌅🏔️</div>
+      <div class="bubble">🍪🥛🧦🎄</div>
+      <div class="bubble">🏂❄️🎧🍵</div>
+      <div class="bubble">🌙🛁🕯️🤍</div>
+    </div>
+    <img class="mark" src="../../assets/initials-blush.svg" alt="">
+  </section>
+
+  <!-- 3. More combos + CTA -->
+  <section class="slide s3" id="slide-3">
+    <svg class="deco" viewBox="0 0 1080 1350" id="deco-3"></svg>
+    <div class="head"><p class="accent" style="color: var(--peach)">Holiday edition</p></div>
+    <div class="grid">
+      <div class="bubble">🎄✨🎁🤍</div>
+      <div class="bubble">🏕️🔥🌌⭐</div>
+      <div class="bubble">🧁☕🎀💌</div>
+      <div class="bubble">🚙🏔️🎶❄️</div>
+      <div class="bubble">🧣🥰☕🫶</div>
+      <div class="bubble">🦌🌲🌨️🎀</div>
+      <div class="bubble">🥧🕯️🍽️🍊</div>
+      <div class="bubble">⛸️✨🎟️💗</div>
+      <div class="bubble">📝🎅🍪🥛</div>
+      <div class="bubble">🥂🎆🎉🌙</div>
+    </div>
+    <div class="foot"><h2 style="font: italic 600 58px/1 'Fraunces', serif; font-variation-settings: 'SOFT' 100, 'WONK' 1;">Which one’s your vibe?</h2></div>
+    <img class="mark" src="../../assets/initials-peach.svg" alt="">
+  </section>
+
+  <script src="../sweetpea-flower.js"></script>
+  <script>
+    const S = window.SweetPea;
+    // Cover: a sprig climbing in from the bottom left, and one dipping in from the top right.
+    S.sprig(document.getElementById('deco-1'), {
+      stem: 'M-20 1390 C50 1300 40 1220 100 1140 S170 1000 150 930',
+      leaves: [[.25, 1]], tendrils: [[.55, -1]],
+      flowers: [
+        { at: .4, side: 1, size: 1.1, scheme: 'peach', tilt: 18, seed: 1 },
+        { at: .72, side: -1, size: .95, scheme: 'berry', tilt: -14, seed: 7 },
+        { at: .98, side: 1, size: .65, scheme: 'blush', tilt: 6, seed: 4, open: .35 }
+      ]
+    });
+    S.sprig(document.getElementById('deco-1'), {
+      stem: 'M1110 -30 C1040 60 1060 150 990 230',
+      flowers: [
+        { at: .55, side: -1, size: 1.1, scheme: 'cream', tilt: -150, seed: 2 },
+        { at: .98, side: 1, size: .9, scheme: 'blush', tilt: 160, seed: 5 }
+      ]
+    });
+    // Slide 2: flowers peeking from the bottom corners.
+    S.sprig(document.getElementById('deco-2'), {
+      stem: 'M1100 1380 C1020 1300 1050 1240 990 1180',
+      flowers: [{ at: .6, side: -1, size: 1.15, scheme: 'blush', tilt: -20, seed: 3 }, { at: 1, side: 1, size: .8, scheme: 'cream', tilt: 10, seed: 6, open: .5 }]
+    });
+    S.sprig(document.getElementById('deco-2'), {
+      stem: 'M-30 1390 C40 1320 20 1270 80 1215',
+      flowers: [{ at: .9, side: 1, size: 1, scheme: 'peach', tilt: 25, seed: 8 }]
+    });
+    // Slide 3: a sprig from the top left.
+    S.sprig(document.getElementById('deco-3'), {
+      stem: 'M-30 -30 C40 50 30 110 110 170',
+      flowers: [{ at: .6, side: 1, size: 1.1, scheme: 'peach', tilt: 160, seed: 9 }, { at: 1, side: -1, size: .85, scheme: 'berry', tilt: -170, seed: 2, open: .6 }]
+    });
+    S.sprig(document.getElementById('deco-3'), {
+      stem: 'M1110 1380 C1040 1310 1060 1250 1000 1190',
+      flowers: [{ at: .85, side: -1, size: 1.05, scheme: 'blush', tilt: -15, seed: 4 }]
+    });
+  </script>
+</body>
+</html>
