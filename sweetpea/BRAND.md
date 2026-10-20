@@ -4,80 +4,87 @@ Working notes for Claude (and anyone else) picking up Sweetpea work: the website
 
 ## The business
 
-Sweetpea is a **social media management** studio for bold, feminine, adventurous brands.
-Tagline used on the site: **"Social that blooms."**
+Sweetpea is a **marketing studio in the Rocky Mountains**. It offers social media, brand overhauls and
+marketing strategy for mountain-town businesses: shops, lodges, outfitters, restaurants and makers.
+The studio is run by Gracie and works with US mountain-town clients; the Drive has Colorado, Wyoming
+and Montana content folders.
 
-The brand identity was designed by Good Spark Creative Design. The original guide was made for a
-"Sweetpea Gear + Gadgets" outdoor brand. We reuse its look, but **not** its gear wording:
-don't use "Gear + Gadgets", "Gear for the gals", the stacked logo with that text, or the original
-brand pattern artboard, which contains that text.
+**Tagline:** "Marketing for mountain towns."
+**Sub-line:** "Marketing studio · Rocky Mountains"
 
-## Brand words
+## Brand direction (October 2026 rebrand)
 
-Feminine · Adventurous · Resilient · Outdoorsy
+The brand must work for masculine and feminine clients alike, so it is **outdoorsy and neutral, not
+feminine**. Don't use the old pink palette, flowers or sweet pea illustrations on new work.
 
-## Colours
+The source of truth is the Canva design **"SP Flyer"** (design `DAHX-JNCvu0`, owned by Gracie's account).
+
+### Colours (exact, from the flyer)
 
 | Name | Hex | Use |
 | --- | --- | --- |
-| Barely Blush | `#F4DBD7` | Main background |
-| Punchy Peach | `#ED8C80` | Primary brand colour, logo |
-| Goldenrod | `#E4AB55` | Logo use, accents |
-| Mellow Yellow | `#F0E6AE` | Soft background |
-| Cherry Red | `#F1614E` | Secondary, bold accents |
-| Sorbet Delight | `#FFB68D` | Secondary |
-| Ink (ours) | `#2B1A17` | Text, buttons |
-| Cream (ours) | `#FFF8F3` | Cards, light text on colour |
+| Linen | `#E8E0CF` | Light backgrounds, text on dark |
+| Sage | `#A3B19B` | Soft accents, labels on forest |
+| Forest | `#2F4A3A` | Primary: headlines, dark sections, logo |
+| Mist | `#9DB4C0` | Sky, far mountains |
+| Rust | `#B5583A` | Calls to action, accents |
+| Paper (ours) | `#F7F3EA` | Page background |
+| Ink (ours) | `#1E2B23` | Body text |
 
-## Type
+### Type
 
-- **Brand fonts:** Regards (logo only) and Good Hand Sans (accents in all caps, body text).
-  These are paid fonts and we don't have the files yet.
-- **Web and social stand-ins** (free, Google Fonts):
-  - Fraunces, soft and "wonky" settings, for headlines
-  - Barlow Condensed, all caps with wide letter-spacing, for accents and labels
-  - Montserrat for body text
+- **Headlines:** a semibold classic serif (Canva font ref `YAFdJpU7Kkk`). The web stand-in is
+  **Fraunces** with soft and "wonky" both off, weight 600, tight letter-spacing.
+- **Labels:** small, spaced capitals in a geometric sans: Montserrat 600 at 0.26em tracking.
+- **Body:** Montserrat.
 
-## Logos
+### Logos
 
-SVGs are in `sweetpea/assets/`:
+- **"sweetpea." wordmark:** same letterforms as before. Recoloured SVGs are in `sweetpea/assets/`:
+  `wordmark-forest.svg`, `wordmark-linen.svg` and `wordmark-white.svg`.
+- **New "SP" monogram** with a mountain range inside the letters: **we don't have this file yet.** Ask
+  for an SVG or PNG. Until then the favicon is a simple mountain, `peak-forest.svg`.
+- **Mountain line icon:** the flyer uses Canva's "Minimalist Mountain Silhouette" in rust. The site draws
+  its own similar line.
 
-- `wordmark-*.svg`: horizontal "sweetpea." wordmark in peach, blush, gold and yellow
-- `initials-*.svg`: "SP" monogram (favicon, profile picture)
-- `submark-*.svg`: sunburst in a circle
+### Photos
 
-Source files:
+The flyer uses mountain photos (Teton-style peaks, a misty valley, red-rock cliffs). They belong to
+Gracie's Canva account, and this environment can't download them. Ask for the files to be attached
+in chat or added to the GitHub release `sweetpea-assets`.
 
-- Full logo zip: shared in chat on 2026-10-16
-- Brand guidelines PDF: GitHub release `sweetpea-assets`
-  (https://github.com/chelcymaee/chelcy/releases/tag/sweetpea-assets)
+### Services copy (from the flyer)
 
-## Visual motif: the sweet pea
+- **Social Media:** Posts, Reels, and engagement, handled.
+- **Brand Overhauls:** A look that fits who you are now.
+- **Marketing Strategy:** A clear plan for locals and visitors.
+- **Free offer:** Book a 20-minute marketing check-in.
 
-The client loves a **realistic sweet pea flower**, based on reference photos of pink, magenta and
-white sweet peas on a stem. On the website it is drawn in SVG (`main.js` → `buildFlower`):
-
-- Parts: a ruffled banner petal, two wings, a keel and a green calyx.
-- Colour schemes: peach, blush, berry and cream, each shaded from a deeper centre to a pale rim.
-
-Reuse this flower in social posts for consistency.
-
-## Website status
+## Website
 
 - **Location:** `sweetpea/` (index.html, styles.css, main.js). Live at mountain.co.za/sweetpea/ once
   merged to `main`.
 - **Pull request:** https://github.com/chelcymaee/chelcy/pull/180
 - **Private preview:** https://claude.ai/artifact/YE7BusMVEZuTCipYRbFeJ4. Share it from its
   Share menu.
-- **Hero:** a sweet pea stem grows as you scroll, and flowers open bottom to top. The top flower
-  stays a half-open bud. Then "Social that blooms." appears.
-- **Process section:** a green stem with a sweet pea opening at Plant / Grow / Bloom.
-- **Reference site:** the client sent thenitrocart.com as a site they like, but the address doesn't
-  resolve. They want something "cooler but still minimalistic".
+- **Hero animation:** layered mountain ridges in mist, sage, green and forest, with pine treelines and a
+  rust sun. As you scroll, each ridge climbs at its own speed (parallax), the forest rises to fill the
+  screen, and "Marketing for mountain towns." appears on the green.
+- **Process section:** "Scout. Map. Summit." with a trail that draws itself as you scroll and peak
+  markers that light up.
+- **Packages:** Basecamp, Trailhead and Summit. The contents are a draft.
+- **Check-in section:** rust background with a drawn ridge and treeline.
 
 ### Still to do
 
-- Real email, Instagram and WhatsApp links (marked `TODO` in index.html)
+- New SP monogram file and real photos (see above)
+- Real email, Instagram and booking links (marked `TODO` in index.html)
 - About text, package contents and prices are drafts and need sign-off
-- Brand font files (Regards, Good Hand Sans)
-- Optional: swap the remaining sunburst icons (marquee, contact section) for sweet peas
+
+## Social media
+
+- `sweetpea/social/`: posts are built as HTML, then `node sweetpea/social/render.mjs <folder>` exports
+  each `.slide` to PNG.
+- `winter-emoji-combos/`: Instagram carousel at 1080×1350 using Apple-style emoji images
+  (`social/emoji/`). It was made in the **old pink brand**, so redo it in the new palette before
+  posting.
