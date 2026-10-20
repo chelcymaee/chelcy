@@ -32,6 +32,16 @@
  [
   "l07",
   "then press both side buttons together to open it.",
+  0.45
+ ],
+ [
+  "l07b",
+  "Your keys come with a remote. Press the big red button to open the main gate,",
+  0.3
+ ],
+ [
+  "l07c",
+  "and use the green key to open the elevator gate.",
   0.7
  ],
  [

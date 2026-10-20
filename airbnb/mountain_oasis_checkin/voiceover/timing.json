@@ -4,86 +4,98 @@
    "id": "l01",
    "text": "Welcome to Mountain Oasis!",
    "s": 0.35,
-   "e": 2.031
+   "e": 2.029
   },
   {
    "id": "l02",
    "text": "Here's a quick guide to make your self check-in as easy as possible.",
-   "s": 2.381,
-   "e": 5.947
+   "s": 2.379,
+   "e": 5.945
   },
   {
    "id": "l03",
    "text": "When you arrive, park in front of the property, where you'll see the blue Mountain Oasis parking signs.",
-   "s": 6.647,
-   "e": 11.422
+   "s": 6.645,
+   "e": 11.418
   },
   {
    "id": "l04",
    "text": "Head towards the large gate, where you'll find the lockboxes.",
-   "s": 12.122,
-   "e": 15.123
+   "s": 12.118,
+   "e": 15.117
   },
   {
    "id": "l05",
    "text": "Your keys are in the top lockbox.",
-   "s": 15.473,
-   "e": 17.311
+   "s": 15.467,
+   "e": 17.308
   },
   {
    "id": "l06",
    "text": "Simply enter the code your host will share with you before check-in,",
-   "s": 17.911,
-   "e": 21.255
+   "s": 17.908,
+   "e": 21.252
   },
   {
    "id": "l07",
    "text": "then press both side buttons together to open it.",
-   "s": 21.505,
-   "e": 23.998
+   "s": 21.502,
+   "e": 23.994
+  },
+  {
+   "id": "l07b",
+   "text": "Your keys come with a remote. Press the big red button to open the main gate,",
+   "s": 24.444,
+   "e": 28.406
+  },
+  {
+   "id": "l07c",
+   "text": "and use the green key to open the elevator gate.",
+   "s": 28.706,
+   "e": 31.277
   },
   {
    "id": "l08",
    "text": "To reach your unit, you have two options.",
-   "s": 24.698,
-   "e": 26.669
+   "s": 31.977,
+   "e": 33.948
   },
   {
    "id": "l09",
    "text": "If you're using the elevator to the left of the gate, press the yellow button to go up to your pathway.",
-   "s": 27.269,
-   "e": 31.932
+   "s": 34.548,
+   "e": 39.211
   },
   {
    "id": "l10",
    "text": "To return to the parking area, press the green button.",
-   "s": 32.332,
-   "e": 34.904
+   "s": 39.611,
+   "e": 42.183
   },
   {
    "id": "l11",
    "text": "Alternatively, enter through the large gate, and follow the signs marked Upstairs.",
-   "s": 35.604,
-   "e": 40.032
+   "s": 42.883,
+   "e": 47.312
   },
   {
    "id": "l12",
    "text": "Once inside, you'll find your Wi-Fi details in the welcome book on the dining room table.",
-   "s": 49.404,
-   "e": 54.209
+   "s": 56.684,
+   "e": 61.489
   },
   {
    "id": "l13",
    "text": "That's it!",
-   "s": 54.909,
-   "e": 55.617
+   "s": 62.189,
+   "e": 62.897
   },
   {
    "id": "l14",
    "text": "Settle in, make yourself at home, and enjoy your stay at Mountain Oasis!",
-   "s": 55.917,
-   "e": 59.87
+   "s": 63.197,
+   "e": 67.15
   }
  ],
- "total": 60.67
+ "total": 67.95
 }

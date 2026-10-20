@@ -9,18 +9,19 @@ def at(i, frac): return round(S(i) + (E(i) - S(i)) * frac, 3)   # a moment insid
 END_T = round(E('l14') + 2.3, 2)
 r30 = lambda x: round(x * FPS) / FPS
 # cut points (edit times) anchored to the voice
-C = dict(s1=S('l02'), s2=S('l03'), s2b=S('l03') + 4.0, s3=S('l04'), s4=S('l06'), s5=S('l08'), s6=S('l09'), s7=S('l09') + 2.4,
+C = dict(s1=S('l02'), s2=S('l03'), k1=S('l07b'), k2=S('l07c'), s3=S('l04'), s4=S('l06'), s5=S('l08'), s6=S('l09'), s7=S('l09') + 2.4,
          s8=S('l11'), s9=S('l12'), s9b=S('l12') + 1.5, s9c=S('l12') + 2.7, s10=S('l13'), s10b=S('l13') + 2.5, s10c=S('l13') + 5.0)
 C = {k: r30(v) for k, v in C.items()}
 # (start, end, kind, args)
 SEG = [
     (0, C['s1'], 'clip', dict(f='1095', ss=0.0)),
     (C['s1'], C['s2'], 'clip', dict(f='1094', ss=0.0, speed=0.85)),
-    (C['s2'], C['s2b'], 'card', dict(f='1103', ss=0.0, speed=0.25)),
-    (C['s2b'], C['s3'], 'clip', dict(f='1102', ss=0.2)),
+    (C['s2'], C['s3'], 'card', dict(f='1103', ss=0.0, speed=0.3)),
     (C['s3'], C['s4'], 'freeze_end', dict(f='1101', ss=7.0 - (S('l05') - C['s3']), until=7.0)),
-    (C['s4'], C['s5'], 'clip', dict(f='1107', ss=0.0)),
-    (C['s5'], C['s6'], 'clip', dict(f='1111', ss=0.0, speed=0.55, blur=True)),
+    (C['s4'], C['k1'], 'clip', dict(f='1107', ss=0.0)),
+    (C['k1'], C['k2'], 'clip', dict(f='1102', ss=0.0)),
+    (C['k2'], C['s5'], 'clip', dict(f='1111', ss=0.0, speed=0.5)),
+    (C['s5'], C['s6'], 'clip', dict(f='1101', ss=0.3, blur=True)),
     (C['s6'], C['s7'], 'clip', dict(f='1105', ss=0.4)),
     (C['s7'], C['s8'], 'still', dict(f='1106', ss=0.3, z=0.12, px=640, py=1100)),
     (C['s8'], C['s9'], 'ramp', dict(f='1108')),
@@ -88,15 +89,18 @@ OV += [('g/title.png', 0.1, C['s1'] + 0.1, 540, 820, 'pop'), ('g/subtitle_guide.
        ('g/sparkle.png', 0.5, C['s1'], 240, 640, 'twinkle'), ('g/sparkle_s.png', 0.8, C['s1'], 860, 700, 'twinkle'), ('g/sparkle_y.png', 1.0, C['s1'], 820, 1020, 'twinkle')]
 ov_t = [C['s1'] + 0.3 + k * 0.55 for k in range(4)]
 for k in range(4): OV.append((f'g/overview{k + 1}.png', ov_t[k], ov_t[k + 1] if k < 3 else C['s2'], 540, 1060, 'pop' if k == 0 else 'static'))
-OV += [('g/step1.png', C['s2'] + 0.2, C['s3'], 540, TOP, 'pop'), ('g/parking.png', at('l03', 0.55), C['s2b'], 880, 700, 'pop'),
-       ('g/chip_signs.png', at('l03', 0.6), C['s2b'], 540, 1420, 'pop')]
+OV += [('g/step1.png', C['s2'] + 0.2, C['s3'], 540, TOP, 'pop'), ('g/parking.png', at('l03', 0.55), C['s3'], 880, 700, 'pop'),
+       ('g/chip_signs.png', at('l03', 0.6), C['s3'], 540, 1420, 'pop')]
 OV += [('g/step2.png', C['s3'] + 0.2, C['s5'], 540, TOP, 'pop'),
        ('g/ring.png', S('l05'), C['s4'], 555, 900, 'pulse'), ('g/arrow_left.png', S('l05') + 0.15, C['s4'], 790, 900, 'bobx'),
        ('g/chip_top.png', S('l05') + 0.3, C['s4'], 540, 640, 'pop'),
        ('g/chip_code.png', S('l06') + 0.3, S('l07'), 540, 640, 'pop'),
-       ('g/chip_sides.png', S('l07') + 0.1, C['s5'], 540, 640, 'pop'),
-       ('g/arrow_right.png', S('l07') + 0.2, C['s5'] - 0.4, 285, 1110, 'bobx'), ('g/arrow_left.png', S('l07') + 0.2, C['s5'] - 0.4, 945, 1110, 'bobx_r'),
-       ('g/sparkle_y.png', E('l07') - 0.2, C['s5'], 640, 1000, 'twinkle')]
+       ('g/chip_sides.png', S('l07') + 0.1, C['k1'], 540, 640, 'pop'),
+       ('g/arrow_right.png', S('l07') + 0.2, C['k1'] - 0.3, 285, 1110, 'bobx'), ('g/arrow_left.png', S('l07') + 0.2, C['k1'] - 0.3, 945, 1110, 'bobx_r'),
+       ('g/sparkle_y.png', E('l07') - 0.2, C['k1'], 640, 1000, 'twinkle')]
+rx = f"405+75*min(1\\,max(0\\,(t-{C['k1']})/3.0))"
+OV += [('g/ring_r.png', at('l07b', 0.45), C['k2'], rx, 1450, 'pulse'), ('g/chip_red.png', at('l07b', 0.45) + 0.1, C['k2'], 540, 640, 'pop'),
+       ('g/ring_g.png', at('l07c', 0.35), C['s5'], 430, 1400, 'pulse'), ('g/chip_greenkey.png', at('l07c', 0.35) + 0.1, C['s5'], 540, 640, 'pop')]
 OV += [('g/step3.png', C['s5'] + 0.2, C['s9'], 540, TOP, 'pop'), ('g/options.png', C['s5'] + 0.5, C['s6'] + 0.05, 540, 1020, 'pop')]
 zexpr = f"(1+0.12*min(1\\,(t-{C['s7']})/{C['s8'] - C['s7']}))"
 yx, yy = f"640+59*{zexpr}", f"1100-110*{zexpr}"; gx, gy = f"640+20*{zexpr}", f"1100+115*{zexpr}"
@@ -128,7 +132,7 @@ for l in tm['lines']:
     p = f"g/sub_{l['id']}.png"; gfx.caption(p, l['text'].replace("Here's", "Here’s").replace("you'll", "you’ll").replace("you're", "you’re").replace("That's", "That’s").replace("It's", "It’s"))
     nxt = [m['s'] for m in tm['lines'] if m['s'] > l['s']]; t1 = min(l['e'] + 0.45, nxt[0] - 0.02) if nxt else min(l['e'] + 0.6, C['s10c'])
     if l['id'] == 'l14': t1 = C['s10c']
-    OV.append((p, l['s'], t1, 540, 1610, 'fade'))
+    OV.append((p, l['s'], t1, 540, {'l07b': 880}.get(l['id'], 1610), 'fade'))
 ins = ['-i', 'base.mp4']; fc = []; prev = '0:v'; k = 1
 for png, t0, t1, cx, cy, an in OV:
     D = t1 - t0
@@ -151,7 +155,7 @@ SFX = '../sfx/'
 cues = [('sparkle', 0.3, -12), ('card_pop', C['s1'] + 0.3, -14), ('pop', ov_t[1], -16), ('pop', ov_t[2], -16), ('pop', ov_t[3], -16),
         ('pop', C['s2'] + 0.2, -15), ('pop', at('l03', 0.55), -14), ('pop', C['s3'] + 0.2, -15), ('pop', S('l05'), -13),
         ('pop', S('l06') + 0.3, -15), ('pop', S('l07') + 0.1, -15), ('lock_click', E('l07') - 0.3, -9), ('sparkle', E('l07') - 0.2, -15),
-        ('card_pop', C['s5'] + 0.5, -14), ('pop', t_yel, -13), ('pop', t_grn, -13), 
+        ('pop', at('l07b', 0.45), -13), ('pop', at('l07c', 0.35), -13), ('card_pop', C['s5'] + 0.5, -14), ('pop', t_yel, -13), ('pop', t_grn, -13), 
         ('pop', C['s9'] + 0.2, -15), ('sparkle', C['s9c'] + 0.1, -14), ('sparkle', C['s10c'] + 0.3, -11)]
 cues += [('card_pop', t_, -12) for t_ in SIGN_T]
 os.makedirs('aud', exist_ok=True)

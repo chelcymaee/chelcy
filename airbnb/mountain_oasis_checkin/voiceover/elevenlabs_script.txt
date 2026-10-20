@@ -1,5 +1,5 @@
 Mountain Oasis: self check-in voiceover script (for ElevenLabs)
-One paragraph per line; leave a short pause between lines. A longer pause after line 11 is added in the edit.
+One paragraph per line; leave a short pause between lines. A longer pause after the 'Alternatively...' line is added in the edit.
 
 Welcome to Mountain Oasis!
 
@@ -14,6 +14,10 @@ Your keys are in the top lockbox.
 Simply enter the code your host will share with you before check-in,
 
 then press both side buttons together to open it.
+
+Your keys come with a remote. Press the big red button to open the main gate,
+
+and use the green key to open the elevator gate.
 
 To reach your unit, you have two options.
 
