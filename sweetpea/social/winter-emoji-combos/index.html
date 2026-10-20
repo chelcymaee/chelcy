@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sweetpea — Winter emoji combos carousel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..800,100,1;1,9..144,400..800,100,1&display=swap" rel="stylesheet">
+<style>
+  /* Instagram portrait carousel, 1080 × 1350. Each .slide is exported as one PNG.
+     Minimal: one blush ground, ink type, peach accents, white message bubbles, one sweet pea. */
+  :root { --blush: #F4DBD7; --peach: #ED8C80; --ink: #2B1A17; --white: #FFFFFF; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #777; display: flex; flex-direction: column; gap: 40px; padding: 40px; width: max-content; }
+  .slide { width: 1080px; height: 1350px; position: relative; overflow: hidden; background: var(--blush); color: var(--ink); }
+  .slide > svg.deco { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .accent { font: 600 26px/1 "Barlow Condensed", sans-serif; letter-spacing: .28em; text-transform: uppercase; color: var(--peach); }
+  .mark { position: absolute; left: 50%; bottom: 64px; translate: -50% 0; width: 34px; }
+
+  /* Message bubble, like a sent text. Emoji are swapped for Apple-style images by the script below. */
+  .bubble {
+    position: relative; display: flex; justify-content: center; align-items: center; gap: 12px;
+    border-radius: 48px; height: 120px; isolation: isolate;
+  }
+  /* Bubble fill and tail share one translucent layer, so where they overlap there is no darker seam. */
+  .bubble .bg {
+    position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+    opacity: .55; filter: drop-shadow(0 6px 18px rgba(120, 50, 40, .05));
+  }
+  .bubble .bg::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #fff; }
+  .bubble .bg::after {
+    content: ""; position: absolute; left: -9px; bottom: 0; width: 40px; height: 34px;
+    background: #fff; clip-path: path("M40 0 C40 18 30 30 0 34 C22 34 34 30 40 26 Z");
+  }
+  .bubble img { width: 58px; height: 58px; }
+
+  /* Slide 1 — cover */
+  .s1 .title { position: absolute; top: 470px; left: 0; right: 0; text-align: center; }
+  .s1 h1 { font: 600 120px/.95 "Fraunces", serif; font-variation-settings: "SOFT" 100, "WONK" 0; letter-spacing: .01em; }
+  .s1 .sub { font: italic 400 58px/1 "Fraunces", serif; font-variation-settings: "SOFT" 100, "WONK" 1; color: var(--peach); margin-top: 30px; }
+  .s1 .bubble { position: absolute; left: 50%; translate: -50% 0; top: 880px; width: 470px; }
+  .s1 .accent.top { position: absolute; top: 400px; left: 0; right: 0; text-align: center; }
+
+  /* Slides 2 & 3 — the combos */
+  .head { position: absolute; top: 130px; left: 0; right: 0; text-align: center; }
+  .grid { position: absolute; left: 100px; right: 100px; top: 230px; display: grid; grid-template-columns: 1fr 1fr; gap: 44px 44px; }
+  .grid .bubble { height: 124px; }
+  .grid .bubble img { width: 54px; height: 54px; }
+  .foot { position: absolute; left: 0; right: 0; bottom: 185px; text-align: center; font: italic 400 48px/1 "Fraunces", serif; font-variation-settings: "SOFT" 100, "WONK" 1; }
+</style>
+</head>
+<body>
+
+  <!-- 1. Cover -->
+  <section class="slide s1" id="slide-1">
+    <svg class="deco" viewBox="0 0 1080 1350" id="deco-1"></svg>
+    <p class="accent top">Sweetpea Social</p>
+    <div class="title">
+      <h1>WINTER<br>EMOJI COMBOS</h1>
+      <p class="sub">you didn’t know you needed</p>
+    </div>
+    <div class="bubble">🏔️❄️☕🎀🤍</div>
+    <img class="mark" src="../../assets/initials-peach.svg" alt="">
+  </section>
+
+  <!-- 2. Combos -->
+  <section class="slide s2" id="slide-2">
+    <div class="head"><p class="accent">Copy · paste · post</p></div>
+    <div class="grid">
+      <div class="bubble">⛷️🏔️☕🤍</div>
+      <div class="bubble">🧣🫖📖🕯️</div>
+      <div class="bubble">🔥🪵🍫🍷</div>
+      <div class="bubble">🥾🌲❄️📸</div>
+      <div class="bubble">🎿✨🥂🎀</div>
+      <div class="bubble">🛷🦌🌨️💗</div>
+      <div class="bubble">🧤☕🌅🏔️</div>
+      <div class="bubble">🍪🥛🧦🎄</div>
+      <div class="bubble">🏂❄️🎧🍵</div>
+      <div class="bubble">🌙🛁🕯️🤍</div>
+    </div>
+    <img class="mark" src="../../assets/initials-peach.svg" alt="">
+  </section>
+
+  <!-- 3. More combos + question -->
+  <section class="slide s3" id="slide-3">
+    <div class="head"><p class="accent">Holiday edition</p></div>
+    <div class="grid">
+      <div class="bubble">🎄✨🎁🤍</div>
+      <div class="bubble">🏕️🔥🌌⭐</div>
+      <div class="bubble">🧁☕🎀💌</div>
+      <div class="bubble">🚙🏔️🎶❄️</div>
+      <div class="bubble">🧣🥰☕🫶</div>
+      <div class="bubble">🦌🌲🌨️🎀</div>
+      <div class="bubble">🥧🕯️🍽️🍊</div>
+      <div class="bubble">⛸️✨🎟️💗</div>
+      <div class="bubble">📝🎅🍪🥛</div>
+      <div class="bubble">🥂🎆🎉🌙</div>
+    </div>
+    <p class="foot">Which one’s your vibe?</p>
+    <img class="mark" src="../../assets/initials-peach.svg" alt="">
+  </section>
+
+  <script src="../sweetpea-flower.js"></script>
+  <script>
+    // Swap each emoji for its Apple-style image (files in ../emoji, named by code points without FE0F).
+    const seg = new Intl.Segmenter('en', { granularity: 'grapheme' });
+    document.querySelectorAll('.bubble').forEach(b => {
+      const chars = [...seg.segment(b.textContent.trim())].map(s => s.segment);
+      b.textContent = '';
+      b.appendChild(Object.assign(document.createElement('span'), { className: 'bg' }));
+      chars.forEach(ch => {
+        const code = [...ch].map(c => c.codePointAt(0).toString(16)).filter(c => c !== 'fe0f').join('-');
+        const img = document.createElement('img');
+        img.src = `../emoji/${code}.png`;
+        img.alt = ch;
+        b.appendChild(img);
+      });
+    });
+
+    // One quiet sweet pea sprig on the cover.
+    window.SweetPea.sprig(document.getElementById('deco-1'), {
+      stem: 'M540 330 C560 290 530 250 545 205',
+      width: 3.5,
+      flowers: [
+        { at: .98, side: 1, size: .95, scheme: 'peach', tilt: 4, seed: 1 },
+        { at: .45, side: -1, size: .55, scheme: 'blush', tilt: -20, seed: 4, open: .4 }
+      ]
+    });
+  </script>
+</body>
+</html>
