@@ -9,12 +9,12 @@ CREAM = (250, 242, 222)
 COOL = "eq=saturation=0.55:contrast=1.04:brightness=-0.02,colorbalance=rs=-0.03:bs=0.06:bm=0.03,vignette=PI/4.5,noise=alls=7:allf=t+u"
 WARM = "eq=saturation=1.28:contrast=1.08,colorbalance=rs=0.05:gs=0.01:bs=-0.05:rh=0.03,vignette=PI/6,noise=alls=5:allf=t+u"
 CLIP = {'127a': '127a72f5-1212-4d84-845b-1beb71301bfe.MP4', '85d9': '85d9bf5f-65da-4e71-b9ca-e27790bae003.MP4'}
-src = lambda k: SRC + CLIP.get(k, f'IMG_{k}.MOV')
+src = lambda k: f'../views/IMG_{k[1:]}.MOV' if k.startswith('V') else SRC + CLIP.get(k, f'IMG_{k}.MOV')
 # (start, end, clip, src start, speed, grade, extra)
 SHOTS = [(0.0, 1.4, '9926', 0.8, 0.5, COOL, ''), (1.4, 2.8, '9273', 6.2, 0.5, COOL, ''), (2.8, 4.2, '127a', 2.0, 0.5, COOL, ''),
-         (4.2, 5.0, '0314', 3.6, 1.0, WARM + ',eq=brightness=-0.16:contrast=0.92,gblur=sigma=2.5', ''), (5.0, 6.3, '9941', 0.7, 1.0, WARM, 'hold1.35'),
-         (6.3, 6.8, '9943', 2.2, 1.0, WARM, ''), (6.8, 7.3, '9274', 1.0, 1.0, WARM, ''), (7.3, 7.8, '85d9', 7.0, 1.0, WARM, ''),
-         (7.8, 8.3, '9273', 0.5, 1.0, WARM, ''), (8.3, 10.0, 'END', 0, 1, '', '')]
+         (4.2, 5.0, '0314', 3.6, 1.0, WARM + ',eq=brightness=-0.16:contrast=0.92,gblur=sigma=2.5', ''), (5.0, 5.8, '9941', 0.7, 1.0, WARM, 'hold1.35'),
+         (5.8, 6.3, 'V4151', 9.0, 1.3, WARM, ''), (6.3, 6.8, 'V8361', 2.0, 1.0, WARM, ''), (6.8, 7.3, 'V4943.2', 1.0, 1.0, WARM, ''),
+         (7.3, 7.8, 'V6177', 1.2, 1.0, WARM, ''), (7.8, 8.3, 'V5897', 4.0, 1.0, WARM, ''), (8.3, 10.0, 'END', 0, 1, '', '')]
 TOTAL = 10.0
 os.makedirs('seg', exist_ok=True); os.makedirs('gfx', exist_ok=True)
 fill = f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},setsar=1"
