@@ -8,7 +8,7 @@ A cinematic 10-second reel, 1080×1920, text only, built from the Cubby B-roll (
 | 4.2 s | Bars snap away; bright palm-lined Beach Road | **No.** | Music cuts dead, low boom, riser |
 | 5.0–5.8 s | The suitcase rolls in and stops at the blue door (Bo-Kaap) | "It starts when you / *drop the suitcase.*" | **Drop** at 5.3 s, with a white flash as the suitcase lands |
 | 5.8–8.3 s | Cape Town views, one per beat: Chapman's Peak drive, vineyard under the mountains, palm-tree sunset, sunset over the rocks, Chelcy above the clouds | (text holds) | Upbeat groove, 120 BPM |
-| 8.3–10 s | Cubby end card (logo, Download. Store. Explore., cubby.co.za) | "Welcome to Cubby." | Sparkle and a final chord |
+| 8.3–10 s | Cubby end card (white pin logo, Download. Store. Explore., mycubby.co.za) | "Welcome to Cubby." | Sparkle and a final chord |
 
 Music is original (`music.py`), so the reel can be posted as is, or muted under a trending sound with its drop near 5 s.
-Rebuild: `python build.py` (needs `../src/` B-roll, `../g/endcard.png`, Instrument Serif fonts and the shared SFX).
+Rebuild: `python build.py` (needs `../src/` B-roll, `../views/` clips, `../cubby_logo_transparent.png`, Instrument Serif fonts and the shared SFX).

@@ -22,7 +22,22 @@ segs = []
 for i, (a, b, k, ss, sp, grade, ex) in enumerate(SHOTS):
     n = round(b * FPS) - round(a * FPS); out = f'seg/{i:02d}.mp4'; segs.append(out)
     if k == 'END':
-        bg = Image.new('RGB', (W, H), (245, 51, 63)); card = Image.open('../g/endcard.png').convert('RGBA'); bg.paste(card, (0, 0), card); bg.save('gfx/end_bg.png')
+        # end card: red background, white pin logo (no ring), slogan, mycubby.co.za
+        RED = (245, 51, 63); bg = Image.new('RGBA', (W, H), RED + (255,)); d = ImageDraw.Draw(bg)
+        lg = Image.open('../cubby_logo_transparent.png').convert('RGBA')
+        px = lg.load(); w_, h_ = lg.size
+        pin = Image.new('RGBA', lg.size, (0, 0, 0, 0)); pp = pin.load()
+        for yy in range(h_):
+            for xx in range(w_):
+                r_, g_, b_, a_ = px[xx, yy]
+                if a_ and min(r_, g_, b_) > 200: pp[xx, yy] = (255, 255, 255, a_)   # keep only the white pin
+                elif a_ and r_ > 200 and g_ > 150 and b_ < 120: pp[xx, yy] = (r_, g_, b_, a_)   # keep the yellow heart
+        pin = pin.resize((640, 640), Image.LANCZOS); bg.alpha_composite(pin, ((W - 640) // 2, 330))
+        F9 = '../../fonts/barlow-condensed-latin-900-normal.ttf'; f1 = ImageFont.truetype(F9, 150); f2 = ImageFont.truetype(F9, 64)
+        for j, (t_, c_) in enumerate([('DOWNLOAD.', (255, 255, 255)), ('STORE.', (255, 255, 255)), ('EXPLORE.', (255, 214, 64))]):
+            tw = d.textlength(t_, font=f1); d.text(((W - tw) / 2, 1000 + j * 150), t_, font=f1, fill=c_, stroke_width=6, stroke_fill=(120, 10, 20))
+        t_ = 'mycubby.co.za'; tw = d.textlength(t_, font=f2); d.text(((W - tw) / 2, 1500), t_, font=f2, fill=(255, 255, 255))
+        bg.convert('RGB').save('gfx/end_bg.png')
         cmd = ['-loop', '1', '-framerate', str(FPS), '-i', 'gfx/end_bg.png', '-vf', f"zoompan=z='1.06-0.06*min(1\\,on/{n})':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s={W}x{H}:fps={FPS}"]
     else:
         hold = f",trim=end={float(ex[4:]) - ss:.3f},tpad=stop_mode=clone:stop_duration=5" if ex.startswith('hold') else ',tpad=stop_mode=clone:stop_duration=5'
