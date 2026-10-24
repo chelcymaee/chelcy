@@ -15,6 +15,11 @@
   0.7
  ],
  [
+  "l08",
+  "To reach your unit, you have two options: the elevator, or the stairs. But first, let's get your keys.",
+  0.8
+ ],
+ [
   "l04",
   "Head towards the large gate, where you'll find the lockboxes.",
   0.35
@@ -45,11 +50,6 @@
   0.8
  ],
  [
-  "l08",
-  "To reach your unit, you have two options.",
-  0.6
- ],
- [
   "l09",
   "If you're using the elevator to the left of the gate, press the yellow button to go up to your pathway.",
   0.4
@@ -62,11 +62,16 @@
  [
   "l11",
   "Alternatively, enter through the large gate, and follow the signs marked Upstairs.",
-  16.3
+  14.71
  ],
  [
   "l12",
-  "Welcome home! Here are a few things to know.",
+  "Welcome home! This silver key opens your front door.",
+  0.5
+ ],
+ [
+  "l12b",
+  "Here are a few things to know once you're inside.",
   0.6
  ],
  [
@@ -77,11 +82,6 @@
  [
   "l13b",
   "We provide two bags at check-in. After that, each extra bag is one hundred rand.",
-  0.4
- ],
- [
-  "l13c",
-  "The clothing rack is under the entrance table.",
   0.7
  ],
  [
@@ -106,12 +106,17 @@
  ],
  [
   "l18",
-  "The right-side balcony lights are switched on in the master bedroom,",
-  0.3
+  "The right-side balcony lights are switched on in the master bedroom.",
+  0.4
+ ],
+ [
+  "l18b",
+  "Both balcony lights have a fifteen-minute motion sensor, and switch off automatically when no movement is detected, to save electricity.",
+  0.7
  ],
  [
   "l19",
-  "and the hairdryer and iron are in the main bedroom cupboards.",
+  "The hairdryer and iron are in the main bedroom cupboards.",
   0.8
  ],
  [
