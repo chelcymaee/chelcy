@@ -12,7 +12,7 @@ END_T = r30(E('l21') + 3.2)
 C = dict(a1=S('l02'), a2=S('l03'), a3=S('l03') + 2.4, op=S('l08'), a4=S('l04'), a6=S('l06'), a7=S('l07b'), a8=S('l07c'),
          b1=S('l09'), b1b=S('l09') + 1.8, b2=S('l09') + 3.0, b4=S('l12') - RD, c1=S('l12'), c1b=S('l12b'), c2=S('l13'), c3=S('l13b'),
          c5=S('l14'), c6=S('l14') + 1.5, cL=E('l14') + 0.35, cL2=E('l14') + 2.05, c7=S('l15'), c7b=S('l15') + 1.4, c8=S('l15') + 3.0, c9=S('l16'), d1=S('l17'), d2=S('l18'), ds=S('l18b'), d3=S('l19'),
-         d4=S('l20'), d5=S('l20') + 1.4, d6=S('l20') + 2.8, d8=E('l21') - 0.2)
+         d4=S('l20'), d5=S('l20') + 1.2, d6=S('l20') + 2.4, d7=E('l21') - 1.6, d8=E('l21') - 0.2)
 C = {k: r30(v) for k, v in C.items()}
 SEG = [
     (0, C['a1'], 'clip', dict(f='5915', ss=0.0, speed=0.35)),
@@ -33,8 +33,7 @@ SEG = [
     (C['c3'], C['c5'], 'still', dict(f='1205', ss=1.2, z=0.0, px=540, py=1400)),
     (C['c5'], C['c6'], 'clip', dict(f='1208', ss=1.6, speed=0.8)),
     (C['c6'], C['cL'], 'clip', dict(f='1206', ss=0.0, speed=0.7)),
-    (C['cL'], C['cL2'], 'clip', dict(f='1217', ss=0.3, speed=0.75)),
-    (C['cL2'], C['c7b'], 'clip', dict(f='1215', ss=0.0, speed=0.6)),
+    (C['cL'], C['c7b'], 'clip', dict(f='4841', ss=0.0, speed=0.95)),
     (C['c7b'], C['c8'], 'clip', dict(f='1212', ss=2.6)),
     (C['c8'], C['c9'], 'clip', dict(f='1213', ss=0.0, speed=0.75)),
     (C['c9'], C['d1'], 'clip', dict(f='1215', ss=4.6)),
@@ -44,7 +43,8 @@ SEG = [
     (C['d3'], C['d4'], 'clip', dict(f='1222', ss=0.0, speed=0.7)),
     (C['d4'], C['d5'], 'clip', dict(f='1220', ss=4.8, speed=0.6)),
     (C['d5'], C['d6'], 'clip', dict(f='1227', ss=8.4, speed=0.5)),
-    (C['d6'], C['d8'], 'clip', dict(f='5965', ss=0.0, speed=0.35)),
+    (C['d6'], C['d7'], 'clip', dict(f='7987', ss=0.0, speed=0.6)),
+    (C['d7'], C['d8'], 'clip', dict(f='5965', ss=0.0, speed=0.35)),
     (C['d8'], END_T, 'clip', dict(f='5966', ss=0.0, speed=0.3, blur=True)),
 ]
 GRADE = GRADE = "eq=contrast=1.04:saturation=1.08:gamma=1.02,colorbalance=rs=0.03:bs=-0.02:rm=0.02,vignette=PI/6"
@@ -72,7 +72,8 @@ for i, (a, b, kind, A) in (enumerate(SEG) if not os.environ.get('SKIP_BASE') els
         pieces = RAMP; parts = []; used = 0
         for j, (pa, pb, ps, _) in enumerate(pieces):
             pn = round((pb - pa) / ps * FPS) if j < len(pieces) - 1 else n - used; used += pn; pp = f'seg/r{j:02d}.mp4'; parts.append(pp)
-            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', str(pa), '-i', src, '-vf', (f"tmix=frames={min(8, int(ps))}," if ps > 1.5 else '') + f"setpts=PTS/{ps},{fill},fps={FPS},tpad=stop_mode=clone:stop_duration=5,{GRADE}",
+            psrc = 'src/IMG_1203.MOV' if _ in ('moment', 'halfway') else src   # stabiliser crop cuts these edge-of-frame signs
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', str(pa), '-i', psrc, '-vf', (f"tmix=frames={min(8, int(ps))}," if ps > 1.5 else '') + f"setpts=PTS/{ps},{fill},fps={FPS},tpad=stop_mode=clone:stop_duration=5,{GRADE}",
                             '-frames:v', str(pn), '-an', '-r', str(FPS), '-c:v', 'libx264', '-crf', '16', '-preset', 'fast', '-pix_fmt', 'yuv420p', pp], check=True)
         open('seg/ramp.txt', 'w').write(''.join(f"file '{os.path.basename(p)}'\n" for p in parts))
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'seg/ramp.txt', '-c', 'copy', out], check=True)

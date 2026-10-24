@@ -12,18 +12,19 @@
    - The front-door clip: you hold up the keys, then the silver key goes into the lock (white ring follows the key).
    - Firewood in the front entrance (2 bags included, R100 per extra bag).
    - Wi-Fi in the welcome book.
-   - The whole living room: the open-plan lounge and kitchen, then the sofas with the sea view.
+   - The whole living room in wide angle with the sea view (IMG_4841).
    - The pillow in front of the glass door because of the wind.
    - Left balcony lights (living-room switch).
    - Fireplace supplies in the buckets.
    - Right balcony lights (master-bedroom switch).
    - The **15-minute motion sensor** that switches the balcony lights off automatically.
    - Hairdryer and iron in the main bedroom cupboards.
-6. **Ending** (slowed down): the bedroom, the pool and sunsets, then "enjoy your stay at Mountain Oasis".
+6. **Ending** (slowed down): the bedroom, the pool, the living room at sunset (IMG_7987) and sunsets, then "enjoy your stay at Mountain Oasis".
 
 ## Stabilisation and highlight rings
 - Every clip is stabilised with a two-pass vidstab: motion analysis in `stab.sh`, then the transform in `stab2.sh` with heavy smoothing (70) and auto-zoom to hide edges.
 - No zoompan drift on clips. Zoompan moves in whole-pixel steps, which added its own jitter.
+- "Take a moment" and "Halfway there" use the original (unstabilised) footage in gentle slow motion, because the stabiliser's crop cut those edge-of-frame signs off.
 - The sped-up parts of the stairs walk blend frames (`tmix`) so footsteps glide instead of jolting.
 - `shake.py` measures frame-to-frame jitter. The stairs dropped from about 17 px to about 9.5 px; every other section is about 1–2 px.
 - Highlight rings are drawn by `track_rings.py`. It follows each feature frame by frame with template matching, forwards and backwards from an anchor frame (`ring_anchors.json`). The thin silver door key uses hand-placed keyframes instead.
