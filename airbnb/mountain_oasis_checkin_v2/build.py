@@ -28,8 +28,7 @@ SEG = [
     (C['b1b'], C['b2'], 'clip', dict(f='1201', ss=0.3, speed=0.85)),
     (C['b2'], C['b4'], 'still', dict(f='1202', ss=1.0, z=0.0, px=640, py=1000)),
     (C['b4'], C['c1'], 'ramp', dict(f='1203')),
-    (C['c1'], C['c1b'], 'clip', dict(f='1204', ss=5.4, speed=0.75)),
-    (C['c1b'], C['c2'], 'clip', dict(f='1203', ss=57.0, speed=0.6)),
+    (C['c1'], C['c2'], 'clip', dict(f='1204', ss=2.6)),
     (C['c2'], C['c3'], 'clip', dict(f='1205', ss=0.0, speed=0.5)),
     (C['c3'], C['c5'], 'still', dict(f='1205', ss=1.2, z=0.10, px=540, py=1400)),
     (C['c5'], C['c6'], 'clip', dict(f='1208', ss=1.6, speed=0.8)),
@@ -51,7 +50,9 @@ os.makedirs('seg', exist_ok=True)
 files = []
 for i, (a, b, kind, A) in (enumerate(SEG) if not os.environ.get('SKIP_BASE') else []):
     D = (b - a) + (F if i < len(SEG) - 1 else 0); n = round(D * FPS); out = f'seg/{i:02d}.mp4'; files.append((out, a))
-    src = A.get('path') or f"src/IMG_{A['f']}.MOV"; sp = A.get('speed', 1.0)
+    src = A.get('path') or f"src/IMG_{A['f']}.MOV"
+    _st = f"stab/{os.path.basename(src).rsplit('.', 1)[0]}.mp4"
+    if os.path.exists(_st): src = _st; sp = A.get('speed', 1.0)
     fill = f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},setsar=1"
     drift = f"zoompan=z='1+0.035*on/{n}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s={W}x{H}:fps={FPS}"
     blur = ',gblur=sigma=14,eq=brightness=-0.05' if A.get('blur') else ''
@@ -92,8 +93,9 @@ for p, _ in files: ins += ['-i', p]
 prev = '0:v'
 for i in range(1, len(files)):
     fc.append(f"[{prev}][{i}:v]xfade=transition=fade:duration={F}:offset={files[i][1]:.3f}[x{i}]"); prev = f'x{i}'
-if not os.environ.get('SKIP_BASE'): subprocess.run(['ffmpeg', '-v', 'error', '-y'] + ins + ['-filter_complex', ';'.join(fc), '-map', f'[{prev}]', '-c:v', 'libx264', '-crf', '16', '-preset', 'fast', '-pix_fmt', 'yuv420p', 'base.mp4'], check=True)
+if not os.environ.get('SKIP_BASE') and not os.environ.get('DUMP_RINGS'): subprocess.run(['ffmpeg', '-v', 'error', '-y'] + ins + ['-filter_complex', ';'.join(fc), '-map', f'[{prev}]', '-c:v', 'libx264', '-crf', '16', '-preset', 'fast', '-pix_fmt', 'yuv420p', 'base.mp4'], check=True)
 
+if os.environ.get('BASE_ONLY'): raise SystemExit
 # ---------------- overlays ----------------
 POP = "if(lt(T\\,0.16)\\,0.3+0.95*T/0.16\\,if(lt(T\\,0.28)\\,1.25-0.25*(T-0.16)/0.12\\,1))"
 OV = []; TOP = 230
@@ -111,7 +113,7 @@ OV += [('g/step2.png', C['a4'] + 0.2, C['b1'], 540, TOP, 'pop'),
        ('g/arrow_right.png', S('l07') + 0.2, C['a7'] - 0.3, 285, 1110, 'bobx'), ('g/arrow_left.png', S('l07') + 0.2, C['a7'] - 0.3, 945, 1110, 'bobx_r'),
        ('g/sparkle_y.png', E('l07') - 0.2, C['a7'], 640, 1000, 'twinkle')]
 OV += [('g/ring_r.png', C['a7'] + 0.7, C['a7'] + 2.6, 432, 1048, 'pulse'), ('g/chip_red.png', C['a7'] + 0.8, C['a8'], 540, 420, 'pop'),
-       ('g/ring_g.png', C['a8'] + 0.3, C['b1'], 408, 1172, 'pulse'), ('g/chip_greenkey.png', C['a8'] + 0.4, C['b1'], 540, 420, 'pop')]
+       ('g/ring_g.png', C['a8'] + 0.3, C['a8'] + 1.6, 408, 1172, 'pulse'), ('g/chip_greenkey.png', C['a8'] + 0.4, C['b1'], 540, 420, 'pop')]
 t_yel = max(C['b2'] + 0.1, at('l09', 0.66)); t_grn = at('l10', 0.6)
 OV += [('g/step3.png', C['b1'] + 0.2, C['c1'], 540, TOP, 'pop'), ('g/chip_lift.png', C['b1'] + 0.3, C['b2'], 540, 420, 'pop'),
        ('g/ring_w.png', t_yel, t_grn, 660, 815, 'pulse'), ('g/chip_yellow.png', t_yel + 0.15, t_grn, 540, 420, 'pop'),
@@ -131,15 +133,15 @@ for pa, pb, ps, nm in RAMP:
         OV.append((f'g/signs/{nm}_s.png', tt + 0.08, min(tt + d_ + 0.3, C['c1']), x_, y_, 'float'))
         OV.append(('g/sparkle_s.png', tt + 0.2, tt + d_, x_ + 150, y_ - 280, 'twinkle')); SIGN_T.append(tt + 0.08)
     tt += d_
-OV += [('g/step4.png', C['c1'] + 0.2, C['d4'], 540, TOP, 'pop'), ('g/chip_doorkey.png', C['c1'] + 0.8, C['c1b'], 540, 420, 'pop'),
-       ('g/ring_w.png', C['c1'] + 0.8, C['c1'] + 2.4, 390, 1250, 'pulse'),
+OV += [('g/step4.png', C['c1'] + 0.2, C['d4'], 540, TOP, 'pop'), ('g/chip_doorkey.png', C['c1'] + 0.8, C['c1b'] + 0.6, 540, 420, 'pop'),
+       ('g/ring_w.png', C['c1'] + 0.8, C['c1'] + 2.6, 0, 0, 'pulse'),
        ('g/chip_firewood.png', S('l13') + 0.6, C['c3'], 540, 420, 'pop'), ('g/chip_bags.png', C['c3'] + 0.3, C['c5'], 540, 420, 'pop'),
        ('g/ring_book.png', C['c6'] + 0.2, C['c7'], 560, 1280, 'pulse'), ('g/wifi.png', C['c6'] + 0.1, C['c7'], 820, 900, 'pop'), ('g/chip_wifi.png', C['c6'] + 0.25, C['c7'], 540, 420, 'pop'),
        ('g/chip_pillow.png', C['c8'] + 0.1, C['c9'], 540, 420, 'pop'), ('g/ring.png', C['c8'] + 0.2, C['c9'], 505, 1575, 'pulse'),
        ('g/chip_wind.png', C['c8'] + 0.9, C['c9'], 540, 530, 'pop'),
        ('g/chip_leftlight.png', C['c9'] + 0.4, C['d1'], 540, 420, 'pop'), ('g/ring_y.png', C['c9'] + 2.5, C['d1'], 500, 1160, 'pulse'),
        ('g/chip_fire.png', C['d1'] + 0.4, C['d2'], 540, 420, 'pop'), ('g/sparkle_y.png', C['d1'] + 0.8, C['d2'], 300, 1000, 'twinkle'),
-       ('g/chip_rightlight.png', C['d2'] + 0.4, C['ds'], 540, 420, 'pop'), ('g/ring_y.png', C['d2'] + 2.4, C['ds'], 708, 978, 'pulse'),
+       ('g/chip_rightlight.png', C['d2'] + 0.4, C['ds'], 540, 420, 'pop'), ('g/ring_y.png', C['d2'] + 2.4, C['d2'] + 3.15, 708, 978, 'pulse'),
        ('g/chip_sensor.png', C['ds'] + 0.5, C['d3'], 540, 420, 'pop'), ('g/chip_auto.png', C['ds'] + 2.0, C['d3'], 540, 530, 'pop'),
        ('g/chip_dryer.png', C['d3'] + 0.3, C['d4'], 540, 420, 'pop')]
 OV += [('g/heart.png', S('l21') + 0.6, C['d8'], 820, 640, 'float'), ('g/sparkle_s.png', S('l20') + 0.2, C['d5'], 270, 700, 'twinkle'),
@@ -153,7 +155,12 @@ for l in tm['lines']:
     nxt = [m['s'] for m in tm['lines'] if m['s'] > l['s']]; t1 = min(l['e'] + 0.45, nxt[0] - 0.02) if nxt else min(l['e'] + 0.6, C['d8'])
     if l['id'] == 'l21': t1 = C['d8']
     OV.append((p, l['s'], t1, 540, {'l07b': 760, 'l15': 760, 'l13b': 1650, 'l12': 760}.get(l['id'], 1610), 'fade'))
-ins = ['-i', 'base.mp4']; fc = []; prev = '0:v'; k = 1
+RINGS = [o for o in OV if o[0].startswith('g/ring')]; OV = [o for o in OV if not o[0].startswith('g/ring')]
+if os.environ.get('DUMP_RINGS'): json.dump([[o[0], round(o[1], 3), round(o[2], 3)] for o in RINGS], open('ring_list.json', 'w')); raise SystemExit
+RA = json.load(open('ring_anchors.json'))
+json.dump([dict(png=o[0], t0=round(o[1], 3), t1=round(o[2], 3), **RA[o[0] + '@' + str(round(o[1], 2))]) for o in RINGS], open('rings.json', 'w'), indent=1)
+if not os.environ.get('SKIP_RINGS'): subprocess.run(['python3', 'track_rings.py'], check=True)
+ins = ['-i', 'base_r.mp4']; fc = []; prev = '0:v'; k = 1
 for png, t0, t1, cx, cy, an in OV:
     D = t1 - t0
     if D <= 0.05: continue

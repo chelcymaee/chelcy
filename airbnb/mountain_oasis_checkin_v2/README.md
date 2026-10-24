@@ -9,7 +9,7 @@
 4. **Option A, the elevator:** the small gate up the stone steps beside the big gate, the welcome sign, and rings on the yellow and green buttons.
    **Option B, the stairs:** the big gate and driveway, then a speed ramp that slows at each real sign. Each sign's card pops up beside it, never on top of it: Follow the stairs, Leg day?, Take a moment, Halfway there, You made it.
 5. **Settle in:**
-   - The silver key opens the front door (white ring).
+   - The front-door clip: you hold up the keys, then the silver key goes into the lock (white ring follows the key).
    - Firewood in the front entrance (2 bags included, R100 per extra bag).
    - Wi-Fi in the welcome book.
    - The pillow in front of the glass door because of the wind.
@@ -19,6 +19,10 @@
    - The **15-minute motion sensor** that switches the balcony lights off automatically.
    - Hairdryer and iron in the main bedroom cupboards.
 6. **Ending** (slowed down): the bedroom, the pool and sunsets, then "enjoy your stay at Mountain Oasis".
+
+## Stabilisation and highlight rings
+- Every clip is stabilised first with a two-pass vidstab (`stab.sh`; smoothing 24, auto-zoom to hide edges).
+- Highlight rings are drawn by `track_rings.py`. It follows each feature frame by frame with template matching, forwards and backwards from an anchor frame (`ring_anchors.json`). The thin silver door key uses hand-placed keyframes instead.
 
 ## Files
 - `mountain_oasis_checkin_v2.mp4`: the full video. `mountain_oasis_checkin_v2_preview.mp4`: a smaller copy for WhatsApp and Airbnb messages.
