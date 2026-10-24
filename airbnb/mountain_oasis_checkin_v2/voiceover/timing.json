@@ -4,158 +4,158 @@
    "id": "l01",
    "text": "Welcome to Mountain Oasis!",
    "s": 0.35,
-   "e": 2.029
+   "e": 2.031
   },
   {
    "id": "l02",
    "text": "Here's a quick guide to make your self check-in as easy as possible.",
-   "s": 2.379,
-   "e": 5.945
+   "s": 2.381,
+   "e": 5.792
   },
   {
    "id": "l03",
    "text": "When you arrive, park in front of the property, where you'll see the blue Mountain Oasis parking signs.",
-   "s": 6.745,
-   "e": 11.519
+   "s": 6.592,
+   "e": 11.365
   },
   {
    "id": "l08",
    "text": "To reach your unit, you have two options: the elevator, or the stairs. But first, let's get your keys.",
-   "s": 12.219,
-   "e": 17.388
+   "s": 12.065,
+   "e": 17.232
   },
   {
    "id": "l04",
    "text": "Head towards the large gate, where you'll find the lockboxes.",
-   "s": 18.188,
-   "e": 21.187
+   "s": 18.032,
+   "e": 21.031
   },
   {
    "id": "l05",
    "text": "Your keys are in the top lockbox.",
-   "s": 21.537,
-   "e": 23.378
+   "s": 21.381,
+   "e": 23.222
   },
   {
    "id": "l06",
    "text": "Simply enter the code your host will share with you before check-in,",
-   "s": 23.978,
-   "e": 27.322
+   "s": 23.822,
+   "e": 27.162
   },
   {
    "id": "l07",
    "text": "then press both side buttons together to open it.",
-   "s": 27.572,
-   "e": 30.065
+   "s": 27.412,
+   "e": 29.905
   },
   {
    "id": "l07b",
    "text": "Your keys come with a remote. Press the big red button to open the main gate,",
-   "s": 30.665,
-   "e": 34.626
+   "s": 30.505,
+   "e": 34.466
   },
   {
    "id": "l07c",
    "text": "and use the green key to open the elevator gate.",
-   "s": 34.926,
-   "e": 37.497
+   "s": 34.766,
+   "e": 37.337
   },
   {
    "id": "l09",
    "text": "If you're using the elevator to the left of the gate, press the yellow button to go up to your pathway.",
-   "s": 38.297,
-   "e": 42.959
+   "s": 38.137,
+   "e": 42.8
   },
   {
    "id": "l10",
    "text": "To return to the parking area, press the green button.",
-   "s": 43.359,
-   "e": 45.931
+   "s": 43.2,
+   "e": 45.772
   },
   {
    "id": "l11",
    "text": "Alternatively, enter through the large gate, and follow the signs marked Upstairs.",
-   "s": 46.631,
-   "e": 51.06
+   "s": 46.472,
+   "e": 50.901
   },
   {
    "id": "l12",
    "text": "Welcome home! This silver key opens your front door.",
-   "s": 65.77,
-   "e": 68.871
+   "s": 65.611,
+   "e": 68.713
   },
   {
    "id": "l12b",
    "text": "Here are a few things to know once you're inside.",
-   "s": 69.371,
-   "e": 71.445
+   "s": 69.213,
+   "e": 71.287
   },
   {
    "id": "l13",
    "text": "In the front entrance, you'll find the firewood for the hot tub and the fireplace.",
-   "s": 72.045,
-   "e": 75.845
+   "s": 71.887,
+   "e": 75.687
   },
   {
    "id": "l13b",
    "text": "We provide two bags at check-in. After that, each extra bag is one hundred rand.",
-   "s": 76.195,
-   "e": 80.707
+   "s": 76.037,
+   "e": 80.551
   },
   {
    "id": "l14",
    "text": "Your Wi-Fi details are in the welcome book on the dining room table.",
-   "s": 81.407,
-   "e": 85.078
+   "s": 81.251,
+   "e": 84.922
   },
   {
    "id": "l15",
    "text": "Whenever you head outside, please place the pillow in front of the glass door, so it doesn't slam shut in the wind.",
-   "s": 85.778,
-   "e": 91.209
+   "s": 88.122,
+   "e": 93.552
   },
   {
    "id": "l16",
    "text": "The left-side balcony lights are switched on here, in the living room.",
-   "s": 91.909,
-   "e": 95.094
+   "s": 94.252,
+   "e": 97.437
   },
   {
    "id": "l17",
    "text": "For the fireplace, everything you need is in the buckets beside it.",
-   "s": 95.794,
-   "e": 99.006
+   "s": 98.137,
+   "e": 101.349
   },
   {
    "id": "l18",
    "text": "The right-side balcony lights are switched on in the master bedroom.",
-   "s": 99.706,
-   "e": 102.942
+   "s": 102.049,
+   "e": 105.282
   },
   {
    "id": "l18b",
    "text": "Both balcony lights have a fifteen-minute motion sensor, and switch off automatically when no movement is detected, to save electricity.",
-   "s": 103.342,
-   "e": 110.596
+   "s": 105.682,
+   "e": 112.935
   },
   {
    "id": "l19",
    "text": "The hairdryer and iron are in the main bedroom cupboards.",
-   "s": 111.296,
-   "e": 114.177
+   "s": 113.635,
+   "e": 116.517
   },
   {
    "id": "l20",
    "text": "That's it!",
-   "s": 114.977,
-   "e": 115.685
+   "s": 117.317,
+   "e": 118.025
   },
   {
    "id": "l21",
    "text": "Settle in, make yourself at home, and enjoy your stay at Mountain Oasis!",
-   "s": 116.035,
-   "e": 119.992
+   "s": 118.375,
+   "e": 122.327
   }
  ],
- "total": 120.792
+ "total": 123.127
 }

@@ -11,7 +11,7 @@ RAMP = json.load(open('ramp.json')); RD = sum(round((b - a) / s * FPS) for a, b,
 END_T = r30(E('l21') + 3.2)
 C = dict(a1=S('l02'), a2=S('l03'), a3=S('l03') + 2.4, op=S('l08'), a4=S('l04'), a6=S('l06'), a7=S('l07b'), a8=S('l07c'),
          b1=S('l09'), b1b=S('l09') + 1.8, b2=S('l09') + 3.0, b4=S('l12') - RD, c1=S('l12'), c1b=S('l12b'), c2=S('l13'), c3=S('l13b'),
-         c5=S('l14'), c6=S('l14') + 1.5, c7=S('l15'), c8=S('l15') + 3.0, c9=S('l16'), d1=S('l17'), d2=S('l18'), ds=S('l18b'), d3=S('l19'),
+         c5=S('l14'), c6=S('l14') + 1.5, cL=E('l14') + 0.35, cL2=E('l14') + 2.05, c7=S('l15'), c7b=S('l15') + 1.4, c8=S('l15') + 3.0, c9=S('l16'), d1=S('l17'), d2=S('l18'), ds=S('l18b'), d3=S('l19'),
          d4=S('l20'), d5=S('l20') + 1.4, d6=S('l20') + 2.8, d8=E('l21') - 0.2)
 C = {k: r30(v) for k, v in C.items()}
 SEG = [
@@ -32,8 +32,10 @@ SEG = [
     (C['c2'], C['c3'], 'clip', dict(f='1205', ss=0.0, speed=0.5)),
     (C['c3'], C['c5'], 'still', dict(f='1205', ss=1.2, z=0.0, px=540, py=1400)),
     (C['c5'], C['c6'], 'clip', dict(f='1208', ss=1.6, speed=0.8)),
-    (C['c6'], C['c7'], 'clip', dict(f='1206', ss=0.0, speed=0.7)),
-    (C['c7'], C['c8'], 'clip', dict(f='1212', ss=1.8, speed=0.8)),
+    (C['c6'], C['cL'], 'clip', dict(f='1206', ss=0.0, speed=0.7)),
+    (C['cL'], C['cL2'], 'clip', dict(f='1217', ss=0.3, speed=0.75)),
+    (C['cL2'], C['c7b'], 'clip', dict(f='1215', ss=0.0, speed=0.6)),
+    (C['c7b'], C['c8'], 'clip', dict(f='1212', ss=2.6)),
     (C['c8'], C['c9'], 'clip', dict(f='1213', ss=0.0, speed=0.75)),
     (C['c9'], C['d1'], 'clip', dict(f='1215', ss=4.6)),
     (C['d1'], C['d2'], 'clip', dict(f='1218', ss=0.0, speed=0.6)),
@@ -136,7 +138,7 @@ for pa, pb, ps, nm in RAMP:
 OV += [('g/step4.png', C['c1'] + 0.2, C['d4'], 540, TOP, 'pop'), ('g/chip_doorkey.png', C['c1'] + 0.8, C['c1b'] + 0.6, 540, 420, 'pop'),
        ('g/ring_w.png', C['c1'] + 0.8, C['c1'] + 2.6, 0, 0, 'pulse'),
        ('g/chip_firewood.png', S('l13') + 0.6, C['c3'], 540, 420, 'pop'), ('g/chip_bags.png', C['c3'] + 0.3, C['c5'], 540, 420, 'pop'),
-       ('g/ring_book.png', C['c6'] + 0.2, C['c7'], 560, 1280, 'pulse'), ('g/wifi.png', C['c6'] + 0.1, C['c7'], 820, 900, 'pop'), ('g/chip_wifi.png', C['c6'] + 0.25, C['c7'], 540, 420, 'pop'),
+       ('g/ring_book.png', C['c6'] + 0.2, C['cL'], 560, 1280, 'pulse'), ('g/wifi.png', C['c6'] + 0.1, C['cL'], 820, 900, 'pop'), ('g/chip_wifi.png', C['c6'] + 0.25, C['cL'], 540, 420, 'pop'),
        ('g/chip_pillow.png', C['c8'] + 0.1, C['c9'], 540, 420, 'pop'), ('g/ring.png', C['c8'] + 0.2, C['c9'], 505, 1575, 'pulse'),
        ('g/chip_wind.png', C['c8'] + 0.9, C['c9'], 540, 530, 'pop'),
        ('g/chip_leftlight.png', C['c9'] + 0.4, C['d1'], 540, 420, 'pop'), ('g/ring_y.png', C['c9'] + 2.5, C['d1'], 500, 1160, 'pulse'),

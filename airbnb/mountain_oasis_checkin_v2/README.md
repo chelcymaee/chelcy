@@ -1,6 +1,6 @@
 # Mountain Oasis: self check-in guide v2 (new footage)
 
-2:03 vertical (1080×1920) guest guide in the same style as the tester (`../mountain_oasis_checkin/`), rebuilt with the higher-quality clips in the `airbnb-checkin-1` release (IMG_1186–1227, plus sunsets IMG_5890–7988).
+2:06 vertical (1080×1920) guest guide in the same style as the tester (`../mountain_oasis_checkin/`), rebuilt with the higher-quality clips in the `airbnb-checkin-1` release (IMG_1186–1227, plus sunsets IMG_5890–7988).
 
 ## Running order
 1. **Sunset opening** (slowed down): the title over the deck-to-pool sunset, then the 4-step card over the golden living room.
@@ -12,6 +12,7 @@
    - The front-door clip: you hold up the keys, then the silver key goes into the lock (white ring follows the key).
    - Firewood in the front entrance (2 bags included, R100 per extra bag).
    - Wi-Fi in the welcome book.
+   - The whole living room: the open-plan lounge and kitchen, then the sofas with the sea view.
    - The pillow in front of the glass door because of the wind.
    - Left balcony lights (living-room switch).
    - Fireplace supplies in the buckets.
