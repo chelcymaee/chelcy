@@ -30,7 +30,7 @@ SEG = [
     (C['b4'], C['c1'], 'ramp', dict(f='1203')),
     (C['c1'], C['c2'], 'clip', dict(f='1204', ss=2.6)),
     (C['c2'], C['c3'], 'clip', dict(f='1205', ss=0.0, speed=0.5)),
-    (C['c3'], C['c5'], 'still', dict(f='1205', ss=1.2, z=0.10, px=540, py=1400)),
+    (C['c3'], C['c5'], 'still', dict(f='1205', ss=1.2, z=0.0, px=540, py=1400)),
     (C['c5'], C['c6'], 'clip', dict(f='1208', ss=1.6, speed=0.8)),
     (C['c6'], C['c7'], 'clip', dict(f='1206', ss=0.0, speed=0.7)),
     (C['c7'], C['c8'], 'clip', dict(f='1212', ss=1.8, speed=0.8)),
@@ -51,13 +51,13 @@ files = []
 for i, (a, b, kind, A) in (enumerate(SEG) if not os.environ.get('SKIP_BASE') else []):
     D = (b - a) + (F if i < len(SEG) - 1 else 0); n = round(D * FPS); out = f'seg/{i:02d}.mp4'; files.append((out, a))
     src = A.get('path') or f"src/IMG_{A['f']}.MOV"
-    _st = f"stab/{os.path.basename(src).rsplit('.', 1)[0]}.mp4"
+    _st = f"stab2/{os.path.basename(src).rsplit('.', 1)[0]}.mp4"
     if os.path.exists(_st): src = _st; sp = A.get('speed', 1.0)
     fill = f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},setsar=1"
     drift = f"zoompan=z='1+0.035*on/{n}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s={W}x{H}:fps={FPS}"
     blur = ',gblur=sigma=14,eq=brightness=-0.05' if A.get('blur') else ''
     if kind == 'clip':
-        vf = f"setpts=PTS/{sp},{fill},fps={FPS},tpad=stop_mode=clone:stop_duration=20,{drift},{GRADE}{blur}"
+        vf = f"setpts=PTS/{sp},{fill},fps={FPS},tpad=stop_mode=clone:stop_duration=20,{GRADE}{blur}"   # no zoompan drift: it steps in whole pixels and adds jitter
         cmd = ['-ss', str(A['ss']), '-i', src, '-vf', vf]
     elif kind == 'freeze_end':
         vf = f"setpts=PTS/{sp},{fill},fps={FPS},trim=end={(A['until'] - A['ss']) / sp:.3f},tpad=stop_mode=clone:stop_duration=20,{GRADE}"
@@ -70,7 +70,7 @@ for i, (a, b, kind, A) in (enumerate(SEG) if not os.environ.get('SKIP_BASE') els
         pieces = RAMP; parts = []; used = 0
         for j, (pa, pb, ps, _) in enumerate(pieces):
             pn = round((pb - pa) / ps * FPS) if j < len(pieces) - 1 else n - used; used += pn; pp = f'seg/r{j:02d}.mp4'; parts.append(pp)
-            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', str(pa), '-i', src, '-vf', f"setpts=PTS/{ps},{fill},fps={FPS},tpad=stop_mode=clone:stop_duration=5,{GRADE}",
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', str(pa), '-i', src, '-vf', (f"tmix=frames={min(8, int(ps))}," if ps > 1.5 else '') + f"setpts=PTS/{ps},{fill},fps={FPS},tpad=stop_mode=clone:stop_duration=5,{GRADE}",
                             '-frames:v', str(pn), '-an', '-r', str(FPS), '-c:v', 'libx264', '-crf', '16', '-preset', 'fast', '-pix_fmt', 'yuv420p', pp], check=True)
         open('seg/ramp.txt', 'w').write(''.join(f"file '{os.path.basename(p)}'\n" for p in parts))
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'seg/ramp.txt', '-c', 'copy', out], check=True)

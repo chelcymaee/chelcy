@@ -21,7 +21,10 @@
 6. **Ending** (slowed down): the bedroom, the pool and sunsets, then "enjoy your stay at Mountain Oasis".
 
 ## Stabilisation and highlight rings
-- Every clip is stabilised first with a two-pass vidstab (`stab.sh`; smoothing 24, auto-zoom to hide edges).
+- Every clip is stabilised with a two-pass vidstab: motion analysis in `stab.sh`, then the transform in `stab2.sh` with heavy smoothing (70) and auto-zoom to hide edges.
+- No zoompan drift on clips. Zoompan moves in whole-pixel steps, which added its own jitter.
+- The sped-up parts of the stairs walk blend frames (`tmix`) so footsteps glide instead of jolting.
+- `shake.py` measures frame-to-frame jitter. The stairs dropped from about 17 px to about 9.5 px; every other section is about 1–2 px.
 - Highlight rings are drawn by `track_rings.py`. It follows each feature frame by frame with template matching, forwards and backwards from an anchor frame (`ring_anchors.json`). The thin silver door key uses hand-placed keyframes instead.
 
 ## Files
