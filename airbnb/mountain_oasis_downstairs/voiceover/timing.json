@@ -1,0 +1,155 @@
+{
+ "lines": [
+  {
+   "id": "l01",
+   "text": "Welcome to Mountain Oasis!",
+   "s": 0.35,
+   "e": 2.031
+  },
+  {
+   "id": "l02",
+   "text": "Here's a quick guide to make your self check-in to the downstairs unit as easy as possible.",
+   "s": 2.381,
+   "e": 7.049
+  },
+  {
+   "id": "l03",
+   "text": "When you arrive, park in front of the property, where you'll see the blue Mountain Oasis parking signs.",
+   "s": 7.849,
+   "e": 12.623
+  },
+  {
+   "id": "l08",
+   "text": "To reach your unit, you have two options: the elevator, or the stairs. But first, let's get your keys.",
+   "s": 13.323,
+   "e": 18.493
+  },
+  {
+   "id": "l04",
+   "text": "Head towards the large gate, where you'll find the lockboxes.",
+   "s": 19.293,
+   "e": 22.293
+  },
+  {
+   "id": "l05",
+   "text": "Your keys are in the bottom lockbox.",
+   "s": 22.643,
+   "e": 24.601
+  },
+  {
+   "id": "l06",
+   "text": "Simply enter the code your host will share with you before check-in,",
+   "s": 25.201,
+   "e": 28.545
+  },
+  {
+   "id": "l07",
+   "text": "then press both side buttons together to open it.",
+   "s": 28.795,
+   "e": 31.288
+  },
+  {
+   "id": "l07b",
+   "text": "Your keys come with a remote. Press the big red button to open the main gate,",
+   "s": 31.888,
+   "e": 35.849
+  },
+  {
+   "id": "l07c",
+   "text": "and use the green key to open the elevator gate.",
+   "s": 36.149,
+   "e": 38.72
+  },
+  {
+   "id": "l09",
+   "text": "If you're using the elevator, press the blue button. It takes you directly to your front entrance.",
+   "s": 39.52,
+   "e": 43.872
+  },
+  {
+   "id": "l10",
+   "text": "To return to the parking area, press the green button.",
+   "s": 44.272,
+   "e": 46.844
+  },
+  {
+   "id": "l11",
+   "text": "Alternatively, enter through the large gate, and follow the signs down the stairs.",
+   "s": 47.544,
+   "e": 51.752
+  },
+  {
+   "id": "l11b",
+   "text": "At this sign, head left, towards Downstairs and Bungalow.",
+   "s": 58.712,
+   "e": 61.775
+  },
+  {
+   "id": "l11c",
+   "text": "Use the blue key to open the small white gate.",
+   "s": 62.275,
+   "e": 64.759
+  },
+  {
+   "id": "l12",
+   "text": "Welcome home! The red key opens your front sliding door.",
+   "s": 65.559,
+   "e": 68.752
+  },
+  {
+   "id": "l12b",
+   "text": "Here are a few things to know once you're inside.",
+   "s": 69.352,
+   "e": 71.425
+  },
+  {
+   "id": "l14",
+   "text": "Your Wi-Fi password is in the welcome book on the table.",
+   "s": 72.025,
+   "e": 74.902
+  },
+  {
+   "id": "l13",
+   "text": "All the keys are stored in the basket in the kitchen.",
+   "s": 75.602,
+   "e": 78.1
+  },
+  {
+   "id": "l16",
+   "text": "The left-side balcony lights are switched on in the living room.",
+   "s": 78.9,
+   "e": 81.958
+  },
+  {
+   "id": "l18",
+   "text": "The right-side balcony lights are switched on in the single bedroom.",
+   "s": 82.458,
+   "e": 85.713
+  },
+  {
+   "id": "l18b",
+   "text": "Both balcony lights have a fifteen-minute motion sensor, and switch off automatically when no movement is detected, to save electricity.",
+   "s": 86.113,
+   "e": 93.367
+  },
+  {
+   "id": "l19",
+   "text": "The hairdryer and iron are in the bedroom cupboards.",
+   "s": 94.067,
+   "e": 96.577
+  },
+  {
+   "id": "l20",
+   "text": "That's it!",
+   "s": 97.377,
+   "e": 98.085
+  },
+  {
+   "id": "l21",
+   "text": "Settle in, make yourself at home, and enjoy your stay at Mountain Oasis!",
+   "s": 98.435,
+   "e": 102.388
+  }
+ ],
+ "total": 103.188
+}
