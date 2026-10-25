@@ -140,7 +140,7 @@ if __name__ == '__main__':
     pill('g/chip_pillow.png', 'pillow in front of the door', bg=CREAM, fg=NAVY, size=50)
     pill('g/chip_wind.png', 'stops it slamming in the wind', bg=CREAM, fg=NAVY, size=46)
     pill('g/chip_leftlight.png', 'left balcony lights: living room switch', bg=CREAM, fg=NAVY, size=44, dot=BUTTER)
-    pill('g/chip_rightlight.png', 'right balcony lights: single bedroom', bg=CREAM, fg=NAVY, size=44, dot=BUTTER)
+    pill('g/chip_rightlight.png', 'right balcony lights: main bedroom', bg=CREAM, fg=NAVY, size=44, dot=BUTTER)
     pill('g/chip_fire.png', 'everything’s in the buckets', bg=CREAM, fg=NAVY, size=50)
     pill('g/chip_dryer.png', 'hairdryer + iron: in the cupboards', bg=CREAM, fg=NAVY, size=46)
     pill('g/chip_home.png', 'welcome home', bg=CREAM, fg=NAVY, size=52)

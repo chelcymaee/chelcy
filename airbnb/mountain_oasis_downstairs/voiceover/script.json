@@ -57,12 +57,12 @@
  [
   "l10",
   "To return to the parking area, press the green button.",
-  0.7
+  4.3
  ],
  [
   "l11",
   "Alternatively, enter through the large gate, and follow the signs down the stairs.",
-  6.96
+  10.26
  ],
  [
   "l11b",
@@ -72,7 +72,7 @@
  [
   "l11c",
   "Use the blue key to open the small white gate.",
-  0.8
+  15.82
  ],
  [
   "l12",
@@ -101,7 +101,7 @@
  ],
  [
   "l18",
-  "The right-side balcony lights are switched on in the single bedroom.",
+  "The right-side balcony lights are switched on in the main bedroom.",
   0.4
  ],
  [

@@ -8,43 +8,44 @@ S = lambda i: L[i]['s']; E = lambda i: L[i]['e']
 def at(i, frac): return round(S(i) + (E(i) - S(i)) * frac, 3)
 r30 = lambda x: round(x * FPS) / FPS
 RAMP = json.load(open('ramp.json')); RD = sum(round((b - a) / s * FPS) for a, b, s, _ in RAMP) / FPS
-END_T = r30(E('l21') + 3.2)
+END_T = r30(E('l21') + 4.2)
 C = dict(a1=S('l02'), a2=S('l03'), a3=S('l03') + 2.4, op=S('l08'), a4=S('l04'), a6=S('l06'), a7=S('l07b'), a8=S('l07c'),
-         b1=S('l09'), b1b=S('l09') + 1.6, b2=S('l09') + 2.8, b3=S('l10') + 1.6, b4=S('l11b') - RD, h1=S('l11b'), g1=S('l11c'),
-         c1=S('l12'), c1b=S('l12b'), c5=S('l14'), c6=S('l13'), c9=S('l16'), d2=S('l18'), ds=S('l18b'), ds2=S('l18b') + 3.6, d3=S('l19'),
-         d4=S('l20'), d5=S('l20') + 1.2, d6=S('l20') + 2.4, d7=E('l21') - 1.6, d8=E('l21') - 0.2)
+         b1=S('l09'), b1b=S('l09') + 1.6, bS=E('l10') + 0.5, st=S('l11') - 0.2, g1=S('l11c') - 0.2,
+         c1=S('l12') - 0.2, c1b=S('l12b'), c5=S('l14'), c6=S('l13'), c9=S('l16'), d2=S('l18'), ds=S('l18b'), ds2=S('l18b') + 3.6,
+         d3=S('l19'), d4=S('l20'), d5=S('l20') + 2.6, d8=E('l21') - 0.2)
 C = {k: r30(v) for k, v in C.items()}
+C['h1'] = r30(C['st'] + RD); C['w1'] = r30(C['g1'] + 10.1); C['w2'] = r30(C['w1'] + 2.8); C['w3'] = r30(C['w2'] + 3.45)
 SEG = [
-    (0, C['a1'], 'clip', dict(f='0055', ss=0.0, speed=0.4)),
-    (C['a1'], C['a2'], 'clip', dict(f='0056', ss=0.0, speed=0.35)),
+    (0, C['a1'], 'clip', dict(f='0055', ss=0.0, speed=0.6)),
+    (C['a1'], C['a2'], 'clip', dict(f='0056', ss=0.0, speed=0.45)),
     (C['a2'], C['a3'], 'clip', dict(f='1186', ss=0.6, speed=0.8)),
     (C['a3'], C['op'], 'clip', dict(f='1188', ss=0.0, speed=0.5)),
-    (C['op'], C['a4'], 'clip', dict(f='0057', ss=0.0, speed=0.4, blur=True)),
+    (C['op'], C['a4'], 'clip', dict(f='0059', ss=0.0, speed=0.4)),
     (C['a4'], C['a6'], 'freeze_end', dict(f='1192', ss=0.0, until=2.3, speed=0.75)),
     (C['a6'], C['a7'], 'clip', dict(f='1232', ss=2.6, speed=0.75)),
     (C['a7'], C['a8'], 'clip', dict(f='1233', ss=0.0, speed=0.9)),
     (C['a8'], C['b1'], 'clip', dict(f='1199', ss=0.0, speed=0.75)),
     (C['b1'], C['b1b'], 'clip', dict(f='1201', ss=0.3, speed=0.85)),
-    (C['b1b'], C['b2'], 'clip', dict(f='1255', ss=0.0, speed=0.6)),
-    (C['b2'], C['b3'], 'still', dict(f='1202', ss=1.0, z=0.0, px=640, py=1000)),
-    (C['b3'], C['b4'], 'clip', dict(f='1263', ss=0.0, speed=0.8)),
-    (C['b4'], C['h1'], 'ramp', dict(f='1234')),
-    (C['h1'], C['g1'], 'clip', dict(f='1235', ss=2.4, speed=0.9, path='src/IMG_1235.MOV')),
-    (C['g1'], C['c1'], 'clip', dict(f='1236', ss=0.0, speed=0.75)),
+    (C['b1b'], C['bS'], 'still', dict(f='1202', ss=1.0, z=0.0, px=640, py=1000)),
+    (C['bS'], C['st'], 'clip', dict(f='0057', ss=0.0, speed=0.55)),
+    (C['st'], C['h1'], 'ramp', dict(f='1234')),
+    (C['h1'], C['g1'], 'clip', dict(f='1235', ss=0.0, speed=round(6.5 / (C['g1'] - C['h1']), 3), path='src/IMG_1235.MOV')),
+    (C['g1'], C['w1'], 'clip', dict(f='1236', ss=0.0)),
+    (C['w1'], C['w2'], 'clip', dict(f='1237', ss=0.0)),
+    (C['w2'], C['w3'], 'clip', dict(f='1240', ss=0.0)),
+    (C['w3'], C['c1'], 'clip', dict(f='1241', ss=0.0, speed=round(1.95 / max(0.5, C['c1'] - C['w3']), 3))),
     (C['c1'], C['c1b'], 'clip', dict(f='1242', ss=0.0, speed=0.5)),
     (C['c1b'], C['c5'], 'clip', dict(f='1243', ss=3.6, speed=0.8)),
     (C['c5'], C['c6'], 'clip', dict(f='1244', ss=4.2, speed=0.8)),
     (C['c6'], C['c9'], 'clip', dict(f='1245', ss=0.6, speed=0.9)),
     (C['c9'], C['d2'], 'clip', dict(f='1243', ss=7.6, speed=0.6)),
-    (C['d2'], C['ds'], 'clip', dict(f='1247', ss=0.0, speed=0.75)),
-    (C['ds'], C['ds2'], 'clip', dict(f='1240', ss=0.0, speed=0.6)),
-    (C['ds2'], C['d3'], 'clip', dict(f='1241', ss=0.0, speed=0.5)),
+    (C['d2'], C['ds'], 'clip', dict(f='1250', ss=5.6, speed=0.6)),
+    (C['ds'], C['ds2'], 'clip', dict(f='1254', ss=0.0, speed=0.6)),
+    (C['ds2'], C['d3'], 'clip', dict(f='0060', ss=0.0, speed=0.5)),
     (C['d3'], C['d4'], 'clip', dict(f='1251', ss=0.0, speed=0.75)),
-    (C['d4'], C['d5'], 'clip', dict(f='1250', ss=5.6, speed=0.6)),
-    (C['d5'], C['d6'], 'clip', dict(f='1237', ss=0.0, speed=0.5)),
-    (C['d6'], C['d7'], 'clip', dict(f='0061', ss=3.0, speed=0.5)),
-    (C['d7'], C['d8'], 'clip', dict(f='0060', ss=2.6, speed=0.4)),
-    (C['d8'], END_T, 'clip', dict(f='0058', ss=0.6, speed=0.3, blur=True)),
+    (C['d4'], C['d5'], 'clip', dict(f='0061', ss=4.5, speed=0.6)),
+    (C['d5'], C['d8'], 'clip', dict(f='0060', ss=3.0, speed=0.6)),
+    (C['d8'], END_T, 'clip', dict(f='0058', ss=0.0, speed=0.6, blur=True)),
 ]
 GRADE = GRADE = "eq=contrast=1.04:saturation=1.08:gamma=1.02,colorbalance=rs=0.03:bs=-0.02:rm=0.02,vignette=PI/6"
 os.makedirs('seg', exist_ok=True)
@@ -116,16 +117,16 @@ OV += [('g/step2.png', C['a4'] + 0.2, C['b1'], 540, TOP, 'pop'),
        ('g/sparkle_y.png', E('l07') - 0.2, C['a7'], 640, 1000, 'twinkle')]
 OV += [('g/ring_r.png', C['a7'] + 0.7, C['a7'] + 2.3, 0, 0, 'pulse'), ('g/chip_red.png', C['a7'] + 0.8, C['a8'], 540, 420, 'pop'),
        ('g/ring_g.png', C['a8'] + 0.3, C['a8'] + 1.6, 408, 1172, 'pulse'), ('g/chip_greenkey.png', C['a8'] + 0.4, C['b1'], 540, 420, 'pop')]
-OV += [('g/step3.png', C['b1'] + 0.2, C['c1'], 540, TOP, 'pop'), ('g/chip_lift.png', C['b1'] + 0.3, C['b2'], 540, 420, 'pop'),
-       ('g/ring_w.png', C['b2'] + 0.1, at('l10', 0.5), 660, 620, 'pulse'), ('g/chip_blue.png', C['b2'] + 0.15, at('l10', 0.5), 540, 420, 'pop'),
-       ('g/ring_w.png', at('l10', 0.5), C['b3'], 660, 1172, 'pulse'), ('g/chip_green.png', at('l10', 0.5) + 0.15, C['b3'], 540, 420, 'pop'),
-       ('g/chip_stairs.png', C['b4'] - 0.4, C['b4'] + 2.6, 540, 420, 'pop')]
+OV += [('g/step3.png', C['b1'] + 0.2, C['c1'], 540, TOP, 'pop'), ('g/chip_lift.png', C['b1'] + 0.3, C['b1b'], 540, 420, 'pop'),
+       ('g/ring_w.png', C['b1b'] + 0.3, S('l10'), 628, 618, 'pulse'), ('g/chip_blue.png', C['b1b'] + 0.3, S('l10'), 540, 420, 'pop'),
+       ('g/ring_w.png', S('l10'), C['bS'], 632, 1190, 'pulse'), ('g/chip_green.png', S('l10') + 0.15, C['bS'], 540, 420, 'pop'),
+       ('g/chip_stairs.png', C['st'] + 0.3, C['st'] + 3.2, 540, 420, 'pop')]
 from PIL import Image as _I
 SC = 0.6
 for nm in ('follow', 'legday', 'moment', 'halfway', 'heading'):
     im = _I.open(f'g/signs/{nm}.png'); im.resize((int(im.width * SC), int(im.height * SC)), _I.LANCZOS).save(f'g/signs/{nm}_s.png')
 SIDE = dict(follow=(250, 820), legday=(850, 820), moment=(230, 820), halfway=(230, 820))
-tt = C['b4']; SIGN_T = []
+tt = C['st']; SIGN_T = []
 for pa, pb, ps, nm in RAMP:
     d_ = round((pb - pa) / ps * FPS) / FPS
     if nm:
@@ -133,9 +134,9 @@ for pa, pb, ps, nm in RAMP:
         OV.append((f'g/signs/{nm}_s.png', tt + 0.08, min(tt + d_ + 0.3, C['h1']), x_, y_, 'float'))
         OV.append(('g/sparkle_s.png', tt + 0.2, tt + d_, x_ + 150, y_ - 280, 'twinkle')); SIGN_T.append(tt + 0.08)
     tt += d_
-OV.append(('g/signs/heading_s.png', C['h1'] + 0.9, C['g1'], 830, 860, 'float')); SIGN_T.append(C['h1'] + 0.9)
-OV += [('g/chip_downleft.png', C['h1'] + 1.3, C['g1'], 540, 420, 'pop'),
-       ('g/ring_w.png', C['g1'] + 0.3, C['g1'] + 1.6, 0, 0, 'pulse'), ('g/chip_bluekey.png', C['g1'] + 0.3, C['c1'], 540, 420, 'pop')]
+OV.append(('g/signs/heading_s.png', S('l11b') - 0.2, S('l11b') + 1.4, 830, 860, 'float')); SIGN_T.append(S('l11b') - 0.2)
+OV += [('g/chip_downleft.png', S('l11b') + 0.3, C['g1'], 540, 420, 'pop'),
+       ('g/ring_w.png', C['g1'] + 0.3, C['g1'] + 1.6, 0, 0, 'pulse'), ('g/chip_bluekey.png', C['g1'] + 0.3, C['g1'] + 6.0, 540, 420, 'pop')]
 OV += [('g/step4.png', C['c1'] + 0.2, C['d4'], 540, TOP, 'pop'), ('g/chip_redkey.png', C['c1'] + 0.4, C['c1b'] + 0.6, 540, 420, 'pop'),
        ('g/ring_r.png', C['c1'] + 0.4, C['c1b'], 0, 0, 'pulse'),
        ('g/ring_book.png', C['c5'] + 0.4, C['c6'], 0, 0, 'pulse'), ('g/wifi.png', C['c5'] + 0.2, C['c6'], 820, 900, 'pop'), ('g/chip_wifi2.png', C['c5'] + 0.3, C['c6'], 540, 420, 'pop'),
@@ -182,8 +183,8 @@ cues = [('sparkle', 0.3, -12), ('card_pop', C['a1'] + 0.3, -14), ('pop', ov_t[1]
         ('pop', C['a2'] + 0.2, -15), ('pop', C['a3'] + 0.2, -14), ('card_pop', C['op'] + 0.4, -14), ('pop', at('l08', 0.7), -15),
         ('pop', C['a4'] + 0.2, -15), ('pop', S('l05'), -13), ('pop', S('l06') + 0.3, -15), ('pop', S('l07') + 0.1, -15),
         ('lock_click', E('l07') - 0.3, -9), ('sparkle', E('l07') - 0.2, -15),
-        ('pop', C['a7'] + 0.7, -13), ('pop', C['a8'] + 0.3, -13), ('pop', C['b1'] + 0.3, -15), ('pop', C['b2'] + 0.1, -13), ('pop', at('l10', 0.5), -13),
-        ('pop', C['b4'] - 0.4, -15), ('pop', C['h1'] + 1.3, -14), ('pop', C['g1'] + 0.3, -13), ('pop', C['c1'] + 0.2, -15), ('pop', C['c1'] + 0.4, -13),
+        ('pop', C['a7'] + 0.7, -13), ('pop', C['a8'] + 0.3, -13), ('pop', C['b1'] + 0.3, -15), ('pop', C['b1b'] + 0.3, -13), ('pop', S('l10'), -13),
+        ('pop', C['st'] + 0.3, -15), ('pop', S('l11b') + 0.3, -14), ('pop', C['g1'] + 0.3, -13), ('pop', C['c1'] + 0.2, -15), ('pop', C['c1'] + 0.4, -13),
         ('sparkle', C['c5'] + 0.2, -14), ('pop', C['c6'] + 0.3, -14), ('pop', C['c9'] + 0.4, -14), ('pop', C['d2'] + 0.4, -14),
         ('pop', C['ds'] + 0.5, -14), ('pop', C['ds'] + 2.0, -15), ('pop', C['d3'] + 0.3, -14), ('sparkle', C['d8'] + 0.3, -11)]
 cues += [('card_pop', t_, -12) for t_ in SIGN_T]

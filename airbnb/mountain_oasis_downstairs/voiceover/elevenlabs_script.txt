@@ -1,5 +1,5 @@
 Mountain Oasis downstairs unit: self check-in voiceover script (for ElevenLabs)
-One paragraph per line; leave a short pause between lines. The long pause for the stairs walk (after the 'Alternatively...' line) is added in the edit.
+One paragraph per line; leave a short pause between lines. The long pauses for the stairs and the walk to the door are added in the edit.
 
 Welcome to Mountain Oasis!
 
@@ -41,7 +41,7 @@ All the keys are stored in the basket in the kitchen.
 
 The left-side balcony lights are switched on in the living room.
 
-The right-side balcony lights are switched on in the single bedroom.
+The right-side balcony lights are switched on in the main bedroom.
 
 Both balcony lights have a fifteen-minute motion sensor, and switch off automatically when no movement is detected, to save electricity.
 
