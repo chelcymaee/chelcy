@@ -1,6 +1,6 @@
 # Mountain Oasis: downstairs unit self check-in guide
 
-2:08 vertical (1080×1920), same style as the upstairs guide (`../mountain_oasis_checkin_v2/`). It uses the downstairs clips (IMG_1232–1263, sunsets IMG_0055–0061) from the `airbnb-checkin-1` release, plus the upstairs parking, big-gate, green-key and lift-panel shots.
+2:05 vertical (1080×1920), same style as the upstairs guide (`../mountain_oasis_checkin_v2/`). It uses the downstairs clips (IMG_1232–1263, sunsets IMG_0055–0061) from the `airbnb-checkin-1` release, plus the upstairs parking, big-gate, green-key and lift-panel shots.
 
 ## Running order
 1. **Sunset opening:** the window sunset with the title, then the balcony horizon with the 4-step card.
@@ -9,8 +9,8 @@
    - The bottom lockbox, entering the code, pressing both sides.
    - The remote's red button opens the main gate.
    - The green key opens the elevator gate.
-4. **Option A, the elevator:** the welcome sign, then the button panel stays on screen through both the blue button (your front entrance) and the green button (back to the parking). A sunset breather follows.
-5. **Option B, the stairs:** one continuous walk from the driveway up the stairs, slowing at each sign. At "Where are you heading?" you point left. The blue key opens the small white gate, then the walk continues through the gate, past the hot tub and along the balcony to the sliding door.
+4. **Option A, the elevator:** the welcome sign, then the button panel stays on screen through both the blue button (your front entrance) and the green button (back to the parking), straight into the stairs.
+5. **Option B, the stairs:** the walk from the driveway up the stairs (soft dissolves where the raw recordings stop: IMG_1234 to IMG_1235, and IMG_1235 to IMG_1236), slowing at each sign. At "Where are you heading?" you point left. The blue key opens the small white gate, then the walk continues through the gate, past the hot tub and along the balcony to the sliding door.
 6. **Settle in:**
    - The red key opens the sliding door.
    - Wi-Fi password in the welcome book.

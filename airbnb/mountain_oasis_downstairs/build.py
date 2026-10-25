@@ -26,8 +26,7 @@ SEG = [
     (C['a7'], C['a8'], 'clip', dict(f='1233', ss=0.0, speed=0.9)),
     (C['a8'], C['b1'], 'clip', dict(f='1199', ss=0.0, speed=0.75)),
     (C['b1'], C['b1b'], 'clip', dict(f='1201', ss=0.3, speed=0.85)),
-    (C['b1b'], C['bS'], 'still', dict(f='1202', ss=1.0, z=0.0, px=640, py=1000)),
-    (C['bS'], C['st'], 'clip', dict(f='0057', ss=0.0, speed=0.55)),
+    (C['b1b'], C['st'], 'still', dict(f='1202', ss=1.0, z=0.0, px=640, py=1000)),
     (C['st'], C['h1'], 'ramp', dict(f='1234')),
     (C['h1'], C['g1'], 'clip', dict(f='1235', ss=0.0, speed=round(6.5 / (C['g1'] - C['h1']), 3), path='src/IMG_1235.MOV')),
     (C['g1'], C['w1'], 'clip', dict(f='1236', ss=0.0)),
@@ -42,7 +41,7 @@ SEG = [
     (C['d2'], C['ds'], 'clip', dict(f='1250', ss=5.6, speed=0.6)),
     (C['ds'], C['ds2'], 'clip', dict(f='1254', ss=0.0, speed=0.6)),
     (C['ds2'], C['d3'], 'clip', dict(f='0060', ss=0.0, speed=0.5)),
-    (C['d3'], C['d4'], 'clip', dict(f='1251', ss=0.0, speed=0.75)),
+    (C['d3'], C['d4'], 'still', dict(f='1251', ss=2.75, z=0.0, px=540, py=960)),
     (C['d4'], C['d5'], 'clip', dict(f='0061', ss=4.5, speed=0.6)),
     (C['d5'], C['d8'], 'clip', dict(f='0060', ss=3.0, speed=0.6)),
     (C['d8'], END_T, 'clip', dict(f='0058', ss=0.0, speed=0.6, blur=True)),
@@ -50,8 +49,11 @@ SEG = [
 GRADE = GRADE = "eq=contrast=1.04:saturation=1.08:gamma=1.02,colorbalance=rs=0.03:bs=-0.02:rm=0.02,vignette=PI/6"
 os.makedirs('seg', exist_ok=True)
 files = []
+FJ = {}   # next-segment index -> longer crossfade (raw footage gaps)
+for _i, _sg in enumerate(SEG):
+    if _sg[2] == 'clip' and _sg[3].get('f') in ('1235', '1236') and SEG[_i - 1][3].get('f') in ('1234', '1235'): FJ[_i] = 0.7
 for i, (a, b, kind, A) in (enumerate(SEG) if not os.environ.get('SKIP_BASE') else []):
-    D = (b - a) + (F if i < len(SEG) - 1 else 0); n = round(D * FPS); out = f'seg/{i:02d}.mp4'; files.append((out, a))
+    D = (b - a) + (FJ.get(i + 1, F) if i < len(SEG) - 1 else 0); n = round(D * FPS); out = f'seg/{i:02d}.mp4'; files.append((out, a))
     src = A.get('path') or f"src/IMG_{A['f']}.MOV"
     _st = f"stab2/{os.path.basename(src).rsplit('.', 1)[0]}.mp4"
     if os.path.exists(_st): src = _st; sp = A.get('speed', 1.0)
@@ -95,7 +97,7 @@ ins = []; fc = []
 for p, _ in files: ins += ['-i', p]
 prev = '0:v'
 for i in range(1, len(files)):
-    fc.append(f"[{prev}][{i}:v]xfade=transition=fade:duration={F}:offset={files[i][1]:.3f}[x{i}]"); prev = f'x{i}'
+    fc.append(f"[{prev}][{i}:v]xfade=transition=fade:duration={FJ.get(i, F)}:offset={files[i][1]:.3f}[x{i}]"); prev = f'x{i}'
 if not os.environ.get('SKIP_BASE') and not os.environ.get('DUMP_RINGS'): subprocess.run(['ffmpeg', '-v', 'error', '-y'] + ins + ['-filter_complex', ';'.join(fc), '-map', f'[{prev}]', '-c:v', 'libx264', '-crf', '16', '-preset', 'fast', '-pix_fmt', 'yuv420p', 'base.mp4'], check=True)
 
 if os.environ.get('BASE_ONLY'): raise SystemExit
@@ -119,7 +121,7 @@ OV += [('g/ring_r.png', C['a7'] + 0.7, C['a7'] + 2.3, 0, 0, 'pulse'), ('g/chip_r
        ('g/ring_g.png', C['a8'] + 0.3, C['a8'] + 1.6, 408, 1172, 'pulse'), ('g/chip_greenkey.png', C['a8'] + 0.4, C['b1'], 540, 420, 'pop')]
 OV += [('g/step3.png', C['b1'] + 0.2, C['c1'], 540, TOP, 'pop'), ('g/chip_lift.png', C['b1'] + 0.3, C['b1b'], 540, 420, 'pop'),
        ('g/ring_w.png', C['b1b'] + 0.3, S('l10'), 628, 618, 'pulse'), ('g/chip_blue.png', C['b1b'] + 0.3, S('l10'), 540, 420, 'pop'),
-       ('g/ring_w.png', S('l10'), C['bS'], 632, 1190, 'pulse'), ('g/chip_green.png', S('l10') + 0.15, C['bS'], 540, 420, 'pop'),
+       ('g/ring_w.png', S('l10'), C['st'], 632, 1190, 'pulse'), ('g/chip_green.png', S('l10') + 0.15, C['st'], 540, 420, 'pop'),
        ('g/chip_stairs.png', C['st'] + 0.3, C['st'] + 3.2, 540, 420, 'pop')]
 from PIL import Image as _I
 SC = 0.6

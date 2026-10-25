@@ -10,146 +10,146 @@
    "id": "l02",
    "text": "Here's a quick guide to make your self check-in to the downstairs unit as easy as possible.",
    "s": 2.381,
-   "e": 7.049
+   "e": 7.042
   },
   {
    "id": "l03",
    "text": "When you arrive, park in front of the property, where you'll see the blue Mountain Oasis parking signs.",
-   "s": 7.849,
-   "e": 12.622
+   "s": 7.842,
+   "e": 12.617
   },
   {
    "id": "l08",
    "text": "To reach your unit, you have two options: the elevator, or the stairs. But first, let's get your keys.",
-   "s": 13.322,
-   "e": 18.492
+   "s": 13.317,
+   "e": 18.486
   },
   {
    "id": "l04",
    "text": "Head towards the large gate, where you'll find the lockboxes.",
-   "s": 19.292,
-   "e": 22.292
+   "s": 19.286,
+   "e": 22.285
   },
   {
    "id": "l05",
    "text": "Your keys are in the bottom lockbox.",
-   "s": 22.642,
-   "e": 24.6
+   "s": 22.635,
+   "e": 24.593
   },
   {
    "id": "l06",
    "text": "Simply enter the code your host will share with you before check-in,",
-   "s": 25.2,
-   "e": 28.541
+   "s": 25.193,
+   "e": 28.537
   },
   {
    "id": "l07",
    "text": "then press both side buttons together to open it.",
-   "s": 28.791,
-   "e": 31.284
+   "s": 28.787,
+   "e": 31.28
   },
   {
    "id": "l07b",
    "text": "Your keys come with a remote. Press the big red button to open the main gate,",
-   "s": 31.884,
-   "e": 35.845
+   "s": 31.88,
+   "e": 35.841
   },
   {
    "id": "l07c",
    "text": "and use the green key to open the elevator gate.",
-   "s": 36.145,
-   "e": 38.717
+   "s": 36.141,
+   "e": 38.712
   },
   {
    "id": "l09",
    "text": "If you're using the elevator, press the blue button. It takes you directly to your front entrance.",
-   "s": 39.517,
-   "e": 43.868
+   "s": 39.512,
+   "e": 43.863
   },
   {
    "id": "l10",
    "text": "To return to the parking area, press the green button.",
-   "s": 44.268,
-   "e": 46.84
+   "s": 44.263,
+   "e": 46.835
   },
   {
    "id": "l11",
-   "text": "Alternatively, enter through the large gate, and follow the signs down the stairs.",
-   "s": 51.14,
-   "e": 55.349
+   "text": "Alternatively, enter through the large gate, and follow the signs up the stairs.",
+   "s": 47.535,
+   "e": 51.614
   },
   {
    "id": "l11b",
    "text": "At this sign, head left, towards Downstairs and Bungalow.",
-   "s": 65.609,
-   "e": 68.671
+   "s": 62.004,
+   "e": 65.066
   },
   {
    "id": "l11c",
    "text": "Use the blue key to open the small white gate.",
-   "s": 69.171,
-   "e": 71.654
+   "s": 65.566,
+   "e": 68.046
   },
   {
    "id": "l12",
    "text": "Welcome home! The red key opens your front sliding door.",
-   "s": 87.474,
-   "e": 90.666
+   "s": 83.866,
+   "e": 87.059
   },
   {
    "id": "l12b",
    "text": "Here are a few things to know once you're inside.",
-   "s": 91.266,
-   "e": 93.34
+   "s": 87.659,
+   "e": 89.733
   },
   {
    "id": "l14",
    "text": "Your Wi-Fi password is in the welcome book on the table.",
-   "s": 93.94,
-   "e": 96.817
+   "s": 90.333,
+   "e": 93.21
   },
   {
    "id": "l13",
    "text": "All the keys are stored in the basket in the kitchen.",
-   "s": 97.517,
-   "e": 100.015
+   "s": 93.91,
+   "e": 96.408
   },
   {
    "id": "l16",
    "text": "The left-side balcony lights are switched on in the living room.",
-   "s": 100.815,
-   "e": 103.873
+   "s": 97.208,
+   "e": 100.266
   },
   {
    "id": "l18",
    "text": "The right-side balcony lights are switched on in the main bedroom.",
-   "s": 104.373,
-   "e": 107.597
+   "s": 100.766,
+   "e": 103.991
   },
   {
    "id": "l18b",
    "text": "Both balcony lights have a fifteen-minute motion sensor, and switch off automatically when no movement is detected, to save electricity.",
-   "s": 107.997,
-   "e": 115.251
+   "s": 104.391,
+   "e": 111.642
   },
   {
    "id": "l19",
    "text": "The hairdryer and iron are in the bedroom cupboards.",
-   "s": 115.951,
-   "e": 118.461
+   "s": 112.342,
+   "e": 114.852
   },
   {
    "id": "l20",
    "text": "That's it!",
-   "s": 119.261,
-   "e": 119.969
+   "s": 115.652,
+   "e": 116.359
   },
   {
    "id": "l21",
    "text": "Settle in, make yourself at home, and enjoy your stay at Mountain Oasis!",
-   "s": 120.319,
-   "e": 124.272
+   "s": 116.709,
+   "e": 120.666
   }
  ],
- "total": 125.072
+ "total": 121.466
 }
