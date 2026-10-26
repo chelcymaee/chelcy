@@ -1,0 +1,125 @@
+{
+ "lines": [
+  {
+   "id": "t01",
+   "text": "Welcome to the Mountain Oasis hot tub!",
+   "s": 0.35,
+   "e": 2.512
+  },
+  {
+   "id": "t02",
+   "text": "Here's how to fire it up, and enjoy it safely.",
+   "s": 2.862,
+   "e": 5.28
+  },
+  {
+   "id": "t05",
+   "text": "Fill the hot tub with water to just above the top inlet.",
+   "s": 6.08,
+   "e": 9.193
+  },
+  {
+   "id": "t06",
+   "text": "Place the blue geo-bubble blanket on the water surface. You'll find it inside the chalet.",
+   "s": 9.693,
+   "e": 14.39
+  },
+  {
+   "id": "t07",
+   "text": "Do not make a fire in the coils unless the water is at this level.",
+   "s": 14.89,
+   "e": 18.157
+  },
+  {
+   "id": "t08",
+   "text": "Make a fire in the coil unit, using good, dry wood, leaned up against the coils.",
+   "s": 18.957,
+   "e": 23.111
+  },
+  {
+   "id": "t09",
+   "text": "Do not make a large bonfire, as it could cause heat damage to the fibreglass.",
+   "s": 23.611,
+   "e": 27.874
+  },
+  {
+   "id": "t10",
+   "text": "Stir the water with your hand every fifteen to twenty minutes while it heats, to help circulate the heat.",
+   "s": 28.674,
+   "e": 33.447
+  },
+  {
+   "id": "t11",
+   "text": "It should take about one and a half to two hours to reach a bathing temperature of thirty-six to forty degrees.",
+   "s": 34.047,
+   "e": 39.568
+  },
+  {
+   "id": "t12",
+   "text": "Once it's there, keep it warm with a handful of charcoal or firewood every twenty minutes.",
+   "s": 40.068,
+   "e": 44.709
+  },
+  {
+   "id": "t13",
+   "text": "A few important notes.",
+   "s": 45.709,
+   "e": 46.924
+  },
+  {
+   "id": "t14",
+   "text": "If it overheats, carefully splash some water on the fire, taking care not to get burnt by the steam, or add cold water from the hosepipe straight away.",
+   "s": 47.424,
+   "e": 55.225
+  },
+  {
+   "id": "t15",
+   "text": "If you hear bubbling or steam noises, the coils may not be level, and the supporting leg may need adjusting.",
+   "s": 55.725,
+   "e": 61.072
+  },
+  {
+   "id": "t16",
+   "text": "Do not use the hot tub in windy conditions, to prevent bush fires.",
+   "s": 61.572,
+   "e": 65.347
+  },
+  {
+   "id": "t17",
+   "text": "Add a little water to the drip tray before use, to help stop embers from causing a fire.",
+   "s": 65.747,
+   "e": 70.184
+  },
+  {
+   "id": "t18",
+   "text": "And always put out the fire before leaving the hot tub unattended.",
+   "s": 70.684,
+   "e": 73.938
+  },
+  {
+   "id": "t22",
+   "text": "Safety and liability.",
+   "s": 75.338,
+   "e": 76.761
+  },
+  {
+   "id": "t23",
+   "text": "Please follow water and fire safety precautions at all times, including adult supervision of minors.",
+   "s": 77.461,
+   "e": 83.308
+  },
+  {
+   "id": "t24",
+   "text": "Tickle Tub and Mountain Oasis will not be held liable for any accidents involving the use of this hot tub.",
+   "s": 83.908,
+   "e": 90.064
+  },
+  {
+   "id": "t27",
+   "text": "Enjoy your soak!",
+   "s": 91.264,
+   "e": 92.281
+  }
+ ],
+ "total": 93.081
+}
