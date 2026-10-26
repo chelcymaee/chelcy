@@ -20,8 +20,8 @@ SEG = [
     (C['o1'], C['f1'], 'clip', dict(f='1205', ss=0.0, speed=0.5)),
     (C['f1'], C['w0'], 'still', dict(f='1205', ss=1.2, z=0.0, px=540, py=1400)),
     (C['w0'], C['w1'], 'clip', dict(f='1227.2', ss=0.0, speed=round(12.0 / 5.4, 3))),
-    (C['w1'], C['cv'], 'clip', dict(f='1228', ss=0.0, speed=sp(3.9, C['w1'], C['cv']))),
-    (C['cv'], C['fi'], 'clip', dict(f='1228', ss=3.85, speed=1.0)),
+    (C['w1'], C['s1'], 'clip', dict(f='1228', ss=0.0, speed=sp(0.8, C['w1'], C['s1']))),
+    (C['s1'], C['fi'], 'still', dict(f='1228', ss=0.8, z=0.06, px=640, py=1120)),
     (C['fi'], C['lw'], 'clip', dict(f='1229', ss=3.0, speed=sp(7.85, C['fi'], C['lw'], 3.0))),
     (C['lw'], C['hd'], 'clip', dict(f='1230', ss=0.0, speed=sp(4.35, C['lw'], C['hd']))),
     (C['hd'], C['st'], 'clip', dict(f='1229', ss=0.0, speed=sp(3.0, C['hd'], C['st']))),
@@ -98,7 +98,7 @@ OV += [('g/title.png', 0.1, C['o1'] + 0.1, 540, 820, 'pop'), ('g/chip_tubguide.p
 OV += [('g/chip_firewood.png', C['o1'] + 0.4, C['f1'], 540, CH, 'pop'), ('g/chip_bags.png', C['f1'] + 0.3, C['w0'], 540, CH, 'pop'),
        ('g/chip_garden.png', C['w0'] + 0.4, C['s1'], 540, CH, 'pop')]
 OV += [('g/tstep1.png', C['s1'] + 0.2, C['fi'], 540, TOP, 'pop'), ('g/chip_redline.png', C['s1'] + 0.4, S('t07'), 540, CH, 'pop'),
-       ('g/chip_belowline.png', S('t07') + 0.2, C['cv'], 540, CH, 'pop'), ('g/redline_card.png', C['s1'] + 0.5, C['cv'], 540, 1010, 'pop'), ('g/chip_cover.png', C['cv'] + 0.3, C['fi'], 540, CH, 'pop')]
+       ('g/chip_belowline.png', S('t07') + 0.2, C['cv'], 540, CH, 'pop'), ('g/redline_card.png', C['s1'] + 0.5, C['cv'], 540, 1010, 'pop'), ('g/chip_cover.png', C['cv'] + 0.3, C['fi'], 540, CH, 'pop'), ('g/arrow_cover.png', C['cv'] + 0.3, C['fi'], 655, 860, 'boby')]
 OV += [('g/tstep2.png', C['fi'] + 0.2, C['st'], 540, TOP, 'pop'), ('g/chip_starter.png', C['fi'] + 0.3, C['lw'], 540, CH, 'pop'),
        ('g/chip_addwood.png', C['lw'] + 0.3, C['hd'], 540, CH, 'pop'),
        ('g/chip_handle.png', C['hd'] + 0.3, C['st'], 540, CH, 'pop'), ('g/chip_hot.png', C['hd'] + 2.4, C['st'], 540, CH + 110, 'pop'),

@@ -5,7 +5,7 @@
 ## Running order
 1. **Opening:** "Mountain Oasis · hot tub guide" over the deck-to-pool sunset.
 2. **Firewood:** in the front entrance. 2 bags are included at check-in, then R100 per extra bag. Then the walk through the garden to the hot tub beside the pool.
-3. **Before you begin:** the red-line reference photo pops up as a card (`graphics/redline_card.png`). Never heat below the line. Cover off and to one side.
+3. **Before you begin:** the red-line reference photo pops up as a card (`graphics/redline_card.png`). Never heat below the line. "Cover off": holds on the covered tub with a bouncing arrow pointing at the cover.
 4. **Light the fire:** fire starter and small dry wood (firebox open), then more wood and close the lid. The "touch only the wooden handle" warning plays over the clip of Chelcy pointing at the handle, with a red ring that follows the handle.
 5. **Stir and heat:** stir every 15 minutes with the paddle (ring follows the paddle), stir again each time you add wood. It takes 2–3 hours to heat.
 Each hot tub clip is used once. From the heating time onwards, only soft upstairs sunsets play.
