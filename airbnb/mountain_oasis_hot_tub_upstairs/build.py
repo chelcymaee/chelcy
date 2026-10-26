@@ -13,31 +13,27 @@ C = dict(o1=S('t03'), f1=S('t04'), w0=S('t05'), w1=S('t05') + 5.4, s1=S('t06'), 
          st=S('t12'), hr=S('t14'), n0=S('t15'), n1=S('t16'), n2=S('t17'), n3=S('t18'), n4=S('t19'), n5=S('t20'), n6=S('t21'),
          cr=S('t22') - 0.4, cr1=S('t24'), cr2=S('t25'), cr3=S('t26'), en=S('t27') - 0.2)
 C = {k: r30(v) for k, v in C.items()}
+CR = dict(c1=C['cr'], c2=r30(C['cr'] + 10.4), c3=r30(C['cr'] + 17.8))
+def sp(clip_len, a_, b_, ss=0.0): return round((clip_len - ss) / (b_ - a_), 3)
 SEG = [
     (0, C['o1'], 'clip', dict(f='5915', ss=0.0, speed=0.45)),
     (C['o1'], C['f1'], 'clip', dict(f='1205', ss=0.0, speed=0.5)),
     (C['f1'], C['w0'], 'still', dict(f='1205', ss=1.2, z=0.0, px=540, py=1400)),
     (C['w0'], C['w1'], 'clip', dict(f='1227.2', ss=0.0, speed=round(12.0 / 5.4, 3))),
-    (C['w1'], C['s1'], 'clip', dict(f='1228', ss=0.3, speed=0.9)),
-    (C['s1'], C['cv'], 'clip', dict(f='1229', ss=0.0, speed=0.27)),
-    (C['cv'], C['fi'], 'clip', dict(f='1228', ss=0.0, speed=0.35)),
-    (C['fi'], C['lw'], 'clip', dict(f='1229', ss=2.3, speed=1.0)),
-    (C['lw'], C['hd'], 'still', dict(f='1229', ss=6.6, z=0.0, px=540, py=960)),
-    (C['hd'], C['st'], 'clip', dict(f='1230', ss=0.0, speed=0.8)),
+    (C['w1'], C['cv'], 'clip', dict(f='1228', ss=0.0, speed=sp(3.9, C['w1'], C['cv']))),
+    (C['cv'], C['fi'], 'clip', dict(f='1228', ss=3.85, speed=1.0)),
+    (C['fi'], C['lw'], 'clip', dict(f='1229', ss=3.0, speed=sp(7.85, C['fi'], C['lw'], 3.0))),
+    (C['lw'], C['hd'], 'clip', dict(f='1230', ss=0.0, speed=sp(4.35, C['lw'], C['hd']))),
+    (C['hd'], C['st'], 'clip', dict(f='1229', ss=0.0, speed=sp(3.0, C['hd'], C['st']))),
     (C['st'], C['hr'], 'clip', dict(f='1231', ss=0.0, speed=0.29)),
-    (C['hr'], C['n0'], 'clip', dict(f='1228', ss=1.2, speed=0.4)),
-    (C['n0'], C['n1'], 'clip', dict(f='5893', ss=0.0, speed=0.5)),
-    (C['n1'], C['n2'], 'clip', dict(f='7987', ss=0.0, speed=0.5)),
-    (C['n2'], C['n3'], 'clip', dict(f='1227.2', ss=3.0, speed=0.6)),
-    (C['n3'], C['n4'], 'clip', dict(f='1229', ss=0.0, speed=0.4)),
-    (C['n4'], C['n5'], 'clip', dict(f='1230', ss=1.0, speed=0.6)),
-    (C['n5'], C['n6'], 'still', dict(f='1229', ss=3.2, z=0.0, px=540, py=960)),
-    (C['n6'], C['cr'], 'clip', dict(f='1228', ss=0.0, speed=0.45)),
-    (C['cr'], C['cr1'], 'clip', dict(f='5966', ss=0.0, speed=0.3)),
-    (C['cr1'], C['cr2'], 'clip', dict(f='5915', ss=1.0, speed=0.45)),
-    (C['cr2'], C['cr3'], 'clip', dict(f='5890', ss=0.0, speed=0.4)),
-    (C['cr3'], C['en'], 'clip', dict(f='5965', ss=0.0, speed=0.4)),
-    (C['en'], END_T, 'clip', dict(f='5966', ss=0.3, speed=0.3, blur=True)),
+    (C['hr'], C['n0'], 'clip', dict(f='5893', ss=0.0, speed=sp(2.15, C['hr'], C['n0']))),
+    (C['n0'], C['n2'], 'clip', dict(f='7987', ss=0.0, speed=sp(1.65, C['n0'], C['n2']))),
+    (C['n2'], C['n4'], 'clip', dict(f='5890', ss=0.0, speed=sp(3.0, C['n2'], C['n4']))),
+    (C['n4'], C['cr'], 'clip', dict(f='5915', ss=1.5, speed=sp(7.9, C['n4'], C['cr'], 1.5))),
+    (CR['c1'], CR['c2'], 'clip', dict(f='5965', ss=0.0, speed=sp(2.5, CR['c1'], CR['c2']))),
+    (CR['c2'], CR['c3'], 'clip', dict(f='5966', ss=0.0, speed=sp(1.6, CR['c2'], CR['c3']))),
+    (CR['c3'], C['en'], 'clip', dict(f='5890', ss=1.6, speed=sp(3.0, CR['c3'], C['en'], 1.6))),
+    (C['en'], END_T, 'clip', dict(f='5966', ss=0.6, speed=0.3, blur=True)),
 ]
 GRADE = GRADE = "eq=contrast=1.04:saturation=1.08:gamma=1.02,colorbalance=rs=0.03:bs=-0.02:rm=0.02,vignette=PI/6"
 os.makedirs('seg', exist_ok=True)
@@ -102,11 +98,11 @@ OV += [('g/title.png', 0.1, C['o1'] + 0.1, 540, 820, 'pop'), ('g/chip_tubguide.p
 OV += [('g/chip_firewood.png', C['o1'] + 0.4, C['f1'], 540, CH, 'pop'), ('g/chip_bags.png', C['f1'] + 0.3, C['w0'], 540, CH, 'pop'),
        ('g/chip_garden.png', C['w0'] + 0.4, C['s1'], 540, CH, 'pop')]
 OV += [('g/tstep1.png', C['s1'] + 0.2, C['fi'], 540, TOP, 'pop'), ('g/chip_redline.png', C['s1'] + 0.4, S('t07'), 540, CH, 'pop'),
-       ('g/chip_belowline.png', S('t07') + 0.2, C['cv'], 540, CH, 'pop'), ('g/chip_cover.png', C['cv'] + 0.3, C['fi'], 540, CH, 'pop')]
+       ('g/chip_belowline.png', S('t07') + 0.2, C['cv'], 540, CH, 'pop'), ('g/redline_card.png', C['s1'] + 0.5, C['cv'], 540, 1010, 'pop'), ('g/chip_cover.png', C['cv'] + 0.3, C['fi'], 540, CH, 'pop')]
 OV += [('g/tstep2.png', C['fi'] + 0.2, C['st'], 540, TOP, 'pop'), ('g/chip_starter.png', C['fi'] + 0.3, C['lw'], 540, CH, 'pop'),
        ('g/chip_addwood.png', C['lw'] + 0.3, C['hd'], 540, CH, 'pop'),
        ('g/chip_handle.png', C['hd'] + 0.3, C['st'], 540, CH, 'pop'), ('g/chip_hot.png', C['hd'] + 2.4, C['st'], 540, CH + 110, 'pop'),
-       ('g/ring_w.png', C['hd'] + 0.3, C['hd'] + 3.6, 0, 0, 'pulse')]
+       ('g/ring_r.png', C['hd'] + 0.3, C['st'] - 0.2, 0, 0, 'pulse')]
 OV += [('g/tstep3.png', C['st'] + 0.2, C['n0'], 540, TOP, 'pop'), ('g/chip_stir.png', C['st'] + 0.3, S('t13'), 540, CH, 'pop'),
        ('g/chip_stir2.png', S('t13') + 0.2, C['hr'], 540, CH, 'pop'), ('g/ring_book.png', C['st'] + 0.4, S('t13') + 1.6, 0, 0, 'pulse'),
        ('g/chip_hours.png', C['hr'] + 0.3, C['n0'], 540, CH, 'pop')]
