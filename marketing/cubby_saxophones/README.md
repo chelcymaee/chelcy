@@ -1,7 +1,7 @@
 # Cubby: "POV: you're going on holiday to Cape Town but the saxophones keep getting louder"
 
 A 36 s vertical TikTok/Reel trend edit.
-- **0–24 s, the chaos:** 14 shots, each used once. Mostly the new airport and airbridge footage (IMG_1548–1552, 1571–1573), alternating with Cape Town suitcase shots so neighbouring clips never look alike.
+- **0–24 s, the chaos:** 13 shots, each used once. Mostly the new airport and airbridge clips (IMG_1547–1552, 1571–1573); IMG_1547's man facing the camera gets an emoji. In between: the prom walkers, the vineyard and two Sea Point prom shots. The Bo-Kaap street, suitcase-on-head and carrying shots were removed on request.
 - **The sound:** the "saxophones" sound from the uploaded TikTok. Its sub-bass rumble is cut and the sax tones are boosted so it plays on phone speakers. It's looped, and each pass gets louder (−9 dB → +6 dB).
 - **24 s:** record scratch, then "…until you find Cubby" over the app screen recording in a phone on red.
 - **Ending:** the suitcase stored at the blue door ("suitcase: stored. holiday: started.") and the end card (Download. Store. Explore., mycubby.co.za).

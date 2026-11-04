@@ -10,10 +10,10 @@ r30 = lambda x: round(x * FPS) / FPS
 # (source, start) - ordered so neighbouring shots never share a location
 # (source, start, seconds on screen) - close-ups + people dragging suitcases, new airport clips used most
 # airport hall / airbridge / Cape Town alternate so neighbouring shots never look alike; every clip used once
-CLIPS = [(NEW + 'IMG_1571.mov', 0.0, 2.2), (CS + 'IMG_9926.MOV', 0.6, 1.9), (NEW + 'IMG_1551.mov', 0.3, 2.0), (NEW + 'IMG_1573.mov', 0.3, 2.0),
-         (CS + 'IMG_0318.MOV', 0.2, 1.8), (NEW + 'IMG_1548.mov', 0.0, 1.38), (CS + 'IMG_9273.MOV', 5.6, 1.7), (NEW + 'IMG_1550.mov', 0.6, 1.8),
-         (NEW + 'IMG_1572.mov', 0.0, 1.26), (CS + 'IMG_9928.MOV', 1.5, 1.6), (NEW + 'IMG_1549.mov', 0.3, 1.6), (CS + '127a72f5-1212-4d84-845b-1beb71301bfe.MP4', 1.0, 1.5),
-         (NEW + 'IMG_1552.mov', 0.4, 1.5), (CS + 'IMG_9927.2.MOV', 0.0, 1.4)]
+CLIPS = [(NEW + 'IMG_1571.mov', 0.0, 2.3), (CS + 'IMG_0318.MOV', 0.2, 2.0), (NEW + 'IMG_1551.mov', 0.3, 2.1), (NEW + 'IMG_1573.mov', 0.3, 2.1),
+         (CS + 'IMG_9273.MOV', 5.6, 1.9), (NEW + 'IMG_1550.mov', 0.6, 1.8), (NEW + 'IMG_1548.mov', 0.0, 1.38), (CS + '127a72f5-1212-4d84-845b-1beb71301bfe.MP4', 1.0, 1.7),
+         (NEW + 'IMG_1547.mov', 0.0, 1.6), (NEW + 'IMG_1552.mov', 0.4, 1.7), (NEW + 'IMG_1572.mov', 0.0, 1.26), (CS + '5a6e859e-d744-4540-aa6a-58cb623466fc.MP4', 0.0, 1.6),
+         (NEW + 'IMG_1549.mov', 0.3, 1.6)]
 if os.path.exists(NEW + 'IMG_1546.mov'): CLIPS.insert(11, (NEW + 'IMG_1546.mov', 0.0, 1.5))
 tot = sum(c[2] for c in CLIPS); CHAOS = 24.0
 cuts = [0.0]
@@ -31,6 +31,8 @@ for i, ((src, ss), a, b) in enumerate(zip(CLIPS, cuts[:-1], cuts[1:])):
     z = f"zoompan=z='1.10-0.10*min(1\\,on/5)':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s={W}x{H}:fps={FPS}"   # little punch-in on every cut
     run(['-ss', str(ss), '-i', src, '-vf', f"{fill},fps={FPS},tpad=stop_mode=clone:stop_duration=5,{z},{GRADE}", '-frames:v', str(nfr), '-an',
          '-c:v', 'libx264', '-crf', '16', '-preset', 'fast', '-pix_fmt', 'yuv420p', '-r', str(FPS), out])
+    if 'IMG_1547' in src:   # stranger facing the camera in the queue gets an emoji
+        subprocess.run(['python3', 'emojify2.py', os.path.abspath(out), os.path.abspath(out) + '.e.mp4', '1', '1'], cwd='../cubby', check=True); os.replace(out + '.e.mp4', out)
     if 'IMG_0318' in src:   # the two walkers keep their emoji faces
         subprocess.run(['python3', 'emoji2p.py', os.path.abspath(out), os.path.abspath(out) + '.e.mp4'], cwd='../cubby', check=True); os.replace(out + '.e.mp4', out)
 # Cubby app: screen recording in a phone on red
