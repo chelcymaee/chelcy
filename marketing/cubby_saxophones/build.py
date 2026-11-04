@@ -9,10 +9,12 @@ CS = '../cubby/src/'; NEW = 'src/'
 r30 = lambda x: round(x * FPS) / FPS
 # (source, start) - ordered so neighbouring shots never share a location
 # (source, start, seconds on screen) - close-ups + people dragging suitcases, new airport clips used most
-CLIPS = [(NEW + 'IMG_1571.mov', 0.0, 2.45), (CS + 'IMG_0318.MOV', 0.2, 2.4), (NEW + 'IMG_1573.mov', 0.3, 2.6), (CS + 'IMG_9926.MOV', 0.6, 2.4),
-         (NEW + 'IMG_1572.mov', 0.0, 1.28), (CS + '127a72f5-1212-4d84-845b-1beb71301bfe.MP4', 1.0, 2.4), (CS + 'IMG_9273.MOV', 5.6, 2.4),
-         (CS + 'IMG_9928.MOV', 1.5, 2.3), (CS + 'IMG_0314.MOV', 0.5, 2.2), (CS + 'IMG_9927.2.MOV', 0.0, 2.2)]
-if os.path.exists(NEW + 'IMG_1551.mov'): CLIPS.insert(4, (NEW + 'IMG_1551.mov', 0.0, 2.0))
+# airport hall / airbridge / Cape Town alternate so neighbouring shots never look alike; every clip used once
+CLIPS = [(NEW + 'IMG_1571.mov', 0.0, 2.2), (CS + 'IMG_9926.MOV', 0.6, 1.9), (NEW + 'IMG_1551.mov', 0.3, 2.0), (NEW + 'IMG_1573.mov', 0.3, 2.0),
+         (CS + 'IMG_0318.MOV', 0.2, 1.8), (NEW + 'IMG_1548.mov', 0.0, 1.38), (CS + 'IMG_9273.MOV', 5.6, 1.7), (NEW + 'IMG_1550.mov', 0.6, 1.8),
+         (NEW + 'IMG_1572.mov', 0.0, 1.26), (CS + 'IMG_9928.MOV', 1.5, 1.6), (NEW + 'IMG_1549.mov', 0.3, 1.6), (CS + '127a72f5-1212-4d84-845b-1beb71301bfe.MP4', 1.0, 1.5),
+         (NEW + 'IMG_1552.mov', 0.4, 1.5), (CS + 'IMG_9927.2.MOV', 0.0, 1.4)]
+if os.path.exists(NEW + 'IMG_1546.mov'): CLIPS.insert(11, (NEW + 'IMG_1546.mov', 0.0, 1.5))
 tot = sum(c[2] for c in CLIPS); CHAOS = 24.0
 cuts = [0.0]
 for c in CLIPS: cuts.append(r30(cuts[-1] + c[2] * CHAOS / tot))
