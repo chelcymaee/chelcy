@@ -9,10 +9,9 @@ CS = '../cubby/src/'; NEW = 'src/'
 r30 = lambda x: round(x * FPS) / FPS
 # (source, start) - ordered so neighbouring shots never share a location
 # (source, start, seconds on screen) - close-ups + people dragging suitcases, new airport clips used most
-CLIPS = [(NEW + 'IMG_1571.mov', 0.0, 2.4), (CS + 'IMG_0318.MOV', 0.2, 2.3), (NEW + 'IMG_1573.mov', 0.3, 2.2), (CS + 'IMG_9926.MOV', 0.6, 2.1),
-         (NEW + 'IMG_1572.mov', 0.0, 1.25), (CS + '127a72f5-1212-4d84-845b-1beb71301bfe.MP4', 1.0, 2.0), (NEW + 'IMG_1571.mov', 1.15, 1.3),
-         (CS + 'IMG_9273.MOV', 5.6, 2.0), (NEW + 'IMG_1573.mov', 2.2, 1.7), (CS + 'IMG_9928.MOV', 1.5, 1.9), (CS + 'IMG_0314.MOV', 0.5, 1.8),
-         (CS + 'IMG_9927.2.MOV', 0.0, 1.6)]
+CLIPS = [(NEW + 'IMG_1571.mov', 0.0, 2.45), (CS + 'IMG_0318.MOV', 0.2, 2.4), (NEW + 'IMG_1573.mov', 0.3, 2.6), (CS + 'IMG_9926.MOV', 0.6, 2.4),
+         (NEW + 'IMG_1572.mov', 0.0, 1.28), (CS + '127a72f5-1212-4d84-845b-1beb71301bfe.MP4', 1.0, 2.4), (CS + 'IMG_9273.MOV', 5.6, 2.4),
+         (CS + 'IMG_9928.MOV', 1.5, 2.3), (CS + 'IMG_0314.MOV', 0.5, 2.2), (CS + 'IMG_9927.2.MOV', 0.0, 2.2)]
 if os.path.exists(NEW + 'IMG_1551.mov'): CLIPS.insert(4, (NEW + 'IMG_1551.mov', 0.0, 2.0))
 tot = sum(c[2] for c in CLIPS); CHAOS = 24.0
 cuts = [0.0]
@@ -107,6 +106,13 @@ fc.append(f"[{a0 + 3}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume
 fc.append(f"[{a0 + 5}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=-6dB,adelay={int((APP1 + 0.3) * 1000)}|{int((APP1 + 0.3) * 1000)}[lk]")
 fc.append(f"[{a0 + 4}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=-8dB,adelay={int((DROP1 + 0.1) * 1000)}|{int((DROP1 + 0.1) * 1000)}[sp]")
 fc.append(f"[sx][bd][sc][pp][lk][sp]amix=inputs=6:duration=longest:normalize=0,loudnorm=I=-12:TP=-1.0:LRA=9,aresample=48000,apad,atrim=0:{TOTAL},afade=t=out:st={TOTAL - 0.8}:d=0.8[a]")
-run(ins + ['-filter_complex', ';'.join(fc), '-map', f'[{prev}]', '-map', '[a]', '-c:v', 'libx264', '-crf', '19', '-preset', 'slow', '-pix_fmt', 'yuv420p',
-           '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-t', str(TOTAL), 'sax_reel.mp4'])
+MIXES = [('sax_reel.mp4', True), ('sax_reel_no_sax.mp4', False)]
+fc_base = list(fc)
+for OUTF, WITH_SAX in MIXES:
+  fc = list(fc_base)
+  if not WITH_SAX:
+    fc[-1] = fc[-1].replace('[sx][bd][sc][pp][lk][sp]amix=inputs=6', '[bd][sc][pp][lk][sp]amix=inputs=5')
+    fc = [f + ';[sx]anullsink' if f.endswith('[sx]') else f for f in fc]
+  run(ins + ['-filter_complex', ';'.join(fc), '-map', f'[{prev}]', '-map', '[a]', '-c:v', 'libx264', '-crf', '19', '-preset', 'slow', '-pix_fmt', 'yuv420p',
+           '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-t', str(TOTAL), OUTF])
 print('done', TOTAL, len(CLIPS), 'clips')
