@@ -79,12 +79,12 @@ def cap(path, text, size=58, maxw=900, box=False):
         if box: dd.rounded_rectangle((x - 22, y - 6, x + tw + 22, y + lh + 2), radius=16, fill=(255, 255, 255, 255)); dd.text((x, y), l, font=f, fill=(20, 20, 20))
         else: dd.text((x, y), l, font=f, fill=(255, 255, 255), stroke_width=4, stroke_fill=(0, 0, 0))
     im.save(path)
-cap('g/pov.png', "POV: you're going on holiday to Cape Town but the saxophones keep getting louder", 58)
+cap('g/pov.png', "POV: you're going on holiday to Cape Town but the saxophones keep getting louder", 46, maxw=820)
 cap('g/fix.png', '…until you find Cubby', 64, box=True)
 cap('g/fix2.png', 'book a trusted local spot to store your bags', 48)
 cap('g/stored.png', 'suitcase: stored. holiday: started.', 58, box=True)
 ins = ['-i', 'base.mp4']; fc = []; prev = '0:v'; k = 1
-for png, t0, t1, y in [('g/pov.png', 0.0, CHAOS, 270), ('g/fix.png', APP0 + 0.1, APP1, 230), ('g/fix2.png', APP0 + 1.2, APP1, 380), ('g/stored.png', APP1 + 0.2, DROP1, 330)]:
+for png, t0, t1, y in [('g/pov.png', 0.0, CHAOS, '(main_h-overlay_h)/2'), ('g/fix.png', APP0 + 0.1, APP1, 230), ('g/fix2.png', APP0 + 1.2, APP1, 380), ('g/stored.png', APP1 + 0.2, DROP1, 330)]:
     ins += ['-loop', '1', '-framerate', str(FPS), '-t', f'{t1 - t0 + 0.1:.2f}', '-i', png]
     fc.append(f"[{k}:v]format=rgba,setpts=PTS+{t0}/TB[o{k}];[{prev}][o{k}]overlay=x=0:y={y}:enable='between(t,{t0},{t1 - 0.001})'[v{k}]"); prev = f'v{k}'; k += 1
 # audio: sax loop that gets louder each pass, record scratch, then a calm bed under the app + end card
