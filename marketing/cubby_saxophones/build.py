@@ -8,17 +8,17 @@ FPS = 30; W, H = 1080, 1920
 CS = '../cubby/src/'; NEW = 'src/'
 r30 = lambda x: round(x * FPS) / FPS
 # (source, start) - ordered so neighbouring shots never share a location
-CLIPS = [(NEW + 'IMG_1571.mov', 0.0), (CS + 'IMG_0314.MOV', 0.5), (CS + 'IMG_9926.MOV', 0.6), (CS + '127a72f5-1212-4d84-845b-1beb71301bfe.MP4', 1.0),
-         (NEW + 'IMG_1573.mov', 0.5), (CS + 'IMG_9273.MOV', 5.6), (CS + 'IMG_9928.MOV', 1.5), (CS + 'IMG_0317.MOV', 0.0),
-         (CS + 'IMG_0691.MOV', 0.0), (CS + 'IMG_9927.2.MOV', 0.0), (NEW + 'IMG_1572.mov', 0.0), (CS + 'IMG_0318.MOV', 0.2),
-         (CS + 'IMG_9274.MOV', 13.0), (CS + 'IMG_0315.MOV', 0.0), (CS + 'IMG_9930.MOV', 0.0), (CS + '5a6e859e-d744-4540-aa6a-58cb623466fc.MP4', 0.0),
-         (CS + 'IMG_9877.MOV', 0.5), (CS + 'IMG_0316.MOV', 0.0)]
-if os.path.exists(NEW + 'IMG_1551.mov'): CLIPS.insert(7, (NEW + 'IMG_1551.mov', 0.0))
-CHAOS = 24.0
-n = len(CLIPS); w = np.linspace(2.0, 0.55, n); dur = w / w.sum() * CHAOS
+# (source, start, seconds on screen) - close-ups + people dragging suitcases, new airport clips used most
+CLIPS = [(NEW + 'IMG_1571.mov', 0.0, 2.4), (CS + 'IMG_0318.MOV', 0.2, 2.3), (NEW + 'IMG_1573.mov', 0.3, 2.2), (CS + 'IMG_9926.MOV', 0.6, 2.1),
+         (NEW + 'IMG_1572.mov', 0.0, 1.25), (CS + '127a72f5-1212-4d84-845b-1beb71301bfe.MP4', 1.0, 2.0), (NEW + 'IMG_1571.mov', 1.15, 1.3),
+         (CS + 'IMG_9273.MOV', 5.6, 2.0), (NEW + 'IMG_1573.mov', 2.2, 1.7), (CS + 'IMG_9928.MOV', 1.5, 1.9), (CS + 'IMG_0314.MOV', 0.5, 1.8),
+         (CS + 'IMG_9927.2.MOV', 0.0, 1.6)]
+if os.path.exists(NEW + 'IMG_1551.mov'): CLIPS.insert(4, (NEW + 'IMG_1551.mov', 0.0, 2.0))
+tot = sum(c[2] for c in CLIPS); CHAOS = 24.0
 cuts = [0.0]
-for d in dur: cuts.append(r30(cuts[-1] + d))
+for c in CLIPS: cuts.append(r30(cuts[-1] + c[2] * CHAOS / tot))
 cuts[-1] = CHAOS
+CLIPS = [(c[0], c[1]) for c in CLIPS]
 APP0, APP1 = CHAOS, r30(CHAOS + 7.6); DROP1 = r30(APP1 + 1.8); TOTAL = r30(DROP1 + 3.0)
 os.makedirs('seg', exist_ok=True); os.makedirs('g', exist_ok=True)
 fill = f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},setsar=1"
@@ -88,7 +88,7 @@ for png, t0, t1, y in [('g/pov.png', 0.0, CHAOS, 270), ('g/fix.png', APP0 + 0.1,
     fc.append(f"[{k}:v]format=rgba,setpts=PTS+{t0}/TB[o{k}];[{prev}][o{k}]overlay=x=0:y={y}:enable='between(t,{t0},{t1 - 0.001})'[v{k}]"); prev = f'v{k}'; k += 1
 # audio: sax loop that gets louder each pass, record scratch, then a calm bed under the app + end card
 SR = 48000
-subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', 'src/v14044g50000d91tbd7og65njhq2fkng.mp4', '-t', '4.85', '-ac', '2', '-ar', str(SR), 'g/sax.wav'], check=True)
+subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', 'src/v14044g50000d91tbd7og65njhq2fkng.mp4', '-t', '4.85', '-af', 'highpass=f=160:poles=2,highpass=f=160:poles=2,equalizer=f=700:t=q:w=1:g=4,equalizer=f=1600:t=q:w=1:g=7,equalizer=f=3200:t=q:w=1:g=5,acompressor=threshold=-24dB:ratio=3:attack=5:release=80,loudnorm=I=-16:TP=-2', '-ac', '2', '-ar', str(SR), 'g/sax.wav'], check=True)
 _, sx = wavfile.read('g/sax.wav'); sx = sx.astype(np.float32) / 32768
 L_ = len(sx); xf = int(0.25 * SR); out = np.zeros((int((CHAOS + 0.4) * SR), 2), np.float32); pos = 0; p = 0
 while pos < len(out):
@@ -106,7 +106,7 @@ fc.append(f"[{a0 + 2}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume
 fc.append(f"[{a0 + 3}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=-8dB,adelay={int((APP0 + 0.1) * 1000)}|{int((APP0 + 0.1) * 1000)}[pp]")
 fc.append(f"[{a0 + 5}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=-6dB,adelay={int((APP1 + 0.3) * 1000)}|{int((APP1 + 0.3) * 1000)}[lk]")
 fc.append(f"[{a0 + 4}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=-8dB,adelay={int((DROP1 + 0.1) * 1000)}|{int((DROP1 + 0.1) * 1000)}[sp]")
-fc.append(f"[sx][bd][sc][pp][lk][sp]amix=inputs=6:duration=longest:normalize=0,loudnorm=I=-14:TP=-1.2:LRA=11,aresample=48000,apad,atrim=0:{TOTAL},afade=t=out:st={TOTAL - 0.8}:d=0.8[a]")
+fc.append(f"[sx][bd][sc][pp][lk][sp]amix=inputs=6:duration=longest:normalize=0,loudnorm=I=-12:TP=-1.0:LRA=9,aresample=48000,apad,atrim=0:{TOTAL},afade=t=out:st={TOTAL - 0.8}:d=0.8[a]")
 run(ins + ['-filter_complex', ';'.join(fc), '-map', f'[{prev}]', '-map', '[a]', '-c:v', 'libx264', '-crf', '19', '-preset', 'slow', '-pix_fmt', 'yuv420p',
            '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-t', str(TOTAL), 'sax_reel.mp4'])
 print('done', TOTAL, len(CLIPS), 'clips')
