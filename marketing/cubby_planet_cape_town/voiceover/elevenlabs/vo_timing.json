@@ -1,0 +1,1333 @@
+{
+"words": [
+{
+"w": "Cape",
+"s": 0.16,
+"line": "l01",
+"cap": "CAPE"
+},
+{
+"w": "Town.",
+"s": 0.48,
+"line": "l01",
+"cap": "TOWN"
+},
+{
+"w": "Where",
+"s": 1.04,
+"line": "l01",
+"cap": "WHERE"
+},
+{
+"w": "the",
+"s": 1.28,
+"line": "l01",
+"cap": "THE"
+},
+{
+"w": "mountain",
+"s": 1.36,
+"line": "l01",
+"cap": "MOUNTAIN"
+},
+{
+"w": "is",
+"s": 2.0,
+"line": "l01",
+"cap": "IS"
+},
+{
+"w": "always",
+"s": 2.32,
+"line": "l01",
+"cap": "ALWAYS"
+},
+{
+"w": "watching,",
+"s": 2.64,
+"line": "l01",
+"cap": "WATCHING"
+},
+{
+"w": "and",
+"s": 3.52,
+"line": "l01",
+"cap": "AND"
+},
+{
+"w": "so",
+"s": 3.76,
+"line": "l01",
+"cap": "SO"
+},
+{
+"w": "is",
+"s": 3.92,
+"line": "l01",
+"cap": "IS"
+},
+{
+"w": "the",
+"s": 4.08,
+"line": "l01",
+"cap": "THE"
+},
+{
+"w": "car",
+"s": 4.24,
+"line": "l01",
+"cap": "CAR"
+},
+{
+"w": "guard.",
+"s": 4.56,
+"line": "l01",
+"cap": "GUARD"
+},
+{
+"w": "From",
+"s": 5.2,
+"line": "l02",
+"cap": "FROM"
+},
+{
+"w": "the",
+"s": 5.44,
+"line": "l02",
+"cap": "THE"
+},
+{
+"w": "passenger",
+"s": 5.6,
+"line": "l02",
+"cap": "PASSENGER"
+},
+{
+"w": "seat",
+"s": 6.16,
+"line": "l02",
+"cap": "SEAT"
+},
+{
+"w": "of",
+"s": 6.4,
+"line": "l02",
+"cap": "OF"
+},
+{
+"w": "a",
+"s": 6.48,
+"line": "l02",
+"cap": "A"
+},
+{
+"w": "Ford",
+"s": 6.64,
+"line": "l02",
+"cap": "FORD"
+},
+{
+"w": "Raptor,",
+"s": 7.04,
+"line": "l02",
+"cap": "RAPTOR"
+},
+{
+"w": "the",
+"s": 7.68,
+"line": "l02",
+"cap": "THE"
+},
+{
+"w": "Rappy",
+"s": 7.84,
+"line": "l02",
+"cap": "RAPPY"
+},
+{
+"w": "Tappy,",
+"s": 8.32,
+"line": "l02",
+"cap": "TAPPY"
+},
+{
+"w": "standard",
+"s": 8.96,
+"line": "l02",
+"cap": "STANDARD"
+},
+{
+"w": "issue",
+"s": 9.44,
+"line": "l02",
+"cap": "ISSUE"
+},
+{
+"w": "for",
+"s": 9.76,
+"line": "l02",
+"cap": "FOR"
+},
+{
+"w": "every",
+"s": 9.92,
+"line": "l02",
+"cap": "EVERY"
+},
+{
+"w": "digital",
+"s": 10.16,
+"line": "l02",
+"cap": "DIGITAL"
+},
+{
+"w": "nomad",
+"s": 10.56,
+"line": "l02",
+"cap": "NOMAD"
+},
+{
+"w": "with",
+"s": 11.04,
+"line": "l02",
+"cap": "WITH"
+},
+{
+"w": "a",
+"s": 11.2,
+"line": "l02",
+"cap": "A"
+},
+{
+"w": "podcast,",
+"s": 11.36,
+"line": "l02",
+"cap": "PODCAST"
+},
+{
+"w": "we",
+"s": 12.24,
+"line": "l02",
+"cap": "WE"
+},
+{
+"w": "observe",
+"s": 12.4,
+"line": "l02",
+"cap": "OBSERVE"
+},
+{
+"w": "a",
+"s": 12.88,
+"line": "l02",
+"cap": "A"
+},
+{
+"w": "rare",
+"s": 13.04,
+"line": "l02",
+"cap": "RARE"
+},
+{
+"w": "species.",
+"s": 13.44,
+"line": "l02",
+"cap": "SPECIES"
+},
+{
+"w": "The",
+"s": 14.61,
+"line": "l02",
+"cap": "THE"
+},
+{
+"w": "Suitcase",
+"s": 14.85,
+"line": "l02",
+"cap": "SUITCASE"
+},
+{
+"w": "Dragger.",
+"s": 15.41,
+"line": "l02",
+"cap": "DRAGGER"
+},
+{
+"w": "They",
+"s": 16.29,
+"line": "l03",
+"cap": "THEY"
+},
+{
+"w": "dream",
+"s": 16.53,
+"line": "l03",
+"cap": "DREAM"
+},
+{
+"w": "of",
+"s": 16.93,
+"line": "l03",
+"cap": "OF"
+},
+{
+"w": "doing",
+"s": 17.09,
+"line": "l03",
+"cap": "DOING"
+},
+{
+"w": "the",
+"s": 17.25,
+"line": "l03",
+"cap": "THE"
+},
+{
+"w": "Prom",
+"s": 17.41,
+"line": "l03",
+"cap": "PROM"
+},
+{
+"w": "walk,",
+"s": 17.81,
+"line": "l03",
+"cap": "WALK"
+},
+{
+"w": "like",
+"s": 18.29,
+"line": "l03",
+"cap": "LIKE"
+},
+{
+"w": "a",
+"s": 18.45,
+"line": "l03",
+"cap": "A"
+},
+{
+"w": "local.",
+"s": 18.61,
+"line": "l03",
+"cap": "LOCAL"
+},
+{
+"w": "But",
+"s": 19.25,
+"line": "l03",
+"cap": "BUT"
+},
+{
+"w": "true",
+"s": 19.41,
+"line": "l03",
+"cap": "TRUE"
+},
+{
+"w": "Capetonians",
+"s": 19.73,
+"line": "l03",
+"cap": "CAPETONIANS"
+},
+{
+"w": "walk",
+"s": 20.53,
+"line": "l03",
+"cap": "WALK"
+},
+{
+"w": "the",
+"s": 20.77,
+"line": "l03",
+"cap": "THE"
+},
+{
+"w": "Prom",
+"s": 20.85,
+"line": "l03",
+"cap": "PROM"
+},
+{
+"w": "with",
+"s": 21.33,
+"line": "l03",
+"cap": "WITH"
+},
+{
+"w": "a",
+"s": 21.41,
+"line": "l03",
+"cap": "A"
+},
+{
+"w": "rescue",
+"s": 21.57,
+"line": "l03",
+"cap": "RESCUE"
+},
+{
+"w": "dog,",
+"s": 21.97,
+"line": "l03",
+"cap": "DOG"
+},
+{
+"w": "an",
+"s": 22.29,
+"line": "l03",
+"cap": "AN"
+},
+{
+"w": "iced",
+"s": 22.45,
+"line": "l03",
+"cap": "ICED"
+},
+{
+"w": "matcha,",
+"s": 22.85,
+"line": "l03",
+"cap": "MATCHA"
+},
+{
+"w": "and",
+"s": 23.49,
+"line": "l03",
+"cap": "AND"
+},
+{
+"w": "matching",
+"s": 23.65,
+"line": "l03",
+"cap": "MATCHING"
+},
+{
+"w": "activewear.",
+"s": 24.05,
+"line": "l03",
+"cap": "ACTIVEWEAR"
+},
+{
+"w": "Never,",
+"s": 25.17,
+"line": "l03",
+"cap": "NEVER"
+},
+{
+"w": "ever,",
+"s": 25.89,
+"line": "l03",
+"cap": "EVER"
+},
+{
+"w": "with",
+"s": 26.37,
+"line": "l03",
+"cap": "WITH"
+},
+{
+"w": "a",
+"s": 26.53,
+"line": "l03",
+"cap": "A"
+},
+{
+"w": "suitcase.",
+"s": 26.69,
+"line": "l03",
+"cap": "SUITCASE"
+},
+{
+"w": "Nor",
+"s": 27.65,
+"line": "l04",
+"cap": "NOR"
+},
+{
+"w": "will",
+"s": 27.97,
+"line": "l04",
+"cap": "WILL"
+},
+{
+"w": "they",
+"s": 28.13,
+"line": "l04",
+"cap": "THEY"
+},
+{
+"w": "hike",
+"s": 28.29,
+"line": "l04",
+"cap": "HIKE"
+},
+{
+"w": "Lion's",
+"s": 28.61,
+"line": "l04",
+"cap": "LION'S"
+},
+{
+"w": "Head",
+"s": 29.09,
+"line": "l04",
+"cap": "HEAD"
+},
+{
+"w": "at",
+"s": 29.33,
+"line": "l04",
+"cap": "AT"
+},
+{
+"w": "sunrise.",
+"s": 29.49,
+"line": "l04",
+"cap": "SUNRISE"
+},
+{
+"w": "The",
+"s": 30.42,
+"line": "l04",
+"cap": "THE"
+},
+{
+"w": "locals",
+"s": 30.58,
+"line": "l04",
+"cap": "LOCALS"
+},
+{
+"w": "who",
+"s": 30.98,
+"line": "l04",
+"cap": "WHO"
+},
+{
+"w": "did?",
+"s": 31.14,
+"line": "l04",
+"cap": "DID"
+},
+{
+"w": "Oh,",
+"s": 31.7,
+"line": "l04",
+"cap": "OH"
+},
+{
+"w": "they",
+"s": 32.34,
+"line": "l04",
+"cap": "THEY"
+},
+{
+"w": "will",
+"s": 32.5,
+"line": "l04",
+"cap": "WILL"
+},
+{
+"w": "tell",
+"s": 32.74,
+"line": "l04",
+"cap": "TELL"
+},
+{
+"w": "you",
+"s": 32.9,
+"line": "l04",
+"cap": "YOU"
+},
+{
+"w": "about",
+"s": 33.06,
+"line": "l04",
+"cap": "ABOUT"
+},
+{
+"w": "it.",
+"s": 33.3,
+"line": "l04",
+"cap": "IT"
+},
+{
+"w": "Daily.",
+"s": 33.86,
+"line": "l04",
+"cap": "DAILY"
+},
+{
+"w": "So,",
+"s": 34.82,
+"line": "l05",
+"cap": "SO"
+},
+{
+"w": "they",
+"s": 35.14,
+"line": "l05",
+"cap": "THEY"
+},
+{
+"w": "drag",
+"s": 35.38,
+"line": "l05",
+"cap": "DRAG"
+},
+{
+"w": "it",
+"s": 35.7,
+"line": "l05",
+"cap": "IT"
+},
+{
+"w": "through",
+"s": 35.86,
+"line": "l05",
+"cap": "THROUGH"
+},
+{
+"w": "a",
+"s": 36.02,
+"line": "l05",
+"cap": "A"
+},
+{
+"w": "wine",
+"s": 36.18,
+"line": "l05",
+"cap": "WINE"
+},
+{
+"w": "farm.",
+"s": 36.5,
+"line": "l05",
+"cap": "FARM"
+},
+{
+"w": "Locals",
+"s": 37.06,
+"line": "l05",
+"cap": "LOCALS"
+},
+{
+"w": "call",
+"s": 37.62,
+"line": "l05",
+"cap": "CALL"
+},
+{
+"w": "this",
+"s": 37.78,
+"line": "l05",
+"cap": "THIS"
+},
+{
+"w": "a",
+"s": 38.1,
+"line": "l05",
+"cap": "A"
+},
+{
+"w": "quick",
+"s": 38.26,
+"line": "l05",
+"cap": "QUICK"
+},
+{
+"w": "tasting.",
+"s": 38.58,
+"line": "l05",
+"cap": "TASTING"
+},
+{
+"w": "It",
+"s": 39.46,
+"line": "l05",
+"cap": "IT"
+},
+{
+"w": "is",
+"s": 39.62,
+"line": "l05",
+"cap": "IS"
+},
+{
+"w": "never",
+"s": 39.86,
+"line": "l05",
+"cap": "NEVER"
+},
+{
+"w": "quick.",
+"s": 40.18,
+"line": "l05",
+"cap": "QUICK"
+},
+{
+"w": "Next,",
+"s": 40.9,
+"line": "l06",
+"cap": "NEXT"
+},
+{
+"w": "the",
+"s": 41.38,
+"line": "l06",
+"cap": "THE"
+},
+{
+"w": "Boo-Kaap.",
+"s": 41.54,
+"line": "l06",
+"cap": "BO-KAAP"
+},
+{
+"w": "Our",
+"s": 42.5,
+"line": "l06",
+"cap": "OUR"
+},
+{
+"w": "specimen",
+"s": 42.74,
+"line": "l06",
+"cap": "SPECIMEN"
+},
+{
+"w": "is",
+"s": 43.22,
+"line": "l06",
+"cap": "IS"
+},
+{
+"w": "getting",
+"s": 43.38,
+"line": "l06",
+"cap": "GETTING"
+},
+{
+"w": "their",
+"s": 43.62,
+"line": "l06",
+"cap": "THEIR"
+},
+{
+"w": "steps",
+"s": 43.86,
+"line": "l06",
+"cap": "STEPS"
+},
+{
+"w": "in.",
+"s": 44.26,
+"line": "l06",
+"cap": "IN"
+},
+{
+"w": "So",
+"s": 44.74,
+"line": "l06",
+"cap": "SO"
+},
+{
+"w": "is",
+"s": 44.9,
+"line": "l06",
+"cap": "IS"
+},
+{
+"w": "the",
+"s": 45.06,
+"line": "l06",
+"cap": "THE"
+},
+{
+"w": "suitcase.",
+"s": 45.22,
+"line": "l06",
+"cap": "SUITCASE"
+},
+{
+"w": "Uphill.",
+"s": 46.1,
+"line": "l06",
+"cap": "UPHILL"
+},
+{
+"w": "Our",
+"s": 47.07,
+"line": "l07",
+"cap": "OUR"
+},
+{
+"w": "specimen",
+"s": 47.31,
+"line": "l07",
+"cap": "SPECIMEN"
+},
+{
+"w": "has",
+"s": 47.87,
+"line": "l07",
+"cap": "HAS"
+},
+{
+"w": "now",
+"s": 48.03,
+"line": "l07",
+"cap": "NOW"
+},
+{
+"w": "placed",
+"s": 48.19,
+"line": "l07",
+"cap": "PLACED"
+},
+{
+"w": "it",
+"s": 48.51,
+"line": "l07",
+"cap": "IT"
+},
+{
+"w": "on",
+"s": 48.67,
+"line": "l07",
+"cap": "ON"
+},
+{
+"w": "their",
+"s": 48.83,
+"line": "l07",
+"cap": "THEIR"
+},
+{
+"w": "head.",
+"s": 49.07,
+"line": "l07",
+"cap": "HEAD"
+},
+{
+"w": "The",
+"s": 49.63,
+"line": "l07",
+"cap": "THE"
+},
+{
+"w": "Southeaster",
+"s": 49.79,
+"line": "l07",
+"cap": "SOUTHEASTER"
+},
+{
+"w": "has",
+"s": 50.75,
+"line": "l07",
+"cap": "HAS"
+},
+{
+"w": "opinions.",
+"s": 50.99,
+"line": "l07",
+"cap": "OPINIONS"
+},
+{
+"w": "Checkout",
+"s": 51.95,
+"line": "l08",
+"cap": "CHECKOUT"
+},
+{
+"w": "was",
+"s": 52.59,
+"line": "l08",
+"cap": "WAS"
+},
+{
+"w": "at",
+"s": 52.67,
+"line": "l08",
+"cap": "AT"
+},
+{
+"w": "ten.",
+"s": 52.91,
+"line": "l08",
+"cap": "TEN"
+},
+{
+"w": "Their",
+"s": 53.47,
+"line": "l08",
+"cap": "THEIR"
+},
+{
+"w": "flight",
+"s": 53.71,
+"line": "l08",
+"cap": "FLIGHT"
+},
+{
+"w": "is",
+"s": 54.11,
+"line": "l08",
+"cap": "IS"
+},
+{
+"w": "now",
+"s": 54.35,
+"line": "l08",
+"cap": "NOW"
+},
+{
+"w": "now.",
+"s": 54.75,
+"line": "l08",
+"cap": "NOW"
+},
+{
+"w": "Which,",
+"s": 55.31,
+"line": "l08",
+"cap": "WHICH"
+},
+{
+"w": "in",
+"s": 55.63,
+"line": "l08",
+"cap": "IN"
+},
+{
+"w": "Cape",
+"s": 55.79,
+"line": "l08",
+"cap": "CAPE"
+},
+{
+"w": "Town,",
+"s": 56.11,
+"line": "l08",
+"cap": "TOWN"
+},
+{
+"w": "could",
+"s": 56.51,
+"line": "l08",
+"cap": "COULD"
+},
+{
+"w": "mean",
+"s": 56.83,
+"line": "l08",
+"cap": "MEAN"
+},
+{
+"w": "Thursday.",
+"s": 57.31,
+"line": "l08",
+"cap": "THURSDAY"
+},
+{
+"w": "And",
+"s": 58.49,
+"line": "l09",
+"cap": "AND"
+},
+{
+"w": "then,",
+"s": 58.81,
+"line": "l09",
+"cap": "THEN"
+},
+{
+"w": "a",
+"s": 59.29,
+"line": "l09",
+"cap": "A"
+},
+{
+"w": "sign.",
+"s": 59.53,
+"line": "l09",
+"cap": "SIGN"
+},
+{
+"w": "Behold!",
+"s": 60.49,
+"line": "l10",
+"cap": "BEHOLD"
+},
+{
+"w": "Cubby,",
+"s": 61.29,
+"line": "l10",
+"cap": "CUBBY"
+},
+{
+"w": "the",
+"s": 62.09,
+"line": "l10",
+"cap": "THE"
+},
+{
+"w": "app",
+"s": 62.25,
+"line": "l10",
+"cap": "APP"
+},
+{
+"w": "that",
+"s": 62.57,
+"line": "l10",
+"cap": "THAT"
+},
+{
+"w": "finds",
+"s": 62.73,
+"line": "l10",
+"cap": "FINDS"
+},
+{
+"w": "a",
+"s": 62.97,
+"line": "l10",
+"cap": "A"
+},
+{
+"w": "trusted",
+"s": 63.13,
+"line": "l10",
+"cap": "TRUSTED"
+},
+{
+"w": "local",
+"s": 63.61,
+"line": "l10",
+"cap": "LOCAL"
+},
+{
+"w": "spot",
+"s": 63.93,
+"line": "l10",
+"cap": "SPOT"
+},
+{
+"w": "near",
+"s": 64.25,
+"line": "l10",
+"cap": "NEAR"
+},
+{
+"w": "you.",
+"s": 64.57,
+"line": "l10",
+"cap": "YOU"
+},
+{
+"w": "A",
+"s": 65.05,
+"line": "l10",
+"cap": "A"
+},
+{
+"w": "cafe,",
+"s": 65.21,
+"line": "l10",
+"cap": "CAFE"
+},
+{
+"w": "a",
+"s": 65.85,
+"line": "l10",
+"cap": "A"
+},
+{
+"w": "guest",
+"s": 65.93,
+"line": "l10",
+"cap": "GUEST"
+},
+{
+"w": "house,",
+"s": 66.25,
+"line": "l10",
+"cap": "HOUSE"
+},
+{
+"w": "the",
+"s": 66.73,
+"line": "l10",
+"cap": "THE"
+},
+{
+"w": "shop",
+"s": 66.97,
+"line": "l10",
+"cap": "SHOP"
+},
+{
+"w": "around",
+"s": 67.29,
+"line": "l10",
+"cap": "AROUND"
+},
+{
+"w": "the",
+"s": 67.53,
+"line": "l10",
+"cap": "THE"
+},
+{
+"w": "corner.",
+"s": 67.69,
+"line": "l10",
+"cap": "CORNER"
+},
+{
+"w": "Tap",
+"s": 68.25,
+"line": "l10",
+"cap": "TAP"
+},
+{
+"w": "it,",
+"s": 68.57,
+"line": "l10",
+"cap": "IT"
+},
+{
+"w": "book",
+"s": 68.89,
+"line": "l10",
+"cap": "BOOK"
+},
+{
+"w": "it,",
+"s": 69.13,
+"line": "l10",
+"cap": "IT"
+},
+{
+"w": "drop",
+"s": 69.45,
+"line": "l10",
+"cap": "DROP"
+},
+{
+"w": "your",
+"s": 69.77,
+"line": "l10",
+"cap": "YOUR"
+},
+{
+"w": "bags.",
+"s": 69.93,
+"line": "l10",
+"cap": "BAGS"
+},
+{
+"w": "The",
+"s": 70.57,
+"line": "l11",
+"cap": "THE"
+},
+{
+"w": "suitcase",
+"s": 70.73,
+"line": "l11",
+"cap": "SUITCASE"
+},
+{
+"w": "is",
+"s": 71.37,
+"line": "l11",
+"cap": "IS"
+},
+{
+"w": "secure.",
+"s": 71.53,
+"line": "l11",
+"cap": "SECURE"
+},
+{
+"w": "And",
+"s": 72.33,
+"line": "l11",
+"cap": "AND"
+},
+{
+"w": "they",
+"s": 72.49,
+"line": "l11",
+"cap": "THEY"
+},
+{
+"w": "finally",
+"s": 72.73,
+"line": "l11",
+"cap": "FINALLY"
+},
+{
+"w": "do",
+"s": 73.13,
+"line": "l11",
+"cap": "DO"
+},
+{
+"w": "the",
+"s": 73.29,
+"line": "l11",
+"cap": "THE"
+},
+{
+"w": "Prom,",
+"s": 73.45,
+"line": "l11",
+"cap": "PROM"
+},
+{
+"w": "with",
+"s": 74.03,
+"line": "l11",
+"cap": "WITH"
+},
+{
+"w": "a",
+"s": 74.35,
+"line": "l11",
+"cap": "A"
+},
+{
+"w": "matcha.",
+"s": 74.51,
+"line": "l11",
+"cap": "MATCHA"
+},
+{
+"w": "Practically",
+"s": 75.31,
+"line": "l11",
+"cap": "PRACTICALLY"
+},
+{
+"w": "a",
+"s": 75.87,
+"line": "l11",
+"cap": "A"
+},
+{
+"w": "local.",
+"s": 76.03,
+"line": "l11",
+"cap": "LOCAL"
+},
+{
+"w": "So",
+"s": 76.83,
+"line": "l12",
+"cap": "SO"
+},
+{
+"w": "remember,",
+"s": 76.99,
+"line": "l12",
+"cap": "REMEMBER"
+},
+{
+"w": "my",
+"s": 77.47,
+"line": "l12",
+"cap": "MY"
+},
+{
+"w": "friends.",
+"s": 77.71,
+"line": "l12",
+"cap": "FRIENDS"
+},
+{
+"w": "It's",
+"s": 78.19,
+"line": "l12",
+"cap": "IT'S"
+},
+{
+"w": "Cubby.",
+"s": 78.43,
+"line": "l12",
+"cap": "CUBBY"
+},
+{
+"w": "Download,",
+"s": 79.23,
+"line": "l12",
+"cap": "DOWNLOAD"
+},
+{
+"w": "store,",
+"s": 79.95,
+"line": "l12",
+"cap": "STORE"
+},
+{
+"w": "explore!",
+"s": 80.59,
+"line": "l12",
+"cap": "EXPLORE"
+}
+],
+"spans": {
+"l01": [
+0.16,
+4.885
+],
+"l02": [
+5.2,
+15.899
+],
+"l03": [
+16.29,
+27.345
+],
+"l04": [
+27.65,
+34.373
+],
+"l05": [
+34.82,
+40.56
+],
+"l06": [
+40.9,
+46.703
+],
+"l07": [
+47.07,
+51.684
+],
+"l08": [
+51.95,
+58.025
+],
+"l09": [
+58.49,
+60.122
+],
+"l10": [
+60.49,
+70.321
+],
+"l11": [
+70.57,
+76.498
+],
+"l12": [
+76.83,
+81.281
+]
+},
+"total": 81.781
+}

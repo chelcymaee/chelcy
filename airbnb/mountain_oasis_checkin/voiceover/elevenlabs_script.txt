@@ -1,0 +1,34 @@
+Mountain Oasis: self check-in voiceover script (for ElevenLabs)
+One paragraph per line; leave a short pause between lines. A longer pause after the 'Alternatively...' line is added in the edit.
+
+Welcome to Mountain Oasis!
+
+Here's a quick guide to make your self check-in as easy as possible.
+
+When you arrive, park in front of the property, where you'll see the blue Mountain Oasis parking signs.
+
+Head towards the large gate, where you'll find the lockboxes.
+
+Your keys are in the top lockbox.
+
+Simply enter the code your host will share with you before check-in,
+
+then press both side buttons together to open it.
+
+Your keys come with a remote. Press the big red button to open the main gate,
+
+and use the green key to open the elevator gate.
+
+To reach your unit, you have two options.
+
+If you're using the elevator to the left of the gate, press the yellow button to go up to your pathway.
+
+To return to the parking area, press the green button.
+
+Alternatively, enter through the large gate, and follow the signs marked Upstairs.
+
+Once inside, you'll find your Wi-Fi details in the welcome book on the dining room table.
+
+That's it!
+
+Settle in, make yourself at home, and enjoy your stay at Mountain Oasis!

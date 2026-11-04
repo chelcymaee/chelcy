@@ -1,0 +1,167 @@
+{
+ "lines": [
+  {
+   "id": "t01",
+   "text": "Welcome to the Mountain Oasis hot tub!",
+   "s": 0.35,
+   "e": 2.508
+  },
+  {
+   "id": "t02",
+   "text": "Here's how to fire it up, and enjoy it safely.",
+   "s": 2.858,
+   "e": 5.277
+  },
+  {
+   "id": "t03",
+   "text": "First, grab some firewood from the front entrance.",
+   "s": 6.077,
+   "e": 8.539
+  },
+  {
+   "id": "t04",
+   "text": "Two bags are provided at check-in. After that, each extra bag is one hundred rand.",
+   "s": 8.939,
+   "e": 13.524
+  },
+  {
+   "id": "t05",
+   "text": "Your wood-fired hot tub is in the garden, beside the pool.",
+   "s": 14.324,
+   "e": 17.262
+  },
+  {
+   "id": "t06",
+   "text": "Before you begin, check the water level. It must be at the red line before you light the fire.",
+   "s": 23.262,
+   "e": 27.831
+  },
+  {
+   "id": "t07",
+   "text": "Never heat the hot tub if the water is below this line.",
+   "s": 28.181,
+   "e": 31.021
+  },
+  {
+   "id": "t08",
+   "text": "Remove the hot tub cover, and place it safely to one side.",
+   "s": 31.721,
+   "e": 34.935
+  },
+  {
+   "id": "t09",
+   "text": "To light the fire, place a fire starter and a few small pieces of dry wood into the wood-burning heater.",
+   "s": 35.735,
+   "e": 40.822
+  },
+  {
+   "id": "t10",
+   "text": "Once the fire is established, add a few more pieces of wood, and close the firebox lid.",
+   "s": 41.422,
+   "e": 45.936
+  },
+  {
+   "id": "t11",
+   "text": "Only touch the wooden handle on the lid. All metal surfaces become extremely hot.",
+   "s": 46.436,
+   "e": 50.976
+  },
+  {
+   "id": "t12",
+   "text": "Stir the water every fifteen minutes, using the large wooden paddle.",
+   "s": 51.776,
+   "e": 55.039
+  },
+  {
+   "id": "t13",
+   "text": "Each time you add more wood, stir the water again. This circulates the hot water, and speeds up the heating.",
+   "s": 55.439,
+   "e": 60.666
+  },
+  {
+   "id": "t14",
+   "text": "The hot tub generally takes two to three hours to reach a comfortable temperature, depending on how often you add wood and stir.",
+   "s": 61.266,
+   "e": 67.95
+  },
+  {
+   "id": "t15",
+   "text": "A few important notes.",
+   "s": 68.95,
+   "e": 70.167
+  },
+  {
+   "id": "t16",
+   "text": "If you need any assistance, please contact the House Manager.",
+   "s": 70.667,
+   "e": 73.66
+  },
+  {
+   "id": "t17",
+   "text": "Please let the House Manager know if the hot tub needs to be emptied or refilled.",
+   "s": 74.16,
+   "e": 78.505
+  },
+  {
+   "id": "t18",
+   "text": "Never heat the hot tub if the water level is below the marked line.",
+   "s": 79.005,
+   "e": 82.323
+  },
+  {
+   "id": "t19",
+   "text": "Never leave the fire unattended.",
+   "s": 82.823,
+   "e": 84.629
+  },
+  {
+   "id": "t20",
+   "text": "All metal surfaces become extremely hot during use. Please be careful.",
+   "s": 85.129,
+   "e": 89.182
+  },
+  {
+   "id": "t21",
+   "text": "Always replace the hot tub cover once the fire is out, and the hot tub is no longer in use.",
+   "s": 89.682,
+   "e": 94.691
+  },
+  {
+   "id": "t22",
+   "text": "Safety and liability.",
+   "s": 96.091,
+   "e": 97.513
+  },
+  {
+   "id": "t23",
+   "text": "Use of the hot tub is entirely at your own risk.",
+   "s": 98.213,
+   "e": 101.131
+  },
+  {
+   "id": "t24",
+   "text": "Mountain Oasis, its owners, and management accept no responsibility or liability for any injury, accident, loss, damage, or illness arising from the use of the hot tub.",
+   "s": 101.731,
+   "e": 112.002
+  },
+  {
+   "id": "t25",
+   "text": "Children must be supervised by an adult at all times while using, or near, the hot tub.",
+   "s": 112.602,
+   "e": 117.458
+  },
+  {
+   "id": "t26",
+   "text": "Guests are responsible for using the hot tub safely, and in accordance with these instructions.",
+   "s": 118.058,
+   "e": 122.657
+  },
+  {
+   "id": "t27",
+   "text": "Enjoy your soak!",
+   "s": 123.857,
+   "e": 124.876
+  }
+ ],
+ "total": 125.676
+}
